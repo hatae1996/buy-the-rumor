@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+Thumbs.db
+
+# 기획 인수인계 꾸러미 (적용한 뒤 내용은 docs/ 등에 들어간다)
+*.zip

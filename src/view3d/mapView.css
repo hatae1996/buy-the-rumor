@@ -1,0 +1,62 @@
+/* 부모를 꽉 채운다. 부모는 position이 있어야 한다 */
+.map-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--wood-deep);
+}
+
+.map-view canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 지도 위 손가락 조작은 모두 3D 조작으로 받는다 */
+  touch-action: none;
+}
+
+.map-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 누르는 영역은 투명한 버튼으로 넉넉히(44px 넘게), 리본 모양은 안쪽 span에 */
+.map-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  min-height: 44px;
+  min-width: 0;
+  margin: -10px 0 0;
+  padding: 10px 6px;
+  border: 0;
+  background: none;
+  will-change: transform;
+}
+
+.map-label span {
+  display: block;
+  padding: 2px 14px 3px;
+  white-space: nowrap;
+  font-family: var(--f-display);
+  font-size: 15px;
+  color: #fff;
+  background: var(--coral);
+  clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.4));
+}
+
+.map-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--paper);
+}

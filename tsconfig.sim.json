@@ -1,0 +1,10 @@
+{
+  // 시뮬레이션 전용 검사. DOM 타입을 빼서 src/sim이 document, window 등에 기대면 타입 오류가 난다.
+  // 나중에 서버에서 그대로 돌릴 코드라서 브라우저와 Node 어느 쪽에도 묶이지 않게 한다.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/sim"]
+}

@@ -1,0 +1,19 @@
+/* 마을 이름 리본 (assets/ui/ribbon_coral.png 위에 글자를 코드로 얹는다) */
+.ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  height: 46px;
+  padding: 0 40px 6px;
+  background: url('../../assets/ui/ribbon_coral.png') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.35));
+}
+
+.ribbon span {
+  font-family: var(--f-display);
+  font-size: 21px;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}

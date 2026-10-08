@@ -1,0 +1,20 @@
+/* 지도 탭 상자(.shell-map)는 이미 절대 위치라 쪽지를 그 안에 얹는다 */
+/* 지도 아래쪽에 얹는 종이 쪽지 */
+.map-status {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 3px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.map-status:empty {
+  display: none;
+}

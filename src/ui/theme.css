@@ -1,0 +1,29 @@
+/* 팔레트와 글꼴. prototypes/hexmap-3d.html의 값을 옮겼다. */
+:root {
+  color-scheme: dark;
+  --wood: #3a2b22;
+  --wood-mid: #6b4a32;
+  --wood-deep: #2e2219;
+  --wood-edge: #4a3222;
+  --paper: #f1e2c6;
+  --paper-dim: #e4d2b0;
+  --ink: #3a2b22;
+  --ink-soft: #5c4632;
+  --coral: #d2594b;
+  --coral-deep: #8e3328;
+  --teal: #2e9c98;
+  --olive: #7d8a2e;
+  --mustard: #e6b43c;
+  --wax: #b8402f;
+
+  --f-display: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+  --f-body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+  /* 노치와 홈 바 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  --tap: 44px;
+}

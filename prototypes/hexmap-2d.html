@@ -1,0 +1,474 @@
+<title>육각 맵 생성기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: the map sits on the merchant's wooden desk; controls and readouts are paper slips beside it (below it on a phone). One deliberate look, light-independent. */
+:root{
+  color-scheme: dark;
+  --wood:#3A2B22; --wood-mid:#6B4A32; --wood-hi:#8A6244;
+  --paper:#F1E2C6; --paper-dim:#E4D2B0; --ink:#3A2B22; --ink-soft:#5C4632;
+  --coral:#D2594B; --teal:#2E9C98; --olive:#7D8A2E; --mustard:#E6B43C; --wax:#B8402F; --good:#3F7F3A;
+  --f-display:"Jua", "Apple SD Gothic Neo", sans-serif;
+  --f-body:"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+html,body{background:var(--wood);color:var(--paper)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 94px,rgba(0,0,0,.35) 94px 97px)}
+.app{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--mustard);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.top h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);margin:0;line-height:1.1;color:var(--paper)}
+.top p{margin:4px 0 0;color:var(--paper-dim);font-size:14px;max-width:60ch}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{background:var(--coral);color:#fff;border:0;border-radius:6px;padding:10px 16px;font-family:var(--f-display);font-size:17px;box-shadow:0 4px 0 #8E3328;min-height:44px}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #8E3328}
+.btn.alt{background:var(--paper);color:var(--ink);box-shadow:0 4px 0 #A8916A}
+.btn.alt:active{box-shadow:0 2px 0 #A8916A}
+.btn:disabled{opacity:.45;cursor:default}
+.seg{display:flex;background:var(--wood-mid);border-radius:8px;padding:4px;gap:4px;box-shadow:inset 0 -3px 0 #4A3222}
+.seg button{background:none;border:0;border-radius:5px;padding:7px 12px;font-family:var(--f-display);font-size:16px;color:var(--paper);min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
+.seed{font-size:13px;color:var(--paper-dim)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.mapbox{background:#2E2219;border-radius:10px;padding:10px;box-shadow:inset 0 0 0 3px #4A3222;min-width:0;position:relative}
+#map{display:block;width:100%;height:auto;touch-action:manipulation}
+.tile{cursor:pointer}
+.tile:hover .top{filter:brightness(1.08)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--paper-dim);padding:8px 4px 0}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.slip{background:var(--paper);color:var(--ink);padding:14px 16px;border-radius:3px;box-shadow:0 4px 0 rgba(0,0,0,.4);
+  clip-path:polygon(0 1%,8% 0,22% .8%,38% 0,55% 1%,71% 0,88% .9%,100% 0,99.4% 50%,100% 99%,86% 100%,70% 99.2%,52% 100%,35% 99.1%,18% 100%,0 99.3%,.6% 50%)}
+.slip h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0 0 8px;color:var(--ink)}
+.slip .hint{font-size:13px;color:var(--ink-soft);margin:0 0 8px}
+.towns{display:flex;flex-direction:column;gap:8px}
+.town{display:flex;justify-content:space-between;gap:8px;align-items:baseline;border-bottom:1px dashed #C9B48C;padding-bottom:6px}
+.town:last-child{border-bottom:0}
+.town b{font-family:var(--f-display);font-weight:400;font-size:17px}
+.chips{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font-size:12px;padding:1px 8px;border-radius:10px;color:#fff;white-space:nowrap}
+table.days{border-collapse:collapse;width:100%;font-size:14px}
+.days th,.days td{padding:5px 4px;text-align:center;border-bottom:1px solid #D9C6A2}
+.days th{font-weight:400;color:var(--ink-soft);font-size:12.5px}
+.days td.self{color:#B9A47E}
+.days td.changed{color:var(--wax);font-weight:700}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:14px}
+.checks li{display:flex;gap:8px}
+.checks .ok{color:var(--good);font-weight:700}
+.checks .no{color:var(--wax);font-weight:700}
+.info{font-size:14px;min-height:72px}
+.info .k{color:var(--ink-soft)}
+.news{font-size:14px;color:var(--wax);margin:8px 0 0;min-height:1.4em}
+
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>육각 맵 생성기</h1>
+      <p>시즌마다 새로 만들어질 세계예요. 지형을 만들고, 자원지를 놓고, 마을 4개를 고르고, 길을 잇고, 규칙을 통과하지 못하면 다시 만들어요.</p>
+    </div>
+    <div class="bar">
+      <button class="btn" id="newMap">새 맵 만들기</button>
+      <span class="seed" id="seedLabel"></span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="계절">
+      <button id="s0" data-season="0" aria-pressed="false">봄</button>
+      <button id="s1" data-season="1" aria-pressed="false">여름</button>
+      <button id="s2" data-season="2" aria-pressed="true">가을</button>
+      <button id="s3" data-season="3" aria-pressed="false">겨울</button>
+    </div>
+    <div class="seg" role="group" aria-label="보기">
+      <button id="v0" data-view="0" aria-pressed="true">전체 보기</button>
+      <button id="v1" data-view="1" aria-pressed="false">처음 받는 지도</button>
+    </div>
+    <button class="btn alt" id="slide">산사태 일으키기</button>
+    <button class="btn alt" id="undo" disabled>길 복구</button>
+  </div>
+
+  <div class="grid">
+    <div class="mapbox">
+      <svg id="map" role="img" aria-label="육각 타일 지도"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <aside class="side">
+      <section class="slip">
+        <h2>마을</h2>
+        <p class="hint">주변 두 칸 안의 자원지로 특색이 정해져요.</p>
+        <div class="towns" id="towns"></div>
+      </section>
+      <section class="slip">
+        <h2>이동 일수</h2>
+        <p class="hint">길은 빠르고 숲과 언덕은 느려요. 겨울엔 산과 언덕이 눈으로 더 느려져요.</p>
+        <table class="days" id="days"></table>
+        <p class="news" id="news" role="status"></p>
+      </section>
+      <section class="slip">
+        <h2>생성 규칙</h2>
+        <ul class="checks" id="checks"></ul>
+      </section>
+      <section class="slip">
+        <h2>고른 칸</h2>
+        <div class="info" id="info">지도에서 칸을 눌러 보세요.</div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+// ═══════════════ 생성기 (화면과 분리된 순수 로직. Godot로 옮길 부분) ═══════════════
+const GEN = (() => {
+  const R = 7;                       // 맵 반지름 (칸)
+  const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+  const KINDS = ['forest','ore','field','fish','salt'];
+  const KIND_NAME = {forest:'숲', ore:'광맥', field:'들판', fish:'어장', salt:'염전'};
+  const TERRAIN_NAME = {sea:'바다', coast:'해안', plain:'평원', forest:'숲', hills:'언덕', mountain:'산'};
+  const NAMES = ['리버포드','스톤힐','솔트미어','벨헤이븐','오크우드','그레이록','밀브룩','시브리즈','애쉬포드','레드클리프','윈드홀','골든베일'];
+
+  function rng(seed){ let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function hash(x, y, s){ const v = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return v - Math.floor(v); }
+  function vnoise(x, y, s){
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+  function fbm(x, y, s){ let f = 0, amp = 0.5, fr = 1; for (let o = 0; o < 4; o++){ f += amp * vnoise(x * fr, y * fr, s + o * 13); amp *= 0.5; fr *= 2; } return f / 0.9375; }
+
+  const key = (q, r) => q + ',' + r;
+  const dist = (a, b) => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+
+  function baseCost(t, season){
+    const c = {plain:1, coast:1, forest:2, hills:3, mountain:5, sea:Infinity}[t.terrain];
+    if (season === 3 && (t.terrain === 'mountain' || t.terrain === 'hills')) return c * 2;  // 겨울 눈
+    return c;
+  }
+  function cost(t, season){
+    if (t.blocked) return Infinity;
+    if (t.road) return season === 3 && (t.terrain === 'mountain' || t.terrain === 'hills') ? 1.2 : 0.5;
+    return baseCost(t, season);
+  }
+
+  function dijkstra(map, start, costFn){
+    const d = new Map(), prev = new Map(), done = new Set();
+    d.set(start.k, 0);
+    const open = [start];
+    while (open.length){
+      let bi = 0; for (let i = 1; i < open.length; i++) if (d.get(open[i].k) < d.get(open[bi].k)) bi = i;
+      const cur = open.splice(bi, 1)[0];
+      if (done.has(cur.k)) continue; done.add(cur.k);
+      for (const nb of cur.nbs){
+        const c = costFn(nb); if (!isFinite(c)) continue;
+        const nd = d.get(cur.k) + c;
+        if (nd < (d.has(nb.k) ? d.get(nb.k) : Infinity)){ d.set(nb.k, nd); prev.set(nb.k, cur); open.push(nb); }
+      }
+    }
+    return {d, prev};
+  }
+  function pathTo(res, target){ const p = []; let c = target; while (c){ p.push(c); c = res.prev.get(c.k); } return p.reverse(); }
+
+  function terrainPass(seed){
+    const rand = rng(seed);
+    const ox = rand() * 100, oy = rand() * 100, mx = rand() * 100, my = rand() * 100;
+    const tiles = [], byKey = new Map();
+    for (let q = -R; q <= R; q++) for (let r = -R; r <= R; r++){
+      if (Math.abs(q + r) > R) continue;
+      const x = Math.sqrt(3) * (q + r / 2), y = 1.5 * r;
+      const dn = Math.hypot(x, y) / (Math.sqrt(3) * R);
+      const h = fbm(x * 0.16 + ox, y * 0.16 + oy, seed % 997) + 0.48 - 0.8 * Math.pow(dn, 2.6);
+      const m = fbm(x * 0.13 + mx, y * 0.13 + my, (seed + 7) % 997);
+      const t = {q, r, k:key(q, r), h, m, x, y, nbs:[], roll:rand()};
+      tiles.push(t); byKey.set(t.k, t);
+    }
+    for (const t of tiles) for (const [dq, dr] of DIRS){ const n = byKey.get(key(t.q + dq, t.r + dr)); if (n) t.nbs.push(n); }
+    for (const t of tiles){
+      if (t.h < 0.5) t.terrain = 'sea';
+      else if (t.h > 0.98) t.terrain = 'mountain';
+      else if (t.h > 0.87) t.terrain = 'hills';
+      else if (t.m > 0.5) t.terrain = 'forest';
+      else t.terrain = 'plain';
+    }
+    for (const t of tiles){
+      if ((t.terrain === 'plain' || t.terrain === 'forest') && t.h < 0.62 && t.nbs.some(n => n.terrain === 'sea')) t.terrain = 'coast';
+    }
+    for (const t of tiles){
+      t.res = null;
+      if (t.terrain === 'forest') t.res = 'forest';
+      else if (t.terrain === 'coast') t.res = (t.m < 0.47 && t.roll < 0.55) ? 'salt' : 'fish';
+      else if ((t.terrain === 'hills' && t.roll < 0.4) || (t.terrain === 'mountain' && t.roll < 0.3)) t.res = 'ore';
+      else if (t.terrain === 'plain' && t.roll < 0.5) t.res = 'field';
+    }
+    return {tiles, byKey, rand};
+  }
+
+  function around(t, n){ const out = []; const seen = new Set([t.k]); let ring = [t];
+    for (let i = 0; i < n; i++){ const next = []; for (const c of ring) for (const nb of c.nbs) if (!seen.has(nb.k)){ seen.add(nb.k); next.push(nb); out.push(nb); } ring = next; }
+    return out; }
+
+  function specialty(t){
+    const cnt = {}; for (const n of [t, ...around(t, 2)]) if (n.res) cnt[n.res] = (cnt[n.res] || 0) + 1;
+    return Object.keys(cnt).filter(k => cnt[k] >= 2).sort((a, b) => cnt[b] - cnt[a]).slice(0, 2);
+  }
+
+  function travelDays(map, season){
+    const out = [];
+    for (const a of map.towns){
+      const res = dijkstra(map, a.tile, t => cost(t, season));
+      out.push(map.towns.map(b => { const c = res.d.get(b.tile.k); return c === undefined ? Infinity : Math.max(1, Math.round(c / 2)); }));
+    }
+    return out;
+  }
+
+  function placeTownsAndRoads(world, seed){
+    const {tiles, rand} = world;
+    const land = tiles.filter(t => ['plain','coast','forest'].includes(t.terrain));
+    for (let attempt = 0; attempt < 120; attempt++){
+      const scored = land.map(t => { const sp = specialty(t); return {t, sp, s: sp.length * 3 + rand() * 4}; }).sort((a, b) => b.s - a.s);
+      const picked = [];
+      for (const c of scored){
+        if (picked.length === 4) break;
+        if (c.sp.length === 0) continue;
+        if (picked.some(p => dist(p.t, c.t) < 5)) continue;
+        picked.push(c);
+      }
+      if (picked.length < 4) continue;
+      const covered = new Set(picked.flatMap(p => p.sp));
+      if (KINDS.some(k => !covered.has(k))) continue;
+      // 길: 지형 비용으로 마을끼리 최단 경로를 찾고, 최소 신장 트리 + 가장 짧은 추가 연결 하나
+      for (const t of tiles){ t.road = false; t.blocked = false; }
+      const towns = picked.map(p => ({tile:p.t, sp:p.sp}));
+      const pairs = [];
+      for (let i = 0; i < 4; i++){
+        const res = dijkstra(world, towns[i].tile, t => baseCost(t, 2));
+        for (let j = i + 1; j < 4; j++){ const c = res.d.get(towns[j].tile.k); if (c !== undefined) pairs.push({i, j, c, path: pathTo(res, towns[j].tile)}); }
+      }
+      if (pairs.length < 3) continue;
+      pairs.sort((a, b) => a.c - b.c);
+      const parent = [0,1,2,3]; const find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+      const used = []; let extra = null;
+      for (const p of pairs){ if (find(p.i) !== find(p.j)){ parent[find(p.i)] = find(p.j); used.push(p); } else if (!extra) extra = p; }
+      if (used.length < 3) continue;
+      if (extra && extra.c < used[used.length - 1].c * 1.6) used.push(extra);
+      for (const p of used) for (const t of p.path) t.road = true;
+      const map = {...world, towns};
+      const days = travelDays(map, 2);
+      const nearest = days.map((row, i) => Math.min(...row.filter((_, j) => j !== i)));
+      if (nearest.some(d => d < 1 || d > 4)) continue;
+      const names = [...NAMES].sort(() => rand() - 0.5);
+      towns.forEach((tw, i) => { tw.name = names[i]; tw.tile.town = tw; });
+      return {map, attempt};
+    }
+    return null;
+  }
+
+  function generate(seed){
+    let tries = 0;
+    for (let s = seed; ; s++){
+      tries++;
+      const world = terrainPass(s);
+      const got = placeTownsAndRoads(world, s);
+      if (got) return {...got.map, seed: s, tries, roads: world.tiles.filter(t => t.road)};
+      if (tries > 60) throw new Error('맵 생성 실패');
+    }
+  }
+
+  return {generate, travelDays, cost, dist, KINDS, KIND_NAME, TERRAIN_NAME, around};
+})();
+
+// ═══════════════ 화면 ═══════════════
+const $ = id => document.getElementById(id);
+const SEASONS = ['봄','여름','가을','겨울'];
+const PAL = {
+  sea:     ['#5FA8B8','#4FA0B4','#5A9CAC','#7FAFBF'],
+  coast:   ['#E6CF9E','#EAD39A','#E2C79A','#E9E3D6'],
+  plain:   ['#A9C96A','#9CC05A','#C9B868','#E8EEF0'],
+  forest:  ['#7DB466','#6AA857','#D9A15A','#E1E8E8'],
+  hills:   ['#B9AE6A','#B0A35E','#B9A061','#E3E7E8'],
+  mountain:['#9A9283','#958C7C','#8C8577','#C9CFD3']
+};
+const TREE = ['#3F7F48','#2F6E3E','#B85A2E','#5D7A6A'];
+const RES_COLOR = {forest:'#4E8C4E', ore:'#5B5F73', field:'#C9962E', fish:'#2E9C98', salt:'#8F8A80'};
+const S = 30;     // 육각형 반지름 (px)
+const TH = 6;     // 타일 두께
+
+let M = null, season = 2, view = 0, slid = null, baseDays = null, seed = 20261008;
+
+function shade(hex, f){ const n = parseInt(hex.slice(1), 16); const c = [n >> 16, n >> 8 & 255, n & 255].map(v => Math.round(v * f)); return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); }
+function hexPts(cx, cy, s){ const p = []; for (let i = 0; i < 6; i++){ const a = Math.PI / 180 * (60 * i - 30); p.push((cx + s * Math.cos(a)).toFixed(1) + ',' + (cy + s * Math.sin(a)).toFixed(1)); } return p.join(' '); }
+const px = t => ({x: S * t.x, y: S * t.y});
+
+function icon(t, cx, cy){
+  const fog = view === 1 && !t.road && !t.town;
+  if (fog) return '';
+  let s = '';
+  if (t.terrain === 'forest'){
+    const c = TREE[season], snow = season === 3;
+    for (const [dx, dy] of [[-8, 4], [6, 2], [-1, -6]]){
+      s += `<path d="M${cx+dx-6} ${cy+dy+6} L${cx+dx} ${cy+dy-8} L${cx+dx+6} ${cy+dy+6} Z" fill="${c}" stroke="#3A2B22" stroke-width="1.2"/>`;
+      if (snow) s += `<path d="M${cx+dx-2.5} ${cy+dy-2} L${cx+dx} ${cy+dy-8} L${cx+dx+2.5} ${cy+dy-2} Z" fill="#FFFFFF"/>`;
+    }
+  } else if (t.terrain === 'mountain'){
+    s += `<path d="M${cx-14} ${cy+9} L${cx-2} ${cy-12} L${cx+12} ${cy+9} Z" fill="#7A7366" stroke="#3A2B22" stroke-width="1.4"/>`;
+    s += `<path d="M${cx-6} ${cy-5} L${cx-2} ${cy-12} L${cx+3} ${cy-4} L${cx} ${cy-6} Z" fill="#FFFFFF"/>`;
+  } else if (t.terrain === 'hills'){
+    s += `<path d="M${cx-14} ${cy+6} Q${cx-7} ${cy-6} ${cx} ${cy+6} M${cx-2} ${cy+4} Q${cx+6} ${cy-8} ${cx+13} ${cy+4}" fill="none" stroke="#6E5E34" stroke-width="2" stroke-linecap="round"/>`;
+  } else if (t.terrain === 'sea'){
+    s += `<path d="M${cx-9} ${cy} q4.5 -4 9 0 t9 0" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.6" stroke-linecap="round"/>`;
+  }
+  if (t.res === 'ore') s += `<path d="M${cx+9} ${cy+3} l5 5 l-5 5 l-5 -5 Z" fill="#5B5F73" stroke="#3A2B22" stroke-width="1.2"/>`;
+  if (t.res === 'field') s += `<path d="M${cx-8} ${cy+8} v-12 M${cx-2} ${cy+9} v-14 M${cx+4} ${cy+8} v-12 M${cx+10} ${cy+7} v-10" stroke="${season === 3 ? '#B7B0A0' : '#B5832A'}" stroke-width="2" stroke-linecap="round"/>`;
+  if (t.res === 'salt') s += `<rect x="${cx+4}" y="${cy-2}" width="10" height="7" rx="1.5" fill="#FFFFFF" stroke="#8F8A80" stroke-width="1.2"/><rect x="${cx+6}" y="${cy-6}" width="6" height="4" rx="1" fill="#FFFFFF" stroke="#8F8A80" stroke-width="1"/>`;
+  if (t.res === 'fish') s += `<path d="M${cx+3} ${cy+2} q5 -4 10 0 q-5 4 -10 0 Z M${cx+13} ${cy+2} l3 -3 v6 Z" fill="#2E9C98"/>`;
+  return s;
+}
+
+function draw(){
+  const tiles = [...M.tiles].sort((a, b) => a.r - b.r || a.q - b.q);
+  const xs = tiles.map(t => px(t).x), ys = tiles.map(t => px(t).y);
+  const minX = Math.min(...xs) - S - 4, maxX = Math.max(...xs) + S + 4, minY = Math.min(...ys) - S - 4, maxY = Math.max(...ys) + S + TH + 30;
+  const svg = $('map');
+  svg.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
+  let g = '';
+  for (const t of tiles){
+    const {x, y} = px(t);
+    const fog = view === 1 && !t.road && !t.town;
+    let col = PAL[t.terrain][season];
+    if (season === 3 && t.terrain === 'sea' && t.nbs.some(n => n.terrain === 'coast')) col = '#BFD8DF';  // 얼어붙은 바닷가
+    if (fog) col = t.terrain === 'sea' ? '#8FA9A8' : '#D9C9A6';
+    g += `<g class="tile" data-k="${t.k}"><polygon points="${hexPts(x, y + TH, S - 1)}" fill="${shade(col, 0.68)}"/>`;
+    g += `<polygon class="top" points="${hexPts(x, y, S - 1)}" fill="${col}" stroke="${shade(col, 0.82)}" stroke-width="1.2"/>`;
+    g += icon(t, x, y) + `</g>`;
+  }
+  // 길
+  const roadSegs = [];
+  for (const t of M.tiles) if (t.road) for (const n of t.nbs) if (n.road && t.k < n.k){
+    const a = px(t), b = px(n);
+    const blocked = t.blocked || n.blocked;
+    roadSegs.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${blocked ? '#B8402F' : '#6B4A32'}" stroke-width="${blocked ? 4 : 3.5}" stroke-dasharray="${blocked ? '2 5' : '7 5'}" stroke-linecap="round"/>`);
+  }
+  g += `<g pointer-events="none">${roadSegs.join('')}</g>`;
+  // 막힌 칸
+  for (const t of M.tiles) if (t.blocked){ const {x, y} = px(t);
+    g += `<g pointer-events="none"><circle cx="${x}" cy="${y}" r="11" fill="#B8402F" stroke="#3A2B22" stroke-width="2"/><path d="M${x-5} ${y-5} L${x+5} ${y+5} M${x+5} ${y-5} L${x-5} ${y+5}" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></g>`; }
+  // 마을
+  for (const tw of M.towns){
+    const {x, y} = px(tw.tile);
+    const w = tw.name.length * 15 + 22;
+    g += `<g pointer-events="none">
+      <circle cx="${x}" cy="${y}" r="17" fill="#F1E2C6" stroke="#3A2B22" stroke-width="2.5"/>
+      <path d="M${x-9} ${y+8} V${y-1} L${x} ${y-9} L${x+9} ${y-1} V${y+8} Z" fill="#D2594B" stroke="#3A2B22" stroke-width="1.8" stroke-linejoin="round"/>
+      <rect x="${x-2.5}" y="${y+2}" width="5" height="6" fill="#3A2B22"/>
+      <path d="M${x - w/2} ${y+21} H${x + w/2} L${x + w/2 - 6} ${y+31} L${x + w/2} ${y+41} H${x - w/2} L${x - w/2 + 6} ${y+31} Z" fill="#D2594B" stroke="#3A2B22" stroke-width="1.8"/>
+      <text x="${x}" y="${y+37}" text-anchor="middle" font-family="Jua, sans-serif" font-size="15" fill="#FFFFFF">${tw.name}</text></g>`;
+  }
+  svg.innerHTML = g;
+}
+
+function renderSide(){
+  $('seedLabel').textContent = `맵 번호 ${M.seed} · ${M.tries}번째 지형에서 통과`;
+  $('towns').innerHTML = M.towns.map(tw => `<div class="town"><b>${tw.name}</b><span class="chips">${
+    tw.sp.map(k => `<span class="chip" style="background:${RES_COLOR[k]}">${GEN.KIND_NAME[k]}</span>`).join('')}</span></div>`).join('');
+
+  const days = GEN.travelDays(M, season);
+  const n = M.towns.length;
+  let h = `<tr><th></th>${M.towns.map(t => `<th>${t.name}</th>`).join('')}</tr>`;
+  for (let i = 0; i < n; i++){
+    h += `<tr><th>${M.towns[i].name}</th>`;
+    for (let j = 0; j < n; j++){
+      if (i === j){ h += `<td class="self">·</td>`; continue; }
+      const d = days[i][j], b = baseDays[i][j];
+      const txt = isFinite(d) ? d + '일' : '못 감';
+      h += `<td class="${d !== b ? 'changed' : ''}">${txt}</td>`;
+    }
+    h += '</tr>';
+  }
+  $('days').innerHTML = h;
+
+  const covered = new Set(M.towns.flatMap(t => t.sp));
+  const allKinds = GEN.KINDS.every(k => covered.has(k));
+  const connected = days.every(r => r.every(isFinite));
+  const near = days.map((r, i) => Math.min(...r.filter((_, j) => j !== i)));
+  const spread = near.every(d => d >= 1 && d <= 4);
+  const noAll = M.towns.every(t => t.sp.length <= 2);
+  const line = (ok, text) => `<li><span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span><span>${text}</span></li>`;
+  $('checks').innerHTML =
+    line(allKinds, '자원지 5종(숲, 광맥, 들판, 어장, 염전)이 모두 어느 마을 근처에 있음') +
+    line(noAll, '한 마을이 모든 자원을 다 갖지 않음 (특색은 최대 2개)') +
+    line(connected, '모든 마을이 서로 오갈 수 있음') +
+    line(spread, '가장 가까운 마을까지 1~4일');
+
+  const legend = [['sea','바다'],['coast','해안'],['plain','평원'],['forest','숲'],['hills','언덕'],['mountain','산']];
+  $('legend').innerHTML = legend.map(([k, n]) => `<span><i style="background:${PAL[k][season]}"></i>${n}</span>`).join('') + '<span>— 길</span>';
+}
+
+function showInfo(t){
+  if (view === 1 && !t.road && !t.town){
+    $('info').innerHTML = `<div><b>아직 모르는 땅</b></div><div class="k">직접 탐험하거나 자세한 지도를 사야 알 수 있어요.</div>`;
+    return;
+  }
+  const c = GEN.cost(t, season);
+  const nearest = M.towns.map(tw => ({tw, d: GEN.dist(tw.tile, t)})).sort((a, b) => a.d - b.d)[0];
+  $('info').innerHTML = `
+    <div><b>${t.town ? t.town.name + ' (마을)' : GEN.TERRAIN_NAME[t.terrain]}</b></div>
+    <div><span class="k">지형</span> ${GEN.TERRAIN_NAME[t.terrain]}${t.road ? ' · 길 있음' : ''}${t.blocked ? ' · <b style="color:#B8402F">산사태로 막힘</b>' : ''}</div>
+    <div><span class="k">자원지</span> ${t.res ? GEN.KIND_NAME[t.res] : '없음'}</div>
+    <div><span class="k">지나가는 데 드는 비용</span> ${isFinite(c) ? c : '지나갈 수 없음'}</div>
+    <div><span class="k">가장 가까운 마을</span> ${nearest.tw.name}, ${nearest.d}칸</div>`;
+}
+
+function build(){
+  M = GEN.generate(seed);
+  slid = null;
+  baseDays = GEN.travelDays(M, season);
+  $('undo').disabled = true; $('slide').disabled = false;
+  $('news').textContent = '';
+  draw(); renderSide();
+  $('info').textContent = '지도에서 칸을 눌러 보세요.';
+}
+
+function setSeason(s){
+  season = s;
+  [0,1,2,3].forEach(i => $('s' + i).setAttribute('aria-pressed', i === s));
+  baseDays = GEN.travelDays(M, season);
+  if (slid){ slid.blocked = false; baseDays = GEN.travelDays(M, season); slid.blocked = true; }
+  $('news').textContent = season === 3 ? '겨울: 산과 언덕에 눈이 쌓여 그 길이 느려졌어요.' : (slid ? $('news').textContent : '');
+  draw(); renderSide();
+}
+function setView(v){ view = v; [0,1].forEach(i => $('v' + i).setAttribute('aria-pressed', i === v)); draw(); }
+
+$('newMap').addEventListener('click', () => { seed = Math.floor(Math.random() * 1e9); build(); });
+document.querySelectorAll('[data-season]').forEach(b => b.addEventListener('click', () => setSeason(+b.dataset.season)));
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(+b.dataset.view)));
+$('slide').addEventListener('click', () => {
+  const roads = M.tiles.filter(t => t.road && !t.town);
+  const steep = roads.filter(t => t.terrain === 'hills' || t.terrain === 'mountain' || t.nbs.some(n => n.terrain === 'hills' || n.terrain === 'mountain'));
+  const pool = steep.length ? steep : roads;
+  if (!pool.length) return;
+  slid = pool[Math.floor(Math.random() * pool.length)];
+  slid.blocked = true;
+  const near = M.towns.map(tw => ({tw, d: GEN.dist(tw.tile, slid)})).sort((a, b) => a.d - b.d).slice(0, 2).map(o => o.tw.name);
+  $('news').textContent = `신문: ${near[0]}와 ${near[1]} 사이 길에 산사태. 빨간 칸이 막힌 곳이에요.`;
+  $('slide').disabled = true; $('undo').disabled = false;
+  draw(); renderSide();
+});
+$('undo').addEventListener('click', () => {
+  if (slid) slid.blocked = false; slid = null;
+  $('news').textContent = '길이 다시 열렸어요.';
+  $('slide').disabled = false; $('undo').disabled = true;
+  draw(); renderSide();
+});
+$('map').addEventListener('click', e => { const g = e.target.closest('.tile'); if (!g) return; const t = M.tiles.find(x => x.k === g.dataset.k); if (t) showInfo(t); });
+
+build();
+</script>

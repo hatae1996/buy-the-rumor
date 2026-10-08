@@ -1,0 +1,462 @@
+/* 화면 조각: 종이 쪽지 카드, 시세표, 신청, 쪽지(시트), 장부, 신문 */
+@import url('./ribbon.css');
+
+.card {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 14px 16px;
+  border-radius: 3px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+.card h2 {
+  margin: 0 0 4px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 20px;
+}
+
+.card h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 17px;
+}
+
+.card p {
+  margin: 4px 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.muted {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.warn {
+  color: var(--wax);
+  font-size: 14px;
+}
+
+.error {
+  color: var(--wax);
+  font-weight: 700;
+}
+
+.plus {
+  color: var(--olive);
+}
+
+.minus {
+  color: var(--wax);
+}
+
+.badge {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* ───── 마을 ───── */
+.town-banner {
+  position: relative;
+  margin: 0 calc(-16px - var(--safe-right)) 4px calc(-16px - var(--safe-left));
+  margin-top: -12px;
+}
+
+.town-banner img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.town-banner .ribbon {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+}
+
+.good-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.good-list li + li {
+  border-top: 1px dashed rgba(58, 43, 34, 0.25);
+}
+
+.good-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+
+.good-row:active {
+  background: var(--paper-dim);
+}
+
+.good-name {
+  font-size: 16px;
+}
+
+.good-have {
+  font-size: 13px;
+  color: var(--teal);
+}
+
+.good-price {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 64px;
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend {
+  display: inline-block;
+  width: 12px;
+  height: 15px;
+}
+
+.pinned {
+  padding-top: 18px;
+}
+
+.pin {
+  position: absolute;
+  top: -12px;
+  right: 18px;
+  width: 30px;
+  height: 32px;
+  object-fit: cover;
+  object-position: 70% 0;
+}
+
+.order-list,
+.list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.order-row > span:nth-child(2) {
+  flex: 1;
+}
+
+.order-side {
+  padding: 1px 8px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.order-side.sell {
+  background: var(--coral);
+}
+
+.order-side.buy {
+  background: var(--teal);
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--wax);
+  text-decoration: underline;
+}
+
+.test-btn {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px dashed var(--paper-dim);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--paper-dim);
+  font-size: 14px;
+}
+
+/* ───── 공용 버튼 ───── */
+.primary-btn {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 19px;
+  box-shadow: 0 4px 0 var(--coral-deep);
+}
+
+.primary-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--coral-deep);
+}
+
+.primary-btn:disabled {
+  opacity: 0.5;
+}
+
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--paper-dim);
+}
+
+.seg button {
+  flex: 1;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--f-display);
+  font-size: 17px;
+  color: var(--ink-soft);
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.seg button:disabled {
+  opacity: 0.4;
+}
+
+/* ───── 신청 쪽지 ───── */
+.price-note {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--mustard);
+  background: rgba(230, 180, 60, 0.12);
+}
+
+.stepper-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.stepper-label {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.stepper button {
+  border: 0;
+  border-radius: 6px;
+  background: var(--wood-mid);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.stepper output {
+  text-align: center;
+  font-family: var(--f-display);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-summary {
+  margin: 12px 0 4px;
+}
+
+/* ───── 아래에서 올라오는 쪽지 ───── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20, 14, 10, 0);
+  transition: background 0.2s;
+}
+
+.sheet-backdrop.is-open {
+  background: rgba(20, 14, 10, 0.55);
+}
+
+.sheet {
+  width: min(100%, 520px);
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 6px 16px calc(var(--safe-bottom) + 16px);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -4px 0 rgba(0, 0, 0, 0.3);
+  transform: translateY(24px);
+  transition: transform 0.2s;
+}
+
+.is-open .sheet {
+  transform: none;
+}
+
+.sheet-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--paper);
+}
+
+.sheet-head h2 {
+  margin: 8px 0;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 22px;
+}
+
+.sheet-close {
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 20px;
+}
+
+.sheet h3 {
+  margin: 14px 0 0;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 18px;
+}
+
+/* ───── 장부 ───── */
+.money-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.money-card img {
+  width: 72px;
+  height: auto;
+}
+
+.big-number {
+  font-family: var(--f-display);
+  font-size: 32px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.list li {
+  padding: 6px 0;
+  font-size: 15px;
+}
+
+.list li + li {
+  border-top: 1px dashed rgba(58, 43, 34, 0.25);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.row b {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.day {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-right: 4px;
+}
+
+/* ───── 소식 ───── */
+.newspaper h2 {
+  font-size: 26px;
+}
+
+.newspaper .seal {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 44px;
+  height: auto;
+}
+
+.memory {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(58, 43, 34, 0.3);
+}
+
+.memory-prices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 10px;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───── 자리를 비운 사이 ───── */
+.away-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.away-head img {
+  width: 72px;
+  height: 72px;
+}
+
+.away-head p {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 19px;
+}

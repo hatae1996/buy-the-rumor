@@ -1,0 +1,4 @@
+# 줄 끝은 모든 기기에서 LF로 통일한다
+* text=auto eol=lf
+*.png binary
+*.jpg binary

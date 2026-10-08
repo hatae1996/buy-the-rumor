@@ -1,0 +1,50 @@
+/* 아이폰 사파리 기본 설정. 100vh는 쓰지 않는다 (주소창 높이 때문에 어긋난다). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--wood);
+  color: var(--paper);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.5;
+  /* 한국어는 어절 단위로 줄을 바꾼다 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  /* 길게 누를 때 뜨는 메뉴, 두 번 눌러 확대, 당겨서 새로고침 막기 */
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: var(--tap);
+  min-width: var(--tap);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--mustard);
+  outline-offset: 2px;
+}

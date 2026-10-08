@@ -1,0 +1,114 @@
+// 경제 시작 상태. 맵의 마을과 자원지로 일꾼을 나누고, 같은 시드면 같은 시작이 된다.
+import { ECONOMY } from '../constants';
+import { createRng, type Rng } from '../rng';
+import { seasonOfDay, type Season } from '../season';
+import type { WorldMap } from '../worldgen';
+import { basePrice, emptyGoodMap, GOODS, type GoodId } from './goods';
+import { addGoods } from './inventory';
+import { CRAFT_JOBS, GATHER_JOBS, JOB_RESOURCE, type JobId } from './jobs';
+import { townNodes } from './nodes';
+import type { EconomyState, MarketResult, TownEconomy, Worker } from './state';
+import { TRADER_NAMES } from './traders';
+import { advanceDay } from './day';
+
+export interface CreateOptions {
+  /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
+  warmupDays?: number;
+}
+
+export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = {}): EconomyState {
+  const rng = createRng(seed ^ 0x5eed);
+  const state: EconomyState = {
+    version: 1,
+    seed,
+    day: 1,
+    startSeason: rng.int(0, 3) as Season,
+    rng: 0,
+    nextId: 1,
+    towns: map.towns.map((t) => createTown(map, t.id)),
+    workers: [],
+    traders: [],
+    player: {
+      gold: ECONOMY.player.startGold,
+      town: 0,
+      travel: null,
+      cargo: [],
+      capacity: ECONOMY.player.capacity,
+      memory: {},
+      ledger: [],
+    },
+    orders: [],
+    news: [],
+  };
+
+  for (const town of state.towns) {
+    for (const job of GATHER_JOBS) {
+      const node = town.nodes.find((n) => n.kind === JOB_RESOURCE[job]);
+      if (!node) continue;
+      const share = node.kind === 'forest' ? 0.5 : 1;
+      const n = Math.max(1, Math.round(node.tiles * ECONOMY.startWorkers.perResourceTile * share));
+      for (let i = 0; i < n; i++) state.workers.push(newWorker(state, town.id, job, rng));
+    }
+    for (const job of CRAFT_JOBS) {
+      for (let i = 0; i < ECONOMY.startWorkers.crafter; i++) state.workers.push(newWorker(state, town.id, job, rng));
+    }
+  }
+
+  for (let i = 0; i < ECONOMY.traders.count; i++) {
+    state.traders.push({
+      id: state.nextId++,
+      name: TRADER_NAMES[i % TRADER_NAMES.length]!,
+      town: (i + 1) % state.towns.length,
+      gold: ECONOMY.traders.startGold,
+      inv: [],
+      travel: null,
+      plan: null,
+      stuckDays: 0,
+    });
+  }
+
+  state.rng = rng.state();
+  if (opt.warmupDays) warmUp(state, map, opt.warmupDays);
+  return state;
+}
+
+/** 미리 돌린 뒤 1일째로 되돌린다. 계절은 이어지도록 시작 계절을 맞춘다 */
+function warmUp(state: EconomyState, map: WorldMap, days: number): void {
+  for (let i = 0; i < days; i++) advanceDay(state, map);
+  state.startSeason = seasonOfDay(state.day, state.startSeason);
+  // 시작 계절 안에서 며칠째인지도 맞추려면 날짜 오프셋이 필요하다. 지금은 계절 첫날부터 다시 센다
+  state.day = 1;
+  state.news = [];
+  state.player.ledger = [];
+  state.player.memory = {};
+}
+
+function createTown(map: WorldMap, id: number): TownEconomy {
+  const refPrice = {} as Record<GoodId, number>;
+  for (const g of GOODS) refPrice[g] = basePrice(g);
+  return {
+    id,
+    nodes: townNodes(map, id),
+    refPrice,
+    lastMarket: emptyGoodMap<MarketResult>({ price: null, volume: 0, demand: 0, supply: 0, bestBid: null, bestAsk: null, imbalance: 0 }),
+    treasury: ECONOMY.citizens.startTreasury,
+    storm: 0,
+    boosts: [],
+  };
+}
+
+/** 새 일꾼. 처음엔 이틀 치 먹을 것(상하지 않는 염장 식품)과 쓸 만한 도구를 갖고 있다 */
+export function newWorker(state: EconomyState, town: number, job: JobId, rng: Rng): Worker {
+  const [lo, hi] = ECONOMY.worker.startGold;
+  const w: Worker = {
+    id: state.nextId++,
+    town,
+    job,
+    gold: rng.int(lo, hi),
+    inv: [],
+    tool: rng.int(5, ECONOMY.worker.toolLife),
+    hunger: 0,
+  };
+  addGoods(w.inv, 'salted', ECONOMY.worker.foodReserveDays * ECONOMY.worker.foodPerDay);
+  return w;
+}

@@ -1,0 +1,651 @@
+<title>상인의 장부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a merchant's working desk. Price board + chart on the left, your own ledger and actions on the right. */
+:root{
+  --bg:#e9eee8; --panel:#f7f9f5; --ink:#1c2822; --muted:#5d6c63; --line:#cdd7cf; --soft:#dfe6df;
+  --brass:#8d6110; --brass-soft:#f1e3c4; --up:#2b7a4b; --down:#a83d2b;
+  --tR:#2c6d8e; --tS:#8a5527; --tP:#6a4c9c;
+  --f-display:"Nanum Myeongjo", "Apple SD Gothic Neo", serif;
+  --f-body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-num:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111916; --panel:#18221e; --ink:#e3ebe5; --muted:#92a299; --line:#2b3933; --soft:#202c27;
+  --brass:#d9a94c; --brass-soft:#3a3020; --up:#5cc086; --down:#e57b64;
+  --tR:#6cb4d8; --tS:#d79b60; --tP:#ab8ce0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111916; --panel:#18221e; --ink:#e3ebe5; --muted:#92a299; --line:#2b3933; --soft:#202c27;
+  --brass:#d9a94c; --brass-soft:#3a3020; --up:#5cc086; --down:#e57b64;
+  --tR:#6cb4d8; --tS:#d79b60; --tP:#ab8ce0; color-scheme:dark}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14px;line-height:1.5;padding-inline:16px;padding-block:14px 40px}
+.app{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+.top h1{font-family:var(--f-display);font-weight:800;font-size:clamp(24px,4vw,34px);margin:0;letter-spacing:-.01em;line-height:1.1}
+.top .sub{color:var(--muted);font-size:13px}
+.clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day{font-family:var(--f-display);font-weight:700;font-size:20px}
+.speed{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.speed button{background:none;border:0;padding:6px 11px;font-size:13px;border-right:1px solid var(--line)}
+.speed button:last-child{border-right:0}
+.speed button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+.status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stat{background:var(--panel);padding:10px 14px;min-width:0}
+.stat .k{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.stat .v{font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .d{font-size:12px}
+.pos{color:var(--up)} .neg{color:var(--down)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.panel h2{font-family:var(--f-display);font-size:17px;font-weight:700;margin:0 0 4px;text-wrap:balance}
+.hint{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+
+.tablewrap{overflow-x:auto}
+table.board{border-collapse:collapse;width:100%;min-width:520px}
+.board th,.board td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.board th:first-child,.board td:first-child{text-align:left}
+.board thead th{font-size:12px;color:var(--muted);font-weight:500;vertical-align:bottom}
+.board thead th .tn{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+.board thead th.here .tn::after{content:" · 현재";color:var(--brass);font-weight:500;font-size:11px}
+.board tbody tr{cursor:pointer}
+.board tbody tr:hover{background:var(--soft)}
+.board tbody tr.sel{background:var(--brass-soft)}
+.board .p{font-size:14px;font-weight:500}
+.board .s{display:block;font-size:11px;color:var(--muted)}
+.board .cheap .p{color:var(--up);font-weight:600}
+.board .dear .p{color:var(--down);font-weight:600}
+.board .gap{font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+
+.chartbox{position:relative;width:100%;height:220px}
+canvas{display:block;width:100%;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+
+.mk{display:flex;flex-direction:column}
+.mkrow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.mkrow:last-child{border-bottom:0}
+.mkrow .gname{font-weight:600}
+.mkrow .gsub{font-size:11.5px;color:var(--muted)}
+.mkrow .prices{font-size:12.5px;line-height:1.35}
+.btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.b{border:1px solid var(--line);background:var(--bg);border-radius:5px;padding:3px 8px;font-size:12px;font-family:var(--f-num)}
+.b:hover:not(:disabled){border-color:var(--ink)}
+.b.buy{color:var(--up)} .b.sell{color:var(--down)}
+.b:disabled{opacity:.35;cursor:default}
+.act{display:flex;flex-direction:column;gap:10px}
+.act .lbl{font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px}
+.act .row{display:flex;gap:6px;flex-wrap:wrap}
+.big{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 12px;font-size:13px;text-align:left}
+.big:hover:not(:disabled){border-color:var(--brass)}
+.big:disabled{opacity:.4;cursor:default}
+.big small{display:block;color:var(--muted);font-size:11px}
+.msg{font-size:12.5px;color:var(--brass);min-height:1.2em;margin:6px 0 0}
+
+.ledger,.news{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;max-height:260px;overflow-y:auto}
+.ledger li,.news li{display:flex;gap:8px;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)}
+.ledger li span:first-child,.news li span:last-child{min-width:0}
+.news li{justify-content:flex-start}
+.news .dd,.ledger .dd{color:var(--muted);font-family:var(--f-num);font-size:11.5px;flex:none}
+.empty{color:var(--muted);font-size:12.5px;padding:6px 0}
+
+.towns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.town{border:1px solid var(--line);border-radius:6px;padding:10px;min-width:0;border-top:3px solid var(--c)}
+.town h3{margin:0;font-size:14px}
+.town .desc{font-size:11.5px;color:var(--muted);margin-bottom:6px}
+.kv{display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:2px 0}
+.kv span:first-child{color:var(--muted)}
+.bar{height:5px;background:var(--soft);border-radius:3px;overflow:hidden;margin:2px 0 5px}
+.bar i{display:block;height:100%;background:var(--c)}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:10px;background:var(--brass-soft);color:var(--brass);margin:4px 4px 0 0}
+.moneyrow{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.foot{font-size:12px;color:var(--muted);max-width:70ch}
+.foot code{font-family:var(--f-num);font-size:11.5px;background:var(--soft);padding:1px 4px;border-radius:3px}
+
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.status{grid-template-columns:repeat(2,minmax(0,1fr))}.towns{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>상인의 장부</h1>
+      <div class="sub">세 마을, 40명의 일꾼, 두 경쟁 상단. 싸게 사서 비싸게 파세요.</div>
+    </div>
+    <div class="clock">
+      <span class="day" id="day">1일차</span>
+      <div class="speed" role="group" aria-label="시간 속도">
+        <button id="sp0" data-speed="0" aria-pressed="false">정지</button>
+        <button id="sp1" data-speed="1" aria-pressed="true">보통</button>
+        <button id="sp2" data-speed="2" aria-pressed="false">빠름</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="status" id="status"></section>
+
+  <main class="grid">
+    <div class="col">
+      <section class="panel">
+        <h2>시세판</h2>
+        <p class="hint">초록은 가장 싼 곳, 빨강은 가장 비싼 곳입니다. 차익은 싼 곳에서 사서 비싼 곳에 팔 때 1개당 남는 돈(수수료 포함)입니다. 행을 누르면 아래 그래프가 바뀝니다.</p>
+        <div class="tablewrap"><table class="board" id="board"></table></div>
+      </section>
+
+      <section class="panel">
+        <h2 id="chartTitle">가격 추이</h2>
+        <div class="chartbox"><canvas id="priceChart" aria-label="마을별 가격 추이 그래프"></canvas></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="panel">
+        <h2>세계 상태</h2>
+        <p class="hint">일꾼들은 실제로 사냥·벌목·채광·어업을 하고, 번 돈으로 음식과 도구를 삽니다. 사슴이나 물고기가 줄면 생산이 줄고 가격이 오릅니다.</p>
+        <div class="towns" id="towns"></div>
+        <div class="moneyrow" id="money"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <h2 id="mkTitle">시장</h2>
+        <div class="mk" id="market"></div>
+        <p class="msg" id="msg" role="status"></p>
+      </section>
+
+      <section class="panel">
+        <h2>행동</h2>
+        <div class="act" id="actions"></div>
+      </section>
+
+      <section class="panel">
+        <h2>현금 흐름</h2>
+        <p class="hint">최근 30일 동안 들어온 돈(위)과 나간 돈(아래)</p>
+        <div class="chartbox" style="height:130px"><canvas id="cashChart" aria-label="일별 현금 흐름"></canvas></div>
+        <ul class="ledger" id="ledger"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>소식</h2>
+        <ul class="news" id="news"></ul>
+      </section>
+    </div>
+  </main>
+
+  <p class="foot">구조 메모: 플레이어의 모든 행동은 <code>dispatch({type:'buy', good, n})</code> 같은 명령으로 처리되고, 경제 계산은 화면 코드와 분리된 <code>tick()</code> 한 곳에서만 돕니다. 나중에 멀티플레이를 붙일 때 이 명령을 네트워크로 보내면 됩니다.</p>
+</div>
+
+<script>
+// ───────────────────────── 데이터 정의 ─────────────────────────
+const GOODS = {
+  wood:{n:'목재',b:4}, hide:{n:'원피',b:7}, meat:{n:'고기',b:5}, fish:{n:'생선',b:4},
+  ore:{n:'철광석',b:9}, leather:{n:'무두 가죽',b:22}, tools:{n:'도구',b:38}
+};
+const GK = Object.keys(GOODS);
+const TOWNS = [
+  {id:'R', n:'리버포드', desc:'숲 마을 · 사냥과 벌목', c:'--tR',
+   nodes:{deer:{v:120,cap:160,r:0.18}, wood:{v:400,cap:500,r:0.12}},
+   jobs:{hunter:6, woodcutter:5, tanner:3},
+   demand:{meat:1.5, fish:0.5, tools:0.4, leather:0.3, wood:1}},
+  {id:'S', n:'스톤힐', desc:'광산 마을 · 채광과 대장간', c:'--tS',
+   nodes:{ore:{v:260,cap:300,r:0.25}, deer:{v:30,cap:40,r:0.15}, wood:{v:150,cap:200,r:0.12}},
+   jobs:{miner:6, smith:3, hunter:2, woodcutter:2},
+   demand:{meat:1, fish:1, tools:0.6, wood:2, leather:0.3}},
+  {id:'P', n:'솔트미어', desc:'항구 · 어업과 조선소', c:'--tP',
+   nodes:{fish:{v:240,cap:300,r:0.12}},
+   jobs:{fisher:7, woodcutter:1, tanner:1},
+   demand:{meat:1, fish:1, wood:4, leather:1.2, tools:1}}
+];
+const DIST = {R:{S:2,P:3}, S:{R:2,P:2}, P:{R:3,S:2}};
+const NODE_NAME = {deer:'사슴', wood:'숲', ore:'광맥', fish:'어장'};
+const BUY = 1.1, SELL = 0.9;
+const START_GOLD = 150;
+const rnd = Math.random;
+const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+
+// ───────────────────────── 세계 상태 ─────────────────────────
+const W = {day:1, towns:{}, npcs:[], caravans:[], player:null, hist:{}, money:[],
+  news:[], cash:[], today:{in:0,out:0}, ledger:[], src:0, sink:0, srcHist:[], sinkHist:[]};
+
+function init(){
+  TOWNS.forEach(T=>{
+    const t = {...T, nodes:JSON.parse(JSON.stringify(T.nodes)), stock:{}, target:{}, treasury:600, storm:0, boost:{}};
+    GK.forEach(g=>{
+      let inputs = 0;
+      if(g==='hide' && T.jobs.tanner) inputs += T.jobs.tanner*2;
+      if(g==='ore' && T.jobs.smith) inputs += T.jobs.smith*2;
+      if(g==='wood' && T.jobs.smith) inputs += T.jobs.smith;
+      t.target[g] = 10 + (T.demand[g]||0)*8 + inputs*3;
+      t.stock[g] = Math.round(t.target[g]*(0.6+rnd()*0.6));
+    });
+    Object.keys(T.jobs).forEach(j=>{
+      for(let i=0;i<T.jobs[j];i++) W.npcs.push({job:j, town:T.id, gold:25+rnd()*20, tool:5+Math.floor(rnd()*12), hunger:0, sat:Math.floor(rnd()*2)});
+    });
+    W.towns[T.id] = t;
+    W.hist[T.id] = {}; GK.forEach(g=>W.hist[T.id][g]=[]);
+  });
+  W.caravans = [
+    {n:'바렌 상단', town:'S', gold:220, cargo:{}, travel:null},
+    {n:'미라 상단', town:'P', gold:220, cargo:{}, travel:null}
+  ];
+  W.player = {town:'R', gold:START_GOLD, cargo:{}, cost:{}, cap:40, travel:null};
+}
+
+// ───────────────────────── 시장 ─────────────────────────
+function price(t,g){
+  const m = t.boost[g] ? t.boost[g].m : 1;
+  return GOODS[g].b * clamp(Math.pow(t.target[g]*m/(t.stock[g]+2), 0.7), 0.3, 4);
+}
+// 한 개씩 거래해서 대량 거래 시 가격이 밀리는(슬리피지) 효과를 그대로 반영
+function marketSell(t,ent,g,n){
+  let got=0,k=0;
+  for(;k<n;k++){ const p=price(t,g)*SELL; if(t.treasury<p || t.stock[g]>=t.target[g]*3) break; /* 금고가 비었거나 창고가 넘치면 안 삼 */ t.treasury-=p; t.stock[g]++; got+=p; }
+  ent.gold += got; return {k,got};
+}
+function marketBuy(t,ent,g,n){
+  let paid=0,k=0;
+  for(;k<n;k++){ if(t.stock[g]<1) break; const p=price(t,g)*BUY; if(ent.gold<p) break; ent.gold-=p; t.stock[g]--; t.treasury+=p; paid+=p; }
+  return {k,paid};
+}
+
+// ───────────────────────── 직업 ─────────────────────────
+const JOBS = {
+  hunter:{n:'사냥꾼', work(t,a){ const d=t.nodes.deer; if(!d) return {}; let k=0;
+    for(let i=0;i<3;i++) if(rnd()<a*0.55*d.v/d.cap && d.v>3){ d.v--; k++; }
+    return {hide:k, meat:k*3}; }},
+  woodcutter:{n:'나무꾼', work(t,a){ const w=t.nodes.wood; let n=Math.round(3*a);
+    if(w){ n=Math.min(n,Math.floor(w.v)); w.v-=n; } return {wood:n}; }},
+  miner:{n:'광부', work(t,a){ const o=t.nodes.ore;
+    const n=Math.min(Math.floor(o.v), Math.round(2.4*a*(0.4+0.6*o.v/o.cap))); o.v-=n; return {ore:n}; }},
+  fisher:{n:'어부', work(t,a){ const f=t.nodes.fish; if(t.storm>0) return {}; let k=0;
+    for(let i=0;i<5;i++) if(rnd()<a*0.75*f.v/f.cap && f.v>3){ f.v--; k++; }
+    return {fish:k}; }},
+  tanner:{n:'무두장이', craft:{in:{hide:2}, out:'leather'}},
+  smith:{n:'대장장이', craft:{in:{ore:2,wood:1}, out:'tools'}}
+};
+function craft(t,npc,a){
+  const c = JOBS[npc.job].craft;
+  const times = a>=0.9 ? 2 : 1; let made = 0;
+  for(let r=0;r<times;r++){
+    let cost=0, ok=true;
+    for(const g in c.in){ if(t.stock[g]<c.in[g]) ok=false; cost += price(t,g)*BUY*c.in[g]; }
+    if(!ok || npc.gold<cost || price(t,c.out)*SELL < cost*1.05) break; // 손해 보는 가공은 하지 않음
+    for(const g in c.in) marketBuy(t,npc,g,c.in[g]);
+    made++;
+  }
+  return made ? {[c.out]:made} : {};
+}
+
+// 직업별 예상 하루 수입 (현재 자원량과 시세 기준). 일꾼은 이걸 보고 전직을 고민함
+function estEarn(t,job){
+  const P=g=>price(t,g)*SELL, C=g=>price(t,g)*BUY, n=t.nodes;
+  switch(job){
+    case 'hunter': return n.deer ? 3*0.55*n.deer.v/n.deer.cap*(P('hide')+3*P('meat')) : 0;
+    case 'woodcutter': return (n.wood && n.wood.v<5) ? 0 : 3*P('wood');
+    case 'miner': return 2.4*(0.4+0.6*n.ore.v/n.ore.cap)*P('ore');
+    case 'fisher': return t.storm ? 0 : 5*0.75*n.fish.v/n.fish.cap*P('fish');
+    default: { const c=JOBS[job].craft; let cost=0, ok=true;
+      for(const g in c.in){ cost+=C(g)*c.in[g]; if(t.stock[g]<c.in[g]*2) ok=false; }
+      return ok ? Math.max(0, 2*(P(c.out)-cost)) : 0; }
+  }
+}
+// 너무 몰린 직업은 제외 (원래 인원의 2배 + 1까지만)
+function bestJob(t){
+  const cnt={}; W.npcs.forEach(n=>{ if(n.town===t.id) cnt[n.job]=(cnt[n.job]||0)+1; });
+  return Object.keys(t.jobs).filter(j=>(cnt[j]||0) < t.jobs[j]*2+1).sort((x,y)=>estEarn(t,y)-estEarn(t,x))[0];
+}
+function npcDay(npc){
+  const t = W.towns[npc.town];
+  let a = 1; if(npc.tool<=0) a*=0.5; if(npc.hunger>0) a*=0.65;
+  const J = JOBS[npc.job];
+  const out = J.craft ? craft(t,npc,a) : J.work(t,a);
+  for(const g in out) if(out[g]>0) marketSell(t,npc,g,out[g]);
+
+  // 식사: 이틀에 한 번, 고기와 생선 중 싼 쪽
+  if(--npc.sat<0){
+    const foods = ['meat','fish'].filter(g=>t.stock[g]>=1).sort((x,y)=>price(t,x)-price(t,y));
+    let ate = false;
+    for(const f of foods){ if(marketBuy(t,npc,f,1).k){ ate=true; break; } }
+    if(ate){ npc.sat=1; npc.hunger=0; } else npc.hunger++;
+  }
+
+  // 도구 마모와 교체
+  npc.tool--;
+  if(npc.tool<=0 && npc.gold > price(t,'tools')*BUY+4 && marketBuy(t,npc,'tools',1).k) npc.tool = 20;
+
+  // 세금 (돈이 빠져나가는 곳)
+  if(npc.gold>60){ const tx=npc.gold*0.04; npc.gold-=tx; W.sink+=tx; }
+
+  // 굶주리면 더 잘 버는 직업으로 전직
+  const best = bestJob(t);
+  const poor = npc.hunger>=2 && npc.gold<6 && rnd()<0.3;
+  const envy = best && estEarn(t,best) > estEarn(t,npc.job)*1.8+3 && rnd()<0.03;
+  if(best && (poor || envy)){
+    if(best!==npc.job){ news(`${t.n}의 ${JOBS[npc.job].n} 한 명이 ${JOBS[best].n}(으)로 전직했습니다.`); npc.job=best; npc.hunger=0; }
+  }
+  if(npc.hunger>=5){ npc.gone=true; news(`굶주린 ${JOBS[npc.job].n} 한 명이 ${t.n}을(를) 떠났습니다.`); }
+}
+
+// 주민 소비: 일꾼이 아닌 마을 사람들이 물건을 사 가며 돈이 시장으로 들어옴 (돈이 생기는 곳)
+function citizens(t){
+  for(const g of GK){
+    let d = t.demand[g]||0; if(t.boost[g]) d*=t.boost[g].m; if(!d) continue;
+    const q = Math.floor(d*(0.7+rnd()*0.6)+rnd());
+    for(let i=0;i<q;i++){
+      if(t.stock[g]<1) break;
+      const p = price(t,g); if(p>GOODS[g].b*2.6) break; // 너무 비싸면 안 삼
+      t.stock[g]--; t.treasury+=p; W.src+=p;
+    }
+  }
+}
+
+// 경쟁 상단: 가장 차익이 큰 물건을 골라 이동
+function caravanDay(c){
+  if(c.travel){ if(--c.travel.d>0) return; c.town=c.travel.to; c.travel=null; }
+  const t = W.towns[c.town];
+  for(const g in c.cargo) if(c.cargo[g]>0){ const r=marketSell(t,c,g,c.cargo[g]); c.cargo[g]-=r.k; }
+  let best=null;
+  for(const g of GK){
+    if(t.stock[g]<3) continue;
+    const bp = price(t,g)*BUY;
+    for(const to in DIST[c.town]){
+      const sp = price(W.towns[to],g)*SELL;
+      const m = sp - bp - DIST[c.town][to]*0.3;
+      if(m>1.5 && (!best || m>best.m)) best={g,to,m,sp};
+    }
+  }
+  if(!best) return;
+  let k=0;
+  while(k<25){ if(t.stock[best.g]<3) break; const bp=price(t,best.g)*BUY; if(bp>best.sp*0.8 || c.gold<bp) break; marketBuy(t,c,best.g,1); k++; }
+  if(k>0){
+    c.cargo[best.g]=(c.cargo[best.g]||0)+k;
+    c.travel={to:best.to, d:DIST[c.town][best.to]};
+    news(`${c.n}이(가) ${t.n}에서 ${GOODS[best.g].n} ${k}개를 사서 ${W.towns[best.to].n}(으)로 떠났습니다.`);
+  }
+}
+
+function events(){
+  if(rnd()>0.045) return;
+  const R=W.towns.R, S=W.towns.S, P=W.towns.P;
+  switch(Math.floor(rnd()*5)){
+    case 0: R.nodes.deer.v*=0.6; news('늑대 무리가 리버포드 숲의 사슴을 덮쳤습니다. 사냥감이 크게 줄었습니다.', true); break;
+    case 1: S.nodes.ore.cap+=80; S.nodes.ore.v+=80; news('스톤힐에서 새 광맥이 발견됐습니다.', true); break;
+    case 2: P.storm=3; news('솔트미어 앞바다에 폭풍이 몰아칩니다. 3일간 조업이 중단됩니다.', true); break;
+    case 3: P.boost.wood={m:2.2,d:6}; news('솔트미어 조선소가 대형 선박을 주문했습니다. 6일간 목재 수요가 급증합니다.', true); break;
+    case 4: R.boost.tools={m:2,d:5}; R.boost.leather={m:2,d:5}; news('리버포드 영주가 군장비를 징발합니다. 5일간 도구와 가죽 수요가 급증합니다.', true); break;
+  }
+}
+
+function news(text, big){ W.news.unshift({day:W.day, text, big}); if(W.news.length>60) W.news.pop(); }
+function ledger(text, amt){ W.ledger.unshift({day:W.day, text, amt}); if(W.ledger.length>60) W.ledger.pop(); }
+
+// ───────────────────────── 하루 진행 ─────────────────────────
+function tick(){
+  W.cash.push({day:W.day, ...W.today}); if(W.cash.length>30) W.cash.shift();
+  W.today={in:0,out:0};
+  W.day++;
+  W.src=0; W.sink=0;
+
+  for(const id in W.towns){
+    const t=W.towns[id];
+    for(const k in t.nodes){ const n=t.nodes[k]; n.v = clamp(n.v + n.r*n.v*(1-n.v/n.cap) + 0.3, 0, n.cap); }
+    if(t.storm>0) t.storm--;
+    for(const g in t.boost){ if(--t.boost[g].d<=0) delete t.boost[g]; }
+  }
+  events();
+  W.npcs.sort(()=>rnd()-0.5).forEach(npcDay);
+  W.npcs = W.npcs.filter(n=>!n.gone);
+  // 일자리가 좋은 마을로 이주
+  for(const id in W.towns){ const t=W.towns[id];
+    const best = bestJob(t);
+    if(best && estEarn(t,best)>8 && rnd()<0.04){ W.npcs.push({job:best,town:id,gold:15,tool:10,hunger:0,sat:1}); news(`새 ${JOBS[best].n}이(가) 일자리를 찾아 ${t.n}에 왔습니다.`); }
+  }
+  for(const id in W.towns){ const t=W.towns[id]; citizens(t);
+    if(t.treasury>1500){ const up=(t.treasury-1500)*0.04; t.treasury-=up; W.sink+=up; } } // 영주에게 바치는 상납금
+  W.caravans.forEach(caravanDay);
+
+  const p=W.player;
+  if(p.travel && --p.travel.d<=0){ p.town=p.travel.to; p.travel=null; news(`${W.towns[p.town].n}에 도착했습니다.`, true); }
+
+  for(const id in W.towns) GK.forEach(g=>{ const h=W.hist[id][g]; h.push(price(W.towns[id],g)); if(h.length>120) h.shift(); });
+  W.money.push(totalMoney()); if(W.money.length>120) W.money.shift();
+  W.srcHist.push(W.src); W.sinkHist.push(W.sink);
+}
+function totalMoney(){
+  let m = W.player.gold;
+  W.npcs.forEach(n=>m+=n.gold); W.caravans.forEach(c=>m+=c.gold);
+  for(const id in W.towns) m+=W.towns[id].treasury;
+  return m;
+}
+
+// ───────────────────────── 플레이어 명령 ─────────────────────────
+function cargoCount(){ return Object.values(W.player.cargo).reduce((a,b)=>a+b,0); }
+function say(t){ document.getElementById('msg').textContent = t; }
+
+function dispatch(cmd){
+  const p=W.player; const t=W.towns[p.town];
+  if(p.travel && cmd.type!=='wait'){ say('이동 중에는 할 수 없습니다.'); return; }
+  switch(cmd.type){
+    case 'buy': {
+      const space = p.cap - cargoCount();
+      const n = Math.min(cmd.n, space);
+      if(n<=0){ say('짐칸이 가득 찼습니다.'); return; }
+      const r = marketBuy(t,p,cmd.g,n);
+      if(!r.k){ say(t.stock[cmd.g]<1 ? '재고가 없습니다.' : '돈이 부족합니다.'); return; }
+      p.cargo[cmd.g]=(p.cargo[cmd.g]||0)+r.k; p.cost[cmd.g]=(p.cost[cmd.g]||0)+r.paid;
+      W.today.out+=r.paid;
+      ledger(`${GOODS[cmd.g].n} ${r.k}개 매수 · 개당 ${(r.paid/r.k).toFixed(1)}`, -r.paid);
+      say(''); break;
+    }
+    case 'sell': {
+      const have = p.cargo[cmd.g]||0;
+      const n = cmd.n==='all' ? have : Math.min(cmd.n, have);
+      if(n<=0) return;
+      const avg = (p.cost[cmd.g]||0)/have;
+      const r = marketSell(t,p,cmd.g,n);
+      if(!r.k){ say(t.stock[cmd.g]>=t.target[cmd.g]*3 ? `${t.n} 창고에 ${GOODS[cmd.g].n}이(가) 넘쳐서 더 사지 않습니다.` : `${t.n} 시장 금고가 비어서 살 수 없습니다.`); return; }
+      const basis = avg*r.k, profit = r.got-basis;
+      p.cargo[cmd.g]-=r.k; p.cost[cmd.g]-=basis;
+      if(p.cargo[cmd.g]<=0){ delete p.cargo[cmd.g]; delete p.cost[cmd.g]; }
+      W.today.in+=r.got;
+      ledger(`${GOODS[cmd.g].n} ${r.k}개 매도 · 손익 ${profit>=0?'+':''}${profit.toFixed(1)}`, r.got);
+      say(r.k<n ? `시장이 ${r.k}개까지만 받아줬습니다.` : ''); break;
+    }
+    case 'travel': {
+      const d = DIST[p.town][cmd.to], fee = d*3;
+      if(p.gold<fee){ say('여비가 부족합니다.'); return; }
+      p.gold-=fee; W.today.out+=fee;
+      p.travel={to:cmd.to, d, from:p.town};
+      ledger(`${W.towns[cmd.to].n}행 여비 (${d}일)`, -fee);
+      news(`${W.towns[cmd.to].n}(으)로 출발했습니다. ${d}일 걸립니다.`);
+      say(''); break;
+    }
+    case 'gather': {
+      const space = p.cap - cargoCount();
+      if(space<=0){ say('짐칸이 가득 찼습니다.'); return; }
+      const node = t.nodes[cmd.k]; const got = {};
+      if(cmd.k==='deer'){ let k=0; for(let i=0;i<4;i++) if(rnd()<0.6*node.v/node.cap && node.v>3){node.v--;k++;} got.hide=k; got.meat=k*2; }
+      if(cmd.k==='wood'){ const n=Math.min(5,Math.floor(node.v)); node.v-=n; got.wood=n; }
+      if(cmd.k==='ore'){ const n=Math.min(Math.floor(node.v), Math.round(3*(0.4+0.6*node.v/node.cap))); node.v-=n; got.ore=n; }
+      if(cmd.k==='fish'){ let k=0; if(!t.storm) for(let i=0;i<5;i++) if(rnd()<0.7*node.v/node.cap && node.v>3){node.v--;k++;} got.fish=k; }
+      let room=space; const parts=[];
+      for(const g in got){ const n=Math.min(got[g],room); room-=n; if(n>0){ p.cargo[g]=(p.cargo[g]||0)+n; p.cost[g]=p.cost[g]||0; parts.push(`${GOODS[g].n} ${n}`);} }
+      const label={deer:'사냥',wood:'벌목',ore:'채광',fish:'낚시'}[cmd.k];
+      ledger(`${label}: ${parts.length?parts.join(', '):'허탕'}`, 0);
+      say(parts.length ? `${label} 성공: ${parts.join(', ')} (원가 0)` : `${label}에서 아무것도 얻지 못했습니다.`);
+      tick(); break;
+    }
+    case 'wait': tick(); break;
+  }
+  render();
+}
+
+// ───────────────────────── 화면 ─────────────────────────
+const $ = id=>document.getElementById(id);
+const f1 = x=>x.toFixed(1);
+const f0 = x=>Math.round(x).toLocaleString('ko-KR');
+let selGood = 'leather';
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+function netWorth(){
+  const p=W.player; const t=W.towns[p.travel?p.travel.to:p.town];
+  let v=p.gold; for(const g in p.cargo) v+=p.cargo[g]*price(t,g)*SELL; return v;
+}
+
+function render(){
+  const p=W.player;
+  $('day').textContent = `${W.day}일차`;
+  const nw=netWorth(), diff=nw-START_GOLD;
+  const where = p.travel ? `${W.towns[p.travel.to].n}행` : W.towns[p.town].n;
+  const whereSub = p.travel ? `이동 중 · ${p.travel.d}일 남음` : W.towns[p.town].desc;
+  $('status').innerHTML = `
+    <div class="stat"><div class="k">소지금</div><div class="v num">${f1(p.gold)}</div><div class="d" style="color:var(--muted)">금화</div></div>
+    <div class="stat"><div class="k">순자산</div><div class="v num">${f1(nw)}</div><div class="d num ${diff>=0?'pos':'neg'}">${diff>=0?'+':''}${f1(diff)} (시작 ${START_GOLD})</div></div>
+    <div class="stat"><div class="k">위치</div><div class="v">${where}</div><div class="d" style="color:var(--muted)">${whereSub}</div></div>
+    <div class="stat"><div class="k">짐칸</div><div class="v num">${cargoCount()} / ${p.cap}</div><div class="d" style="color:var(--muted)">${Object.keys(p.cargo).map(g=>GOODS[g].n+' '+p.cargo[g]).join(', ')||'비어 있음'}</div></div>`;
+
+  // 시세판
+  let h = `<thead><tr><th>물품</th>${TOWNS.map(T=>`<th class="${!p.travel&&p.town===T.id?'here':''}"><span class="tn"><span class="dot" style="background:var(${T.c})"></span>${T.n}</span>가격 · 재고</th>`).join('')}<th>차익</th></tr></thead><tbody>`;
+  for(const g of GK){
+    const ps = TOWNS.map(T=>price(W.towns[T.id],g));
+    const mn=Math.min(...ps), mx=Math.max(...ps);
+    const gap = mx*SELL - mn*BUY;
+    h += `<tr data-sel="${g}" class="${g===selGood?'sel':''}"><td><b>${GOODS[g].n}</b></td>`;
+    TOWNS.forEach((T,i)=>{ const cls = ps[i]===mn?'cheap':ps[i]===mx?'dear':'';
+      h += `<td class="${cls}"><span class="p num">${f1(ps[i])}</span><span class="s num">${W.towns[T.id].stock[g]}개</span></td>`; });
+    h += `<td class="gap num ${gap>0?'pos':''}">${gap>0?'+':''}${f1(gap)}</td></tr>`;
+  }
+  $('board').innerHTML = h+'</tbody>';
+
+  // 시장
+  const t = W.towns[p.town];
+  $('mkTitle').textContent = p.travel ? '시장' : `${t.n} 시장`;
+  if(p.travel){
+    $('market').innerHTML = `<div class="empty">${W.towns[p.travel.to].n}(으)로 이동 중입니다. 도착하면 거래할 수 있습니다.</div>`;
+  } else {
+    $('market').innerHTML = GK.map(g=>{
+      const pr=price(t,g), have=p.cargo[g]||0, avg=have?(p.cost[g]||0)/have:0;
+      return `<div class="mkrow">
+        <div><div class="gname">${GOODS[g].n}</div><div class="gsub num">재고 ${t.stock[g]}${have?` · 보유 ${have} (원가 ${f1(avg)})`:''}</div></div>
+        <div class="prices num"><span class="pos">살 때 ${f1(pr*BUY)}</span><br><span class="neg">팔 때 ${f1(pr*SELL)}</span></div>
+        <div class="btns">
+          <button class="b buy" data-cmd="buy" data-g="${g}" data-n="1" ${t.stock[g]<1?'disabled':''}>+1</button>
+          <button class="b buy" data-cmd="buy" data-g="${g}" data-n="5" ${t.stock[g]<1?'disabled':''}>+5</button>
+          <button class="b sell" data-cmd="sell" data-g="${g}" data-n="1" ${have?'':'disabled'}>−1</button>
+          <button class="b sell" data-cmd="sell" data-g="${g}" data-n="all" ${have?'':'disabled'}>전부</button>
+        </div></div>`;
+    }).join('');
+  }
+
+  // 행동
+  const dis = p.travel ? 'disabled' : '';
+  const travel = TOWNS.filter(T=>T.id!==p.town).map(T=>{ const d=DIST[p.town][T.id];
+    return `<button class="big" data-cmd="travel" data-to="${T.id}" ${dis}>${T.n}<small>${d}일 · 여비 ${d*3}</small></button>`; }).join('');
+  const gather = Object.keys(t.nodes).map(k=>{ const n=t.nodes[k]; const lab={deer:'사냥하기',wood:'벌목하기',ore:'채광하기',fish:'낚시하기'}[k];
+    return `<button class="big" data-cmd="gather" data-k="${k}" ${dis}>${lab}<small>하루 소모 · ${NODE_NAME[k]} ${Math.round(n.v/n.cap*100)}%</small></button>`; }).join('');
+  $('actions').innerHTML = `
+    <div><div class="lbl">이동</div><div class="row">${travel}</div></div>
+    <div><div class="lbl">직접 채집</div><div class="row">${gather}</div></div>
+    <div><div class="lbl">시간</div><div class="row"><button class="big" data-cmd="wait">하루 넘기기<small>${p.travel?'이동을 하루 진행':'시장 변화를 기다림'}</small></button></div></div>`;
+
+  // 장부
+  $('ledger').innerHTML = W.ledger.length ? W.ledger.slice(0,20).map(e=>
+    `<li><span><span class="dd">${e.day}일</span> ${e.text}</span><span class="num ${e.amt>0?'pos':e.amt<0?'neg':''}">${e.amt?((e.amt>0?'+':'')+f1(e.amt)):'·'}</span></li>`).join('')
+    : '<li class="empty">아직 거래가 없습니다. 시세판에서 초록(싼 곳)과 빨강(비싼 곳)을 찾아보세요.</li>';
+
+  // 소식
+  $('news').innerHTML = W.news.slice(0,18).map(e=>`<li><span class="dd">${e.day}일</span><span style="${e.big?'color:var(--brass);font-weight:500':''}">${e.text}</span></li>`).join('');
+
+  // 세계
+  $('towns').innerHTML = TOWNS.map(T=>{ const tt=W.towns[T.id];
+    const ns = W.npcs.filter(n=>n.town===T.id);
+    const jobs = {}; ns.forEach(n=>jobs[n.job]=(jobs[n.job]||0)+1);
+    const hungry = ns.filter(n=>n.hunger>0).length;
+    const nodes = Object.keys(tt.nodes).map(k=>{ const n=tt.nodes[k];
+      return `<div class="kv"><span>${NODE_NAME[k]}</span><span class="num">${Math.round(n.v)} / ${n.cap}</span></div><div class="bar"><i style="width:${n.v/n.cap*100}%"></i></div>`; }).join('');
+    const tags = [tt.storm?`폭풍 ${tt.storm}일`:'', ...Object.keys(tt.boost).map(g=>`${GOODS[g].n} 수요↑ ${tt.boost[g].d}일`)].filter(Boolean).map(x=>`<span class="tag">${x}</span>`).join('');
+    return `<div class="town" style="--c:var(${T.c})"><h3>${T.n}</h3><div class="desc">${T.desc}</div>${nodes}
+      ${Object.keys(jobs).map(j=>`<div class="kv"><span>${JOBS[j].n}</span><span class="num">${jobs[j]}명</span></div>`).join('')}
+      <div class="kv"><span>굶주린 일꾼</span><span class="num ${hungry?'neg':''}">${hungry}명</span></div>
+      <div class="kv"><span>시장 금고</span><span class="num">${f0(tt.treasury)}</span></div>${tags}</div>`; }).join('');
+  const m0 = W.money[Math.max(0,W.money.length-31)], m1 = W.money[W.money.length-1];
+  const infl = m0 ? (m1/m0-1)*100 : 0;
+  $('money').innerHTML = `
+    <span>세계 통화량 <b class="num">${f0(m1)}</b></span>
+    <span>30일 변화 <b class="num ${infl>=0?'pos':'neg'}">${infl>=0?'+':''}${infl.toFixed(1)}%</b></span>
+    <span>오늘 유입(주민 소비) <b class="num pos">+${f0(W.src)}</b></span>
+    <span>오늘 유출(세금·상납) <b class="num neg">−${f0(W.sink)}</b></span>
+    <span>경쟁 상단 ${W.caravans.map(c=>`${c.n} <b class="num">${f0(c.gold)}</b>`).join(' · ')}</span>`;
+
+  drawPrice(); drawCash();
+}
+
+function setupCanvas(cv){
+  const r=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  cv.width=Math.max(1,r.width*dpr); cv.height=Math.max(1,r.height*dpr);
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); return {c,w:r.width,h:r.height};
+}
+function drawPrice(){
+  const g=selGood; $('chartTitle').textContent = `${GOODS[g].n} 가격 추이`;
+  const {c,w,h} = setupCanvas($('priceChart'));
+  const L=40,R=10,T=10,B=22;
+  const series = TOWNS.map(T=>W.hist[T.id][g]);
+  const all = series.flat(); if(!all.length) return;
+  let lo=Math.min(...all), hi=Math.max(...all); const pad=(hi-lo)*0.1||1; lo=Math.max(0,lo-pad); hi+=pad;
+  const n = series[0].length;
+  const X=i=>L+(w-L-R)*(n<=1?1:i/(n-1)), Y=v=>T+(h-T-B)*(1-(v-lo)/(hi-lo));
+  c.font=`11px ${cssVar('--f-num')}`; c.fillStyle=cssVar('--muted'); c.strokeStyle=cssVar('--line'); c.lineWidth=1;
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4, y=Y(v); c.beginPath(); c.moveTo(L,y); c.lineTo(w-R,y); c.stroke(); c.textAlign='right'; c.fillText(v.toFixed(1),L-6,y+4); }
+  c.textAlign='left'; c.fillText(`${W.day-n+1}일`,L,h-6); c.textAlign='right'; c.fillText(`${W.day}일`,w-R,h-6);
+  series.forEach((s,i)=>{ const col=cssVar(TOWNS[i].c); c.strokeStyle=col; c.lineWidth=2; c.beginPath();
+    s.forEach((v,j)=>j?c.lineTo(X(j),Y(v)):c.moveTo(X(j),Y(v))); c.stroke();
+    c.fillStyle=col; c.beginPath(); c.arc(X(s.length-1),Y(s[s.length-1]),3.5,0,7); c.fill(); });
+  $('legend').innerHTML = TOWNS.map((T,i)=>`<span><span class="dot" style="background:var(${T.c})"></span>${T.n} <span class="num">${f1(series[i][series[i].length-1])}</span></span>`).join('');
+}
+function drawCash(){
+  const {c,w,h} = setupCanvas($('cashChart'));
+  const data = [...W.cash, {day:W.day, ...W.today}].slice(-30);
+  const mx = Math.max(10, ...data.map(d=>Math.max(d.in,d.out)));
+  const mid=h/2, bw=(w-8)/30;
+  c.strokeStyle=cssVar('--line'); c.beginPath(); c.moveTo(0,mid); c.lineTo(w,mid); c.stroke();
+  data.forEach((d,i)=>{ const x=4+i*bw;
+    c.fillStyle=cssVar('--up'); const hi=(d.in/mx)*(mid-6); c.fillRect(x+1,mid-hi,bw-2,hi);
+    c.fillStyle=cssVar('--down'); const ho=(d.out/mx)*(mid-6); c.fillRect(x+1,mid,bw-2,ho); });
+  c.fillStyle=cssVar('--muted'); c.font=`11px ${cssVar('--f-num')}`; c.textAlign='left';
+  c.fillText(`최대 ${Math.round(mx)}`,4,11);
+}
+
+// ───────────────────────── 입력과 시간 ─────────────────────────
+document.addEventListener('click', e=>{
+  const s = e.target.closest('[data-speed]');
+  if(s){ setSpeed(+s.dataset.speed); return; }
+  const r = e.target.closest('[data-sel]');
+  if(r){ selGood=r.dataset.sel; render(); return; }
+  const b = e.target.closest('[data-cmd]'); if(!b || b.disabled) return;
+  const d = b.dataset;
+  dispatch({type:d.cmd, g:d.g, n:d.n==='all'?'all':+d.n, to:d.to, k:d.k});
+});
+let speed=1, timer=null;
+const SPEEDS=[0,1600,550];
+function setSpeed(s){ speed=s; [0,1,2].forEach(i=>$('sp'+i).setAttribute('aria-pressed', i===s)); schedule(); }
+function schedule(){ clearTimeout(timer); if(SPEEDS[speed]) timer=setTimeout(()=>{ tick(); render(); schedule(); }, SPEEDS[speed]); }
+window.addEventListener('resize', ()=>{ drawPrice(); drawCash(); });
+if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', ()=>{ drawPrice(); drawCash(); });
+
+init();
+for(let i=0;i<24;i++) tick();   // 미리 24일 돌려서 시세 기록을 쌓아 둠
+W.news = W.news.slice(0,6);
+news('리버포드에서 금화 150개와 빈 수레 하나로 장사를 시작합니다.', true);
+W.cash = []; W.today={in:0,out:0};
+render(); schedule();
+document.fonts?.ready.then(()=>{ drawPrice(); drawCash(); });
+</script>
