@@ -76,7 +76,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     let runs: BotRun[] = [];
     let done = 0;
     const draw = (status: string) => {
-      table.innerHTML = SUMMARY_HEAD + rows.join('') + (status ? `<tr><td colspan="11">${status}</td></tr>` : '');
+      table.innerHTML = SUMMARY_HEAD + rows.join('') + (status ? `<tr><td colspan="12">${status}</td></tr>` : '');
     };
     const next = () => {
       const job = jobs[Math.floor(done / SUMMARY_SEEDS.length)]!;
@@ -112,7 +112,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
 }
 
 const SUMMARY_HEAD =
-  '<tr><th>시작</th><th>성향</th><th>끝 순자산 (최소 · 가운데 · 최대)</th><th>잃은 판</th><th>하루 벌이 첫5일 · 67일</th><th>시즌 평균</th><th>전반 → 후반 (후반이 높은 판)</th><th>끝 유지비 (평균 대비)</th><th>10배 번 날</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th></tr>';
+  '<tr><th>시작</th><th>성향</th><th>끝 순자산 (최소 · 가운데 · 최대)</th><th>잃은 판</th><th>하루 벌이 첫5일 · 67일</th><th>시즌 평균</th><th>전반 → 후반 (후반이 높은 판)</th><th>끝 유지비 (평균 대비)</th><th>10배 번 날</th><th>큰 주문 (겨울)</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th></tr>';
 
 /** 같은 시작 계절, 같은 성향의 여러 판을 한 줄로 */
 function summaryRow(season: string, p: BotProfile, runs: BotRun[]): string {
@@ -130,7 +130,10 @@ function summaryRow(season: string, p: BotProfile, runs: BotRun[]): string {
   const upkeep = median(runs.map((r) => r.upkeep.at(-1) ?? 0));
   const share = avg > 0 ? `${Math.round((upkeep / avg) * 100)}%` : '-';
   const big = median(runs.map((r) => bigDays(r)));
-  return `<tr><th>${season}</th><th>${p.name}</th><td>${spread(end)}</td><td>${lost}/${runs.length}</td><td>${income(0, 5)} · ${income(60, 74)}</td><td>${avg}</td><td>${halves}</td><td>${upkeep} (${share})</td><td>${big}</td><td>${firstHorse}</td><td>${firstGather}</td></tr>`;
+  // 큰 주문 사건 수 평균, 그중 겨울 (0.0.8 목표: 시즌 2~4번, 겨울 비중을 높게)
+  const mean = (f: (r: BotRun) => number) => (runs.reduce((a, r) => a + f(r), 0) / runs.length).toFixed(1);
+  const orders = `${mean((r) => r.bigOrders.length)} (${mean((r) => r.bigOrders.filter((s) => s === 3).length)})`;
+  return `<tr><th>${season}</th><th>${p.name}</th><td>${spread(end)}</td><td>${lost}/${runs.length}</td><td>${income(0, 5)} · ${income(60, 74)}</td><td>${avg}</td><td>${halves}</td><td>${upkeep} (${share})</td><td>${big}</td><td>${orders}</td><td>${firstHorse}</td><td>${firstGather}</td></tr>`;
 }
 
 function runTable(runs: BotRun[]): string {

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '../constants';
 import { advanceDay, applyCommand, createEconomy, moneySupply, type EconomyState } from '../economy';
-import { CYCLE_DAYS, seasonOfDay } from '../season';
+import { CYCLE_DAYS, seasonOfDay, WINTER, type Season } from '../season';
 import { buildNeighbors, generateWorld, townTravelDays, type WorldMap } from '../worldgen';
 import {
   activate,
@@ -249,6 +249,43 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
     const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
     expect(avg).toBeGreaterThanOrEqual(1.5);
     expect(avg).toBeLessThanOrEqual(4.5);
+  });
+
+  describe('겨울에 큰 주문이 더 자주 (0.0.8)', () => {
+    // 시작 계절 4개 × 시드 20개의 첫 시즌 일정에서 큰 주문이 어느 계절에 있나
+    const runs = ([0, 1, 2, 3] as Season[]).flatMap((start) =>
+      SEEDS.slice(0, 20).map((seed) => {
+        const map = generateWorld(seed);
+        const state = createEconomy(map, seed, { startSeason: start });
+        const big = createSeason(state, map, 1, 1).schedule.filter((s) => eventDef(s.event).effects.some((e) => e.kind === 'bigOrder'));
+        return { map, big: big.map((s) => ({ ...s, season: seasonOfDay(s.day, state.startSeason) })) };
+      }),
+    );
+
+    it('시즌 전체로는 평균 2~4번 (어느 계절에 시작해도)', () => {
+      for (let start = 0; start < 4; start++) {
+        const part = runs.slice(start * 20, start * 20 + 20);
+        const avg = part.reduce((a, r) => a + r.big.length, 0) / part.length;
+        expect(avg, `시작 계절 ${start}`).toBeGreaterThanOrEqual(2);
+        expect(avg, `시작 계절 ${start}`).toBeLessThanOrEqual(4);
+      }
+    });
+
+    it('겨울에 있는 큰 주문이 다른 어느 계절보다 많다 (겨울 비중 30% 넘게)', () => {
+      const bySeason = [0, 0, 0, 0];
+      for (const r of runs) for (const b of r.big) bySeason[b.season]!++;
+      const total = bySeason.reduce((a, b) => a + b, 0);
+      for (const s of [0, 1, 2]) expect(bySeason[WINTER]).toBeGreaterThan(bySeason[s]! * 1.3);
+      expect(bySeason[WINTER]! / total).toBeGreaterThan(0.3);
+    });
+
+    it('겨울 축제는 겨울에 도시에서만, 혼례 잔치는 겨울에 없다', () => {
+      const all = runs.flatMap((r) => r.big.map((b) => ({ ...b, tier: r.map.towns[b.town]!.tier })));
+      const winterFestival = all.filter((b) => b.event === 'winterFestival');
+      expect(winterFestival.length).toBeGreaterThan(0);
+      for (const b of winterFestival) expect([b.season, b.tier]).toEqual([WINTER, 'city']);
+      expect(all.filter((b) => b.event === 'festival' && b.season === WINTER)).toEqual([]);
+    });
   });
 });
 

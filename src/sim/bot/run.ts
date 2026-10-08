@@ -8,7 +8,8 @@ import type { AffordKind, GrowthKind } from './growth';
 import { createCart } from '../cart';
 import type { BotProfile } from './profiles';
 import { netWorth, worthParts } from '../ranking/worth';
-import type { Season } from '../season';
+import { seasonOfDay, type Season } from '../season';
+import { eventDef } from '../events';
 
 export interface BotRun {
   profile: BotProfile;
@@ -30,6 +31,8 @@ export interface BotRun {
   commandsPerDay: number;
   /** 실패한 명령 (봇이 잘못 판단한 횟수) */
   errors: Partial<Record<CommandError, number>>;
+  /** 이 시즌에 일어난 큰 주문 사건이 어느 계절이었나 (0.0.8: 겨울에 더 자주) */
+  bigOrders: Season[];
   /** 처음 산 날 (말, 짐수레, 짐꾼, 채집꾼, 창고, 두 번째 행렬, 장비). 시즌 안에 안 샀으면 없다 */
   firsts: Partial<Record<GrowthKind, number>>;
   /** 셈과 상관없이 돈으로는 살 수 있게 된 첫날 (그 마을에 마구간·게시판이 있을 때) */
@@ -95,7 +98,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, startSeason: state.startSeason, worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
+  const run: BotRun = { profile, startSeason: state.startSeason, bigOrders: [], worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
   const cost: Partial<Record<GoodId, { qty: number; value: number }>> = {};
@@ -135,5 +138,8 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     run.gold.push(state.player.gold);
   }
   run.commandsPerDay = commands / Math.max(1, opt.days);
+  run.bigOrders = (state.season?.log ?? [])
+    .filter((e) => eventDef(e.event).effects.some((x) => x.kind === 'bigOrder'))
+    .map((e) => seasonOfDay(e.day, state.startSeason));
   return run;
 }

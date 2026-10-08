@@ -3,7 +3,7 @@
 import { GOOD_NAME, type GoodId } from '../economy/goods';
 import type { JobId } from '../economy/jobs';
 import { eulReul } from '../josa';
-import { AUTUMN, SPRING, SUMMER } from '../season';
+import { AUTUMN, SPRING, SUMMER, WINTER } from '../season';
 import type { EventDef, EventId } from './types';
 
 const NOT_WINTER = [SPRING, SUMMER, AUTUMN] as const;
@@ -34,8 +34,16 @@ const RUSH_PLACE: Record<JobId, string> = {
   smith: '대장간으로',
 };
 
-/** 큰 주문 사건이 일정에 뽑히는 무게 (다른 사건은 1) */
-const BIG_ORDER_WEIGHT = 1.6;
+/**
+ * 큰 주문 사건이 일정에 뽑히는 무게 (다른 사건은 1). 계절별 [봄, 여름, 가을, 겨울].
+ * 겨울은 장이 얇아 노릴 거리가 적으니 큰 주문이 더 잘 뽑힌다 (0.0.8). 시즌 전체로는 2~4번
+ */
+const BIG_ORDER_WEIGHT = [1, 1, 1, 2.6] as const;
+/** 군대 보급은 겨울에 몰린다 */
+const ARMY_WEIGHT = [0.8, 0.8, 0.8, 4] as const;
+/** 도시 하나에서만 나는 축제는 마을 넷에서 나는 사건과 비슷하게 뽑히도록 무게를 키운다 */
+const CITY_FESTIVAL_WEIGHT = 2.5;
+const WINTER_FESTIVAL_WEIGHT = 8;
 
 export const EVENT_DEFS: readonly EventDef[] = [
   // ───── 공급 ↓ ─────
@@ -190,7 +198,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
 
   // ───── 수요 ↑ ─────
   // 큰 주문 (0.0.7 "큰 벌이는 사건에서 온다"): 정해진 기간 동안 한 물품을 많이, 기준 가격보다 비싸게 사들인다.
-  // 시즌에 2~4번 나오도록 다른 사건보다 조금 더 잘 뽑힌다 (BIG_ORDER_WEIGHT).
+  // 시즌에 2~4번 나오도록 다른 사건보다 조금 더 잘 뽑히고, 겨울에 더 잘 뽑힌다 (BIG_ORDER_WEIGHT, 0.0.8).
   // 징조가 늘 일찍(8~12일 전) 돌아서, 듣고 미리 쌓아 둔 사람이 크게 번다. 숫자는 초안
   {
     id: 'shipyard',
@@ -239,10 +247,12 @@ export const EVENT_DEFS: readonly EventDef[] = [
       { kind: 'bigOrder', good: 'grain', qty: 150, factor: 1.6 },
     ],
     days: 5,
+    // 겨울에는 겨울 축제가 대신 열린다
+    seasons: NOT_WINTER,
     omen: '영주 딸이 곧 혼인한다더군.',
     omenShare: 1,
     omenLead: [8, 12],
-    weight: BIG_ORDER_WEIGHT,
+    weight: CITY_FESTIVAL_WEIGHT,
     news: ({ town: t }) => `${t}에서 영주 딸의 혼례 잔치가 열립니다. 고기와 곡물을 비싸게 사들입니다.`,
     deck: 'boost',
   },
@@ -260,8 +270,28 @@ export const EVENT_DEFS: readonly EventDef[] = [
     omen: '동쪽에 군대가 오간다더라.',
     omenShare: 1,
     omenLead: [8, 12],
-    weight: BIG_ORDER_WEIGHT,
+    weight: ARMY_WEIGHT,
     news: ({ town: t }) => `군대가 ${t}에 머물며 염장 식품과 가죽을 비싸게 사들입니다.`,
+    deck: 'boost',
+  },
+  {
+    // 겨울 축제 (0.0.8): 겨울에만. 모닥불 장작과 겨울 음식을 사들인다. 둘 다 오래 두어도 되는 물품이라 가을부터 모아 둘 수 있다
+    id: 'winterFestival',
+    name: '겨울 축제',
+    category: 'demandUp',
+    scope: 'town',
+    needs: { tier: 'city' },
+    effects: [
+      { kind: 'bigOrder', good: 'wood', qty: 150, factor: 1.6 },
+      { kind: 'bigOrder', good: 'salted', qty: 100, factor: 1.6 },
+    ],
+    days: 5,
+    seasons: [WINTER],
+    omen: '도시에서 겨울 축제를 크게 연다더군.',
+    omenShare: 1,
+    omenLead: [8, 12],
+    weight: WINTER_FESTIVAL_WEIGHT,
+    news: ({ town: t }) => `${t}에서 겨울 축제가 열립니다. 모닥불 장작과 염장 식품을 비싸게 사들입니다.`,
     deck: 'boost',
   },
 
