@@ -47,9 +47,10 @@ export const BOT_PROFILES: readonly BotProfile[] = [
   // 원정으로 모은 것을 그 마을에서 판다. 마을은 잘 옮기지 않는다
   { id: 'gatherer', name: '원정꾼', trades: false, expeditions: true, expeditionsPerDay: 3, minMargin: 0.25, explore: 0.02, restAt: 6,
     growth: { reserve: 80, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },
-  // 원정은 안 나가고 싼 마을에서 사서 비싼 마을에 판다
+  // 원정은 안 나가고 싼 마을에서 사서 비싼 마을에 판다.
+  // 시간차 장사는 끈다: 시작 계절 네 개로 재 보니 켜면 끝 순자산 가운데 값이 계절마다 20~30% 낮았다 (돈이 창고에 묶인다, 0.0.8)
   { id: 'trader', name: '장사꾼', trades: true, expeditions: false, expeditionsPerDay: 0, minMargin: 0.2, explore: 0.1, restAt: 7,
-    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: true, caravanGold: 450, timeShift: true } },
+    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: true, caravanGold: 450, timeShift: false } },
   // 기획서의 "평범하게 하는 사람": 원정도 조금, 장사도 조금
   { id: 'casual', name: '보통 사람', trades: true, expeditions: true, expeditionsPerDay: 2, minMargin: 0.3, explore: 0.08, restAt: 5,
     growth: { reserve: 60, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },

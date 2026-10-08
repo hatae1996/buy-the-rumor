@@ -10,7 +10,8 @@ import { seasonsOf, timeShiftStep } from './seasonal';
 
 describe('철 따라 값이 움직이는 물품', () => {
   it('생산이 많은 철이 싼 철, 적은 철이 비싼 철. 철이 안 바뀌거나 빨리 상하면 하지 않는다', () => {
-    expect(seasonsOf('grain')).toEqual({ cheap: AUTUMN, dear: WINTER });
+    // 곡물은 봄이 가장 비싸다 (보릿고개, 0.0.8)
+    expect(seasonsOf('grain')).toEqual({ cheap: AUTUMN, dear: SPRING });
     expect(seasonsOf('salt')).toEqual({ cheap: SUMMER, dear: WINTER });
     expect(seasonsOf('leather')).toEqual({ cheap: AUTUMN, dear: SPRING });
     expect(seasonsOf('wood')).toBeNull();

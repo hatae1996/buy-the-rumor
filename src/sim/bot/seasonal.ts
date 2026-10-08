@@ -4,7 +4,7 @@
 import { ECONOMY, GROWTH } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { basePrice, GOODS, shelfLife } from '../economy';
-import type { Season } from '../season';
+import { SPRING, type Season } from '../season';
 import type { GrowthMind } from './growth';
 import { WAREHOUSE_FULL_FEE } from '../warehouse/fee';
 
@@ -18,6 +18,12 @@ const PRODUCER: Partial<Record<GoodId, keyof typeof ECONOMY.seasonYield>> = {
   ore: 'miner',
   salt: 'salter',
 };
+
+/**
+ * 생산이 가장 적은 철과 값이 가장 비싼 철이 다른 물품. 곡물은 겨울에 안 나지만 겨울엔 가을에 쌓아 둔 것을 먹고
+ * 봄에 바닥나서 봄이 가장 비싸다 (보릿고개, 기획서 0.0.8)
+ */
+const DEAR_SEASON: Partial<Record<GoodId, Season>> = { grain: SPRING };
 
 /** 많이 나는 철과 적게 나는 철의 생산 차이가 이만큼은 되어야 철 따라 값이 움직인다고 본다 */
 const MIN_SWING = 1.3;
@@ -42,7 +48,7 @@ export function seasonsOf(good: GoodId): { cheap: Season; dear: Season } | null 
   const max = Math.max(...y);
   const min = Math.min(...y);
   if (max < MIN_SWING * Math.max(min, 0.1)) return null;
-  return { cheap: y.indexOf(max) as Season, dear: y.indexOf(min) as Season };
+  return { cheap: y.indexOf(max) as Season, dear: DEAR_SEASON[good] ?? (y.indexOf(min) as Season) };
 }
 
 const roomOf = (view: PlayerView, town: number, good: GoodId) => view.warehouses.find((w) => w.town === town)?.room[good] ?? 0;
