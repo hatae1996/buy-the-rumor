@@ -66,6 +66,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
     <div class="town-banner">
       <img src="${village}" alt="" />
       <div class="ribbon"><span>${place}</span></div>
+      ${v.location.kind === 'town' && game.map.towns[v.location.town]!.tier === 'city' ? '<span class="tier-badge">도시</span>' : ''}
     </div>
     ${body}
     ${

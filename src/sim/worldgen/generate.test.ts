@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { WORLDGEN } from '../constants';
 import { AUTUMN, WINTER } from '../season';
 import { nearestTownDays, townTravelDays } from './days';
-import { generateWorld } from './generate';
+import { generateWorld, resourceTilesAround } from './generate';
 import { buildNeighbors, cellsAround, hexDistance } from './hex';
+import { regionTag, terrainRegionKind } from './regionTags';
 import { checkWorldRules } from './rules';
 import { isTownTerrain, townSpecialties } from './towns';
 import { worldFingerprint as fingerprint } from './fingerprint';
@@ -34,18 +35,27 @@ describe('같은 시드면 같은 맵', () => {
       seed: map.seed,
       tries: map.tries,
       fingerprint: fingerprint(map),
-      towns: map.towns.map((t) => `${t.name} ${t.specialties.join(',')}`),
+      towns: map.towns.map((t) => `${t.name} ${t.tier} ${t.specialties.join(',')}`),
+      regions: map.regions.map((r) => r.tag),
     }).toMatchInlineSnapshot(`
       {
-        "fingerprint": "27d4e21c",
-        "seed": 20261008,
-        "towns": [
-          "스톤힐 field,ore",
-          "윈드홀 field,fish",
-          "골든베일 forest,fish",
-          "시브리즈 field,salt",
+        "fingerprint": "cf57897b",
+        "regions": [
+          "reef",
+          "bears",
+          "fertile",
+          "fertile",
+          "bandits",
+          "bandits",
         ],
-        "tries": 1,
+        "seed": 20261009,
+        "towns": [
+          "스톤힐 town fish,ore",
+          "윈드홀 town forest,field",
+          "솔트미어 town salt,ore",
+          "골든베일 city ",
+        ],
+        "tries": 2,
       }
     `);
   });
@@ -59,17 +69,34 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
     }
   });
 
-  it('자원지 5종이 모두 어느 마을 근처에 있다', () => {
+  it('생산 마을 3곳과 도시 1곳, 도시는 마지막 번호', () => {
     for (const map of maps) {
-      const covered = new Set(map.towns.flatMap((t) => t.specialties));
+      expect(map.towns.map((t) => t.tier)).toEqual(['town', 'town', 'town', 'city']);
+    }
+  });
+
+  it('자원지 5종을 생산 마을 셋이 나눠 가진다', () => {
+    for (const map of maps) {
+      const covered = new Set(map.towns.filter((t) => t.tier === 'town').flatMap((t) => t.specialties));
       for (const k of RESOURCE_KINDS) expect(covered.has(k), `시드 ${map.requestedSeed}, ${k}`).toBe(true);
     }
   });
 
-  it('마을 특색은 1~2개이고, 실제로 주변 두 칸 안에 그 자원지가 2칸 이상 있다', () => {
+  it('도시는 길이 모이는 곳이고 주변 자원지가 적다', () => {
     for (const map of maps) {
       const nbs = buildNeighbors(map.tiles);
-      for (const town of map.towns) {
+      const city = map.towns.find((t) => t.tier === 'city')!;
+      expect(city.specialties).toEqual([]);
+      expect(resourceTilesAround(map.tiles, nbs, city.tile)).toBeLessThanOrEqual(WORLDGEN.cityMaxResourceTiles);
+      const sums = townTravelDays(map, AUTUMN).map((row) => row.reduce((s, d) => s + d, 0));
+      expect(sums[city.id], `시드 ${map.requestedSeed}`).toBe(Math.min(...sums));
+    }
+  });
+
+  it('생산 마을 특색은 1~2개이고, 실제로 주변 두 칸 안에 그 자원지가 2칸 이상 있다', () => {
+    for (const map of maps) {
+      const nbs = buildNeighbors(map.tiles);
+      for (const town of map.towns.filter((t) => t.tier === 'town')) {
         expect(town.specialties.length).toBeGreaterThanOrEqual(1);
         expect(town.specialties.length).toBeLessThanOrEqual(2);
         const area = [town.tile, ...cellsAround(nbs, town.tile, 2)];
@@ -103,17 +130,46 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
     expect(slower).toBeGreaterThan(0);
   });
 
-  it('마을은 4개, 땅 위에, 서로 5칸 이상 떨어져 있고, 이름이 겹치지 않는다', () => {
+  it('마을은 4곳, 땅 위에, 생산 마을끼리 5칸·도시와 4칸 이상 떨어져 있고, 이름이 겹치지 않는다', () => {
     for (const map of maps) {
-      expect(map.towns).toHaveLength(WORLDGEN.townCount);
+      expect(map.towns).toHaveLength(WORLDGEN.productionTowns + WORLDGEN.cities);
       expect(new Set(map.towns.map((t) => t.name)).size).toBe(map.towns.length);
       for (const a of map.towns) {
         expect(isTownTerrain(map.tiles[a.tile]!)).toBe(true);
         for (const b of map.towns) {
-          if (a !== b) expect(hexDistance(map.tiles[a.tile]!, map.tiles[b.tile]!)).toBeGreaterThanOrEqual(5);
+          if (a === b) continue;
+          const minDist = a.tier === 'city' || b.tier === 'city' ? WORLDGEN.cityMinDistance : WORLDGEN.townMinDistance;
+          expect(hexDistance(map.tiles[a.tile]!, map.tiles[b.tile]!)).toBeGreaterThanOrEqual(minDist);
         }
       }
     }
+  });
+
+  it('지역 특색 태그는 맞는 땅에만 붙고, 이어진 덩어리이며, 대부분의 맵에 하나 이상 있다', () => {
+    let withTags = 0;
+    for (const map of maps) {
+      if (map.regions.length) withTags++;
+      const nbs = buildNeighbors(map.tiles);
+      const towns = new Set(map.towns.map((t) => t.tile));
+      for (const r of map.regions) {
+        const kind = regionTag(r.tag).kind;
+        expect(r.tiles.length).toBeGreaterThanOrEqual(kind === 'road' ? 1 : WORLDGEN.regionMinTiles);
+        for (const i of r.tiles) {
+          const t = map.tiles[i]!;
+          if (kind === 'road') {
+            expect(t.road).toBe(true);
+            expect(towns.has(i)).toBe(false);
+          } else expect(terrainRegionKind(t.terrain)).toBe(kind);
+        }
+        // 이어진 덩어리
+        const inRegion = new Set(r.tiles);
+        const seen = new Set([r.tiles[0]!]);
+        const stack = [r.tiles[0]!];
+        while (stack.length) for (const n of nbs[stack.pop()!]!) if (inRegion.has(n) && !seen.has(n)) seen.add(n), stack.push(n);
+        expect(seen.size, `시드 ${map.requestedSeed}, ${r.tag}`).toBe(r.tiles.length);
+      }
+    }
+    expect(withTags).toBeGreaterThan(maps.length * 0.9);
   });
 
   it('길은 바다를 지나지 않고 모든 마을에 닿는다', () => {
@@ -135,8 +191,9 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
     expect(terrains.size).toBe(6);
   });
 
-  it('대부분 첫 지형에서 통과한다 (평균 2번 안쪽)', () => {
+  it('지형을 몇 번 만들지 않고 통과한다 (평균 3번 안쪽)', () => {
+    // 도시 조건이 붙어 평균 1.9번쯤이다 (시드 400개). 숫자를 바꿔 이 값이 크게 늘면 규칙이 너무 빡빡한 것
     const avg = maps.reduce((s, m) => s + m.tries, 0) / maps.length;
-    expect(avg).toBeLessThan(2);
+    expect(avg).toBeLessThan(3);
   });
 });

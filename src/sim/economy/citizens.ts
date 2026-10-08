@@ -11,6 +11,7 @@ const C = ECONOMY.citizens;
 
 export function citizenDemand(town: TownEconomy, good: GoodId, season: Season): number {
   let d: number = C.demand[good];
+  if (town.tier === 'city') d *= ECONOMY.city.demandFactor;
   if (season === WINTER) {
     if (good === 'wood') d *= C.winterWoodFactor;
     if (good === 'leather') d *= C.winterLeatherFactor;
@@ -26,8 +27,9 @@ export function citizenOrders(town: TownEconomy, season: Season, accounts: Accou
   const out: Order[] = [];
   for (const good of GOODS) {
     const daily = citizenDemand(town, good, season);
+    const premium = town.tier === 'city' && (ECONOMY.city.premiumGoods as readonly GoodId[]).includes(good);
     for (const step of C.priceSteps) {
-      const limit = Math.max(1, Math.round(basePrice(good) * step.factor));
+      const limit = Math.max(1, Math.round(basePrice(good) * step.factor * (premium ? ECONOMY.city.premiumFactor : 1)));
       const qty = Math.min(stochasticRound(daily * step.share, rng), Math.floor(town.treasury / limit));
       const o = accounts.place(owner, town.id, good, 'buy', qty, limit);
       if (o) out.push(o);
@@ -37,11 +39,17 @@ export function citizenOrders(town: TownEconomy, season: Season, accounts: Accou
 }
 
 /** 장날 뒤: 금고에 돈이 들어오고, 넘치면 바친다. 바친 돈을 돌려준다 */
+/** 하루 금고에 들어오는 돈 (도시는 더 많다) */
+export function stipendOf(town: TownEconomy): number {
+  return C.stipend * (town.tier === 'city' ? ECONOMY.city.treasuryFactor : 1);
+}
+
 export function treasuryDay(town: TownEconomy): number {
-  town.treasury += C.stipend;
+  town.treasury += stipendOf(town);
+  const cap = C.treasuryCap * (town.tier === 'city' ? ECONOMY.city.treasuryFactor : 1);
   let tribute = 0;
-  if (town.treasury > C.treasuryCap) {
-    tribute = Math.floor((town.treasury - C.treasuryCap) * C.tributeRate);
+  if (town.treasury > cap) {
+    tribute = Math.floor((town.treasury - cap) * C.tributeRate);
     town.treasury -= tribute;
   }
   for (const b of town.boosts) b.daysLeft--;

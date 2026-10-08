@@ -119,7 +119,7 @@ export class MapView {
     this.labels.set(
       map.towns.map((t) => {
         const c = tileCenter(map.tiles[t.tile]!);
-        return { id: t.id, name: t.name, anchor: new THREE.Vector3(c.x, c.y + 0.05, c.z + 0.75) };
+        return { id: t.id, name: t.name, city: t.tier === 'city', anchor: new THREE.Vector3(c.x, c.y + 0.05, c.z + 0.75) };
       }),
     );
   }

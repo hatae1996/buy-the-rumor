@@ -36,24 +36,44 @@ export function traderOrders(trader: Trader, state: EconomyState, days: number[]
   trader.plan = plan ? { good: plan.good, to: plan.to } : null;
   if (!plan) return out;
   const limit = limitPrice(here, plan.good, T.bidMarkup);
-  const o = accounts.place(owner, here.id, plan.good, 'buy', Math.min(T.capacity, Math.floor(trader.gold / limit)), limit);
+  // 어제 팔린 만큼, 도착할 마을이 받아 줄 만큼만 산다 (한꺼번에 몰아 가면 그 마을 값이 무너진다)
+  const qty = Math.min(T.capacity, Math.floor(trader.gold / limit), here.lastMarket[plan.good].supply, plan.absorb);
+  const o = accounts.place(owner, here.id, plan.good, 'buy', qty, limit);
   if (o) out.push(o);
   return out;
 }
 
-function bestPlan(trader: Trader, state: EconomyState, days: number[][]): { good: GoodId; to: number; margin: number } | null {
+function bestPlan(
+  trader: Trader,
+  state: EconomyState,
+  days: number[][],
+): { good: GoodId; to: number; margin: number; absorb: number } | null {
   const here = state.towns[trader.town]!;
-  let best: { good: GoodId; to: number; margin: number } | null = null;
+  // 다른 상단이 이미 가져가는 물건과 마을은 피한다 (같은 데 몰려가지 않게)
+  const taken = new Set(
+    state.traders
+      .filter((t) => t !== trader)
+      .flatMap((t) => [
+        ...(t.plan ? [`${t.plan.good}>${t.plan.to}`] : []),
+        ...(t.travel ? t.inv.map((l) => `${l.good}>${t.travel!.to}`) : []),
+      ]),
+  );
+  let best: { good: GoodId; to: number; margin: number; absorb: number } | null = null;
   for (const good of GOODS) {
+    // 여기서 어제 파는 사람이 없었으면 살 수 없다
+    if (here.lastMarket[good].supply === 0) continue;
     for (const there of state.towns) {
       const d = days[here.id]![there.id]!;
-      if (there.id === here.id || !Number.isFinite(d)) continue;
+      if (there.id === here.id || !Number.isFinite(d) || taken.has(`${good}>${there.id}`)) continue;
+      // 가져가도 받아 줄 사람이 없으면 안 간다 (그 마을 어제 사려는 양으로 어림)
+      const absorb = there.lastMarket[good].demand * T.absorbDays;
+      if (absorb === 0) continue;
       // 가는 길에 상하는 건 안 옮긴다
       const life = shelfLife(good);
       if (life !== null && life <= d + 1) continue;
       const margin =
         there.refPrice[good] * T.askMarkdown - here.refPrice[good] * T.bidMarkup - (d * T.costPerDay) / T.capacity;
-      if (margin > T.minMargin && (!best || margin > best.margin)) best = { good, to: there.id, margin };
+      if (margin > T.minMargin && (!best || margin > best.margin)) best = { good, to: there.id, margin, absorb };
     }
   }
   return best;
@@ -78,6 +98,19 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
     return;
   }
   trader.stuckDays = loaded ? trader.stuckDays + 1 : 0;
+  // 며칠 못 팔면 그 물건이 가장 비싼 다른 마을로 옮긴다
+  if (loaded && trader.stuckDays >= T.moveOnAfterDays) {
+    const good = trader.inv.reduce((a, l) => (l.qty > a.qty ? l : a)).good;
+    const to = state.towns
+      .filter((t) => t.id !== trader.town && Number.isFinite(days[trader.town]![t.id]!))
+      .sort((a, b) => b.refPrice[good] - a.refPrice[good])[0];
+    if (to) {
+      const d = days[trader.town]![to.id]!;
+      trader.travel = { from: trader.town, to: to.id, days: d, daysLeft: d };
+      trader.stuckDays = 0;
+      return;
+    }
+  }
   // 할 일이 없으면 가끔 다른 마을로 옮겨 본다
   if (!loaded && !trader.plan && rng.next() < 0.1) {
     const others = state.towns.filter((t) => t.id !== trader.town && Number.isFinite(days[trader.town]![t.id]!));

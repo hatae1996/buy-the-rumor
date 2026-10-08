@@ -6,7 +6,7 @@ import { createRng, shuffle } from '../rng';
 import { seasonOfDay, type Season } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { Accounts } from './accounts';
-import { citizenOrders, treasuryDay } from './citizens';
+import { citizenOrders, stipendOf, treasuryDay } from './citizens';
 import { newWorker } from './create';
 import { rollEvents } from './events';
 import { GOOD_NAME, GOODS, type GoodId } from './goods';
@@ -125,7 +125,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     season,
     markets,
     tribute,
-    stipend: ECONOMY.citizens.stipend * state.towns.length,
+    stipend: state.towns.reduce((s, t) => s + stipendOf(t), 0),
     arrivedGold,
     leftGold,
     spoiled,

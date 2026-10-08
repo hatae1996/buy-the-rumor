@@ -19,6 +19,8 @@ export class PropGeometries {
   readonly boat = new THREE.BoxGeometry(0.42, 0.1, 0.18);
   readonly wall = new THREE.BoxGeometry(0.42, 0.32, 0.42);
   readonly roof = new THREE.ConeGeometry(0.38, 0.32, 4);
+  readonly tower = new THREE.CylinderGeometry(0.17, 0.2, 0.9, 8);
+  readonly towerRoof = new THREE.ConeGeometry(0.26, 0.36, 8);
   /** 길 한 토막: x축으로 길이 1 */
   readonly roadSpoke = new THREE.BoxGeometry(1, 0.04, 0.2);
   readonly roadHub = new THREE.CylinderGeometry(0.1, 0.1, 0.04, 8);
@@ -27,6 +29,20 @@ export class PropGeometries {
     Object.values(this).forEach((g) => (g as THREE.BufferGeometry).dispose());
   }
 }
+
+/** 마을 집 배치 (x, z, 크기). 도시는 탑을 둘러 집이 더 많다 */
+const TOWN_HOUSES = [
+  [-0.3, 0.15, 1],
+  [0.32, 0.05, 0.85],
+  [0, -0.35, 0.9],
+] as const;
+const CITY_HOUSES = [
+  [-0.45, 0.2, 0.8],
+  [0.45, 0.25, 0.75],
+  [-0.35, -0.38, 0.75],
+  [0.38, -0.35, 0.8],
+  [0, 0.52, 0.7],
+] as const;
 
 export interface PropOptions {
   season: Season;
@@ -42,7 +58,7 @@ export function addProps(
   kit: MaterialKit,
   opt: PropOptions,
 ): void {
-  const townTiles = new Set(map.towns.map((t) => t.tile));
+  const townAt = new Map(map.towns.map((t) => [t.tile, t]));
   const outline = opt.outline ? kit.outline : null;
   const winter = opt.season === 3;
 
@@ -56,10 +72,17 @@ export function addProps(
       return { x: c.x + dx * cos - dz * sin, y: c.y + dy, z: c.z + dx * sin + dz * cos, scale, rotY: rotY + turn };
     };
 
-    if (townTiles.has(i)) {
-      for (const [dx, dz, s] of [[-0.3, 0.15, 1], [0.32, 0.05, 0.85], [0, -0.35, 0.9]] as const) {
+    const town = townAt.get(i);
+    if (town) {
+      const houses = town.tier === 'city' ? CITY_HOUSES : TOWN_HOUSES;
+      for (const [dx, dz, s] of houses) {
         b.addOutlined(geo.wall, kit.toon(PROP.wall), outline, at(dx, dz, 0.16 * s, s));
         b.addOutlined(geo.roof, kit.toon(PROP.roof), outline, at(dx, dz, 0.48 * s, s, Math.PI / 4));
+      }
+      // 도시는 가운데에 높은 탑이 있어 멀리서도 알아본다
+      if (town.tier === 'city') {
+        b.addOutlined(geo.tower, kit.toon(PROP.wall), outline, at(0, 0, 0.45));
+        b.addOutlined(geo.towerRoof, kit.toon(PROP.cityRoof), outline, at(0, 0, 1.08));
       }
       return;
     }

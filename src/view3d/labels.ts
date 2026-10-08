@@ -17,12 +17,12 @@ export class TownLabels {
     private readonly onTap: (townId: number) => void,
   ) {}
 
-  set(towns: readonly { id: number; name: string; anchor: THREE.Vector3 }[]): void {
+  set(towns: readonly { id: number; name: string; city: boolean; anchor: THREE.Vector3 }[]): void {
     this.layer.replaceChildren();
     this.labels = towns.map((t) => {
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = 'map-label';
+      el.className = t.city ? 'map-label city' : 'map-label';
       const ribbon = document.createElement('span');
       ribbon.textContent = t.name;
       el.appendChild(ribbon);

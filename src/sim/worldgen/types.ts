@@ -34,14 +34,27 @@ export interface Tile {
   road: boolean;
 }
 
+/** 마을 규모. 생산 마을은 자원지 옆에서 원재료를 만들고, 도시는 길이 모이는 곳에서 사람과 돈이 많다 */
+export type TownTier = 'town' | 'city';
+
 export interface Town {
   id: number;
   name: string;
+  tier: TownTier;
   /** WorldMap.tiles 안의 번호 */
   tile: number;
-  /** 주변 자원지로 정해지는 특색. 많은 순, 최대 2개 */
+  /** 주변 자원지로 정해지는 특색. 많은 순, 최대 2개. 도시는 비어 있다 */
   specialties: ResourceKind[];
 }
+
+/** 지역 특색 태그가 붙은 땅 (원정 덱이 읽는다) */
+export interface TaggedRegion {
+  tag: RegionTagId;
+  /** WorldMap.tiles 안의 번호 */
+  tiles: number[];
+}
+
+export type RegionTagId = 'bears' | 'oldGrowth' | 'wolves' | 'exposedVein' | 'reef' | 'shoals' | 'fertile' | 'bandits';
 
 export interface WorldMap {
   /** 요청한 시드 */
@@ -53,4 +66,5 @@ export interface WorldMap {
   radius: number;
   tiles: Tile[];
   towns: Town[];
+  regions: TaggedRegion[];
 }

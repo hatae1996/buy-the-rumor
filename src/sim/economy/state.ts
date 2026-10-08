@@ -1,6 +1,6 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
 import type { Season } from '../season';
-import type { ResourceKind } from '../worldgen';
+import type { ResourceKind, TownTier } from '../worldgen';
 import type { GoodId } from './goods';
 import type { Inventory, Lot } from './inventory';
 import type { JobId } from './jobs';
@@ -29,6 +29,8 @@ export interface MarketResult {
 export interface TownEconomy {
   /** WorldMap.towns의 id */
   id: number;
+  /** 마을 규모 (맵에서 그대로) */
+  tier: TownTier;
   nodes: ResourceNode[];
   /** 기준 시세. 정산 가격을 따라 천천히 움직인다 */
   refPrice: Record<GoodId, number>;

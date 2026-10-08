@@ -3,8 +3,10 @@ import { ECONOMY, WORLDGEN } from '../constants';
 import { buildNeighbors, cellsAround, type ResourceKind, type WorldMap } from '../worldgen';
 import type { ResourceNode, TownEconomy } from './state';
 
+/** 마을 주변 자원지. 도시는 자원지 옆이 아니라서 채집 일꾼이 없다 */
 export function townNodes(map: WorldMap, townId: number): ResourceNode[] {
   const town = map.towns[townId]!;
+  if (town.tier === 'city') return [];
   const area = [town.tile, ...cellsAround(buildNeighbors(map.tiles), town.tile, WORLDGEN.specialtyRange)];
   const tiles = new Map<ResourceKind, number>();
   for (const i of area) {

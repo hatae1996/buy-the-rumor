@@ -72,9 +72,11 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     const days = townTravelDays(game.map, v.season)[here]![to]!;
     const fee = days * ECONOMY.player.travelFeePerDay;
     const mem = v.memory[to];
+    const city = game.map.towns[to]!.tier === 'city';
     const sheet = openSheet(`${euro(name(to))} 떠날까요?`);
     sheet.body.innerHTML = `
       <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
+      ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
       <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>
       ${v.orders.length ? `<p class="warn">이 마을에 낸 신청 ${v.orders.length}개는 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}
       <p class="error" data-error hidden></p>

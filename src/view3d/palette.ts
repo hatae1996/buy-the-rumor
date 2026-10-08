@@ -51,6 +51,7 @@ export const PROP = {
   road: 0x6b4a32,
   wall: 0xf1e2c6,
   roof: 0xd2594b,
+  cityRoof: 0x2e9c98,
 } as const;
 
 /** 내 상단은 빨강, 다른 상단들 */

@@ -11,6 +11,7 @@ import {
   type ResourceKind,
   type Terrain,
   type WorldMap,
+  regionTag,
 } from '../sim/worldgen';
 
 // 계절별 지형 색 (prototypes/hexmap-2d.html)
@@ -59,6 +60,7 @@ export function mountWorldgenView(root: HTMLElement): void {
           <section class="dev-slip"><h2>맵</h2><div data-meta></div></section>
           <section class="dev-slip"><h2>생성 규칙</h2><ul data-rules></ul></section>
           <section class="dev-slip"><h2>마을</h2><ul data-towns></ul></section>
+          <section class="dev-slip"><h2>지역 특색 (지도에 점선)</h2><ul data-regions></ul></section>
           <section class="dev-slip"><h2>이동 일수</h2><table class="dev-table" data-days></table></section>
         </div>
       </div>
@@ -116,11 +118,19 @@ export function mountWorldgenView(root: HTMLElement): void {
     $('[data-towns]').innerHTML = map.towns
       .map(
         (t) =>
-          `<li><b>${t.name}</b><span>${t.specialties
-            .map((k) => `<span class="dev-chip" style="background:${RESOURCE_COLOR[k]}">${RESOURCE_NAME[k]}</span>`)
-            .join('')}</span></li>`,
+          `<li><b>${t.name}</b><span>${
+            t.tier === 'city'
+              ? '<span class="dev-chip" style="background:#2E9C98">도시</span>'
+              : t.specialties
+                  .map((k) => `<span class="dev-chip" style="background:${RESOURCE_COLOR[k]}">${RESOURCE_NAME[k]}</span>`)
+                  .join('')
+          }</span></li>`,
       )
       .join('');
+
+    $('[data-regions]').innerHTML =
+      map.regions.map((r) => `<li><span class="dev-mono">${r.tiles.length}칸</span><span>${regionTag(r.tag).name}</span></li>`).join('') ||
+      '<li class="dev-mono">이 맵에는 태그가 붙은 지역이 없어요.</li>';
 
     const days = townTravelDays(map, season);
     const names = map.towns.map((t) => t.name);
@@ -173,9 +183,18 @@ function drawMap(map: WorldMap, season: Season): string {
     }
   });
 
+  // 지역 특색: 태그가 붙은 칸을 점선으로 두른다
+  for (const r of map.regions) {
+    for (const i of r.tiles) {
+      const { x, y } = pts[i]!;
+      g += `<polygon points="${hexPoints(x, y, S - 4)}" fill="none" stroke="#3A2B22" stroke-width="2" stroke-dasharray="4 3" opacity="0.7"/>`;
+    }
+  }
+
   for (const town of map.towns) {
     const { x, y } = pts[town.tile]!;
-    g += `<circle cx="${x}" cy="${y}" r="13" fill="#D2594B" stroke="#3A2B22" stroke-width="2.5"/>`;
+    const city = town.tier === 'city';
+    g += `<circle cx="${x}" cy="${y}" r="${city ? 17 : 13}" fill="${city ? '#2E9C98' : '#D2594B'}" stroke="#3A2B22" stroke-width="2.5"/>`;
     g += `<text x="${x}" y="${y + 30}" text-anchor="middle" font-family="Jua, sans-serif" font-size="15" fill="#F1E2C6" stroke="#3A2B22" stroke-width="3" paint-order="stroke">${town.name}</text>`;
   }
 

@@ -12,12 +12,19 @@ interface Link {
   path: number[];
 }
 
-/** 길이 놓일 칸 번호들. 마을을 모두 잇지 못하면 null */
+export interface RoadPlan {
+  /** 길이 놓일 칸 번호 */
+  tiles: Set<number>;
+  /** 마을 사이 길마다 지나는 칸 (양 끝 마을 포함) */
+  links: { a: number; b: number; path: number[] }[];
+}
+
+/** 마을을 모두 잇는 길. 잇지 못하면 null */
 export function planRoads(
   tiles: readonly Tile[],
   neighbors: readonly number[][],
   townTiles: readonly number[],
-): Set<number> | null {
+): RoadPlan | null {
   const n = townTiles.length;
   const links: Link[] = [];
   for (let a = 0; a < n; a++) {
@@ -48,5 +55,8 @@ export function planRoads(
   if (used.length < n - 1) return null;
   if (extra && extra.cost < used[used.length - 1]!.cost * WORLDGEN.extraRoadFactor) used.push(extra);
 
-  return new Set(used.flatMap((l) => l.path));
+  return {
+    tiles: new Set(used.flatMap((l) => l.path)),
+    links: used.map(({ a, b, path }) => ({ a, b, path })),
+  };
 }

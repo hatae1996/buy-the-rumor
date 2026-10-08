@@ -3,9 +3,18 @@
 export const WORLDGEN = {
   /** 맵 반지름 (칸). 반지름 7이면 169칸 */
   radius: 7,
-  townCount: 4,
+  /** 테스트 버전: 생산 마을 3 + 도시 1 (기획서 "직업") */
+  productionTowns: 3,
+  cities: 1,
   /** 마을끼리 떨어져야 하는 최소 칸 수 */
   townMinDistance: 5,
+  /** 도시는 생산 마을과 이만큼은 떨어진다 (칸) */
+  cityMinDistance: 4,
+  /** 도시 주변 두 칸 안 자원지 칸이 이보다 많으면 도시로 쓰지 않는다 ("자원지가 거의 없다") */
+  cityMaxResourceTiles: 5,
+  /** 지역 특색 태그: 덩어리마다 붙을 확률, 붙으려면 덩어리가 이만큼은 커야 한다 */
+  regionTagChance: 0.45,
+  regionMinTiles: 3,
   /** 마을 특색을 셀 때 보는 범위 (칸) */
   specialtyRange: 2,
   /** 특색이 되려면 범위 안에 같은 자원지가 몇 칸 있어야 하나 */
@@ -192,6 +201,17 @@ export const ECONOMY = {
     tributeRate: 0.25,
   },
 
+  /** 도시: 자원지가 거의 없지만 사람과 돈이 많아 가공품과 고급품을 비싸게 산다 (기획서 "직업") */
+  city: {
+    /** 주민 수요 배율 */
+    demandFactor: 2.5,
+    /** 금고에 들어오는 돈, 시작 금고, 금고 상한 배율 */
+    treasuryFactor: 2.5,
+    /** 이 물건들은 더 비싸게 산다 (가공품, 가죽) */
+    premiumGoods: ['tools', 'salted', 'leather'],
+    premiumFactor: 1.3,
+  },
+
   /** NPC 상단 */
   traders: {
     count: 3,
@@ -205,6 +225,10 @@ export const ECONOMY = {
     taxThreshold: 600,
     /** 짐을 못 팔고 머문 날마다 부르는 값을 이만큼 내린다 */
     stuckMarkdown: 0.15,
+    /** 이만큼 못 팔면 다른 마을로 옮긴다 */
+    moveOnAfterDays: 3,
+    /** 도착할 마을이 며칠 치 사려는 양까지 받아 줄 것으로 보나 */
+    absorbDays: 4,
   },
 
   /** 새 세계를 플레이어가 오기 전에 미리 돌리는 날. 첫날부터 장에 물건이 돌게 한다 */

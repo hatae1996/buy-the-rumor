@@ -229,6 +229,8 @@ function craftMargin(job: CraftJob, town: TownEconomy): number {
 }
 
 export function jobCap(job: JobId, town: TownEconomy): number {
+  // 도시는 일하는 곳이 아니라 사고 쓰는 곳이다 (일꾼 없이 주민 수요만 있다)
+  if (town.tier === 'city') return 0;
   if (!isGatherJob(job)) return ECONOMY.jobCap.crafter;
   const node = findNode(town, JOB_RESOURCE[job]);
   if (!node) return 0;

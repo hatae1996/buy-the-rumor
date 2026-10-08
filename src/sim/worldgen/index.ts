@@ -1,5 +1,6 @@
 export * from './types';
-export { generateWorld } from './generate';
+export { generateWorld, resourceTilesAround } from './generate';
+export { REGION_TAGS, regionTag, terrainRegionKind, type RegionKind, type RegionTagDef } from './regionTags';
 export { checkWorldRules, type RuleCheck } from './rules';
 export { townTravelDays, nearestTownDays } from './days';
 export { moveCost, terrainCost, shortestPaths, pathTo, costToDays, type ShortestPaths } from './travel';

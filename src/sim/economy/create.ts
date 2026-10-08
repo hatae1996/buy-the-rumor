@@ -49,6 +49,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       const n = Math.max(1, Math.round(node.tiles * ECONOMY.startWorkers.perResourceTile * share));
       for (let i = 0; i < n; i++) state.workers.push(newWorker(state, town.id, job, rng));
     }
+    if (town.tier === 'city') continue;
     for (const job of CRAFT_JOBS) {
       for (let i = 0; i < ECONOMY.startWorkers.crafter; i++) state.workers.push(newWorker(state, town.id, job, rng));
     }
@@ -91,12 +92,14 @@ function warmUp(state: EconomyState, map: WorldMap, days: number): void {
 function createTown(map: WorldMap, id: number): TownEconomy {
   const refPrice = {} as Record<GoodId, number>;
   for (const g of GOODS) refPrice[g] = basePrice(g);
+  const tier = map.towns[id]!.tier;
   return {
     id,
+    tier,
     nodes: townNodes(map, id),
     refPrice,
     lastMarket: emptyGoodMap<MarketResult>({ price: null, volume: 0, demand: 0, supply: 0, bestBid: null, bestAsk: null, imbalance: 0 }),
-    treasury: ECONOMY.citizens.startTreasury,
+    treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
     storm: 0,
     boosts: [],
   };
