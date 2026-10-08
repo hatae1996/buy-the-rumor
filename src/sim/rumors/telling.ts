@@ -59,12 +59,12 @@ export function tell(r: WorldRumor, copy: RumorCopy, teller: Gossip | null, map:
       const dir = pitching ? 'high' : f.dir;
       const base = pitching ? Math.max(f.price, basePrice(f.good)) * RUMORS.merchantInflate : f.price;
       const said = dir === 'high' ? base * scale : base / scale;
-      claim = { kind: 'price', town: f.town, good: f.good, dir, ...blurPrice(said, dir, copy.blur) };
+      claim = { kind: 'price', town: f.town, good: f.good, dir, ...blurPrice(said, dir, copy.blur), asOf: r.day };
       break;
     }
     case 'orders': {
       const side = pitching ? 'buy' : f.side;
-      claim = { kind: 'orders', town: f.town, good: f.good, side, qty: copy.blur === 0 ? Math.max(1, Math.round(f.qty * scale)) : null };
+      claim = { kind: 'orders', town: f.town, good: f.good, side, qty: copy.blur === 0 ? Math.max(1, Math.round(f.qty * scale)) : null, asOf: r.day };
       break;
     }
     case 'horse':
@@ -84,9 +84,9 @@ export function tell(r: WorldRumor, copy: RumorCopy, teller: Gossip | null, map:
 }
 
 /** 장사꾼이 할 말이 없을 때: 자기 물품이 다른 마을에서 비싸다고 한다 (근거 없음) */
-export function pitch(teller: Gossip, town: number, map: WorldMap): Telling | null {
+export function pitch(teller: Gossip, town: number, map: WorldMap, today: number): Telling | null {
   if (!teller.good) return null;
-  const claim: Claim = { kind: 'price', town, good: teller.good, dir: 'high', price: null, bound: null };
+  const claim: Claim = { kind: 'price', town, good: teller.good, dir: 'high', price: null, bound: null, asOf: today };
   return { claim, text: claimText(claim, map), importance: 1 };
 }
 

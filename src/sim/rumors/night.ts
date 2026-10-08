@@ -8,10 +8,10 @@ import { createGossips } from './gossips';
 import { hearFromGossips } from './hear';
 import { deliverPigeons, informantReports } from './pigeon';
 import type { HeardRumor, RumorMill } from './types';
-import { verifyNotebook } from './verify';
+import { logMarkets, verifyNotebook } from './verify';
 
 export function emptyRumorMill(): RumorMill {
-  return { live: [], gossips: [], gossipSeason: 0, cooldown: {}, lastSaid: {}, nextId: 1 };
+  return { live: [], gossips: [], gossipSeason: 0, cooldown: {}, lastSaid: {}, nextId: 1, marketLog: {} };
 }
 
 export interface RumorNight {
@@ -35,6 +35,7 @@ export function rumorNight(state: EconomyState, map: WorldMap): RumorNight {
   }
   mill.live = mill.live.filter((r) => r.expires >= state.day);
   for (const [key, until] of Object.entries(mill.cooldown)) if (until <= state.day) delete mill.cooldown[key];
+  logMarkets(state);
   mill.live.push(...makeRumorsToday(state, map, rng));
 
   const heard = [...deliverPigeons(state, map), ...informantReports(state, map), ...hearFromGossips(state, map, rng)];

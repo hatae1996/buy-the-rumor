@@ -71,7 +71,8 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
 function tellerStamps(notes: readonly NoteView[]): string {
   const by = new Map<string, { right: number; wrong: number }>();
   for (const n of notes) {
-    if (!n.stamp || n.via !== 'gossip') continue;
+    // "확인 못 함"은 도장이 아니라 세지 않는다
+    if (!n.stamp || n.stamp === 'unchecked' || n.via !== 'gossip') continue;
     const t = by.get(n.from) ?? { right: 0, wrong: 0 };
     t[n.stamp]++;
     by.set(n.from, t);

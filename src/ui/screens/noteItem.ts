@@ -2,9 +2,13 @@
 import type { NoteView } from '../../sim/economy';
 import { agoText } from '../format';
 
+const STAMP_TEXT = { right: '맞았다', wrong: '틀렸다', unchecked: '확인 못 함' } as const;
+
+/** 도장. "확인 못 함"은 도장이 아니라 흐린 글씨다 (기한 안에 확인하지 못함, 0.0.6) */
 export function stampHtml(n: NoteView): string {
   if (!n.stamp) return '';
-  return `<span class="stamp ${n.stamp}">${n.stamp === 'right' ? '맞았다' : '틀렸다'}</span>`;
+  if (n.stamp === 'unchecked') return `<span class="unchecked">${STAMP_TEXT.unchecked}</span>`;
+  return `<span class="stamp ${n.stamp}">${STAMP_TEXT[n.stamp]}</span>`;
 }
 
 export function noteItem(n: NoteView, today: number, townName: (id: number) => string): string {

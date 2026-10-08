@@ -93,7 +93,7 @@ export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): H
   for (const gossip of gossips) {
     if (budget <= 0 || gossip.personality !== 'merchant' || !canTalk(gossip) || !others.length) continue;
     if (rng.next() >= RUMORS.merchantPitchChance) continue;
-    const t = pitch(gossip, rng.pick(others), map);
+    const t = pitch(gossip, rng.pick(others), map, state.day);
     if (t) say({ gossip, rumor: null, told: t });
   }
   return out;

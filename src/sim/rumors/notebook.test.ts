@@ -7,6 +7,7 @@ import { generateWorld, REGION_TAGS, townLinks, type WorldMap } from '../worldge
 import {
   addNote,
   drinkFee,
+  logMarkets,
   priceRight,
   spreadReach,
   tagsNearTown,
@@ -48,7 +49,7 @@ function addRumor(state: EconomyState, map: WorldMap, fact: RumorFact, origin: n
 
 describe('시세 도장', () => {
   const claim = (price: number | null, bound: 'about' | 'atLeast' | 'atMost' | null, dir: 'high' | 'low' = 'high') =>
-    ({ kind: 'price', town: 0, good: 'leather', dir, price, bound }) as const;
+    ({ kind: 'price', town: 0, good: 'leather', dir, price, bound, asOf: 0 }) as const;
 
   it('숫자를 들었으면 숫자로, 금값/헐값이면 기준 가격으로 견준다', () => {
     expect(priceRight(claim(40, 'about'), 44)).toBe(true);
@@ -65,15 +66,49 @@ describe('시세 도장', () => {
     const { map, state } = world();
     const here = state.player.town;
     const other = townLinks(map)[here]![0]!;
+    logMarkets(state);
+    const asOf = state.day;
     const actual = Math.round(state.towns[here]!.refPrice.ore);
-    const right = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual, bound: 'about' });
-    const wrong = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual * 3 + 10, bound: 'about' });
-    const away = hear(state, { kind: 'price', town: other, good: 'ore', dir: 'high', price: 1, bound: 'about' });
+    const right = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual, bound: 'about', asOf });
+    const wrong = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual * 3 + 10, bound: 'about', asOf });
+    const away = hear(state, { kind: 'price', town: other, good: 'ore', dir: 'high', price: 1, bound: 'about', asOf });
     verifyNotebook(state, map);
     expect(right.stamp).toBe('right');
     expect(wrong.stamp).toBe('wrong');
     expect(away.stamp).toBeNull();
     expect(right.stampDay).toBe(state.day);
+  });
+
+  it('늦게 가서 값이 바뀌었어도, 이야기가 생긴 날 맞았으면 맞았다 (0.0.6)', () => {
+    const { map, state } = world();
+    const here = state.player.town;
+    logMarkets(state);
+    const asOf = state.day;
+    const actual = Math.round(state.towns[here]!.refPrice.ore);
+    // 이야기는 마을 밖에서 들었다
+    state.player.travel = { from: here, to: here, days: 3, daysLeft: 3 };
+    const h = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual, bound: 'about', asOf });
+    state.day += 3;
+    state.towns[here]!.refPrice.ore = actual * 4 + 20;
+    logMarkets(state);
+    state.player.travel = null;
+    verifyNotebook(state, map);
+    expect(h.stamp).toBe('right');
+  });
+
+  it('기한 안에 그 마을에 못 가면 도장 없이 "확인 못 함"이고, 새 도장으로 세지 않는다 (0.0.6)', () => {
+    const { map, state } = world();
+    const here = state.player.town;
+    const other = townLinks(map)[here]![0]!;
+    logMarkets(state);
+    const h = hear(state, { kind: 'price', town: other, good: 'ore', dir: 'high', price: 1, bound: 'about', asOf: state.day });
+    state.day += RUMORS.verify.priceDays;
+    expect(verifyNotebook(state, map)).toBe(0);
+    expect(h.stamp).toBeNull();
+    state.day += 1;
+    expect(verifyNotebook(state, map)).toBe(0);
+    expect(h.stamp).toBe('unchecked');
+    expect(h.stampDay).toBe(state.day);
   });
 });
 
@@ -124,12 +159,17 @@ describe('장날 신청 현황 도장', () => {
   it('들은 뒤 그 마을 장날을 겪으면 찍는다', () => {
     const { map, state } = world();
     const here = state.player.town;
-    const h = hear(state, { kind: 'orders', town: here, good: 'grain', side: 'buy', qty: null });
+    // 이야기가 생긴 날의 장: 곡물 사려는 사람이 많았다
+    state.towns[here]!.lastMarket.grain = { ...state.towns[here]!.lastMarket.grain, demand: 20, supply: 5 };
+    logMarkets(state);
+    const h = hear(state, { kind: 'orders', town: here, good: 'grain', side: 'buy', qty: null, asOf: state.day });
     verifyNotebook(state, map);
     // 같은 날에는 아직 장날을 겪지 않았다
     expect(h.stamp).toBeNull();
     state.day += 1;
-    state.towns[here]!.lastMarket.grain = { ...state.towns[here]!.lastMarket.grain, demand: 20, supply: 5 };
+    // 다음 날 장이 바뀌어도 이야기가 생긴 날의 사실로 견준다
+    state.towns[here]!.lastMarket.grain = { ...state.towns[here]!.lastMarket.grain, demand: 2, supply: 30 };
+    logMarkets(state);
     verifyNotebook(state, map);
     expect(h.stamp).toBe('right');
   });

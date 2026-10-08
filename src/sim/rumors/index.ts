@@ -6,7 +6,7 @@ export { claimText } from './text';
 export { tell, pitch, isBadNews, type Telling } from './telling';
 export { hearFromGossips, innRumor, knownCopy, believes } from './hear';
 export { addNote, noteSeen } from './notebook';
-export { verifyNotebook, verifyByExpedition, priceRight } from './verify';
+export { verifyNotebook, verifyByExpedition, priceRight, logMarkets } from './verify';
 export { deliverPigeons, informantReports } from './pigeon';
 export { buyDrink, sendPigeon, hireInformant, dismissInformant, drinkFee, type RumorError } from './commands';
 export { rumorNight, emptyRumorMill, type RumorNight } from './night';

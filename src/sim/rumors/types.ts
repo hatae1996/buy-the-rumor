@@ -86,6 +86,8 @@ export interface RumorMill {
   lastSaid: Record<string, number>;
   /** 소문과 수첩 줄 번호. 경제 쪽 번호(state.nextId)와 따로 세어 소문이 경제 결과를 바꾸지 않게 한다 */
   nextId: number;
+  /** 마을마다 최근 며칠 장 기록 (RUMORS.verify.logDays일). 도장을 찍을 때 소문이 생긴 날의 사실을 본다 */
+  marketLog: Record<number, MarketLogDay[]>;
 }
 
 /**
@@ -100,14 +102,25 @@ export type Claim =
    * 시세. bound가 about이면 "48에 팔린다", atLeast면 "40은 넘는다", atMost면 "20도 안 한다",
    * null이면 숫자 없이 "금값"/"헐값"
    */
-  | { kind: 'price'; town: number; good: GoodId; dir: 'high' | 'low'; price: number | null; bound: 'about' | 'atLeast' | 'atMost' | null }
-  | { kind: 'orders'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number | null }
+  | { kind: 'price'; town: number; good: GoodId; dir: 'high' | 'low'; price: number | null; bound: 'about' | 'atLeast' | 'atMost' | null; asOf: number }
+  | { kind: 'orders'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number | null; asOf: number }
   | { kind: 'trait'; town: number; tag: RegionTagId }
   /** 말 입고: count가 null이면 "몇 마리", day가 null이면 "곧". 그 마구간에 가서 확인한다 */
   | { kind: 'horse'; town: number; horse: HorseKind; count: number | null; day: number | null; from: number };
 
 /** 어떻게 들었나: 소문꾼, 여관 손님, 원정에서 직접 봄, 전서구, 정보원 */
 export type HeardVia = 'gossip' | 'inn' | 'seen' | 'pigeon' | 'informant';
+
+export type Stamp = 'right' | 'wrong' | 'unchecked';
+
+/** 마을의 하루 장 기록: 시세 소문과 신청 현황 소문을 "그 이야기가 생긴 날"의 사실과 견주는 데 쓴다 */
+export interface MarketLogDay {
+  day: number;
+  /** 그날 밤 기준 시세 (반올림) */
+  price: Record<GoodId, number>;
+  /** 그날 장날에서 사려는 양 − 팔려는 양 */
+  gap: Record<GoodId, number>;
+}
 
 /** 들은 이야기 수첩 한 줄 */
 export interface HeardRumor {
@@ -127,7 +140,10 @@ export interface HeardRumor {
   importance: number;
   /** 도장을 찍을 주장. 직접 본 것처럼 확인할 게 없으면 null */
   claim: Claim | null;
-  /** 맞았다/틀렸다 도장. 아직 확인 못 했으면 null */
-  stamp: 'right' | 'wrong' | null;
+  /**
+   * 맞았다/틀렸다 도장. 아직 확인 못 했으면 null.
+   * 확인할 기한이 지나도록 확인하지 못하면 'unchecked' ("확인 못 함", 도장이 아니다, 0.0.6)
+   */
+  stamp: Stamp | null;
   stampDay: number | null;
 }
