@@ -237,7 +237,6 @@ export const ECONOMY = {
   player: {
     /** 시작 조건: 모두 같은 돈 (기획서 "시작 조건") */
     startGold: 200,
-    capacity: 40,
     travelFeePerDay: 3,
     /** 이보다 큰 거래(금액)는 신문에 실린다 */
     bigTradeNews: 400,
@@ -271,5 +270,32 @@ export const ECONOMY = {
     newVeinTiles: 1,
     boostFactor: 2.2,
     boostDays: 6,
+  },
+} as const;
+
+/**
+ * 수레 인벤토리 (기획서 "수레 인벤토리"). 모양과 쌓기 수는 기획서 초안, 무게는 개발 초안.
+ * 모양 칸 좌표는 [x, y], 수레 그림은 '#'가 실을 수 있는 칸.
+ */
+export const CART = {
+  /** 시작은 등짐 하나 (기획서 "시작 조건") */
+  start: 'pack',
+  types: {
+    pack: { name: '등짐', rows: ['###', '###', '###'], maxWeight: 30 },
+    handcart: { name: '손수레', rows: ['.####.', '######', '######'], maxWeight: 70 },
+    wagon: { name: '짐수레', rows: ['#######', '#######', '#######', '.#####.'], maxWeight: 150 },
+    carriage: { name: '마차', rows: ['.######.', '########', '########', '########', '########'], maxWeight: 260 },
+  },
+  goods: {
+    // 가죽·생선 2칸 가로, 고기 2칸 세로, 곡물 2×2, 목재 1×3, 광석·소금 1칸, 도구·염장 통 ㄱ자 3칸
+    fish: { shape: [[0, 0], [1, 0]], stack: 2, weight: 1 },
+    meat: { shape: [[0, 0], [0, 1]], stack: 2, weight: 2 },
+    grain: { shape: [[0, 0], [1, 0], [0, 1], [1, 1]], stack: 1, weight: 3 },
+    wood: { shape: [[0, 0], [1, 0], [2, 0]], stack: 2, weight: 3 },
+    leather: { shape: [[0, 0], [1, 0]], stack: 4, weight: 1 },
+    ore: { shape: [[0, 0]], stack: 3, weight: 3 },
+    salt: { shape: [[0, 0]], stack: 3, weight: 2 },
+    salted: { shape: [[0, 0], [0, 1], [1, 1]], stack: 1, weight: 3 },
+    tools: { shape: [[0, 0], [0, 1], [1, 1]], stack: 1, weight: 2 },
   },
 } as const;

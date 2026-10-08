@@ -31,7 +31,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   notEnoughGold: '돈이 모자라요.',
   notEnoughGoods: '짐에 그만큼 없어요.',
   spoiling: '곧 상할 물건은 장에 낼 수 없어요.',
-  noRoom: '짐칸이 모자라요.',
+  noRoom: '수레에 자리가 모자라요. 짐을 정리하거나 팔아서 자리를 만드세요.',
   noOrder: '이미 없는 신청이에요.',
   sameTown: '이미 이 마을에 있어요.',
   noTown: '없는 마을이에요.',
@@ -40,6 +40,10 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   tooManyMeals: '오늘은 더 못 먹겠어요. 내일 다시 먹어요.',
   alreadyRested: '오늘은 이미 여관에서 쉬었어요.',
   notTired: '지치지 않았어요.',
+  overweight: '짐이 너무 무거워 떠날 수 없어요. 팔거나 버려서 무게를 줄이세요.',
+  noPiece: '없는 짐이에요.',
+  cantPlace: '거기에는 놓을 수 없어요.',
+  pieceBusy: '장날 신청이 걸린 짐은 버릴 수 없어요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -57,6 +61,8 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${GOOD_NAME[e.good]} 하나를 먹었어요 (피로 −${e.recovered})`, amount: null };
     case 'inn':
       return { text: `${townName(e.town)} 여관에서 쉬었어요 (피로 −${e.recovered})`, amount: -e.fee };
+    case 'discard':
+      return { text: `${GOOD_NAME[e.good]} ${e.qty}개를 버렸어요`, amount: null };
   }
 }
 

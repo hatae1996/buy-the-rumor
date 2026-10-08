@@ -1,5 +1,6 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
 import type { Season } from '../season';
+import type { Cart } from '../cart';
 import type { ResourceKind, TownTier } from '../worldgen';
 import type { GoodId } from './goods';
 import type { Inventory, Lot } from './inventory';
@@ -87,14 +88,15 @@ export type LedgerEntry =
   | { day: number; kind: 'travel'; from: number; to: number; days: number; fee: number }
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
-  | { day: number; kind: 'inn'; town: number; fee: number; recovered: number };
+  | { day: number; kind: 'inn'; town: number; fee: number; recovered: number }
+  | { day: number; kind: 'discard'; good: GoodId; qty: number };
 
 export interface PlayerState {
   gold: number;
   town: number;
   travel: Travel | null;
-  cargo: Inventory;
-  capacity: number;
+  /** 짐은 수레 칸에 싣는다 (기획서 "수레 인벤토리") */
+  cart: Cart;
   memory: Record<number, PriceMemory>;
   ledger: LedgerEntry[];
   /** 피로 0~max. 원정마다 쌓이고, 밤잠·음식·여관으로 준다 */

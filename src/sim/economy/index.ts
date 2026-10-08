@@ -10,4 +10,5 @@ export { moneySupply, population, jobCounts, hungryWorkers, townStock } from './
 export { expectedIncome } from './workers';
 export { citizenDemand } from './citizens';
 export { hasExpeditions, innOf, mealRecovery } from './player';
+export type { CartView, CartPieceView } from './view';
 export { playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';

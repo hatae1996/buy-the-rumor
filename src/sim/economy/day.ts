@@ -10,6 +10,7 @@ import { citizenOrders, stipendOf, treasuryDay } from './citizens';
 import { newWorker } from './create';
 import { rollEvents } from './events';
 import { GOOD_NAME, GOODS, type GoodId } from './goods';
+import { ageCart } from '../cart';
 import { ageAndSpoil } from './inventory';
 import { JOB_NAME } from './jobs';
 import { runMarket } from './market';
@@ -110,7 +111,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const rate = ECONOMY.spoilRate[season];
   for (const w of state.workers) spoiled += sum(ageAndSpoil(w.inv, rate));
   for (const t of state.traders) spoiled += sum(ageAndSpoil(t.inv, rate));
-  for (const [good, qty] of Object.entries(ageAndSpoil(p.cargo, rate)) as [GoodId, number][]) {
+  for (const [good, qty] of Object.entries(ageCart(p.cart, rate)) as [GoodId, number][]) {
     spoiled += qty;
     p.ledger.push({ day: state.day, kind: 'spoil', good, qty });
   }

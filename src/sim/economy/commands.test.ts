@@ -4,7 +4,7 @@ import { seasonOfDay } from '../season';
 import { applyCommand } from './commands';
 import { createEconomy } from './create';
 import { advanceDay } from './day';
-import { addGoods, count } from './inventory';
+import { cartCount, createCart, loadGoods } from '../cart';
 import type { EconomyState } from './state';
 import { moneySupply } from './stats';
 
@@ -20,7 +20,7 @@ beforeEach(() => {
 describe('플레이어 명령', () => {
   it('사자 신청은 돈을 맡기고, 취소하면 그대로 돌려준다', () => {
     const gold = s.player.gold;
-    const r = applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 5, maxPrice: 7 });
+    const r = applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 5, maxPrice: 7 });
     expect(r.ok).toBe(true);
     expect(s.player.gold).toBe(gold - 35);
     expect(moneySupply(s)).toBe(moneySupply(createEconomy(map, 20261008)));
@@ -34,16 +34,17 @@ describe('플레이어 명령', () => {
       ok: false,
       error: 'notEnoughGoods',
     });
-    addGoods(s.player.cargo, 'ore', 10);
+    loadGoods(s.player.cart, 'ore', 10);
     expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'ore', qty: 4, minPrice: 5 }).ok).toBe(true);
-    expect(count(s.player.cargo, 'ore')).toBe(6);
+    expect(cartCount(s.player.cart, 'ore')).toBe(6);
   });
 
   it('잘못된 값은 받지 않는다', () => {
     expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 0, maxPrice: 5 }).ok).toBe(false);
     expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 1.5, maxPrice: 5 }).ok).toBe(false);
     expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 1, maxPrice: -1 }).ok).toBe(false);
-    expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 1000, maxPrice: 1 })).toEqual({ ok: false, error: 'noRoom' });
+    // 등짐 9칸에 광석 30개(조각 하나에 3개)는 안 들어간다
+    expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 30, maxPrice: 1 })).toEqual({ ok: false, error: 'noRoom' });
     expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'tools', qty: 10, maxPrice: 100 })).toEqual({
       ok: false,
       error: 'notEnoughGold',
@@ -51,12 +52,12 @@ describe('플레이어 명령', () => {
   });
 
   it('장날에 정산된다: 정한 값보다 비싸게 사지 않고, 산 물건이 짐에 들어온다', () => {
-    applyCommand(s, map, { type: 'placeBuyOrder', good: 'salted', qty: 3, maxPrice: 40 });
-    const gold = s.player.gold + 3 * 40;
+    expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'salted', qty: 2, maxPrice: 40 }).ok).toBe(true);
+    const gold = s.player.gold + 2 * 40;
     advanceDay(s, map);
     const bought = s.player.ledger.filter((e) => e.kind === 'buy');
     const qty = bought.reduce((a, e) => a + (e.kind === 'buy' ? e.qty : 0), 0);
-    expect(count(s.player.cargo, 'salted')).toBe(qty);
+    expect(cartCount(s.player.cart, 'salted')).toBe(qty);
     for (const e of bought) if (e.kind === 'buy') expect(e.price).toBeLessThanOrEqual(40);
     // 못 채운 만큼은 돌려받는다
     const paid = bought.reduce((a, e) => a + (e.kind === 'buy' ? e.qty * e.price : 0), 0);
@@ -71,13 +72,13 @@ describe('플레이어 명령', () => {
   });
 
   it('이동: 여비를 내고, 낸 신청은 거두고, 걸리는 날만큼 지나야 도착한다', () => {
-    addGoods(s.player.cargo, 'ore', 5);
+    loadGoods(s.player.cart, 'ore', 5);
     applyCommand(s, map, { type: 'placeSellOrder', good: 'ore', qty: 5, minPrice: 99 });
     const days = townTravelDays(map, seasonOfDay(s.day, s.startSeason))[0]![2]!;
     const gold = s.player.gold;
     expect(applyCommand(s, map, { type: 'travel', to: 2 }).ok).toBe(true);
     expect(s.orders).toHaveLength(0);
-    expect(count(s.player.cargo, 'ore')).toBe(5);
+    expect(cartCount(s.player.cart, 'ore')).toBe(5);
     expect(s.player.gold).toBeLessThan(gold);
     // 가는 길에는 장에 신청할 수 없다
     expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 1, maxPrice: 9 })).toEqual({
@@ -98,8 +99,8 @@ describe('플레이어 명령', () => {
   });
 
   it('내일이면 상할 물건은 장에 낼 수 없다 (산 사람이 바로 버리게 되므로)', () => {
-    addGoods(s.player.cargo, 'fish', 2, 2.5);
-    addGoods(s.player.cargo, 'fish', 3, 0);
+    loadGoods(s.player.cart, 'fish', 2, 2.5);
+    loadGoods(s.player.cart, 'fish', 3, 0);
     expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'fish', qty: 4, minPrice: 1 })).toEqual({
       ok: false,
       error: 'spoiling',
@@ -119,14 +120,62 @@ describe('플레이어 명령', () => {
       const bought = today.some((e) => e.kind === 'buy');
       if (bought) expect(today.some((e) => e.kind === 'spoil')).toBe(false);
       // 다음 날을 위해 짐을 비운다
-      s.player.cargo = [];
+      s.player.cart = createCart('pack');
     }
   });
 
   it('짐 속 생선은 사흘이면 상하고 장부에 적힌다', () => {
-    addGoods(s.player.cargo, 'fish', 4);
+    loadGoods(s.player.cart, 'fish', 4);
     for (let d = 0; d < 3; d++) advanceDay(s, map);
-    expect(count(s.player.cargo, 'fish')).toBe(0);
+    expect(cartCount(s.player.cart, 'fish')).toBe(0);
     expect(s.player.ledger.some((e) => e.kind === 'spoil' && e.good === 'fish' && e.qty === 4)).toBe(true);
+  });
+});
+
+describe('수레와 장날', () => {
+  it('사자 신청은 수레 자리를 미리 잡는다: 자리가 없으면 신청할 수 없다', () => {
+    loadGoods(s.player.cart, 'salt', 24);
+    expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'tools', qty: 1, maxPrice: 99 })).toEqual({
+      ok: false,
+      error: 'noRoom',
+    });
+  });
+
+  it('안 팔린 물건은 그사이 수레를 꽉 채워도 제자리로 돌아온다', () => {
+    loadGoods(s.player.cart, 'leather', 4);
+    // 아무도 안 살 값으로 내놓는다
+    expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'leather', qty: 4, minPrice: 999 }).ok).toBe(true);
+    expect(cartCount(s.player.cart, 'leather')).toBe(0);
+    advanceDay(s, map);
+    expect(cartCount(s.player.cart, 'leather')).toBe(4);
+    expect(s.player.cart.pieces.every((p) => p.incoming.length === 0)).toBe(true);
+  });
+
+  it('신청을 취소하면 잡아 둔 자리도 풀린다', () => {
+    const r = applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 3, maxPrice: 5 });
+    expect(s.player.cart.pieces).toHaveLength(1);
+    applyCommand(s, map, { type: 'cancelOrder', orderId: r.ok ? r.orderId! : -1 });
+    expect(s.player.cart.pieces).toHaveLength(0);
+  });
+
+  it('무게를 넘으면 출발할 수 없다', () => {
+    loadGoods(s.player.cart, 'ore', 12);
+    expect(applyCommand(s, map, { type: 'travel', to: 1 })).toEqual({ ok: false, error: 'overweight' });
+    const piece = s.player.cart.pieces[0]!;
+    expect(applyCommand(s, map, { type: 'discardCartPiece', pieceId: piece.id }).ok).toBe(true);
+    expect(s.player.ledger.at(-1)).toMatchObject({ kind: 'discard', good: 'ore', qty: 3 });
+    expect(applyCommand(s, map, { type: 'travel', to: 1 }).ok).toBe(true);
+  });
+
+  it('짐 조각을 옮기고 돌리고 정리하는 것도 명령이다', () => {
+    loadGoods(s.player.cart, 'wood', 1);
+    const wood = s.player.cart.pieces[0]!;
+    expect(applyCommand(s, map, { type: 'rotateCartPiece', pieceId: wood.id }).ok).toBe(true);
+    expect(applyCommand(s, map, { type: 'moveCartPiece', pieceId: wood.id, x: 5, y: 5, rot: 0 })).toEqual({
+      ok: false,
+      error: 'cantPlace',
+    });
+    expect(applyCommand(s, map, { type: 'packCart' }).ok).toBe(true);
+    expect(applyCommand(s, map, { type: 'rotateCartPiece', pieceId: 999 })).toEqual({ ok: false, error: 'noPiece' });
   });
 });

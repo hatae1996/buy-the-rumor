@@ -33,10 +33,10 @@ describe('플레이어에게 보이는 것', () => {
   it('맡긴 돈과 짐이 따로 보인다', () => {
     const s = createEconomy(map, 20261008);
     s.player.town = 0;
-    applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 4, maxPrice: 10 });
+    applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 4, maxPrice: 10 });
     const v = playerView(s);
     expect(v.reserved).toBe(40);
-    expect(v.orders).toEqual([{ id: expect.any(Number), good: 'grain', side: 'buy', qty: 4, limit: 10 }]);
+    expect(v.orders).toEqual([{ id: expect.any(Number), good: 'ore', side: 'buy', qty: 4, limit: 10 }]);
   });
 
   it('전에 본 시세를 기억해 오르내림을 보여 줄 수 있다', () => {

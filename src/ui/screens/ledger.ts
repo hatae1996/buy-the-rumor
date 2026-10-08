@@ -3,6 +3,7 @@ import coins from '../../../assets/ui/coins.png';
 import { ECONOMY } from '../../sim/constants';
 import { count, GOODS, type PlayerView } from '../../sim/economy';
 import { agoText, freshness, goodName, ledgerLine, money } from '../format';
+import { mountCartBoard } from '../cartBoard';
 import type { Game } from '../game';
 
 export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelOrder: (id: number) => void): void {
@@ -69,7 +70,8 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       </div>
     </section>
     <section class="card">
-      <header class="card-head"><h2>짐</h2><span class="badge">${v.cargoCount} / ${v.capacity}</span></header>
+      <h2>짐 (수레)</h2>
+      <div data-cart></div>
       <ul class="list">${cargo}</ul>
     </section>
     <section class="card">
@@ -85,6 +87,8 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       <h2>손익</h2>
       <ul class="list">${ledger}</ul>
     </section>`;
+
+  mountCartBoard(el.querySelector<HTMLElement>('[data-cart]')!, game);
 
   el.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
     b.addEventListener('click', () => cancelOrder(Number(b.dataset.cancel))),

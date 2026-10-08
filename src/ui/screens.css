@@ -560,3 +560,126 @@
   background: transparent;
   color: var(--ink-soft);
 }
+
+/* ───── 수레 ───── */
+.cart-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--f-display);
+}
+
+.weight {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--paper-dim);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(58, 43, 34, 0.25);
+}
+
+.weight i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--olive);
+}
+
+.weight.over i {
+  background: var(--wax);
+}
+
+.weight span {
+  position: relative;
+  display: block;
+  text-align: center;
+  font-family: var(--f-body);
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--ink);
+}
+
+.cart-grid {
+  position: relative;
+  margin: 4px auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.cart-slot {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed rgba(58, 43, 34, 0.35);
+  background: rgba(107, 74, 50, 0.12);
+}
+
+.cart-block {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--c);
+  cursor: grab;
+}
+
+.cart-block.ghost {
+  background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(58, 43, 34, 0.2) 6px 9px);
+  border-style: dashed;
+}
+
+.cart-block.selected {
+  box-shadow: 0 0 0 3px var(--mustard);
+  z-index: 1;
+}
+
+.cart-label {
+  position: absolute;
+  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cart-label small {
+  margin-left: 2px;
+  color: var(--mustard);
+}
+
+.cart-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.cart-preview i {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px;
+}
+
+.cart-preview.ok i {
+  background: rgba(255, 255, 255, 0.55);
+  border: 2px solid #fff;
+}
+
+.cart-preview.bad i {
+  background: rgba(184, 64, 47, 0.45);
+  border: 2px solid var(--wax);
+}
+
+.cart-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cart-hint {
+  text-align: center;
+}

@@ -1,11 +1,12 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { ECONOMY } from '../constants';
+import { cartLots, cartWeight, maxWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
+import { CART, ECONOMY } from '../constants';
 import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
-import type { EconomyState, LedgerEntry, MarketResult, NewsItem, PriceMemory } from './state';
+import type { EconomyState, LedgerEntry, MarketResult, NewsItem, Order, PriceMemory } from './state';
 
 export type PlayerLocation =
   | { kind: 'town'; town: number }
@@ -36,10 +37,11 @@ export interface PlayerView {
   gold: number;
   /** 사자 신청에 맡겨 둔 돈 */
   reserved: number;
-  capacity: number;
+  /** 수레에 실린 물건 (묶음 목록) */
   cargo: readonly Lot[];
   /** 짐 + 팔자 신청에 맡긴 물건 */
   cargoCount: number;
+  cart: CartView;
   location: PlayerLocation;
   /** 길 위면 null */
   market: MarketView | null;
@@ -57,6 +59,59 @@ export interface PlayerView {
   mealsLeft: number;
   /** 지금 마을 여관. 길 위면 null */
   inn: { fee: number; recovery: number; rested: boolean } | null;
+}
+
+export interface CartPieceView {
+  id: number;
+  good: GoodId;
+  x: number;
+  y: number;
+  rot: number;
+  cells: (readonly [number, number])[];
+  qty: number;
+  stack: number;
+  /** 장날 신청 때문에 잡아 둔 자리 */
+  incoming: number;
+  /** 사자 신청 자리면 'buy', 팔자 신청에서 돌아올 자리면 'sell' */
+  pending: 'buy' | 'sell' | null;
+  /** 가장 먼저 상할 묶음 */
+  oldest: Lot | null;
+}
+
+export interface CartView {
+  type: CartType;
+  name: string;
+  rows: readonly string[];
+  pieces: CartPieceView[];
+  weight: number;
+  maxWeight: number;
+  /** 물건마다 지금 더 실을 수 있는 개수 */
+  room: Record<GoodId, number>;
+}
+
+function cartView(cart: Cart, orders: readonly Order[]): CartView {
+  const sideOf = new Map(orders.map((o) => [o.id, o.side]));
+  return {
+    type: cart.type,
+    name: CART.types[cart.type].name,
+    rows: CART.types[cart.type].rows,
+    pieces: cart.pieces.map((p) => ({
+      id: p.id,
+      good: p.good,
+      x: p.x,
+      y: p.y,
+      rot: p.rot,
+      cells: pieceCells(p),
+      qty: p.lots.reduce((s, l) => s + l.qty, 0),
+      stack: stackLimit(p.good),
+      incoming: p.incoming.reduce((s, i) => s + i.qty, 0),
+      pending: p.incoming.length ? (sideOf.get(p.incoming[0]!.orderId) ?? null) : null,
+      oldest: p.lots.length ? p.lots.reduce((a, l) => (l.age > a.age ? l : a)) : null,
+    })),
+    weight: cartWeight(cart),
+    maxWeight: maxWeight(cart),
+    room: Object.fromEntries(GOODS.map((g) => [g, roomFor(cart, g)])) as Record<GoodId, number>,
+  };
 }
 
 export function playerView(state: EconomyState): PlayerView {
@@ -87,9 +142,9 @@ export function playerView(state: EconomyState): PlayerView {
     season: seasonOfDay(state.day, state.startSeason),
     gold: p.gold,
     reserved,
-    capacity: p.capacity,
-    cargo: p.cargo,
-    cargoCount: totalCount(p.cargo) + sellingQty,
+    cargo: cartLots(p.cart),
+    cargoCount: totalCount(cartLots(p.cart)) + sellingQty,
+    cart: cartView(p.cart, state.orders),
     location,
     market,
     orders,

@@ -1,5 +1,6 @@
 // 플레이어 몸: 피로와 원정 기회 (기획서 "퍼즐 기회와 피로도").
 // 기회는 "어디서 할 수 있나"를, 피로는 "몇 번이나 할 수 있나"를 정한다.
+import { cartLots } from '../cart';
 import { ECONOMY } from '../constants';
 import { seasonOfDay } from '../season';
 import { FOODS, shelfLife, type GoodId } from './goods';
@@ -37,7 +38,7 @@ export function mealRecovery(lot: Lot, rate: number): number {
 /** 먹을 묶음: 그 물건 중 가장 먼저 상할 것부터 */
 export function pickMeal(p: PlayerState, good: GoodId): Lot | null {
   if (!FOODS.includes(good)) return null;
-  const lots = p.cargo.filter((l) => l.good === good && l.qty > 0);
+  const lots = cartLots(p.cart).filter((l) => l.good === good && l.qty > 0);
   if (lots.length === 0) return null;
   return lots.reduce((a, l) => (l.age > a.age ? l : a));
 }

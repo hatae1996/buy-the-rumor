@@ -39,17 +39,16 @@ export function runMarket(
         accounts.addGold(o.owner, n * price);
         fills.push({ owner: o.owner, good, side: 'sell', qty: n, price });
       }
-      accounts.receive(o.owner, o.lots);
+      accounts.receive(o.owner, o.lots, o.id);
       o.lots = [];
     }
     // 산 쪽에 오래된 것부터 나눠 주고 남은 돈을 돌려준다
     pool.sort((a, b) => b.age - a.age);
     for (const o of buys) {
       const n = res.buyFills.get(o.id) ?? 0;
-      if (n > 0) {
-        accounts.receive(o.owner, takeOldest(pool, good, n));
-        fills.push({ owner: o.owner, good, side: 'buy', qty: n, price });
-      }
+      // 못 산 경우에도 넘겨야 잡아 둔 수레 자리가 풀린다
+      accounts.receive(o.owner, n > 0 ? takeOldest(pool, good, n) : [], o.id);
+      if (n > 0) fills.push({ owner: o.owner, good, side: 'buy', qty: n, price });
       accounts.addGold(o.owner, o.reserved - n * price);
       o.reserved = 0;
     }

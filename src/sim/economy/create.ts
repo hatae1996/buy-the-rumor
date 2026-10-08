@@ -1,5 +1,6 @@
 // 경제 시작 상태. 맵의 마을과 자원지로 일꾼을 나누고, 같은 시드면 같은 시작이 된다.
-import { ECONOMY } from '../constants';
+import { createCart } from '../cart';
+import { CART, ECONOMY } from '../constants';
 import { createRng, type Rng } from '../rng';
 import { seasonOfDay, WINTER, type Season } from '../season';
 import type { WorldMap } from '../worldgen';
@@ -33,8 +34,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       // 시작 마을은 마을 4곳에 고르게 랜덤 (기획서 "시작 조건")
       town: rng.int(0, map.towns.length - 1),
       travel: null,
-      cargo: [],
-      capacity: ECONOMY.player.capacity,
+      // 시작은 등짐 하나 (기획서 "시작 조건")
+      cart: createCart(CART.start),
       memory: {},
       ledger: [],
       fatigue: 0,

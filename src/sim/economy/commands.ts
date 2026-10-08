@@ -5,7 +5,19 @@ import { seasonOfDay } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { Accounts } from './accounts';
 import { FOODS, GOODS, type GoodId } from './goods';
-import { count, sellableCount, totalCount } from './inventory';
+import {
+  cartCount,
+  cartLots,
+  cartWeight,
+  discardPiece,
+  maxWeight,
+  movePiece,
+  packCart,
+  rotatePiece,
+  takeGoods,
+  unitWeight,
+} from '../cart';
+import { sellableCount } from './inventory';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import type { EconomyState } from './state';
 
@@ -17,7 +29,15 @@ export type Command =
   /** 짐에 있는 음식 하나를 먹어 피로를 던다 */
   | { type: 'eat'; good: GoodId }
   /** 지금 마을 여관에서 쉰다 (하루 한 번) */
-  | { type: 'restAtInn' };
+  | { type: 'restAtInn' }
+  /** 수레 짐 조각을 옮긴다 (같은 물품 조각 위에 놓으면 합친다) */
+  | { type: 'moveCartPiece'; pieceId: number; x: number; y: number; rot: number }
+  /** 톡 눌러 돌린다 */
+  | { type: 'rotateCartPiece'; pieceId: number }
+  /** 빈칸 정리 */
+  | { type: 'packCart' }
+  /** 짐 조각을 버린다 */
+  | { type: 'discardCartPiece'; pieceId: number };
 
 export type CommandError =
   | 'traveling'
@@ -35,7 +55,11 @@ export type CommandError =
   | 'notFood'
   | 'tooManyMeals'
   | 'alreadyRested'
-  | 'notTired';
+  | 'notTired'
+  | 'overweight'
+  | 'noPiece'
+  | 'cantPlace'
+  | 'pieceBusy';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -52,11 +76,10 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       if (!isCount(cmd.qty)) return fail('badQty');
       if (!isCount(cmd.maxPrice)) return fail('badPrice');
-      // 짐칸: 지금 짐 + 이미 낸 사자 신청이 다 채워져도 넘치지 않아야 한다
-      const pendingBuys = state.orders.filter((o) => o.side === 'buy').reduce((s, o) => s + o.qty, 0);
-      if (totalCount(p.cargo) + pendingBuys + cmd.qty > p.capacity) return fail('noRoom');
       if (p.gold < cmd.qty * cmd.maxPrice) return fail('notEnoughGold');
-      const o = accounts.place(owner, p.town, cmd.good, 'buy', cmd.qty, cmd.maxPrice)!;
+      // 살 물건이 들어갈 수레 자리를 미리 잡는다. 못 잡으면 신청할 수 없다
+      const o = accounts.place(owner, p.town, cmd.good, 'buy', cmd.qty, cmd.maxPrice);
+      if (!o) return fail('noRoom');
       state.orders.push(o);
       return { ok: true, orderId: o.id };
     }
@@ -65,10 +88,10 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       if (!isCount(cmd.qty)) return fail('badQty');
       if (!isCount(cmd.minPrice)) return fail('badPrice');
-      if (count(p.cargo, cmd.good) < cmd.qty) return fail('notEnoughGoods');
+      if (cartCount(p.cart, cmd.good) < cmd.qty) return fail('notEnoughGoods');
       // 내일이면 상할 물건은 장에 낼 수 없다
       const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
-      if (sellableCount(p.cargo, cmd.good, rate) < cmd.qty) return fail('spoiling');
+      if (sellableCount(cartLots(p.cart), cmd.good, rate) < cmd.qty) return fail('spoiling');
       const o = accounts.place(owner, p.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
       state.orders.push(o);
       return { ok: true, orderId: o.id };
@@ -88,6 +111,11 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (!Number.isFinite(days)) return fail('noRoute');
       const fee = days * ECONOMY.player.travelFeePerDay;
       if (p.gold < fee) return fail('notEnoughGold');
+      // 무게를 넘으면 출발할 수 없다. 팔려고 내놓은 짐도 떠나면 돌아오므로 같이 센다
+      const selling = state.orders
+        .filter((o) => o.side === 'sell')
+        .reduce((s, o) => s + o.lots.reduce((a, l) => a + l.qty * unitWeight(l.good), 0), 0);
+      if (cartWeight(p.cart) + selling > maxWeight(p.cart)) return fail('overweight');
       // 떠나면 이 마을에 낸 신청은 거둔다
       for (const o of state.orders) accounts.cancel(o);
       state.orders = [];
@@ -103,6 +131,23 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return eat(state, cmd.good);
     case 'restAtInn':
       return restAtInn(state);
+    case 'moveCartPiece':
+      if (!p.cart.pieces.some((q) => q.id === cmd.pieceId)) return fail('noPiece');
+      return movePiece(p.cart, cmd.pieceId, cmd.x, cmd.y, cmd.rot) ? { ok: true } : fail('cantPlace');
+    case 'rotateCartPiece':
+      if (!p.cart.pieces.some((q) => q.id === cmd.pieceId)) return fail('noPiece');
+      return rotatePiece(p.cart, cmd.pieceId) ? { ok: true } : fail('cantPlace');
+    case 'packCart':
+      return packCart(p.cart) ? { ok: true } : fail('cantPlace');
+    case 'discardCartPiece': {
+      const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
+      if (!piece) return fail('noPiece');
+      const lots = discardPiece(p.cart, cmd.pieceId);
+      if (!lots) return fail('pieceBusy');
+      const qty = lots.reduce((s, l) => s + l.qty, 0);
+      p.ledger.push({ day: state.day, kind: 'discard', good: piece.good, qty });
+      return { ok: true };
+    }
   }
 }
 
@@ -113,8 +158,8 @@ function eat(state: EconomyState, good: GoodId): CommandResult {
   const lot = pickMeal(p, good);
   if (!lot) return fail(FOODS.includes(good) ? 'notEnoughGoods' : 'notFood');
   const recovered = Math.min(p.fatigue, mealRecovery(lot, spoilRateToday(state)));
-  lot.qty -= 1;
-  p.cargo = p.cargo.filter((l) => l.qty > 0);
+  // 가장 먼저 상할 것 하나를 꺼내 먹는다
+  takeGoods(p.cart, good, 1);
   p.fatigue -= recovered;
   p.mealsToday += 1;
   p.ledger.push({ day: state.day, kind: 'eat', good, recovered });

@@ -4,7 +4,7 @@ import { generateWorld } from '../worldgen';
 import { applyCommand } from './commands';
 import { createEconomy } from './create';
 import { advanceDay } from './day';
-import { addGoods, count } from './inventory';
+import { cartCount, createCart, loadGoods } from '../cart';
 import type { EconomyState } from './state';
 import { moneySupply } from './stats';
 
@@ -52,18 +52,20 @@ describe('피로', () => {
 
   it('음식을 먹으면 짐에서 하나 줄고, 신선할수록 많이 회복한다', () => {
     s.player.fatigue = 9;
-    addGoods(s.player.cargo, 'meat', 1, 0);
-    addGoods(s.player.cargo, 'fish', 1, 2.5);
+    loadGoods(s.player.cart, 'meat', 1, 0);
+    loadGoods(s.player.cart, 'fish', 1, 2.5);
     expect(applyCommand(s, map, { type: 'eat', good: 'meat' }).ok).toBe(true);
     expect(s.player.fatigue).toBe(9 - ECONOMY.fatigue.meal.fresh);
-    expect(count(s.player.cargo, 'meat')).toBe(0);
+    expect(cartCount(s.player.cart, 'meat')).toBe(0);
     applyCommand(s, map, { type: 'eat', good: 'fish' });
     expect(s.player.fatigue).toBe(9 - ECONOMY.fatigue.meal.fresh - ECONOMY.fatigue.meal.soon);
   });
 
   it('먹을 수 없는 것, 없는 음식, 지치지 않았을 때, 하루 끼니를 넘길 때는 못 먹는다', () => {
-    addGoods(s.player.cargo, 'wood', 1);
-    addGoods(s.player.cargo, 'grain', 10);
+    // 등짐엔 곡물(2×2)이 하나만 들어가므로 큰 수레로 시험한다
+    s.player.cart = createCart('wagon');
+    loadGoods(s.player.cart, 'wood', 1);
+    loadGoods(s.player.cart, 'grain', 10);
     expect(applyCommand(s, map, { type: 'eat', good: 'grain' })).toEqual({ ok: false, error: 'notTired' });
     s.player.fatigue = 10;
     expect(applyCommand(s, map, { type: 'eat', good: 'wood' })).toEqual({ ok: false, error: 'notFood' });
@@ -104,7 +106,8 @@ describe('시작 조건', () => {
     for (let seed = 1; seed <= 80; seed++) {
       const e = createEconomy(map, seed);
       expect(e.player.gold).toBe(ECONOMY.player.startGold);
-      expect(e.player.cargo).toEqual([]);
+      expect(e.player.cart.type).toBe('pack');
+      expect(e.player.cart.pieces).toEqual([]);
       counts[e.player.town]!++;
     }
     for (const c of counts) expect(c).toBeGreaterThan(8);
