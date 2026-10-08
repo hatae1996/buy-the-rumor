@@ -1,10 +1,10 @@
 // 일꾼: 장날에 팔고 사고, 일하고, 먹고, 도구를 쓰고, 세금을 내고, 형편이 나쁘면 일을 바꾸거나 떠난다.
 import { ECONOMY } from '../constants';
 import { stochasticRound, type Rng } from '../rng';
-import type { Season } from '../season';
+import { AUTUMN, type Season } from '../season';
 import type { Accounts } from './accounts';
 import { FOODS, GOODS, RAW_FOODS, shelfLife, type GoodId } from './goods';
-import { addGoods, capStorage, count, spoilingSoon, takeOldest } from './inventory';
+import { addGoods, capStorage, count, sellableCount, spoilingSoon, takeOldest } from './inventory';
 import { isGatherJob, JOB_RESOURCE, JOBS, type CraftJob, type GatherJob, type JobId } from './jobs';
 import { limitPrice } from './market';
 import { findNode, nodeYield } from './nodes';
@@ -14,7 +14,12 @@ const W = ECONOMY.worker;
 
 // ───────── 장날 신청 ─────────
 
-export function workerOrders(w: Worker, town: TownEconomy, accounts: Accounts): Order[] {
+/** 갖고 있으려는 음식 양. 가을엔 겨울을 날 만큼 */
+function foodReserve(season: Season): number {
+  return (season === AUTUMN ? W.winterReserveDays : W.foodReserveDays) * W.foodPerDay;
+}
+
+export function workerOrders(w: Worker, town: TownEconomy, season: Season, accounts: Accounts): Order[] {
   const owner = { kind: 'worker', id: w.id } as const;
   const out: Order[] = [];
   const place = (good: GoodId, side: 'buy' | 'sell', qty: number, limit: number) => {
@@ -23,21 +28,25 @@ export function workerOrders(w: Worker, town: TownEconomy, accounts: Accounts): 
   };
 
   // 팔기: 먹을 것, 가공 재료, 여분 도구 하나를 빼고 다 판다. 곧 상하는 건 싸게
-  const keep = keepAmounts(w);
+  const keep = keepAmounts(w, season);
+  const rate = ECONOMY.spoilRate[season];
   for (const good of GOODS) {
-    const surplus = count(w.inv, good) - (keep[good] ?? 0);
-    if (surplus <= 0) continue;
-    const soon = Math.min(surplus, spoilingSoon(w.inv, good));
-    if (soon > 0) place(good, 'sell', soon, limitPrice(town, good, W.spoilingAskMarkdown));
-    if (surplus - soon > 0) place(good, 'sell', surplus - soon, limitPrice(town, good, W.askMarkdown));
+    // 내일이면 상할 것은 장에 못 낸다 (먼저 먹는다)
+    const surplus = Math.min(count(w.inv, good) - (keep[good] ?? 0), sellableCount(w.inv, good, rate));
+    if (surplus > 0) place(good, 'sell', surplus, limitPrice(town, good, W.askMarkdown));
   }
 
   // 사기: 음식 → 도구 → 가공 재료 순서로 돈이 되는 만큼
-  const foodNeed = W.foodReserveDays * W.foodPerDay - foodCount(w);
+  const foodNeed = foodReserve(season) - foodCount(w);
   if (foodNeed > 0) {
-    // 어제 파는 사람이 있었던 음식 중 싼 것부터. 어제 굶었으면 다른 음식도 찾아본다
+    // 어제 파는 사람이 있었던 음식 중 싼 것부터. 어제 굶었으면 다른 음식도 찾아본다.
+    // 넉넉히 쌓을 때(가을)는 겨울을 나는 오래가는 음식만 본다
+    const stocking = foodNeed > W.foodReserveDays * W.foodPerDay;
+    const lasting = (g: GoodId) => (shelfLife(g) ?? Infinity) >= 30;
     const sold = (g: GoodId) => (town.lastMarket[g].supply > 0 ? 0 : 1);
-    const foods = [...FOODS].sort((a, b) => sold(a) - sold(b) || town.refPrice[a] - town.refPrice[b]);
+    const foods = FOODS.filter((g) => !stocking || lasting(g)).sort(
+      (a, b) => sold(a) - sold(b) || town.refPrice[a] - town.refPrice[b],
+    );
     const good = foods[w.hunger % foods.length]!;
     const limit = limitPrice(town, good, w.hunger > 0 ? W.hungryBidMarkup : W.bidMarkup);
     place(good, 'buy', Math.min(foodNeed, Math.floor(w.gold / limit)), limit);
@@ -56,10 +65,10 @@ export function workerOrders(w: Worker, town: TownEconomy, accounts: Accounts): 
 }
 
 /** 팔지 않고 남겨 둘 양 */
-function keepAmounts(w: Worker): Partial<Record<GoodId, number>> {
+function keepAmounts(w: Worker, season: Season): Partial<Record<GoodId, number>> {
   const keep: Partial<Record<GoodId, number>> = { tools: 1 };
   // 음식은 상하는 날이 가까운 것부터 먹으니, 오래가는 음식을 남긴다
-  let food = W.foodReserveDays * W.foodPerDay;
+  let food = foodReserve(season);
   for (const g of [...FOODS].sort((a, b) => (shelfLife(b) ?? 1e9) - (shelfLife(a) ?? 1e9))) {
     const n = Math.min(food, count(w.inv, g));
     keep[g] = n;
@@ -253,11 +262,13 @@ function reconsider(w: Worker, ctx: WorkerDayContext): 'stay' | 'gone' {
 
   // 며칠 굶으면 (돈이 있어도 먹을 게 없으면) 다른 마을로 간다 (가는 길은 생략)
   if (w.hunger >= W.migrateHunger && rng.next() < W.switchWhenPoorChance) {
+    // 먹을 것이 팔리는 마을을 먼저, 그다음 벌이가 좋은 마을
+    const foodSold = (t: TownEconomy) => FOODS.reduce((s, g) => s + t.lastMarket[g].supply, 0);
     const options = state.towns
       .filter((t) => t.id !== w.town)
-      .map((t) => ({ town: t.id, best: bestJob(state, t.id, season) }))
+      .map((t) => ({ town: t.id, food: foodSold(t), best: bestJob(state, t.id, season) }))
       .filter((o) => o.best !== null)
-      .sort((a, b) => b.best!.income - a.best!.income);
+      .sort((a, b) => Number(b.food > 0) - Number(a.food > 0) || b.best!.income - a.best!.income);
     const dest = options[0];
     if (dest) {
       log({ kind: 'migrate', from: w.town, to: dest.town, job: dest.best!.job });
@@ -288,7 +299,10 @@ export function arrivals(ctx: WorkerDayContext, newWorker: (town: number, job: J
   const { state, season, rng, log } = ctx;
   for (const town of state.towns) {
     const best = bestJob(state, town.id, season);
-    if (best && best.income > W.arriveMinIncome && rng.next() < W.arriveChance) {
+    if (!best) continue;
+    const few = state.workers.filter((w) => w.town === town.id).length < W.refillBelow;
+    const chance = few ? W.refillChance : best.income > W.arriveMinIncome ? W.arriveChance : 0;
+    if (rng.next() < chance) {
       newWorker(town.id, best.job);
       log({ kind: 'arrive', town: town.id, job: best.job });
     }

@@ -1,6 +1,6 @@
 // 이동 비용과 길 찾기. 지도 위 말 이동과 마을 사이 이동 일수에 쓴다.
 import { TRAVEL } from '../constants';
-import { WINTER, type Season } from '../season';
+import { SPRING, WINTER, type Season } from '../season';
 import type { Tile } from './types';
 
 /** 길이 없다고 칠 때 칸을 지나는 비용. 길을 놓을 경로를 찾을 때 쓴다 */
@@ -12,7 +12,10 @@ export function terrainCost(tile: Tile, season: Season): number {
 /** 실제로 칸을 지나는 비용. blocked는 산사태 등으로 막힌 칸 */
 export function moveCost(tile: Tile, season: Season, blocked = false): number {
   if (blocked) return Infinity;
-  if (tile.road) return isSnowy(tile, season) ? TRAVEL.winterSnowRoadCost : TRAVEL.roadCost;
+  if (tile.road) {
+    if (isSnowy(tile, season)) return TRAVEL.winterSnowRoadCost;
+    return season === SPRING ? TRAVEL.springMudRoadCost : TRAVEL.roadCost;
+  }
   return terrainCost(tile, season);
 }
 

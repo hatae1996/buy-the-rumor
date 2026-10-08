@@ -1,7 +1,8 @@
 // 판매(구매) 신청 쪽지: 몇 개를, 얼마 이상(이하)으로. 장날에 정산된다.
-import { count, type GoodId } from '../../sim/economy';
+import { ECONOMY } from '../../sim/constants';
+import { count, sellableCount, type GoodId } from '../../sim/economy';
 import { eulReul } from '../../sim/josa';
-import { ERROR_TEXT, goodName, money } from '../format';
+import { ERROR_TEXT, goodName, marketMood, money } from '../format';
 import type { Game } from '../game';
 import { openSheet } from '../sheet';
 
@@ -9,7 +10,9 @@ export function openOrderSheet(game: Game, good: GoodId): void {
   const v = game.view();
   const m = v.market;
   if (!m) return;
-  const have = count(v.cargo, good);
+  // 내일이면 상할 묶음은 장에 낼 수 없다
+  const have = sellableCount(v.cargo, good, ECONOMY.spoilRate[v.season]);
+  const spoiling = count(v.cargo, good) - have;
   const pendingBuys = v.orders.filter((o) => o.side === 'buy').reduce((s, o) => s + o.qty, 0);
   const room = Math.max(0, v.capacity - v.cargoCount - pendingBuys);
 
@@ -28,7 +31,7 @@ export function openOrderSheet(game: Game, good: GoodId): void {
   const render = () => {
     qty = Math.max(0, Math.min(qty, maxQty()));
     const y = m.yesterday[good];
-    const yText = y.price !== null ? `어제 장날에 ${y.volume}개가 ${y.price}에 거래됐어요.` : '어제 장날에는 거래가 없었어요.';
+    const yText = y.price !== null ? `어제 장날 값은 ${y.price}였어요.` : '어제 장날에는 맞춰진 거래가 없었어요.';
     const total = qty * price;
     sheet.body.innerHTML = `
       <div class="seg" role="group" aria-label="팔기 또는 사기">
@@ -36,8 +39,9 @@ export function openOrderSheet(game: Game, good: GoodId): void {
         <button type="button" data-side="buy" aria-pressed="${side === 'buy'}">사기</button>
       </div>
       <div class="price-note">
-        <div>오늘 시세 <b>${m.price[good]}</b> · 내 짐 ${have}개</div>
-        <div class="muted">${yText} 사려는 양 ${y.demand}개, 팔려는 양 ${y.supply}개.</div>
+        <div>오늘 시세 <b>${m.price[good]}</b> · 낼 수 있는 짐 ${have}개</div>
+        ${spoiling ? `<div class="warn">곧 상할 ${spoiling}개는 장에 낼 수 없어요.</div>` : ''}
+        <div class="muted">${yText} ${marketMood(y.demand, y.supply)}</div>
       </div>
       <div class="stepper-row">
         <span class="stepper-label">몇 개</span>

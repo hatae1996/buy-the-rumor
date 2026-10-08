@@ -4,7 +4,7 @@ import tabLedger from '../../assets/ui/tab_ledger.png';
 import tabMap from '../../assets/ui/tab_map.png';
 import tabNews from '../../assets/ui/tab_news.png';
 import tabTown from '../../assets/ui/tab_town.png';
-import { dayText, money } from './format';
+import { dayText, durationText, money } from './format';
 import type { AwaySummary, Game } from './game';
 import type { MapScreen } from './mapScreen';
 import { showAwaySummary } from './screens/away';
@@ -31,7 +31,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
       <header class="status-bar">
         <span class="status-gold"><img src="${coin}" alt="돈" /><b data-gold></b></span>
         <span class="status-day" data-day></span>
-        <span class="status-cargo" data-cargo></span>
+        <span class="status-market" data-market></span>
       </header>
       <main class="shell-body">
         ${TABS.filter((t) => t.id !== 'map')
@@ -65,15 +65,17 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     const v = game.view();
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
-    $('[data-cargo]').textContent = `짐 ${v.cargoCount}/${v.capacity}`;
+    $('[data-market]').textContent = `장날까지 ${durationText(game.msUntilMarket(now()))}`;
     const el = screens[current];
     if (current === 'town') {
-      renderTown(el, game, v, now(), {
+      renderTown(el, game, v, {
         openOrder: (good) => openOrderSheet(game, good),
         cancelOrder: (id) => game.dispatch({ type: 'cancelOrder', orderId: id }),
         passDay: () => away(game.passDay(now())),
       });
-    } else if (current === 'ledger') renderLedger(el, game, v);
+    } else if (current === 'ledger') {
+      renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));
+    }
     else if (current === 'news') renderNews(el, game, v);
     else void map?.then((m) => m.render());
   };
@@ -98,7 +100,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   setInterval(() => {
     const s = game.catchUp(now());
     if (s) away(s);
-    else if (current === 'town') render();
+    else render();
   }, CLOCK_MS);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) away(game.catchUp(now()));

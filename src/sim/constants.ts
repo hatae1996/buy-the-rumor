@@ -50,30 +50,38 @@ export const TRAVEL = {
   /** 칸을 지나는 데 드는 비용. 비용 2가 하루 */
   terrainCost: { plain: 1, coast: 1, forest: 2, hills: 3, mountain: 5, sea: Infinity },
   roadCost: 0.5,
+  /** 봄엔 길이 진흙이라 조금 느리다 */
+  springMudRoadCost: 0.65,
   /** 겨울에 눈 쌓인 산과 언덕 */
   winterSnowMultiplier: 2,
   winterSnowRoadCost: 1.2,
   costPerDay: 2,
 } as const;
 
-/** 15일 시즌 안에서 계절마다 며칠씩인가 (봄, 여름, 가을, 겨울) */
+/**
+ * 계절마다 게임 속 며칠인가 (봄, 여름, 가을, 겨울).
+ * 기획서: 시즌(실제 15일) 동안 사계절, 계절 하나는 실제 약 3.75일.
+ * 게임 속 하루가 실제 2.5시간(src/ui/game.ts의 DAY_MS)이면 계절 하나는 게임 속 36일이다.
+ */
 export const CALENDAR = {
-  seasonDays: [4, 4, 4, 3],
+  seasonDays: [36, 36, 36, 36],
 } as const;
 
 export const ECONOMY = {
   /** 물품 기준 가격과 상하는 날. shelfLife가 null이면 상하지 않는다 */
   goods: {
     fish: { basePrice: 8, shelfLife: 3 },
-    meat: { basePrice: 10, shelfLife: 4 },
-    grain: { basePrice: 6, shelfLife: 40 },
+    meat: { basePrice: 10, shelfLife: 5 },
+    grain: { basePrice: 6, shelfLife: 60 },
     wood: { basePrice: 8, shelfLife: null },
     leather: { basePrice: 16, shelfLife: null },
     ore: { basePrice: 14, shelfLife: null },
     salt: { basePrice: 10, shelfLife: null },
-    salted: { basePrice: 24, shelfLife: null },
+    salted: { basePrice: 24, shelfLife: 40 },
     tools: { basePrice: 60, shelfLife: null },
   },
+  /** 계절별로 하루에 상하는 정도 (봄, 여름, 가을, 겨울). 여름엔 빨리, 겨울엔 천천히 */
+  spoilRate: [1, 1.5, 1, 0.5],
   /** 시세가 기준 가격의 몇 배 사이에서 움직이나 */
   priceFloor: 0.25,
   priceCeiling: 5,
@@ -98,12 +106,16 @@ export const ECONOMY = {
   },
   /** 계절별 생산 배율 (봄, 여름, 가을, 겨울) */
   seasonYield: {
-    fisher: [1, 1, 1, 0.6],
-    hunter: [1, 1, 1, 0.7],
-    farmer: [0.6, 1, 1.6, 0],
+    // 여름엔 풍성, 겨울엔 항구가 얼어 멈춤
+    fisher: [1, 1.4, 1, 0],
+    // 봄엔 번식기라 적게, 가을에 가장 많이
+    hunter: [0.6, 1, 1.4, 0.7],
+    // 봄에 심고 가을에 한꺼번에 거둔다
+    farmer: [0.4, 0.8, 2, 0],
     woodcutter: [1, 1, 1, 1],
     miner: [1, 1, 1, 1],
-    salter: [1, 1.4, 1, 0.3],
+    // 여름엔 많고 겨울엔 거의 없다
+    salter: [1, 1.5, 1, 0.1],
   },
 
   /** 자원지: 맵에서 마을 주변 두 칸 안의 자원지 칸 수로 크기를 정한다 */
@@ -119,6 +131,8 @@ export const ECONOMY = {
     foodPerDay: 1,
     /** 며칠 치 음식을 갖고 있으려 하나 */
     foodReserveDays: 2,
+    /** 가을엔 겨울을 나려고 이만큼 쌓아 둔다 (곡물, 염장 식품처럼 오래가는 음식으로) */
+    winterReserveDays: 40,
     toolLife: 20,
     /** 도구가 이만큼 남으면 새로 산다 */
     toolReplaceAt: 3,
@@ -127,11 +141,10 @@ export const ECONOMY = {
     /** 살 때 기준 시세의 몇 배까지 내나 (굶으면 더 낸다) */
     bidMarkup: 1.3,
     hungryBidMarkup: 1.8,
-    /** 팔 때 기준 시세의 몇 배 아래로는 안 파나 (곧 상하면 더 싸게) */
+    /** 팔 때 기준 시세의 몇 배 아래로는 안 파나 */
     askMarkdown: 0.8,
-    spoilingAskMarkdown: 0.5,
     /** 물품 하나당 쌓아 둘 수 있는 양. 넘치면 버린다 */
-    storagePerGood: 30,
+    storagePerGood: 60,
     taxThreshold: 80,
     taxRate: 0.04,
     /** 전직: 굶고 가난하면 바꿀 확률, 남이 훨씬 잘 벌면 바꿀 확률 */
@@ -144,6 +157,9 @@ export const ECONOMY = {
     /** 일꾼이 새로 찾아올 확률과 조건 (가장 좋은 일의 예상 하루 수입) */
     arriveChance: 0.05,
     arriveMinIncome: 20,
+    /** 일꾼이 이보다 적은 마을은 빈자리를 보고 사람이 더 잘 찾아온다 (마을이 비지 않게) */
+    refillBelow: 4,
+    refillChance: 0.3,
   },
   /** 마을 직업별 인원 상한: 채집은 자원지 칸 수 × 이 값, 가공은 고정 */
   jobCap: { perResourceTile: 2, crafter: 3 },
@@ -155,6 +171,10 @@ export const ECONOMY = {
     demand: { fish: 1, meat: 1, grain: 2, wood: 3, leather: 1, ore: 0, salt: 1, salted: 1, tools: 0.5 },
     /** 겨울엔 땔감이 더 든다 */
     winterWoodFactor: 2,
+    /** 겨울엔 털가죽과 음식이 더 든다, 가을엔 겨울 대비로 곡물을 더 산다 */
+    winterLeatherFactor: 1.5,
+    winterFoodFactor: 1.3,
+    autumnGrainFactor: 1.5,
     /**
      * 주민은 비쌀수록 덜 산다: 하루 양을 나눠 기준 가격의 이 배율들로 신청한다.
      * 굶는 일꾼(시세의 1.8배까지 냄)보다 높게 부르지 않아야 일꾼이 먼저 먹는다.

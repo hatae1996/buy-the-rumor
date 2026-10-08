@@ -1,39 +1,45 @@
-// 소식: 신문(큰 사건, 사실만)과 다른 마을 시세 기억(본 날짜와 함께).
+// 소식: 신문, 들은 이야기 수첩, 장날 결과 기록 (기획서 "화면 구성").
 import sealSmall from '../../../assets/ui/seal_small.png';
-import { GOODS, type PlayerView } from '../../sim/economy';
-import { agoText, goodName } from '../format';
+import type { LedgerEntry, PlayerView } from '../../sim/economy';
+import { agoText, ledgerLine } from '../format';
 import type { Game } from '../game';
 
 export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
-  const today = v.day;
+  const townName = (id: number) => game.map.towns[id]!.name;
   const items = [...v.news].reverse().slice(0, 30);
-  const paper = items.length
-    ? items.map((n) => `<li><span class="day">${agoText(today, n.day)}</span> ${n.text}</li>`).join('')
-    : '<li class="muted">아직 큰 소식이 없어요.</li>';
+  const paper =
+    items.map((n) => `<li><span class="day">${agoText(v.day, n.day)}</span> ${n.text}</li>`).join('') ||
+    '<li class="muted">아직 큰 소식이 없어요.</li>';
 
-  const here = v.location.kind === 'town' ? v.location.town : null;
-  const towns = game.map.towns
-    .map((t) => {
-      const mem = v.memory[t.id];
-      const head = `<header class="card-head"><h3>${t.name}</h3><span class="badge">${
-        here === t.id ? '지금 여기' : mem ? `${agoText(today, mem.day)} 본 시세` : '가 본 적 없음'
-      }</span></header>`;
-      if (!mem) return `<div class="memory">${head}<p class="muted">직접 가 보거나 소문을 들어야 알 수 있어요.</p></div>`;
-      const cells = GOODS.map((g) => `<span><span class="muted">${goodName(g)}</span> ${mem.prices[g]}</span>`).join('');
-      return `<div class="memory">${head}<div class="memory-prices">${cells}</div></div>`;
-    })
-    .join('');
+  // 장날마다 내 신청이 어떻게 맞춰졌는지
+  const byDay = new Map<number, LedgerEntry[]>();
+  for (const e of v.ledger) {
+    if (e.kind !== 'buy' && e.kind !== 'sell') continue;
+    byDay.set(e.day, [...(byDay.get(e.day) ?? []), e]);
+  }
+  const results =
+    [...byDay]
+      .reverse()
+      .slice(0, 15)
+      .map(
+        ([day, es]) =>
+          `<li><span class="day">${day}일째 장날</span> ${es.map((e) => ledgerLine(e, townName).text).join(', ')}</li>`,
+      )
+      .join('') || '<li class="muted">아직 맞춰진 신청이 없어요.</li>';
 
   el.innerHTML = `
     <section class="card newspaper">
       <img class="seal" src="${sealSmall}" alt="" />
       <h2>장터 신문</h2>
-      <p class="muted">${today}일째 · 사실만 실어요</p>
+      <p class="muted">${v.day}일째 · 큰 사건을 사실만 실어요</p>
       <ul class="list news-list">${paper}</ul>
     </section>
     <section class="card">
-      <h2>내가 아는 시세</h2>
-      <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
-      ${towns}
+      <h2>들은 이야기 수첩</h2>
+      <p class="muted">아직 들은 이야기가 없어요. 원정을 나가거나 여관에 들르면 이야기를 듣게 돼요.</p>
+    </section>
+    <section class="card">
+      <h2>장날 결과 기록</h2>
+      <ul class="list">${results}</ul>
     </section>`;
 }

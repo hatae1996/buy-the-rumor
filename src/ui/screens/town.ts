@@ -5,7 +5,7 @@ import notePin from '../../../assets/ui/note_pin.png';
 import village from '../../../assets/ui/village.png';
 import { count, GOODS, type PlayerView } from '../../sim/economy';
 import { euro } from '../../sim/josa';
-import { durationText, goodName } from '../format';
+import { goodName } from '../format';
 import type { Game } from '../game';
 
 export interface TownScreenActions {
@@ -14,7 +14,7 @@ export interface TownScreenActions {
   passDay: () => void;
 }
 
-export function renderTown(el: HTMLElement, game: Game, v: PlayerView, now: number, act: TownScreenActions): void {
+export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: TownScreenActions): void {
   const townName = (id: number) => game.map.towns[id]!.name;
   const place = v.location.kind === 'town' ? townName(v.location.town) : `${euro(townName(v.location.to))} 가는 길`;
 
@@ -44,10 +44,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, now: numb
     }).join('');
     body = `
       <section class="card">
-        <header class="card-head">
-          <h2>오늘 시세</h2>
-          <span class="badge">장날까지 ${durationText(game.msUntilMarket(now))}</span>
-        </header>
+        <h2>오늘 시세</h2>
         <p class="muted">사고팔 물건을 누르세요. 신청은 장날에 한꺼번에 맞춰서 값 하나로 정해져요.</p>
         <ul class="good-list">${rows}</ul>
       </section>`;

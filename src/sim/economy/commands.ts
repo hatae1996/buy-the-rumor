@@ -5,7 +5,7 @@ import { seasonOfDay } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { Accounts } from './accounts';
 import { GOODS, type GoodId } from './goods';
-import { count, totalCount } from './inventory';
+import { count, sellableCount, totalCount } from './inventory';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -21,6 +21,7 @@ export type CommandError =
   | 'badPrice'
   | 'notEnoughGold'
   | 'notEnoughGoods'
+  | 'spoiling'
   | 'noRoom'
   | 'noOrder'
   | 'sameTown'
@@ -56,6 +57,9 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (!isCount(cmd.qty)) return fail('badQty');
       if (!isCount(cmd.minPrice)) return fail('badPrice');
       if (count(p.cargo, cmd.good) < cmd.qty) return fail('notEnoughGoods');
+      // 내일이면 상할 물건은 장에 낼 수 없다
+      const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
+      if (sellableCount(p.cargo, cmd.good, rate) < cmd.qty) return fail('spoiling');
       const o = accounts.place(owner, p.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
       state.orders.push(o);
       return { ok: true, orderId: o.id };

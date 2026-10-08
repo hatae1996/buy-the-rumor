@@ -1,7 +1,7 @@
 // 경제 시작 상태. 맵의 마을과 자원지로 일꾼을 나누고, 같은 시드면 같은 시작이 된다.
 import { ECONOMY } from '../constants';
 import { createRng, type Rng } from '../rng';
-import { seasonOfDay, type Season } from '../season';
+import { seasonOfDay, WINTER, type Season } from '../season';
 import type { WorldMap } from '../worldgen';
 import { basePrice, emptyGoodMap, GOODS, type GoodId } from './goods';
 import { addGoods } from './inventory';
@@ -52,6 +52,11 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     for (const job of CRAFT_JOBS) {
       for (let i = 0; i < ECONOMY.startWorkers.crafter; i++) state.workers.push(newWorker(state, town.id, job, rng));
     }
+  }
+
+  // 겨울에 시작하면 지난가을에 쌓아 둔 겨울 양식을 갖고 시작한다 (아니면 첫겨울에 다 떠난다)
+  if (state.startSeason === WINTER) {
+    for (const w of state.workers) addGoods(w.inv, 'grain', ECONOMY.worker.winterReserveDays * ECONOMY.worker.foodPerDay);
   }
 
   for (let i = 0; i < ECONOMY.traders.count; i++) {

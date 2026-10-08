@@ -5,7 +5,7 @@ export { createEconomy, type CreateOptions } from './create';
 export { advanceDay, advanceDays, type DayReport } from './day';
 export { applyCommand, type Command, type CommandError, type CommandResult } from './commands';
 export { clearAuction, type AuctionOrder, type AuctionResult } from './auction';
-export { count, totalCount, type Inventory, type Lot } from './inventory';
+export { count, sellableCount, totalCount, type Inventory, type Lot } from './inventory';
 export { moneySupply, population, jobCounts, hungryWorkers, townStock } from './stats';
 export { expectedIncome } from './workers';
 export { citizenDemand } from './citizens';

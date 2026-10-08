@@ -30,6 +30,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   badPrice: '값을 확인해 주세요.',
   notEnoughGold: '돈이 모자라요.',
   notEnoughGoods: '짐에 그만큼 없어요.',
+  spoiling: '곧 상할 물건은 장에 낼 수 없어요.',
   noRoom: '짐칸이 모자라요.',
   noOrder: '이미 없는 신청이에요.',
   sameTown: '이미 이 마을에 있어요.',
@@ -51,13 +52,31 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
   }
 }
 
-/** 짐 한 묶음의 상태: "2일 뒤 상해요" / "오래가요" */
-export function freshness(lot: Lot): { text: string; urgent: boolean } {
+/**
+ * 짐 한 묶음의 신선도. 숫자 대신 상태로 보여 준다 (기획서 "물품").
+ * rate는 오늘 계절의 상하는 배율 (여름 1.5, 겨울 0.5)
+ */
+export function freshness(lot: Lot, rate = 1): { text: string; level: 'fresh' | 'days' | 'soon' | 'keeps' } {
   const life = shelfLife(lot.good);
-  if (life === null) return { text: '안 상해요', urgent: false };
-  const left = life - lot.age;
-  if (left <= 1) return { text: '내일 상해요', urgent: true };
-  return { text: `${left}일 뒤 상해요`, urgent: left <= 2 };
+  if (life === null) return { text: '안 상해요', level: 'keeps' };
+  if (lot.age + rate >= life) return { text: '곧 상함', level: 'soon' };
+  if (lot.age < life * 0.4) return { text: '신선함', level: 'fresh' };
+  return { text: '며칠 남음', level: 'days' };
+}
+
+/**
+ * 어제 장날 분위기. 정확한 양은 숨기고 말로만 알린다 (기획서 "시장: 신청 현황 힌트").
+ */
+export function marketMood(demand: number, supply: number): string {
+  if (demand === 0 && supply === 0) return '어제는 이 물건을 찾는 사람도 파는 사람도 없었어요.';
+  if (supply === 0) return '어제는 사려는 사람만 있고 파는 사람이 없었어요.';
+  if (demand === 0) return '어제는 팔려는 사람만 있고 사는 사람이 없었어요.';
+  const r = demand / supply;
+  if (r >= 2) return '어제는 사려는 사람이 팔려는 사람보다 훨씬 많았어요.';
+  if (r >= 1.25) return '어제는 사려는 사람이 조금 더 많았어요.';
+  if (r <= 0.5) return '어제는 팔려는 사람이 훨씬 많았어요.';
+  if (r <= 0.8) return '어제는 팔려는 사람이 조금 더 많았어요.';
+  return '어제는 사려는 사람과 팔려는 사람이 비슷했어요.';
 }
 
 export function goodName(g: GoodId): string {

@@ -38,8 +38,9 @@
   color: var(--paper-dim);
 }
 
-.status-cargo {
-  color: var(--paper-dim);
+.status-market {
+  color: var(--mustard);
+  font-size: 14px;
 }
 
 .shell-body {

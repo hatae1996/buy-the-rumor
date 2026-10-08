@@ -460,3 +460,30 @@
   font-family: var(--f-display);
   font-size: 19px;
 }
+
+/* 신선도 상태 칩: 숫자 대신 상태로 (초록 신선함, 노랑 며칠 남음, 빨강 곧 상함) */
+.chip {
+  flex: none;
+  padding: 1px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #fff;
+}
+
+.chip.fresh {
+  background: var(--olive);
+}
+
+.chip.days {
+  background: var(--mustard);
+  color: var(--ink);
+}
+
+.chip.soon {
+  background: var(--wax);
+}
+
+.chip.keeps {
+  background: transparent;
+  color: var(--ink-soft);
+}

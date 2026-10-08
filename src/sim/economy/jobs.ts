@@ -15,8 +15,8 @@ export const JOB_NAME: Record<JobId, string> = {
   farmer: '농부',
   woodcutter: '나무꾼',
   miner: '광부',
-  salter: '염부',
-  curer: '염장장이',
+  salter: '염전 일꾼',
+  curer: '염장꾼',
   smith: '대장장이',
 };
 

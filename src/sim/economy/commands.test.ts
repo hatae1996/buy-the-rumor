@@ -95,6 +95,32 @@ describe('플레이어 명령', () => {
     expect(applyCommand(s, map, { type: 'travel', to: 0 })).toEqual({ ok: false, error: 'sameTown' });
   });
 
+  it('내일이면 상할 물건은 장에 낼 수 없다 (산 사람이 바로 버리게 되므로)', () => {
+    addGoods(s.player.cargo, 'fish', 2, 2.5);
+    addGoods(s.player.cargo, 'fish', 3, 0);
+    expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'fish', qty: 4, minPrice: 1 })).toEqual({
+      ok: false,
+      error: 'spoiling',
+    });
+    expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'fish', qty: 3, minPrice: 1 }).ok).toBe(true);
+    // 맡긴 것은 신선한 묶음이다
+    expect(s.orders[0]!.lots.every((l) => l.age === 0)).toBe(true);
+  });
+
+  it('장날에 산 음식은 적어도 하루는 간다', () => {
+    for (let d = 0; d < 40; d++) {
+      applyCommand(s, map, { type: 'placeBuyOrder', good: 'meat', qty: 2, maxPrice: 40 });
+      applyCommand(s, map, { type: 'placeBuyOrder', good: 'fish', qty: 2, maxPrice: 40 });
+      const before = s.player.ledger.length;
+      advanceDay(s, map);
+      const today = s.player.ledger.slice(before);
+      const bought = today.some((e) => e.kind === 'buy');
+      if (bought) expect(today.some((e) => e.kind === 'spoil')).toBe(false);
+      // 다음 날을 위해 짐을 비운다
+      s.player.cargo = [];
+    }
+  });
+
   it('짐 속 생선은 사흘이면 상하고 장부에 적힌다', () => {
     addGoods(s.player.cargo, 'fish', 4);
     for (let d = 0; d < 3; d++) advanceDay(s, map);

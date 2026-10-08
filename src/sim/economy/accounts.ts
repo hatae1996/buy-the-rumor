@@ -1,13 +1,19 @@
 // 신청을 낸 쪽의 돈과 짐. 신청을 낼 때 맡기고, 정산 뒤에 받거나 돌려받는다.
 import type { GoodId } from './goods';
-import { addLot, takeOldest, type Inventory, type Lot } from './inventory';
+import { ECONOMY } from '../constants';
+import { seasonOfDay } from '../season';
+import { addLot, takeSellable, type Inventory, type Lot } from './inventory';
 import type { EconomyState, Order, OrderOwner, Trader, Worker } from './state';
 
 export class Accounts {
   private readonly workers: Map<number, Worker>;
   private readonly traders: Map<number, Trader>;
 
+  /** 오늘 계절의 상하는 배율. 내일이면 상할 물건은 장에 내지 못하게 거른다 */
+  private readonly spoilRate: number;
+
   constructor(private readonly state: EconomyState) {
+    this.spoilRate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
     this.workers = new Map(state.workers.map((w) => [w.id, w]));
     this.traders = new Map(state.traders.map((t) => [t.id, t]));
   }
@@ -80,7 +86,7 @@ export class Accounts {
     } else {
       const inv = this.inventory(owner);
       if (!inv) return null;
-      order.lots = takeOldest(inv, good, qty);
+      order.lots = takeSellable(inv, good, qty, this.spoilRate);
       order.qty = order.lots.reduce((s, l) => s + l.qty, 0);
       if (order.qty === 0) return null;
     }
