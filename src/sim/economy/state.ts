@@ -10,6 +10,7 @@ import type { Hire, HireRole } from '../hire/hire';
 import type { Caravan } from '../caravan/types';
 import type { BankAccount } from '../bank/bank';
 import type { OwnedWorkshop } from '../growth/workshop';
+import type { NotifySettings } from '../notify/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -240,6 +241,8 @@ export interface PlayerState {
   bank: BankAccount;
   /** 가진 작업장 (염장소, 대장간). 이번 버전은 구조만 */
   workshops: OwnedWorkshop[];
+  /** 알림 설정 (종류별 켜고 끄기, 하루 상한, 조용한 시간). 실제 푸시는 서버 버전에서 */
+  notify: NotifySettings;
 }
 
 export type OrderOwner =

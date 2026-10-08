@@ -20,6 +20,7 @@ import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
 import { hireBoard, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
+import type { NotifySettings } from '../notify';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
@@ -167,6 +168,8 @@ export interface PlayerView {
   hireBoard: HireOffer[];
   /** 두 번째 행렬. 없으면 null */
   caravan: CaravanView | null;
+  /** 알림 설정. askNow: 견습 졸업이라 알림 허락을 물을 때 */
+  notify: NotifySettings & { askNow: boolean };
   /** 은행 계좌 (도시에만 은행이 있다. 이번 버전은 보기만) */
   bank: { deposit: number; loan: number; depositRate: number; loanRate: number };
   /** 정보원 일당 (여관 게시판), 지금 마을에 이미 있나 */
@@ -570,6 +573,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     })),
     hireBoard: hireBoard(state, map),
     caravan: caravanView(state),
+    notify: { ...p.notify, askNow: p.apprentice?.scene === 'graduation' && p.notify.askedDay === null },
     bank: { deposit: p.bank.deposit, loan: p.bank.loan, depositRate: GROWTH.bank.depositRate, loanRate: GROWTH.bank.loanRate },
     informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },
     buildings: p.travel

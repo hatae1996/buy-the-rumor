@@ -18,6 +18,7 @@ import { ALL_UNLOCKS, startApprentice } from '../apprentice/progress';
 import { createCertificate } from '../ranking/certificate';
 import { ensureRecord } from '../ranking/record';
 import { emptyAccount } from '../bank/bank';
+import { defaultNotifySettings } from '../notify/kinds';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
@@ -74,6 +75,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       caravan: null,
       bank: emptyAccount(),
       workshops: [],
+      notify: defaultNotifySettings(),
     },
     orders: [],
     news: [],

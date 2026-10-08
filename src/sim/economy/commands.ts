@@ -46,6 +46,7 @@ import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
+import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { dismiss, hire, porterBoards, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
@@ -113,7 +114,9 @@ export type Command =
   | { type: 'formCaravan'; horseIds: number[]; cart: CartType }
   | { type: 'setCaravanPlan'; plan: CaravanPlan }
   | { type: 'recallCaravan' }
-  | { type: 'disbandCaravan' };
+  | { type: 'disbandCaravan' }
+  /** 알림 설정을 바꾼다 (종류별 켜고 끄기, 하루 상한, 조용한 시간). asked: 알림 허락을 물었다 */
+  | { type: 'setNotify'; enabled?: Partial<Record<NotifyKind, boolean>>; dailyCap?: number; quietStart?: number; quietEnd?: number; asked?: boolean };
 
 export type CommandError =
   | 'traveling'
@@ -295,6 +298,19 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return done(hire(state, map, cmd.role));
     case 'dismissHire':
       return done(dismiss(state, cmd.hireId));
+    case 'setNotify': {
+      const n = p.notify;
+      const hour = (h: number | undefined) => h === undefined || (Number.isInteger(h) && h >= 0 && h <= 23);
+      if (!hour(cmd.quietStart) || !hour(cmd.quietEnd) || (cmd.dailyCap !== undefined && !(Number.isInteger(cmd.dailyCap) && cmd.dailyCap >= 0))) {
+        return fail('badQty');
+      }
+      for (const [k, v] of Object.entries(cmd.enabled ?? {})) if (k in n.enabled) n.enabled[k as NotifyKind] = Boolean(v);
+      if (cmd.dailyCap !== undefined) n.dailyCap = cmd.dailyCap;
+      if (cmd.quietStart !== undefined) n.quietStart = cmd.quietStart;
+      if (cmd.quietEnd !== undefined) n.quietEnd = cmd.quietEnd;
+      if (cmd.asked) n.askedDay ??= state.day;
+      return { ok: true };
+    }
     case 'formCaravan':
       return done(formCaravan(state, map, cmd.horseIds, cmd.cart));
     case 'setCaravanPlan':

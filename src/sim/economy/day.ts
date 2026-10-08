@@ -30,6 +30,7 @@ import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '.
 import { warehouseNight } from '../warehouse/warehouse';
 import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
+import { dayNotices, type NotifyEvent } from '../notify';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -54,6 +55,8 @@ export interface DayReport {
   heard: HeardRumor[];
   /** 오늘 밤 새로 찍힌 도장 수 */
   stamped: number;
+  /** 알림을 보낼 사건 (켜고 끄기, 묶기, 상한은 받는 쪽이 planDelivery로) */
+  notices: NotifyEvent[];
 }
 
 export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
@@ -170,9 +173,11 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     traderDay(t, state, days, rng);
     traderHorsesNight(state, t);
   }
+  let arrived: number | null = null;
   if (p.travel && --p.travel.daysLeft <= 0) {
     p.town = p.travel.to;
     p.travel = null;
+    arrived = p.town;
   }
   playerNight(state);
   playerHorsesNight(state);
@@ -216,6 +221,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     news,
     heard: rumors.heard,
     stamped: rumors.stamped,
+    notices: dayNotices(state, map, state.day, news, arrived),
   };
   // 견습 장면과 하나씩 열리는 것
   apprenticeAfterDay(state, map, state.day);
