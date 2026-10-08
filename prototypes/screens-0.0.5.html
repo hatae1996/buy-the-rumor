@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0.0.5 화면 시안</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>body{margin:0;background:#2a211b;font-family:'Gowun Dodum',sans-serif;display:flex;flex-wrap:wrap;gap:40px;justify-content:center;padding:24px 0}
+a{color:#3A2B22}
+.wood{background:#4a3527 repeating-linear-gradient(90deg,#4a3527 0 38px,#543c2c 38px 40px)}
+.plank{background:#6B4A32;border:3px solid #3A2B22;border-radius:12px;box-shadow:inset 0 -4px 0 #4E3524}
+.paper{background:#F1E2C6;border-radius:10px;box-shadow:0 3px 0 #C9B48F}
+.card{background:#F6EAD2;border:3px solid #6B4A32;border-radius:12px}
+.ribbon{background:#D2594B;border-radius:6px;box-shadow:0 3px 0 #8E3328}
+.seal{background:radial-gradient(circle,#B8402F 60%,#7E2A1F 62%);border-radius:50%}
+.s-coral{background:#D2594B;border-radius:6px}
+.figure{display:flex;flex-direction:column;align-items:center;gap:8px;color:#FBEFD8;font-family:'Jua',sans-serif}
+.s-teal{background:#2E9C98;border-radius:6px}.s-olive{background:#7D8A2E;border-radius:6px}.sealsm{background:radial-gradient(circle,#B8402F 60%,#7E2A1F 62%);border-radius:50%}.ph{display:inline-block;background:#C9B48F;border-radius:6px}</style></head><body>
+<!-- 기획 0.0.5 화면 시안: 도시 마을 탭, 여관, 지시서. 그림 에셋 자리는 단색이나 빈칸으로 보인다. -->
+<div class="figure"><span>도시 마을 탭</span>
+<div class="wood" style="width: 390px; height: 844px; box-sizing: border-box; color: #3A2B22; font-family: 'Gowun Dodum', sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <div style="padding: 40px 8px 0; flex: none">
+    <div class="plank" style="height: 66px; display: flex; align-items: center; gap: 8px; padding: 0 26px 0 18px">
+      <a href="#" aria-label="내 상인 증서" style="width: 44px; height: 48px; display: flex; align-items: center; justify-content: center"><svg width="34" height="40" viewBox="0 0 86 100" aria-hidden="true"><path d="M43 4l36 10v30c0 26-17 42-36 52C24 86 7 70 7 44V14z" fill="#24476B" stroke="#C99A2E" stroke-width="6"/><path d="M24 50c4-10 12-16 22-16 4 0 7-3 9-6 2 4 1 7-1 9l8 2-8 3c1 6-4 12-12 13l-6 6-2-6c-5 1-9-1-10-5z" fill="#1B1714"/></svg></a>
+      <span style="flex: 1; font-family: 'Jua', sans-serif; font-size: 17px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16; line-height: 1.1">가을 12일<br><span style="font-size: 12px; color: #E9D9B8">장날까지 1:42</span></span>
+      <span style="display: flex; align-items: center; gap: 4px; font-family: 'Jua', sans-serif; font-size: 15px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16" aria-label="피로 4/10"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E6B43C" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 14A8 8 0 1110 4a6 6 0 0010 10z"/></svg>4/10</span>
+      <span style="display: flex; align-items: center; gap: 4px"><span alt="" style="width: 26px; height: 26px" class="ph"></span><span style="font-family: 'Jua', sans-serif; font-size: 19px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16">2,140</span></span>
+    </div>
+  </div>
+  <div style="position: relative; padding: 6px 14px 0; flex: none">
+    <div class="paper" style="padding: 10px 10px 12px">
+      <span alt="벨헤이븐 풍경" style="display: block; width: 100%; height: 96px; object-fit: cover; object-position: 50% 60%; border-radius: 4px" class="ph"></span>
+    </div>
+    <div class="ribbon" style="position: absolute; left: 50%; bottom: -20px; transform: translateX(-50%); width: 250px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Jua', sans-serif; font-size: 23px; color: #FFFFFF; text-shadow: 0 2px 0 #8E3328">벨헤이븐<span style="font-size: 13px; background: #FBEFD8; color: #8E3328; border-radius: 8px; padding: 1px 8px; text-shadow: none">도시</span></div>
+  </div>
+  <div style="padding: 30px 12px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 8px">
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-coral" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">시장</span>
+      <span alt="" style="width: 70px; height: 58px; object-fit: contain" class="ph"></span>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">신청 2건</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-teal" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">여관</span>
+      <span alt="" style="width: 70px; height: 58px; object-fit: contain" class="ph"></span>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">새 소문 · 구인</span><span class="sealsm" style="position: absolute; top: -10px; right: -6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-family: 'Jua', sans-serif; font-size: 17px; color: #FFFFFF">!</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-olive" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">잡화점</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20h32v20H8z" fill="#E6B43C"/><path d="M6 20l4-10h28l4 10" fill="#D2594B"/><path d="M14 10v10M22 10v10M30 10v10" stroke="#FBEFD8"/><path d="M20 40V30h8v10"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">장비 수리</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-coral" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">창고</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22L24 8l18 14v18H6z" fill="#B8402F"/><path d="M16 40V26h16v14z" fill="#E6B43C"/><path d="M16 26l16 14M32 26L16 40"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">곧 상함 2</span><span class="sealsm" style="position: absolute; top: -10px; right: -6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-family: 'Jua', sans-serif; font-size: 17px; color: #FFFFFF">!</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-olive" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">수레방</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="15" fill="#E6B43C"/><circle cx="24" cy="24" r="4" fill="#6B4A32"/><path d="M24 9v30M9 24h30M13.4 13.4l21.2 21.2M34.6 13.4L13.4 34.6"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">짐수레 있음</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-teal" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">대장간</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 16h26c0 6 4 8 8 8H30l-2 6h-8l-2-6H12c-2-4-4-6-4-8z" fill="#7D8A2E"/><path d="M16 40h16M20 30v10M28 30v10"/><path d="M30 8l-4 4M36 8l-2 5" stroke="#D2594B"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">작업장</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-olive" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">은행</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16L24 6l18 10z" fill="#E6B43C"/><path d="M8 16h32M10 20v14M18 20v14M30 20v14M38 20v14M6 38h36"/><circle cx="24" cy="12" r="2" fill="#6B4A32"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">이자 4%</span>
+    </a>
+    <a href="#" class="card" style="min-height: 124px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 9px; text-decoration: none; color: #3A2B22; position: relative">
+      <span class="s-teal" style="align-self: stretch; text-align: center; font-family: 'Jua', sans-serif; font-size: 16px; color: #FFFFFF; padding: 2px 0 4px; text-shadow: 0 1px 0 rgba(0,0,0,.35)">길드 회관</span>
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none" stroke="#3A2B22" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 42V6" /><path d="M12 8h22l-5 7 5 7H12" fill="#2E9C98"/><circle cx="21" cy="15" r="3" fill="#FBEFD8"/><path d="M8 42h10"/></svg>
+      <span style="font-size: 12px; font-weight: 700; text-align: center">의뢰 2/4</span>
+    </a>
+    <div style="display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: #E9D9B8; padding: 6px">자원지가 없어 원정은 못 해요</div>
+  </div>
+  <div style="flex: 1"></div>
+  <nav aria-label="주요 화면" class="plank" style="margin: 0 6px 24px; height: 92px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 22px; flex: none">
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-decoration: none">
+      <span alt="" style="width: 46px; height: 40px; object-fit: contain" class="ph"></span>
+      <span class="s-coral" style="font-family: 'Jua', sans-serif; font-size: 14px; color: #FBEFD8; text-shadow: 0 1px 0 #2A1E16; padding: 1px 12px 2px">마을</span></a>
+    <a href="#"  style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-decoration: none">
+      <span alt="" style="width: 44px; height: 38px; object-fit: contain" class="ph"></span>
+      <span  style="font-family: 'Jua', sans-serif; font-size: 14px; color: #FBEFD8; text-shadow: 0 1px 0 #2A1E16; padding: 1px 12px 2px">지도</span></a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-decoration: none">
+      <span alt="" style="width: 44px; height: 38px; object-fit: contain" class="ph"></span>
+      <span style="font-family: 'Jua', sans-serif; font-size: 14px; color: #FBEFD8; text-shadow: 0 1px 0 #2A1E16">장부</span></a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; text-decoration: none">
+      <span alt="" style="width: 44px; height: 38px; object-fit: contain" class="ph"></span>
+      <span style="font-family: 'Jua', sans-serif; font-size: 14px; color: #FBEFD8; text-shadow: 0 1px 0 #2A1E16">소식</span></a>
+  </nav>
+</div>
+</div>
+<div class="figure"><span>여관</span>
+<div class="wood" style="width: 390px; height: 1010px; box-sizing: border-box; color: #3A2B22; font-family: 'Gowun Dodum', sans-serif; display: flex; flex-direction: column">
+  <div style="padding: 40px 8px 0">
+    <div class="plank" style="height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px 0 14px">
+      <a href="#" style="min-height: 44px; display: flex; align-items: center; gap: 4px; text-decoration: none; font-family: 'Jua', sans-serif; font-size: 15px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>벨헤이븐</a>
+      <h1 style="margin: 0; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 21px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16">여관 '붉은 사슴'</h1>
+      <span style="width: 60px"></span>
+    </div>
+  </div>
+  <div style="padding: 8px 12px 0">
+    <div class="paper" style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-family: 'Jua', sans-serif; font-size: 17px">소문꾼</span><span style="font-size: 12px; color: #8A7A66">오늘 새 소문 2</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; border-top: 2px dashed #C9B48F; padding-top: 10px">
+        <span alt="" style="width: 52px; height: 52px" class="ph"></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Jua', sans-serif; font-size: 15px">늙은 마부 오스윈</span><span style="font-size: 13px; color: #6B4A32">"솔트미어 길이 요즘 조용하더군..."</span></div>
+        <button type="button"  style="border: 0; border-radius: 10px; min-width: 64px; min-height: 44px; font-family: 'Jua', sans-serif; font-size: 15px; background: #2E9C98; color: #FFFFFF; box-shadow: 0 3px 0 #1E6664">듣기</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; border-top: 2px dashed #C9B48F; padding-top: 10px">
+        <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="#2E9C98" stroke="#3A2B22" stroke-width="3"/><circle cx="26" cy="21" r="9" fill="#F1E2C6"/><path d="M10 44c3-9 9-13 16-13s13 4 16 13" fill="#F1E2C6"/><text x="26" y="25" text-anchor="middle" font-family="Jua, sans-serif" font-size="11" fill="#3A2B22">테</text></svg>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Jua', sans-serif; font-size: 15px">떠돌이 테오</span><span style="font-size: 13px; color: #6B4A32">"엄청난 걸 봤지! 스톤힐에..."</span></div>
+        <button type="button"  style="border: 0; border-radius: 10px; min-width: 64px; min-height: 44px; font-family: 'Jua', sans-serif; font-size: 15px; background: #2E9C98; color: #FFFFFF; box-shadow: 0 3px 0 #1E6664">듣기</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; border-top: 2px dashed #C9B48F; padding-top: 10px">
+        <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="#D2594B" stroke="#3A2B22" stroke-width="3"/><circle cx="26" cy="21" r="9" fill="#F1E2C6"/><path d="M10 44c3-9 9-13 16-13s13 4 16 13" fill="#F1E2C6"/><text x="26" y="25" text-anchor="middle" font-family="Jua, sans-serif" font-size="11" fill="#3A2B22">마</text></svg>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Jua', sans-serif; font-size: 15px">생선 장수 마르타</span><span style="font-size: 13px; color: #6B4A32">오늘은 들은 얘기를 다 했어요</span></div>
+        <button type="button" disabled style="border: 0; border-radius: 10px; min-width: 64px; min-height: 44px; font-family: 'Jua', sans-serif; font-size: 15px; background: #E9D9B8; color: #8A7A66">들었음</button>
+      </div>
+      <button type="button" style="border: 0; border-radius: 10px; min-height: 48px; background: #E6B43C; color: #3A2B22; font-family: 'Jua', sans-serif; font-size: 16px; box-shadow: 0 3px 0 #9A7413; display: flex; align-items: center; justify-content: center; gap: 8px">술 한 잔 사기 <span style="font-size: 13px">금화 3 · 소문 하나 더</span></button>
+    </div>
+  </div>
+  <div style="padding: 12px 12px 0">
+    <div style="background: #8A6242; border: 4px solid #4E3524; border-radius: 10px; padding: 12px 10px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px"><span style="font-family: 'Jua', sans-serif; font-size: 17px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16">고용 게시판</span><span style="font-size: 12px; color: #F1E2C6">일손이 모자라면 일당이 올라요</span></div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <div style="background: #F6EAD2; transform: rotate(-2deg); padding: 14px 10px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.25); position: relative; display: flex; flex-direction: column; gap: 4px">
+          <span style="position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #B8402F; box-shadow: 0 2px 0 #7E2A1F"></span>
+          <span style="font-family: 'Jua', sans-serif; font-size: 18px">짐꾼</span>
+          <span style="font-size: 12px; font-weight: 700; color: #6B4A32">브람</span>
+          <span style="font-size: 12px; line-height: 1.3">내 행렬에 손수레 하나 더</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-family: 'Jua', sans-serif; font-size: 14px">일당 6</span><button type="button" style="border: 0; border-radius: 8px; min-height: 36px; min-width: 52px; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 14px; box-shadow: 0 2px 0 #8E3328">고용</button></div>
+        </div>
+        <div style="background: #F6EAD2; transform: rotate(1.5deg); padding: 14px 10px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.25); position: relative; display: flex; flex-direction: column; gap: 4px">
+          <span style="position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #B8402F; box-shadow: 0 2px 0 #7E2A1F"></span>
+          <span style="font-family: 'Jua', sans-serif; font-size: 18px">채집꾼</span>
+          <span style="font-size: 12px; font-weight: 700; color: #6B4A32">엘사 (사냥꾼)</span>
+          <span style="font-size: 12px; line-height: 1.3">내가 없어도 매일 숲 원정</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-family: 'Jua', sans-serif; font-size: 14px">일당 9</span><button type="button" style="border: 0; border-radius: 8px; min-height: 36px; min-width: 52px; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 14px; box-shadow: 0 2px 0 #8E3328">고용</button></div>
+        </div>
+        <div style="background: #F6EAD2; transform: rotate(1deg); padding: 14px 10px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.25); position: relative; display: flex; flex-direction: column; gap: 4px">
+          <span style="position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #B8402F; box-shadow: 0 2px 0 #7E2A1F"></span>
+          <span style="font-family: 'Jua', sans-serif; font-size: 18px">마부</span>
+          <span style="font-size: 12px; font-weight: 700; color: #6B4A32">오드</span>
+          <span style="font-size: 12px; line-height: 1.3">두 번째 행렬을 몬다</span><span style="font-size: 11px; color: #B8402F; font-weight: 700">말이 있어야 해요</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-family: 'Jua', sans-serif; font-size: 14px">일당 12</span><button type="button" style="border: 0; border-radius: 8px; min-height: 36px; min-width: 52px; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 14px; box-shadow: 0 2px 0 #8E3328">고용</button></div>
+        </div>
+        <div style="background: #F6EAD2; transform: rotate(-1deg); padding: 14px 10px 10px; box-shadow: 0 3px 0 rgba(0,0,0,.25); position: relative; display: flex; flex-direction: column; gap: 4px">
+          <span style="position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #B8402F; box-shadow: 0 2px 0 #7E2A1F"></span>
+          <span style="font-family: 'Jua', sans-serif; font-size: 18px">정보원</span>
+          <span style="font-size: 12px; font-weight: 700; color: #6B4A32">이름 없음</span>
+          <span style="font-size: 12px; line-height: 1.3">벨헤이븐 시세와 신청 현황</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-family: 'Jua', sans-serif; font-size: 14px">일당 20</span><button type="button" style="border: 0; border-radius: 8px; min-height: 36px; min-width: 52px; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 14px; box-shadow: 0 2px 0 #8E3328">고용</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="padding: 12px 16px 24px">
+    <button type="button" class="ribbon" style="border: 0; width: 100%; min-height: 54px; font-family: 'Jua', sans-serif; font-size: 18px; color: #FFFFFF; text-shadow: 0 2px 0 #8E3328; display: flex; align-items: center; justify-content: center; gap: 8px">하룻밤 묵기 <span style="font-size: 13px">금화 16 · 피로 −8 · 말도 쉼</span></button>
+  </div>
+</div>
+</div>
+<div class="figure"><span>지시서</span>
+<div class="wood" style="width: 390px; height: 900px; box-sizing: border-box; color: #3A2B22; font-family: 'Gowun Dodum', sans-serif; display: flex; flex-direction: column">
+  <div style="padding: 40px 8px 0">
+    <div class="plank" style="height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px 0 14px">
+      <a href="#" style="min-height: 44px; display: flex; align-items: center; gap: 4px; text-decoration: none; font-family: 'Jua', sans-serif; font-size: 15px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>지도</a>
+      <h1 style="margin: 0; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 21px; color: #FBEFD8; text-shadow: 0 2px 0 #2A1E16">두 번째 행렬</h1>
+      <span style="width: 50px"></span>
+    </div>
+  </div>
+  <div style="padding: 8px 12px 0">
+    <div class="paper" style="padding: 12px">
+      <svg width="100%" viewBox="0 0 340 200" role="img" aria-label="지시서 경로: 솔트미어, 벨헤이븐, 리버포드를 돌아 다시 솔트미어" style="display: block; border-radius: 6px; background: #CFE3C0">
+        <path d="M0 150 Q60 130 90 170 T200 200 L0 200z" fill="#8CC4D6"/>
+        <path d="M250 0 L340 0 L340 90 Q300 70 280 40z" fill="#9C9A8C"/>
+        <g fill="#7D8A2E" opacity=".55"><circle cx="40" cy="40" r="10"/><circle cx="56" cy="30" r="8"/><circle cx="30" cy="62" r="9"/><circle cx="210" cy="60" r="9"/><circle cx="226" cy="72" r="7"/></g>
+        <path d="M70 140 L170 95 L270 120 L180 40" fill="none" stroke="#C9B48F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M70 140 L170 95 L270 120 L70 140" fill="none" stroke="#D2594B" stroke-width="4" stroke-dasharray="10 7" stroke-linecap="round" stroke-linejoin="round"/>
+        <g font-family="Jua, sans-serif" font-size="13" fill="#3A2B22" text-anchor="middle">
+          <circle cx="70" cy="140" r="14" fill="#D2594B" stroke="#3A2B22" stroke-width="2.5"/><text x="70" y="145" fill="#FFF" font-size="14">1</text><text x="70" y="170">솔트미어</text>
+          <circle cx="170" cy="95" r="16" fill="#D2594B" stroke="#3A2B22" stroke-width="2.5"/><text x="170" y="100" fill="#FFF" font-size="14">2</text><text x="170" y="126">벨헤이븐</text>
+          <circle cx="270" cy="120" r="14" fill="#D2594B" stroke="#3A2B22" stroke-width="2.5"/><text x="270" y="125" fill="#FFF" font-size="14">3</text><text x="270" y="150">리버포드</text>
+          <circle cx="180" cy="40" r="11" fill="#F1E2C6" stroke="#8A7A66" stroke-width="2"/><text x="180" y="22" fill="#6B4A32">스톤힐</text>
+        </g>
+        <g transform="translate(118 112)"><rect x="-13" y="-10" width="26" height="16" rx="3" fill="#6B4A32" stroke="#3A2B22" stroke-width="2"/><circle cx="-7" cy="8" r="4" fill="#E6B43C" stroke="#3A2B22" stroke-width="2"/><circle cx="7" cy="8" r="4" fill="#E6B43C" stroke="#3A2B22" stroke-width="2"/></g>
+      </svg>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; font-size: 13px; font-weight: 700"><span>마부 오드 · 짐말 · 짐수레</span><span style="color: #1E6664">벨헤이븐까지 하루</span></div>
+    </div>
+  </div>
+  <div style="padding: 10px 12px 0">
+    <div class="paper" style="padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-family: 'Jua', sans-serif; font-size: 18px">지시서</span><span style="font-size: 12px; color: #8A7A66">마을을 눌러 길에 넣어요</span></div>
+      <div style="border-top: 2px dashed #C9B48F; padding-top: 8px; display: flex; gap: 10px">
+        <span style="flex: none; width: 28px; height: 28px; border-radius: 50%; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; display: flex; align-items: center; justify-content: center">1</span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Jua', sans-serif; font-size: 16px">솔트미어</span>
+          <div style="display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 6px; font-size: 14px; align-items: center"><span style="font-weight: 700; color: #1E6664">사기</span><span>소금 20개</span><span style="color: #6B4A32">최대 14</span></div>
+          <div style="display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 6px; font-size: 14px; align-items: center"><span style="font-weight: 700; color: #1E6664">사기</span><span>생선 10개</span><span style="color: #6B4A32">최대 9</span></div>
+        </div>
+        <button type="button" aria-label="솔트미어 지시 고치기" style="flex: none; align-self: flex-start; width: 44px; height: 44px; border: 0; background: transparent; color: #3A2B22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
+      </div>
+      <div style="border-top: 2px dashed #C9B48F; padding-top: 8px; display: flex; gap: 10px">
+        <span style="flex: none; width: 28px; height: 28px; border-radius: 50%; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; display: flex; align-items: center; justify-content: center">2</span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Jua', sans-serif; font-size: 16px">벨헤이븐</span>
+          <div style="display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 6px; font-size: 14px; align-items: center"><span style="font-weight: 700; color: #8E3328">팔기</span><span>소금 전부</span><span style="color: #6B4A32">최소 22</span></div>
+          <div style="display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 6px; font-size: 14px; align-items: center"><span style="font-weight: 700; color: #8E3328">팔기</span><span>생선 전부</span><span style="color: #6B4A32">최소 16</span></div>
+        </div>
+        <button type="button" aria-label="벨헤이븐 지시 고치기" style="flex: none; align-self: flex-start; width: 44px; height: 44px; border: 0; background: transparent; color: #3A2B22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
+      </div>
+      <div style="border-top: 2px dashed #C9B48F; padding-top: 8px; display: flex; gap: 10px">
+        <span style="flex: none; width: 28px; height: 28px; border-radius: 50%; background: #D2594B; color: #FFFFFF; font-family: 'Jua', sans-serif; display: flex; align-items: center; justify-content: center">3</span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Jua', sans-serif; font-size: 16px">리버포드</span>
+          <div style="display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 6px; font-size: 14px; align-items: center"><span style="font-weight: 700; color: #1E6664">사기</span><span>곡물 15개</span><span style="color: #6B4A32">최대 8</span></div>
+        </div>
+        <button type="button" aria-label="리버포드 지시 고치기" style="flex: none; align-self: flex-start; width: 44px; height: 44px; border: 0; background: transparent; color: #3A2B22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
+      </div>
+      <div style="border-top: 2px dashed #C9B48F; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-weight: 700"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: #D2594B"> 끝나면 1번부터 다시</label>
+        <span style="color: #6B4A32">짐은 마부가 알아서 실어요 (칸 80%). 마부는 소문을 듣고 지시를 바꾸지 않아요.</span>
+      </div>
+    </div>
+  </div>
+  <div style="padding: 12px 16px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+    <button type="button" class="card" style="border: 0; min-height: 54px; font-family: 'Jua', sans-serif; font-size: 16px; color: #3A2B22">행렬 불러들이기</button>
+    <button type="button" class="ribbon" style="border: 0; min-height: 54px; font-family: 'Jua', sans-serif; font-size: 17px; color: #FFFFFF; text-shadow: 0 2px 0 #8E3328">지시서 보내기</button>
+  </div>
+</div>
+</div>
+</body></html>
