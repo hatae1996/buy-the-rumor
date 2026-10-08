@@ -815,3 +815,103 @@
 .card h3 + .list {
   margin-top: 2px;
 }
+
+/* ───── 마을 탭: 건물 카드 (0.0.5) ───── */
+.building-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.building-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 110px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+.building-card:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.building-card img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.building-name {
+  font-family: var(--f-display);
+  font-size: 17px;
+}
+
+.building-card small {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* 할 일 도장 (!) */
+.building-alert {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--wax);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-size: 17px;
+  line-height: 26px;
+  transform: rotate(-8deg);
+}
+
+.center {
+  text-align: center;
+}
+
+/* ───── 지시서 ───── */
+.plan-stop .card-head select {
+  flex: 1;
+}
+
+.plan-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 15px;
+}
+
+.plan-line input {
+  width: 56px;
+  min-height: 36px;
+  font: inherit;
+}
+
+.plan-line select,
+.plan-stop select,
+.sheet select {
+  min-height: 36px;
+  font: inherit;
+}
+
+/* ───── 자리를 비운 사이 카드 ───── */
+.away-card + .away-card,
+.away-head + .away-card {
+  margin-top: 10px;
+}
+
+.certificate h2 {
+  font-size: 24px;
+}

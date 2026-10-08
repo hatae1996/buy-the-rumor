@@ -1,4 +1,5 @@
-// 지도 탭: 내 말의 위치를 경제 상태에서 그리고, 마을을 누르면 이동 명령을 보낸다.
+// 지도 탭 (기획서 "화면 구성 - 지도 탭", 0.0.5): "어디로 갈까". 내 행렬과 두 번째 행렬의 말을 그리고,
+// 마을을 누르면 마을 정보 카드(이동 시간, 아는 시세, 들은 특색, 건물, 여기로 가기), 행렬 단추로 지시서를 고친다.
 // Three.js가 커서 이 탭을 처음 열 때 불러온다.
 import './mapScreen.css';
 import { ECONOMY } from '../sim/constants';
@@ -8,6 +9,7 @@ import { MapView, PAWN_COLORS, type PawnSpec } from '../view3d';
 import { agoText, ERROR_TEXT, money } from './format';
 import type { Game } from './game';
 import { openSheet } from './sheet';
+import { openCaravanSheet } from './screens/caravanSheet';
 
 export interface MapScreen {
   setActive(active: boolean): void;
@@ -21,13 +23,19 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
 
   let view: MapView;
   try {
-    view = new MapView(container, { onTownTap: (id) => askTravel(id) });
+    view = new MapView(container, { onTownTap: (id) => openTownCard(id) });
   } catch {
     // WebGL을 못 쓰는 경우 (아주 오래된 기기, 메모리 부족)
     container.innerHTML = '<div class="map-error">지도를 그리지 못했어요. 앱을 다시 열어 보세요.</div>';
     return { setActive: () => {}, render: () => {} };
   }
   container.appendChild(status);
+  const caravanBtn = document.createElement('button');
+  caravanBtn.type = 'button';
+  caravanBtn.className = 'map-caravan-btn';
+  caravanBtn.textContent = '두 번째 행렬';
+  caravanBtn.addEventListener('click', () => openCaravanSheet(game));
+  container.appendChild(caravanBtn);
   view.setWorld(game.map);
   const name = (id: number) => game.map.towns[id]!.name;
   /** 떠나는 순간에는 상태가 먼저 바뀌어도 말을 순간이동시키지 않고 걸어가게 한다 */
@@ -45,28 +53,45 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     return { tile: route[i]!, route };
   }
 
+  /** 두 번째 행렬 말이 서 있는 칸 */
+  function caravanTile(): number | null {
+    const c = game.view().caravan;
+    if (!c) return null;
+    if (!c.travel) return game.map.towns[c.town]!.tile;
+    const v = game.view();
+    const route = findRoute(game.map, c.travel.from, c.travel.to, v.season, new Set(v.roads.blocked))?.tiles ?? [game.map.towns[c.travel.from]!.tile];
+    return route[Math.max(1, Math.floor(route.length / 2))] ?? route[0]!;
+  }
+
   function render() {
     const v = game.view();
     view.setSeason(v.season);
     if (!departing) {
       const me: PawnSpec = { key: 'me', color: PAWN_COLORS[0], tile: myTile().tile, slot: 0 };
-      view.setPawns([me]);
+      const ct = caravanTile();
+      const pawns = [me];
+      if (ct !== null) pawns.push({ key: 'caravan', color: PAWN_COLORS[1], tile: ct, slot: ct === me.tile ? 1 : 0 });
+      view.setPawns(pawns);
     }
+    caravanBtn.hidden = !v.caravan && !v.hires.some((h) => h.role === 'carter');
     status.textContent =
       v.location.kind === 'town'
         ? `${name(v.location.town)}에 있어요. 다른 마을을 누르면 떠날 수 있어요.`
         : `${euro(name(v.location.to))} 가는 길 · ${v.location.daysLeft}일 남았어요.`;
   }
 
-  function askTravel(to: number) {
+  /** 마을 정보 카드: 이동 시간, 아는 시세, 들은 특색, 건물, 여기로 가기 */
+  function openTownCard(to: number) {
     const v = game.view();
-    if (v.location.kind === 'road') {
-      status.textContent = '길 위에서는 다른 곳으로 갈 수 없어요. 도착하고 나서 떠나세요.';
-      return;
-    }
-    const here = v.location.town;
-    if (to === here) {
-      status.textContent = `${name(here)}에 있어요.`;
+    const here = v.location.kind === 'town' ? v.location.town : null;
+    const traits = v.knownTraits[to] ?? [];
+    const buildings = v.knownBuildings[to];
+    const info = `
+      ${traits.length ? `<p>들은 특색: ${traits.map((t) => `${t.name}${t.confirmed ? '' : ' (소문)'}`).join(', ')}</p>` : ''}
+      <p class="muted">${buildings ? `건물: ${buildings.map((b) => b.name).join(', ')}` : '가 본 적 없는 마을이라 건물을 몰라요.'}</p>`;
+    if (here === null || to === here) {
+      const sheet = openSheet(name(to));
+      sheet.body.innerHTML = `${to === here ? '<p>지금 여기 있어요.</p>' : '<p class="muted">길 위에서는 다른 곳으로 갈 수 없어요. 도착하고 나서 떠나세요.</p>'}${info}`;
       return;
     }
     // 신문에 실린 막힌 길은 돌아가고, 산적 길목에는 통행세를 낸다
@@ -77,17 +102,18 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     const fee = days * ECONOMY.player.travelFeePerDay + toll;
     const mem = v.memory[to];
     const city = game.map.towns[to]!.tier === 'city';
-    const sheet = openSheet(`${euro(name(to))} 떠날까요?`);
+    const sheet = openSheet(name(to));
     sheet.body.innerHTML = `
       <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
+      ${info}
       ${days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : ''}
       ${v.horses.length ? `<p class="muted">말이 길에서 지쳐요. 길 위에서는 수레에 실은 곡물을 먹어요 (하루 ${v.horses.reduce((s, h) => s + h.feed, 0)}개).</p>` : ''}
       ${toll > 0 ? `<p class="warn">산적이 있는 길목이라 여비에 통행세 ${money(toll)} 포함이에요.</p>` : ''}
       ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
       <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>
-      ${v.orders.length ? `<p class="warn">이 마을에 낸 신청 ${v.orders.length}개는 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}
+      ${v.orders.some((o) => o.from === 'cart') ? `<p class="warn">이 마을에 수레 짐으로 낸 신청은 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}
       <p class="error" data-error hidden></p>
-      <button type="button" class="primary-btn" data-go>떠나기</button>`;
+      <button type="button" class="primary-btn" data-go>여기로 가기</button>`;
     sheet.body.querySelector('[data-go]')!.addEventListener('click', () => {
       departing = true;
       const r = game.dispatch({ type: 'travel', to });

@@ -1,60 +1,15 @@
-// 마을 (기본 화면): 이 마을 오늘 시세, 장날까지 남은 시간, 장날에 낼 신청.
-import arrowDown from '../../../assets/ui/arrow_down.png';
-import arrowUp from '../../../assets/ui/arrow_up.png';
-import notePin from '../../../assets/ui/note_pin.png';
+// 마을 탭 (기획서 "화면 구성", 0.0.5): "여기서 무엇을 할까". 그 마을에 있는 건물 카드만 보인다.
+// 건물을 누르면 그 건물 쪽지(시장, 여관, 잡화점, 바깥, 창고, 마구간, 수레방, 작업장, 은행, 길드 회관)가 열린다.
 import village from '../../../assets/ui/village.png';
-import { count, GOODS, type PlayerView } from '../../sim/economy';
+import type { BuildingId } from '../../sim/growth';
+import type { PlayerView } from '../../sim/economy';
 import { euro } from '../../sim/josa';
-import { goodName, money } from '../format';
 import type { Game } from '../game';
-import { noteItem, topNotes } from './noteItem';
-import { horseFatigue, speedWord } from './horseSheet';
-import { HORSES } from '../../sim/constants';
+import { buildingCards, openBuilding } from './buildings';
 
 export interface TownScreenActions {
-  openOrder: (good: (typeof GOODS)[number]) => void;
-  cancelOrder: (orderId: number) => void;
   passDay: () => void;
   passApprenticeDay: () => void;
-  restAtInn: () => void;
-  openMeal: () => void;
-  startExpedition: () => void;
-  resumeExpedition: () => void;
-  buyDrink: () => void;
-  openPigeon: () => void;
-  restHorses: () => void;
-  openStable: () => void;
-  openCartShop: () => void;
-  openGear: () => void;
-  hireGuide: () => void;
-}
-
-/** 탈것: 수레와 말, 말 쉬게 하기, 마구간(목장 마을), 수레방 */
-function rideCard(v: PlayerView): string {
-  // 견습 동안은 장면 하나에 새것 하나만: 탈것은 졸업 뒤에
-  if (!v.horseCare || v.apprentice) return '';
-  const care = v.horseCare;
-  const noHorse = v.horses.length < v.cart.horsesNeeded;
-  const horses = v.horses.length
-    ? `<ul class="list">${v.horses.map((h) => `<li><b>${h.name}</b> <small class="muted">끄는 무게 ${h.pulling} · ${speedWord(h.speed)}</small>${horseFatigue(h)}</li>`).join('')}</ul>
-       <p class="muted">밤마다 마구간에서 곡물을 먹여요 (지금 마을 한 개 ${money(care.feedPrice)}). 길 위에서는 수레에 실은 곡물을 먹어요.</p>`
-    : `<p class="muted">말이 없어요. 사람이 끌면 ${v.cart.name} 무게 ${v.cart.maxWeight}까지. 말은 목장 마을 마구간에서 팔아요.</p>`;
-  const tired = v.horses.some((h) => h.fatigue > 0);
-  return `<section class="card">
-      <header class="card-head"><h2>탈것</h2><span class="badge">${v.cart.name}${noHorse ? ' · 말 필요' : ` · 무게 ${v.cart.maxWeight}`}</span></header>
-      ${horses}
-      <div class="btn-row">
-        ${
-          v.horses.length
-            ? `<button type="button" class="secondary-btn" data-rest-horses ${tired && !care.rested && v.gold >= care.restFee ? '' : 'disabled'}>
-                말 쉬게 하기<small>${care.rested ? '오늘은 쉬었어요' : `${money(care.restFee)} · 피로 −${HORSES.fatigue.rest.recovery}`}</small>
-              </button>`
-            : ''
-        }
-        ${v.stable ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
-        ${v.carts.length ? '<button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>' : ''}
-      </div>
-    </section>`;
 }
 
 /** 견습: 지금 장면과 노상인 한마디, 하루 보내기 (대사와 연출은 나중 버전) */
@@ -68,182 +23,39 @@ function apprenticeCard(v: PlayerView): string {
     </section>`;
 }
 
-/** 소문: 어젯밤 소문꾼에게 들은 이야기, 술 한 잔, 전서구 (다른 마을에 처음 닿으면 열린다) */
-function rumorCard(game: Game, v: PlayerView): string {
-  if (!v.drink || !v.unlocks.includes('rumors')) return '';
-  const townName = (id: number) => game.map.towns[id]!.name;
-  const lastNight = topNotes(
-    v.rumors.filter((n) => n.day === v.day - 1 && n.via === 'gossip'),
-    3,
-  );
-  const pending = v.pigeon.pending.length;
-  return `<section class="card">
-      <h2>소문</h2>
-      ${
-        lastNight.length
-          ? `<p class="muted">어젯밤 마을 소문꾼들에게 들은 이야기예요.</p><ul class="list">${lastNight.map((n) => noteItem(n, v.day, townName)).join('')}</ul>`
-          : '<p class="muted">마을에 머물면 밤마다 소문꾼들이 이야기를 두세 개 들려줘요.</p>'
-      }
-      <div class="btn-row">
-        <button type="button" class="secondary-btn" data-drink ${!v.drink.drank && v.gold >= v.drink.fee ? '' : 'disabled'}>
-          술 한 잔<small>${v.drink.drank ? '오늘은 마셨어요' : `소문 하나 더 · ${money(v.drink.fee)}`}</small>
-        </button>
-        <button type="button" class="secondary-btn" data-pigeon>
-          전서구 보내기<small>${pending ? `${pending}마리 날아가는 중` : `먼 마을 시세 · ${money(v.pigeon.fee)}`}</small>
-        </button>
-      </div>
-    </section>`;
-}
-
-/** 피로 막대: 칸 10개 */
-function fatigueBar(v: PlayerView): string {
-  const cells = Array.from({ length: v.fatigueMax }, (_, i) => `<i class="${i < v.fatigue ? 'on' : ''}"></i>`).join('');
-  const word = v.fatigue === 0 ? '쌩쌩해요' : v.tired ? '많이 지쳤어요' : v.fatigue >= 4 ? '조금 지쳤어요' : '괜찮아요';
-  return `<div class="fatigue"><div class="fatigue-cells" aria-hidden="true">${cells}</div><span>${word}</span></div>`;
-}
-
 export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: TownScreenActions): void {
   const townName = (id: number) => game.map.towns[id]!.name;
   const place = v.location.kind === 'town' ? townName(v.location.town) : `${euro(townName(v.location.to))} 가는 길`;
+  const city = v.location.kind === 'town' && game.map.towns[v.location.town]!.tier === 'city';
 
-  let body = '';
+  let body: string;
   if (v.location.kind === 'road') {
     const { from, to, daysLeft } = v.location;
     body = `
       <section class="card">
         <h2>길 위에 있어요</h2>
         <p>${townName(from)}에서 ${euro(townName(to))} 가는 중이에요. <b>${daysLeft}일</b> 뒤에 도착해요.</p>
-        <p class="muted">길 위에서는 장에 신청할 수 없어요. 도착하면 그 마을 시세를 볼 수 있어요.</p>
+        <p class="muted">길 위에서는 장에 신청할 수 없어요. 창고에 둔 짐은 그 마을 장날에 팔 수 있어요(장부 탭).</p>
       </section>`;
-  } else if (v.market) {
-    const m = v.market;
-    const rows = GOODS.map((g) => {
-      const have = count(v.cargo, g);
-      const prev = m.previous?.[g];
-      const trend =
-        prev === undefined || prev === m.price[g]
-          ? '<span class="trend"></span>'
-          : `<img class="trend" src="${m.price[g] > prev ? arrowUp : arrowDown}" alt="${m.price[g] > prev ? '오름' : '내림'}" />`;
-      return `<li><button type="button" class="good-row" data-good="${g}">
-          <span class="good-name">${goodName(g)}</span>
-          <span class="good-have">${have ? `짐 ${have}` : ''}</span>
-          <span class="good-price">${trend}<b>${m.price[g]}</b></span>
-        </button></li>`;
-    }).join('');
-    body = `
-      <section class="card">
-        <h2>오늘 시세</h2>
-        <p class="muted">사고팔 물건을 누르세요. 신청은 장날에 한꺼번에 맞춰서 값 하나로 정해져요.</p>
-        <ul class="good-list">${rows}</ul>
-      </section>`;
+  } else {
+    body = buildingCards(game, v);
+    if (!v.buildings.some((b) => b.id === 'outside')) body += '<p class="muted center">자원지가 없어 원정은 못 해요.</p>';
   }
-
-  // 이 마을 장날에 낸 신청 (창고 짐 신청도 이 마을 것이면 보인다)
-  const here = v.location.kind === 'town' ? v.location.town : -1;
-  const mine = v.orders.filter((o) => o.town === here);
-  const orders = mine.length
-    ? mine
-        .map(
-          (o) => `<li class="order-row">
-            <span class="order-side ${o.side}">${o.side === 'sell' ? '팔기' : '사기'}</span>
-            <span>${goodName(o.good)} ${o.qty}개${o.from === 'store' ? ' (창고)' : ''} · ${o.side === 'sell' ? `${o.limit} 이상` : `${o.limit} 이하`}</span>
-            <button type="button" class="link-btn" data-cancel="${o.id}">취소</button>
-          </li>`,
-        )
-        .join('')
-    : '<li class="muted">아직 낸 신청이 없어요.</li>';
 
   el.innerHTML = `
     ${apprenticeCard(v)}
     <div class="town-banner">
       <img src="${village}" alt="" />
       <div class="ribbon"><span>${place}</span></div>
-      ${v.location.kind === 'town' && game.map.towns[v.location.town]!.tier === 'city' ? '<span class="tier-badge">도시</span>' : ''}
+      ${city ? '<span class="tier-badge">도시</span>' : ''}
     </div>
     ${body}
-    ${
-      v.location.kind === 'town'
-        ? `<section class="card pinned">
-            <img class="pin" src="${notePin}" alt="" />
-            <h2>장날에 낼 신청</h2>
-            <ul class="order-list">${orders}</ul>
-          </section>`
-        : ''
-    }
-    <section class="card">
-      <h2>내 몸</h2>
-      ${fatigueBar(v)}
-      <p class="muted">밤마다 조금씩 나아요. 음식을 먹거나 여관에서 쉬면 빨리 나아요.</p>
-      <div class="btn-row">
-        <button type="button" class="secondary-btn" data-meal ${v.fatigue > 0 && v.mealsLeft > 0 ? '' : 'disabled'}>
-          음식 먹기<small>오늘 ${v.mealsLeft}끼 더</small>
-        </button>
-        ${
-          v.inn
-            ? `<button type="button" class="secondary-btn" data-inn ${v.fatigue > 0 && !v.inn.rested && v.gold >= v.inn.fee ? '' : 'disabled'}>
-                여관에서 쉬기<small>${v.inn.rested ? '오늘은 쉬었어요' : `여관비 ${v.inn.fee} · 피로 −${v.inn.recovery}`}</small>
-              </button>`
-            : ''
-        }
-      </div>
-    </section>
-    ${rideCard(v)}
-    ${rumorCard(game, v)}
-    ${
-      v.location.kind === 'town'
-        ? `<section class="card">
-            <header class="card-head"><h2>바깥 (원정)</h2>${
-              v.canExpedition ? `<span class="badge">기회 ${v.expeditionChances} / 6</span>` : ''
-            }</header>
-            <p class="muted">${
-              v.canExpedition
-                ? '이 마을에 머무는 동안 하루에 한 번씩 원정 기회가 생겨요. 떠나면 사라져요.'
-                : '이 마을 주변에는 원정을 나갈 자원지가 없어요.'
-            }</p>
-            ${v.apprentice ? '' : `<div class="btn-row">
-              <button type="button" class="secondary-btn" data-gear>잡화점<small>장비 ${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 · 도구 ${v.tools}개</small></button>
-              ${
-                v.guide
-                  ? `<button type="button" class="secondary-btn" data-guide ${v.guide.hired || v.gold < v.guide.fee ? 'disabled' : ''}>
-                      안내인<small>${v.guide.hired ? '다음 원정에 따라가요' : `${money(v.guide.fee)} · 위험한 카드 1장 건너뜀`}</small>
-                    </button>`
-                  : ''
-              }
-            </div>`}
-            ${
-              v.expedition
-                ? '<div class="btn-row"><button type="button" class="secondary-btn" data-exp-resume>원정 이어가기<small>펼친 카드가 있어요</small></button></div>'
-                : v.canExpedition
-                  ? `<div class="btn-row"><button type="button" class="secondary-btn" data-exp-start ${
-                      v.expeditionChances > 0 && v.fatigue < v.fatigueMax ? '' : 'disabled'
-                    }>원정 나가기<small>${
-                      v.expeditionChances === 0 ? '내일 기회가 생겨요' : v.fatigue >= v.fatigueMax ? '너무 지쳤어요' : '카드 3~4장'
-                    }</small></button></div>`
-                  : ''
-            }
-          </section>`
-        : ''
-    }
     <button type="button" class="test-btn" data-pass-day>시험용: 장날 바로 열기</button>
   `;
 
-  el.querySelectorAll<HTMLButtonElement>('[data-good]').forEach((b) =>
-    b.addEventListener('click', () => act.openOrder(b.dataset.good as (typeof GOODS)[number])),
-  );
-  el.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
-    b.addEventListener('click', () => act.cancelOrder(Number(b.dataset.cancel))),
+  el.querySelectorAll<HTMLButtonElement>('[data-building]').forEach((b) =>
+    b.addEventListener('click', () => openBuilding(game, b.dataset.building as BuildingId)),
   );
   el.querySelector('[data-pass-day]')!.addEventListener('click', act.passDay);
   el.querySelector('[data-apprentice-day]')?.addEventListener('click', act.passApprenticeDay);
-  el.querySelector('[data-inn]')?.addEventListener('click', act.restAtInn);
-  el.querySelector('[data-meal]')?.addEventListener('click', act.openMeal);
-  el.querySelector('[data-exp-start]')?.addEventListener('click', act.startExpedition);
-  el.querySelector('[data-exp-resume]')?.addEventListener('click', act.resumeExpedition);
-  el.querySelector('[data-drink]')?.addEventListener('click', act.buyDrink);
-  el.querySelector('[data-pigeon]')?.addEventListener('click', act.openPigeon);
-  el.querySelector('[data-rest-horses]')?.addEventListener('click', act.restHorses);
-  el.querySelector('[data-stable]')?.addEventListener('click', act.openStable);
-  el.querySelector('[data-cart-shop]')?.addEventListener('click', act.openCartShop);
-  el.querySelector('[data-gear]')?.addEventListener('click', act.openGear);
-  el.querySelector('[data-guide]')?.addEventListener('click', act.hireGuide);
 }

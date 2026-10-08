@@ -1,5 +1,25 @@
 /* 지도 탭 상자(.shell-map)는 이미 절대 위치라 쪽지를 그 안에 얹는다 */
 /* 지도 아래쪽에 얹는 종이 쪽지 */
+/* 두 번째 행렬 단추 (지도 오른쪽 위) */
+.map-caravan-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--wood-mid);
+  color: var(--paper);
+  font-family: var(--f-display);
+  box-shadow: 0 3px 0 var(--wood-edge);
+}
+
+.map-caravan-btn[hidden] {
+  display: none;
+}
+
 .map-status {
   position: absolute;
   left: 12px;

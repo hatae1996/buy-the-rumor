@@ -1,21 +1,18 @@
-// 앱 틀: 위 상태줄(돈, 날짜, 짐), 가운데 화면, 아래 탭 4개 (마을, 지도, 장부, 소식).
+// 앱 틀 (기획서 "화면 구성", 0.0.5): 위쪽 줄(내 문장, 날짜·계절, 장날까지, 소지금, 피로), 가운데 화면, 아래 탭 4개.
+// 탭마다 질문 하나: 마을 = 여기서 무엇을, 지도 = 어디로, 장부 = 내 것, 소식 = 들어오는 것.
 import coin from '../../assets/ui/coin.png';
+import seal from '../../assets/ui/seal_small.png';
 import tabLedger from '../../assets/ui/tab_ledger.png';
 import tabMap from '../../assets/ui/tab_map.png';
 import tabNews from '../../assets/ui/tab_news.png';
 import tabTown from '../../assets/ui/tab_town.png';
-import { dayText, durationText, money } from './format';
+import { clockText, dayText, money } from './format';
 import type { AwaySummary, Game } from './game';
 import type { MapScreen } from './mapScreen';
 import { showAwaySummary } from './screens/away';
 import { renderLedger } from './screens/ledger';
 import { renderNews } from './screens/news';
-import { openExpeditionSheet } from './screens/expeditionSheet';
-import { openMealSheet } from './screens/mealSheet';
-import { openOrderSheet } from './screens/orderSheet';
-import { buyDrink, openPigeonSheet } from './screens/rumorSheet';
-import { openCartShopSheet, openStableSheet } from './screens/horseSheet';
-import { openGearSheet } from './screens/gearSheet';
+import { openCertificate } from './screens/certificate';
 import { renderTown } from './screens/town';
 
 export type TabId = 'town' | 'map' | 'ledger' | 'news';
@@ -34,9 +31,11 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   root.innerHTML = `
     <div class="shell">
       <header class="status-bar">
-        <span class="status-gold"><img src="${coin}" alt="돈" /><b data-gold></b></span>
+        <button type="button" class="status-crest" data-crest aria-label="상인 증서"><img src="${seal}" alt="" /></button>
         <span class="status-day" data-day></span>
         <span class="status-market" data-market></span>
+        <span class="status-fatigue" data-fatigue></span>
+        <span class="status-gold"><img src="${coin}" alt="돈" /><b data-gold></b></span>
       </header>
       <main class="shell-body">
         ${TABS.filter((t) => t.id !== 'map')
@@ -71,7 +70,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
-    $('[data-market]').textContent = v.apprentice ? '견습 중' : `장날까지 ${durationText(game.msUntilMarket(now()))}`;
+    $('[data-market]').textContent = v.apprentice ? '견습 중' : `장날까지 ${clockText(game.msUntilMarket(now()))}`;
+    $('[data-fatigue]').textContent = `피로 ${v.fatigue}/${v.fatigueMax}`;
     // 탭은 하나씩 열린다 (견습: 마을 → 장부 → 소식 → 지도)
     buttons.forEach((b) => {
       const id = b.dataset.tab as TabId;
@@ -81,24 +81,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     const el = screens[current];
     if (current === 'town') {
       renderTown(el, game, v, {
-        openOrder: (good) => openOrderSheet(game, good),
-        cancelOrder: (id) => game.dispatch({ type: 'cancelOrder', orderId: id }),
         passDay: () => away(game.passDay(now())),
         passApprenticeDay: () => away(game.passApprenticeDay(now())),
-        restAtInn: () => game.dispatch({ type: 'restAtInn' }),
-        openMeal: () => openMealSheet(game),
-        startExpedition: () => {
-          const r = game.dispatch({ type: 'startExpedition' });
-          if (r.ok) openExpeditionSheet(game);
-        },
-        resumeExpedition: () => openExpeditionSheet(game),
-        buyDrink: () => buyDrink(game),
-        openPigeon: () => openPigeonSheet(game),
-        restHorses: () => game.dispatch({ type: 'restHorses' }),
-        openStable: () => openStableSheet(game),
-        openCartShop: () => openCartShopSheet(game),
-        openGear: () => openGearSheet(game),
-        hireGuide: () => game.dispatch({ type: 'hireGuide' }),
       });
     } else if (current === 'ledger') {
       renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));
@@ -121,6 +105,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   };
 
   buttons.forEach((b) => b.addEventListener('click', () => select(b.dataset.tab as TabId)));
+  $('[data-crest]').addEventListener('click', () => openCertificate(game));
   game.subscribe(render);
   select('town');
 

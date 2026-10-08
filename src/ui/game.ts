@@ -17,6 +17,7 @@ import {
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
+import type { NotifyEvent } from '../sim/notify';
 
 /** 게임 속 하루 = 실제 2시간 30분 */
 export const DAY_MS = 2.5 * 60 * 60 * 1000;
@@ -49,6 +50,8 @@ export interface AwaySummary {
   heard: NoteView[];
   /** 그 사이 새로 찍힌 도장 수 */
   stamped: number;
+  /** 그 사이 알림을 보낼 만한 사건 (장날 결과, 급한 일, 도착 등) */
+  notices: NotifyEvent[];
 }
 
 export class Game {
@@ -140,10 +143,12 @@ export class Game {
     const ledgerFrom = this.state.player.ledger.length;
     const newsFrom = this.state.news.length;
     const heard: NoteView[] = [];
+    const notices: NotifyEvent[] = [];
     let stamped = 0;
     for (let i = 0; i < days; i++) {
       const r = advanceDay(this.state, this.map);
       heard.push(...r.heard.map(noteView));
+      notices.push(...r.notices);
       stamped += r.stamped;
     }
     const arrived = wasOnRoad && this.state.player.travel === null;
@@ -156,6 +161,7 @@ export class Game {
       arrivedAt: arrived ? this.state.player.town : null,
       heard,
       stamped,
+      notices,
     };
   }
 

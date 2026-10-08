@@ -1,47 +1,11 @@
 // 멀티플레이 준비 (기획서 "멀티플레이 구조", 0.0.5):
-// 1) 시뮬은 서버에서 그대로 돈다: 화면·시간 API를 쓰지 않고, Math.random 대신 시드 난수만.
-// 2) 플레이어에게 보내는 정보(playerView)에는 숨겨진 숫자가 없다.
-// 3) 수레 최종 배치는 명령 하나로 보내고 시뮬이 다시 검사한다.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+// 1) 플레이어에게 보내는 정보(playerView)에는 숨겨진 숫자가 없다.
+// 2) 수레 최종 배치는 명령 하나로 보내고 시뮬이 다시 검사한다.
+// 시뮬이 화면·시간 API 없이 서버에서 그대로 도는지는 tests/sim-purity.test.ts가 본다.
 import { describe, expect, it } from 'vitest';
 import { cartCount, cartWeight, createCart, loadGoods } from './cart';
 import { advanceDay, applyCommand, createEconomy, playerView } from './economy';
 import { generateWorld } from './worldgen';
-
-function simFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) return simFiles(p);
-    return p.endsWith('.ts') && !p.endsWith('.test.ts') ? [p] : [];
-  });
-}
-
-describe('시뮬은 서버에서 그대로 돈다', () => {
-  const files = simFiles(join(__dirname));
-  const banned: [RegExp, string][] = [
-    [/Math\.random\s*\(/, 'Math.random (시드 난수만 쓴다)'],
-    [/Date\.now\s*\(|new Date\s*\(/, '실제 시간'],
-    [/setTimeout|setInterval|requestAnimationFrame/, '타이머'],
-    [/\bdocument\.|\bwindow\.|localStorage/, '화면·저장소'],
-    [/from ['"]three['"]|from ['"]\.\.\/(ui|view3d|dev)\//, '화면 코드'],
-  ];
-
-  it('시뮬 파일이 있다', () => {
-    expect(files.length).toBeGreaterThan(50);
-  });
-
-  for (const [re, what] of banned) {
-    it(`${what}을(를) 쓰지 않는다`, () => {
-      const hits = files.filter((f) =>
-        readFileSync(f, 'utf-8')
-          .split('\n')
-          .some((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*') && re.test(line)),
-      );
-      expect(hits).toEqual([]);
-    });
-  }
-});
 
 describe('플레이어에게 보내는 정보에는 숨겨진 숫자가 없다', () => {
   it('일꾼, 금고, 자원지 남은 양, 소문의 진짜 여부, 소문꾼 성격, 사건 일정, 다른 마구간 재고가 보이지 않는다', () => {

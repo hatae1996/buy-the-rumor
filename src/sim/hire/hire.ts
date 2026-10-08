@@ -69,8 +69,12 @@ export function candidate(state: EconomyState, town: number, role: HireRole): Wo
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n)[0];
   if (!best) return null;
-  return here.filter((w) => w.job === best.j).sort((a, b) => a.id - b.id)[0] ?? null;
+  // 게시판에 같은 사람이 세 자리로 나오지 않도록 자리마다 다른 사람을 고른다
+  const pool = here.filter((w) => w.job === best.j).sort((a, b) => a.id - b.id);
+  return pool[ROLE_PICK[role] % pool.length] ?? null;
 }
+
+const ROLE_PICK: Record<HireRole, number> = { porter: 0, carter: 1, gatherer: 2 };
 
 export interface HireOffer {
   role: HireRole;

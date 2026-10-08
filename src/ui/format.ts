@@ -17,6 +17,12 @@ export function durationText(ms: number): string {
   return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
 }
 
+/** 위쪽 줄용 짧은 시간: "1:42" (시:분) */
+export function clockText(ms: number): string {
+  const min = Math.ceil(ms / 60000);
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+}
+
 /** 오늘 본 날 기준으로 "오늘", "어제", "3일 전" */
 export function agoText(today: number, day: number): string {
   const d = today - day;

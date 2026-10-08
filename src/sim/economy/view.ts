@@ -21,6 +21,8 @@ import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingI
 import { hireBoard, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
+import { badgeDef, certificateView, questProgress, questTier, themeDef, type CertificateView } from '../ranking';
+import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
@@ -170,6 +172,18 @@ export interface PlayerView {
   caravan: CaravanView | null;
   /** 가 본 마을 */
   visited: readonly number[];
+  /** 가 본 마을에 있는 건물 (지도 마을 카드) */
+  knownBuildings: Record<number, { id: BuildingId; name: string }[]>;
+  /** 마을마다 들은 특색 (수첩의 특색 소문에서. 맞았다 도장이 찍혔으면 확인) */
+  knownTraits: Record<number, { name: string; confirmed: boolean }[]>;
+  /** 하루 유지비: 일당, 정보원, 말 먹이(지금 마을 값으로 어림), 창고 보관료 */
+  upkeep: { total: number; parts: { what: string; perDay: number }[] };
+  /** 길드: 이번 시즌 테마와 의뢰 진행 (테마는 보류 중이라 참고용) */
+  guild: { theme: string | null; quests: { name: string; scope: 'personal' | 'communal'; text: string; value: number; tiers: readonly number[]; tier: string | null }[] };
+  /** 상인 증서 (순자산은 없다) */
+  certificate: CertificateView;
+  /** 내 인장첩: 모은 인장 전부 (숨김 업적은 얻은 것만 보인다) */
+  badgeBook: { name: string; kind: string; tier: 'bronze' | 'silver' | 'gold' | null; season: number; day: number }[];
   /** 알림 설정. askNow: 견습 졸업이라 알림 허락을 물을 때 */
   notify: NotifySettings & { askNow: boolean };
   /** 은행 계좌 (도시에만 은행이 있다. 이번 버전은 보기만) */
@@ -305,6 +319,46 @@ export interface ExpeditionView {
   /** 지금 카드 뒤에 남은 장 수 (연결 카드가 끼면 늘 수 있다) */
   left: number;
   haul: { good: GoodId; qty: number }[];
+}
+
+/** 수첩의 특색 소문 → 마을마다 들은 특색 */
+function knownTraits(state: EconomyState): Record<number, { name: string; confirmed: boolean }[]> {
+  const out: Record<number, { name: string; confirmed: boolean }[]> = {};
+  for (const h of state.player.rumors) {
+    const c = h.claim;
+    if (!c || c.kind !== 'trait' || h.stamp === 'wrong') continue;
+    const list = (out[c.town] ??= []);
+    const name = regionTag(c.tag).name;
+    const same = list.find((x) => x.name === name);
+    if (same) same.confirmed ||= h.stamp === 'right';
+    else list.push({ name, confirmed: h.stamp === 'right' });
+  }
+  return out;
+}
+
+function upkeepView(state: EconomyState): PlayerView['upkeep'] {
+  const p = state.player;
+  const parts: { what: string; perDay: number }[] = [];
+  const wages = p.hires.reduce((s, h) => s + h.wage, 0);
+  if (wages) parts.push({ what: '일꾼 일당', perDay: wages });
+  if (p.informants.length) parts.push({ what: '정보원', perDay: p.informants.length * GROWTH.hire.informant.wage });
+  const horses = [...p.horses, ...(p.caravan?.horses ?? [])];
+  const feedTown = p.travel ? p.travel.to : p.town;
+  const feed = horses.reduce((s, h) => s + HORSES.kinds[h.kind].feed, 0) * feedPrice(state, feedTown);
+  if (feed) parts.push({ what: '말 먹이 (어림)', perDay: feed });
+  if (p.warehouses.length) parts.push({ what: '창고 보관료', perDay: p.warehouses.length * GROWTH.warehouse.rentPerDay });
+  return { total: parts.reduce((s, x) => s + x.perDay, 0), parts };
+}
+
+function guildView(state: EconomyState): PlayerView['guild'] {
+  const theme = themeDef(state.season?.theme ?? '');
+  return {
+    theme: theme?.name ?? null,
+    quests: (theme?.quests ?? []).map((q) => {
+      const value = questProgress(state, q);
+      return { name: q.name, scope: q.scope, text: q.text, value, tiers: q.tiers, tier: questTier(q, value) };
+    }),
+  };
 }
 
 function caravanView(state: EconomyState): CaravanView | null {
@@ -576,6 +630,17 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     hireBoard: hireBoard(state, map),
     caravan: caravanView(state),
     visited: p.visited,
+    knownBuildings: Object.fromEntries(
+      p.visited.map((t) => [t, townBuildings(state, map, t).map((id) => ({ id, name: buildingDef(id).name }))]),
+    ),
+    knownTraits: knownTraits(state),
+    upkeep: upkeepView(state),
+    guild: guildView(state),
+    certificate: certificateView(p.certificate),
+    badgeBook: p.certificate.badges.map((b) => {
+      const def = badgeDef(b.badge);
+      return { name: def?.name ?? b.badge, kind: def?.kind ?? 'achievement', tier: b.tier, season: b.season, day: b.day };
+    }),
     notify: { ...p.notify, askNow: p.apprentice?.scene === 'graduation' && p.notify.askedDay === null },
     bank: { deposit: p.bank.deposit, loan: p.bank.loan, depositRate: GROWTH.bank.depositRate, loanRate: GROWTH.bank.loanRate },
     informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },

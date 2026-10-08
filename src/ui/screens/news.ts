@@ -1,9 +1,10 @@
-// 소식: 신문, 들은 이야기 수첩, 장날 결과 기록 (기획서 "화면 구성").
+// 소식 탭 (기획서 "화면 구성 - 소식 탭: 들어오는 것 전부", 0.0.5): 신문, 소문 수첩, 보고, 길드.
 import sealSmall from '../../../assets/ui/seal_small.png';
 import type { LedgerEntry, NoteView, PlayerView } from '../../sim/economy';
 import { agoText, ledgerLine } from '../format';
 import type { Game } from '../game';
 import { noteItem } from './noteItem';
+import { guildHtml } from './buildings/simple';
 
 /** 수첩에 한 번에 보여 주는 줄 */
 const NOTEBOOK_ROWS = 30;
@@ -15,21 +16,23 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
     items.map((n) => `<li><span class="day">${agoText(v.day, n.day)}</span> ${n.text}</li>`).join('') ||
     '<li class="muted">아직 큰 소식이 없어요.</li>';
 
-  // 장날마다 내 신청이 어떻게 맞춰졌는지
-  const byDay = new Map<number, LedgerEntry[]>();
+  // 보고: 장날 결과(내가, 창고 짐이, 두 번째 행렬이), 일꾼·마부·정보원. 날짜순 (기획서 "소식 탭")
+  const reportKinds = new Set(['buy', 'sell', 'gathered', 'hire', 'caravan', 'warehouse']);
+  const byDay = new Map<number, string[]>();
   for (const e of v.ledger) {
-    if (e.kind !== 'buy' && e.kind !== 'sell') continue;
-    byDay.set(e.day, [...(byDay.get(e.day) ?? []), e]);
+    if (!reportKinds.has(e.kind) || (e.kind === 'hire' && e.what === 'wage') || (e.kind === 'warehouse' && e.what === 'rent')) continue;
+    byDay.set(e.day, [...(byDay.get(e.day) ?? []), ledgerLine(e as LedgerEntry, townName).text]);
+  }
+  for (const n of v.rumors) {
+    if (n.via !== 'informant' && n.via !== 'pigeon') continue;
+    byDay.set(n.day, [...(byDay.get(n.day) ?? []), `${n.from}: ${n.text}`]);
   }
   const results =
     [...byDay]
-      .reverse()
+      .sort((a, b) => b[0] - a[0])
       .slice(0, 15)
-      .map(
-        ([day, es]) =>
-          `<li><span class="day">${day}일째 장날</span> ${es.map((e) => ledgerLine(e, townName).text).join(', ')}</li>`,
-      )
-      .join('') || '<li class="muted">아직 맞춰진 신청이 없어요.</li>';
+      .map(([day, lines]) => `<li><span class="day">${day}일째</span> ${lines.join('<br />')}</li>`)
+      .join('') || '<li class="muted">아직 보고가 없어요.</li>';
 
   const notes =
     [...v.rumors]
@@ -47,14 +50,20 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
       <ul class="list news-list">${paper}</ul>
     </section>
     <section class="card">
-      <h2>들은 이야기 수첩</h2>
+      <h2>소문 수첩</h2>
       <p class="muted">오가며 들은 이야기라 가끔 틀려요. 신문이나 직접 본 것으로 확인되면 도장이 찍혀요.</p>
       ${tellerStamps(v.rumors)}
       <ul class="list">${notes}</ul>
     </section>
     <section class="card">
-      <h2>장날 결과 기록</h2>
+      <h2>보고</h2>
+      <p class="muted">장날 결과, 채집꾼·마부·정보원 소식이 날짜순으로 쌓여요.</p>
       <ul class="list">${results}</ul>
+    </section>
+    <section class="card">
+      <h2>길드</h2>
+      ${guildHtml(v)}
+      <p class="muted">랭킹은 여럿이 함께하는 버전에서 열려요.</p>
     </section>`;
 }
 
