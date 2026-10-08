@@ -7,12 +7,14 @@ import { botStep, createMind } from './bot';
 import type { AffordKind, GrowthKind } from './growth';
 import { createCart } from '../cart';
 import type { BotProfile } from './profiles';
-import { netWorth } from '../ranking/worth';
+import { netWorth, worthParts } from '../ranking/worth';
 
 export interface BotRun {
   profile: BotProfile;
   /** 날마다 순자산 (기획서 랭킹 계산: 현금 + 맡긴 돈 + (짐과 말) × 절반, src/sim/ranking/worth.ts) */
   worth: number[];
+  /** 날마다 가진 것의 온값 (현금 + 예금 − 빚 + 짐 + 말). 하루 벌이는 이것의 변화로 잰다 (순자산은 짐을 절반만 쳐서 산 날 줄어 보인다) */
+  wealth: number[];
   gold: number[];
   trades: number;
   expeditions: number;
@@ -47,7 +49,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, worth: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
+  const run: BotRun = { profile, worth: [], wealth: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
 
@@ -65,6 +67,8 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     advanceDay(state, map);
     run.trades += state.player.ledger.slice(ledgerBefore).filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
     run.worth.push(netWorth(state));
+    const p = worthParts(state);
+    run.wealth.push(Math.round(p.cash + p.deposit - p.debt + p.goods + p.horses));
     run.gold.push(state.player.gold);
   }
   run.commandsPerDay = commands / Math.max(1, opt.days);

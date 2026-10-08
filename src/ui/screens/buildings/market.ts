@@ -16,7 +16,7 @@ export function openMarket(game: Game): void {
     }
     const here = v.location.town;
     const rows = GOODS.map((g) => {
-      const have = count(v.cargo, g);
+      const have = count(v.haul, g);
       const prev = m.previous?.[g];
       const trend =
         prev === undefined || prev === m.price[g]

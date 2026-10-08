@@ -45,7 +45,8 @@ export function workshopOrders(town: TownEconomy, accounts: Accounts): Order[] {
     const bid = (g: GoodId, n: number, need: number) => {
       // 이 재료에 쓸 수 있는 값 = 시세 + 남는 이익을 이 재료 몫으로 다 쓸 때
       const breakeven = Math.floor(town.refPrice[g] + room / n);
-      const limit = Math.min(limitPrice(town, g, W.bidMarkup), breakeven);
+      // 기준 가격의 일정 배율 위로는 부르지 않는다 (공방이 시세를 끝없이 끌어올리지 않게)
+      const limit = Math.min(limitPrice(town, g, W.bidMarkup), breakeven, Math.round(basePrice(g) * WS.maxBidOfBase));
       if (need > 0 && limit >= priceBounds(g).min) place(g, 'buy', Math.min(need, Math.floor(budget() / limit)), limit);
     };
     for (const [g, n] of Object.entries(r.inputs) as [GoodId, number][]) bid(g, n, n * batches - count(inv, g));

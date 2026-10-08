@@ -42,14 +42,14 @@ import {
   type HorseError,
   type HorseKind,
 } from '../horses';
-import { CART_TYPES, type CartType } from '../cart';
+import { CART_TYPES, type Board, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
-import { dismiss, hire, porterBoards, resolveBoard, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
+import { dismiss, hire, porterBoards, resolveBoard, splitBuy, splitSell, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import type { EconomyState } from './state';
 
@@ -180,24 +180,38 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       if (!isCount(cmd.qty)) return fail('badQty');
       if (!isCount(cmd.maxPrice)) return fail('badPrice');
       if (p.gold < cmd.qty * cmd.maxPrice) return fail('notEnoughGold');
-      // 살 물건이 들어갈 수레 자리를 미리 잡는다. 못 잡으면 신청할 수 없다
-      const o = accounts.place(owner, p.town, cmd.good, 'buy', cmd.qty, cmd.maxPrice);
-      if (!o) return fail('noRoom');
-      state.orders.push(o);
-      return { ok: true, orderId: o.id };
+      // 살 물건이 들어갈 수레 자리를 미리 잡는다: 내 수레에 먼저, 넘치면 짐꾼 수레에 (0.0.6). 못 잡으면 신청할 수 없다
+      const parts = splitBuy(p, cmd.good, cmd.qty);
+      if (!parts) return fail('noRoom');
+      let first: number | null = null;
+      for (const part of parts) {
+        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', porter: part.porter }, p.town, cmd.good, 'buy', part.qty, cmd.maxPrice);
+        if (!o) return fail('noRoom');
+        state.orders.push(o);
+        first ??= o.id;
+      }
+      return { ok: true, orderId: first! };
     }
     case 'placeSellOrder': {
       if (p.travel) return fail('traveling');
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       if (!isCount(cmd.qty)) return fail('badQty');
       if (!isCount(cmd.minPrice)) return fail('badPrice');
-      if (cartCount(p.cart, cmd.good) < cmd.qty) return fail('notEnoughGoods');
+      // 내 수레 짐부터, 모자라면 짐꾼 수레 짐으로 판다 (0.0.6)
+      const all = (b: Board) => cartCount(b, cmd.good);
+      if (!splitSell(p, cmd.qty, all)) return fail('notEnoughGoods');
       // 내일이면 상할 물건은 장에 낼 수 없다
       const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
-      if (sellableCount(cartLots(p.cart), cmd.good, rate) < cmd.qty) return fail('spoiling');
-      const o = accounts.place(owner, p.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
-      state.orders.push(o);
-      return { ok: true, orderId: o.id };
+      const parts = splitSell(p, cmd.qty, (b) => sellableCount(cartLots(b), cmd.good, rate));
+      if (!parts) return fail('spoiling');
+      let first: number | null = null;
+      for (const part of parts) {
+        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', porter: part.porter }, p.town, cmd.good, 'sell', part.qty, cmd.minPrice);
+        if (!o) continue;
+        state.orders.push(o);
+        first ??= o.id;
+      }
+      return { ok: true, orderId: first! };
     }
     case 'cancelOrder': {
       const i = state.orders.findIndex((o) => o.id === cmd.orderId);

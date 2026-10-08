@@ -129,7 +129,10 @@ export class Accounts {
 
   /** 플레이어 짐을 싣는 판: 수레, 또는 그 마을 창고 */
   private boardOf(owner: OrderOwner): Board | null {
-    if (owner.kind === 'player') return this.state.player.cart;
+    if (owner.kind === 'player') {
+      if (owner.porter === undefined) return this.state.player.cart;
+      return this.state.player.hires.find((h) => h.id === owner.porter)?.board ?? null;
+    }
     if (owner.kind === 'store') return this.state.player.warehouses.find((w) => w.town === owner.town)?.board ?? null;
     if (owner.kind === 'caravan') return this.state.player.caravan?.cart ?? null;
     return null;

@@ -101,14 +101,17 @@ export const ECONOMY = {
   /** 사자도 팔자도 없는 장에서는 시세가 하루에 이만큼씩 기준 가격 쪽으로 돌아간다 (빈 장의 시세가 바닥에 묶이지 않게) */
   emptyReversion: 0.02,
 
-  /** 채집: 하루 기본 생산량. 자원지 남은 양과 계절에 따라 줄어든다 */
+  /**
+   * 채집: 하루 기본 생산량. 자원지 남은 양과 계절에 따라 줄어든다.
+   * 0.0.6: 장사가 주 수입이 되도록 두 배로 늘리고 자원지 크기(node.capacityPerTile)도 두 배로 해 줄어드는 빠르기는 그대로 (원정 수확은 그대로)
+   */
   gather: {
-    fisher: { fish: 4 },
-    hunter: { meat: 3, leather: 1.5 },
-    farmer: { grain: 5 },
-    woodcutter: { wood: 3 },
-    miner: { ore: 2.4 },
-    salter: { salt: 3 },
+    fisher: { fish: 8 },
+    hunter: { meat: 6, leather: 3 },
+    farmer: { grain: 10 },
+    woodcutter: { wood: 6 },
+    miner: { ore: 4.8 },
+    salter: { salt: 6 },
   },
   /** 가공: 재료 → 결과 (하루 최대 몇 번) */
   craft: {
@@ -131,7 +134,7 @@ export const ECONOMY = {
 
   /** 자원지: 맵에서 마을 주변 두 칸 안의 자원지 칸 수로 크기를 정한다 */
   node: {
-    capacityPerTile: 120,
+    capacityPerTile: 240,
     /** 하루 회복률 (로지스틱). null이면 일해도 줄지 않는 자원지 (들판, 염전은 땅이 줄지 않는다) */
     regrowth: { forest: 0.12, ore: 0.03, field: null, fish: 0.15, salt: null },
   },
@@ -204,7 +207,13 @@ export const ECONOMY = {
 
   /** 마을 주민(일꾼 아닌 사람들)이 하루에 사는 양. 돈이 경제로 들어오는 곳 */
   citizens: {
-    demand: { fish: 1, meat: 1, grain: 2, wood: 3, leather: 1, ore: 0, salt: 1, salted: 1, tools: 0.15 },
+    /** 물품마다 하루 양의 바탕. 실제로는 depth배를 값 단계에 나눠 신청한다 */
+    demand: { fish: 1, meat: 1, grain: 2, wood: 3, leather: 1, ore: 0.5, salt: 1, salted: 1, tools: 0.03 },
+    /**
+     * 장의 깊이 (0.0.6 "벌이의 균형"): 주민 수요 배율. 한 장날에 20~30개를 팔아도 값이 무너지지 않을 만큼.
+     * 싼 값일수록 많이 사서(priceSteps), 남는 곳은 값이 바닥까지 떨어지지 않고 모자란 곳은 값이 오른다
+     */
+    depth: 5,
     /** 겨울엔 땔감이 더 든다 */
     winterWoodFactor: 2,
     /** 겨울엔 털가죽과 음식이 더 든다, 가을엔 겨울 대비로 곡물을 더 산다 */
@@ -216,24 +225,26 @@ export const ECONOMY = {
      * 굶는 일꾼(시세의 1.8배까지 냄)보다 높게 부르지 않아야 일꾼이 먼저 먹는다.
      */
     priceSteps: [
-      { factor: 0.7, share: 0.35 },
-      { factor: 1.0, share: 0.35 },
-      { factor: 1.3, share: 0.3 },
+      { factor: 1.3, share: 0.12 },
+      { factor: 1.15, share: 0.15 },
+      { factor: 1.0, share: 0.2 },
+      { factor: 0.85, share: 0.23 },
+      { factor: 0.7, share: 0.3 },
     ],
-    /** 마을 금고에 날마다 들어오는 돈 (바깥 경제) */
-    stipend: 120,
-    startTreasury: 600,
+    /** 마을 금고에 날마다 들어오는 돈 (바깥 경제). 주민이 깊게 사는 만큼 많다 */
+    stipend: 500,
+    startTreasury: 3000,
     /** 금고가 이보다 많으면 넘는 만큼의 일부를 영주에게 바친다 (돈이 빠져나가는 곳) */
-    treasuryCap: 1500,
+    treasuryCap: 6000,
     tributeRate: 0.25,
   },
 
   /** 도시: 자원지가 거의 없지만 사람과 돈이 많아 가공품과 고급품을 비싸게 산다 (기획서 "직업") */
   city: {
-    /** 주민 수요 배율 */
-    demandFactor: 2.5,
+    /** 주민 수요 배율 (0.0.6: 도시는 물건이 모이는 큰 장) */
+    demandFactor: 12,
     /** 금고에 들어오는 돈, 시작 금고, 금고 상한 배율 */
-    treasuryFactor: 2.5,
+    treasuryFactor: 4,
     /** 이 물건들은 더 비싸게 산다 (가공품, 가죽) */
     premiumGoods: ['tools', 'salted', 'leather'],
     premiumFactor: 1.3,
@@ -241,7 +252,7 @@ export const ECONOMY = {
      * 도시 공방 (대장간, 염장 공방): 도시 금고로 재료를 사들여 하루 batches번까지 만든다.
      * 재료 사는 데는 금고의 treasuryShare까지만 쓴다
      */
-    workshop: { batches: { smith: 3, curer: 3 }, treasuryShare: 0.3 },
+    workshop: { batches: { smith: 3, curer: 3 }, treasuryShare: 0.3, maxBidOfBase: 1.4 },
   },
 
   /** NPC 상단 */

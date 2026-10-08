@@ -149,3 +149,43 @@ describe('미리 돌린 세계', () => {
     expect(createEconomy(map, 20261008, { warmupDays: 20 })).toEqual(warm);
   });
 });
+
+describe('장의 깊이 (0.0.6 "벌이의 균형")', () => {
+  // 도시는 물건이 모이는 큰 장이다: 한 장날에 30개를 내도 값이 무너지지 않고 시세의 0.8배 위로 절반 넘게 팔린다
+  it('도시에 가죽 30개를 한꺼번에 내도 시세의 0.8배 위로 절반 넘게 팔린다', async () => {
+    const { applyCommand } = await import('./commands');
+    const { createCart, loadGoods } = await import('../cart');
+    for (const seed of [20261008, 777]) {
+      const map = generateWorld(seed);
+      const s = createEconomy(map, seed, { warmupDays: 20 });
+      for (let d = 0; d < 60; d++) advanceDay(s, map);
+      const city = s.towns.find((t) => t.tier === 'city')!;
+      const ref = city.refPrice.leather;
+      s.player.town = city.id;
+      s.player.cart = createCart('wagon');
+      s.player.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
+      loadGoods(s.player.cart, 'leather', 30);
+      expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'leather', qty: 30, minPrice: Math.round(ref * 0.8) }).ok).toBe(true);
+      advanceDay(s, map);
+      const sold = s.player.ledger.filter((e) => e.kind === 'sell' && e.good === 'leather').reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0);
+      expect(sold, `시드 ${seed}`).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it('남는 마을에서도 주민이 싼 값에 사 주어 시세가 바닥(기준의 0.25배)에 오래 붙지 않는다: 가죽·생선은 절반 넘는 날이 바닥의 두 배 위', () => {
+    for (const seed of [20261008, 4242]) {
+      const map = generateWorld(seed);
+      const s = createEconomy(map, seed, { warmupDays: 20 });
+      let above = 0;
+      let all = 0;
+      for (let d = 0; d < 120; d++) {
+        advanceDay(s, map);
+        for (const t of s.towns) for (const g of ['leather', 'fish'] as const) {
+          all++;
+          if (t.refPrice[g] >= priceBounds(g).min * 2) above++;
+        }
+      }
+      expect(above / all, `시드 ${seed}`).toBeGreaterThan(0.5);
+    }
+  });
+});

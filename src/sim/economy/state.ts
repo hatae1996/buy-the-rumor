@@ -248,7 +248,8 @@ export interface PlayerState {
 }
 
 export type OrderOwner =
-  | { kind: 'player' }
+  /** 플레이어. porter가 있으면 그 짐꾼 손수레 짐으로 팔고, 산 것도 그 수레에 싣는다 (내 수레에 다 안 들어갈 때, 0.0.6) */
+  | { kind: 'player'; porter?: number }
   /** 플레이어 창고: 그 마을 창고 짐으로 낸 팔기 신청 (내가 없어도 장날에 맞춰진다). 돈은 플레이어에게 */
   | { kind: 'store'; town: number }
   /** 두 번째 행렬: 행렬 수레 짐으로 팔고, 내 돈으로 사서 행렬 수레에 싣는다 */

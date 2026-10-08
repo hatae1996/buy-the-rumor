@@ -1,6 +1,6 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Board, type Cart, type CartType } from '../cart';
+import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, unitWeight, type Board, type Cart, type CartType } from '../cart';
 import {
   buyPrice,
   cartCost,
@@ -18,7 +18,7 @@ import {
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
-import { hireBoard, type HireOffer, type HireRole } from '../hire';
+import { hireBoard, porterBuyRoom, porters, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
 import { badgeDef, certificateView, questProgress, questTier, themeDef, type CertificateView } from '../ranking';
@@ -117,6 +117,10 @@ export interface PlayerView {
   reserved: number;
   /** 수레에 실린 물건 (묶음 목록) */
   cargo: readonly Lot[];
+  /** 내 행렬 전체 짐 (내 수레 + 짐꾼 수레). 장에 낼 수 있는 짐 (0.0.6: 짐꾼 수레 짐도 장에 낸다) */
+  haul: readonly Lot[];
+  /** 장에서 사서 더 실을 수 있는 양: 내 수레(칸과 끄는 무게) + 짐꾼 수레 */
+  buyRoom: Record<GoodId, number>;
   /** 짐 + 팔자 신청에 맡긴 물건 */
   cargoCount: number;
   cart: CartView;
@@ -512,6 +516,17 @@ function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]
   };
 }
 
+/** 장에서 사서 더 실을 수 있는 양: 내 수레(칸, 끄는 무게) + 짐꾼 수레 */
+function buyRoomView(p: EconomyState['player']): Record<GoodId, number> {
+  const free = maxWeight(p.cart, p.horses) - cartWeight(p.cart);
+  return Object.fromEntries(
+    GOODS.map((g) => [
+      g,
+      Math.max(0, Math.min(roomFor(p.cart, g), Math.floor(free / unitWeight(g)))) + porters(p).reduce((s, x) => s + porterBuyRoom(x.board, g), 0),
+    ]),
+  ) as Record<GoodId, number>;
+}
+
 export function playerView(state: EconomyState, map: WorldMap): PlayerView {
   const p = state.player;
   const location: PlayerLocation = p.travel
@@ -553,6 +568,8 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     gold: p.gold,
     reserved,
     cargo: cartLots(p.cart),
+    haul: [...cartLots(p.cart), ...porters(p).flatMap((x) => cartLots(x.board))],
+    buyRoom: buyRoomView(p),
     cargoCount: totalCount(cartLots(p.cart)) + sellingQty,
     cart: cartView(p.cart, state.orders, p.horses),
     location,

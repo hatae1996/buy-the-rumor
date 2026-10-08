@@ -120,18 +120,17 @@ describe('두 번째 행렬 (잘하는 봇만)', () => {
 });
 
 describe('시즌을 돌려도', () => {
-  it('살 것 고르기 때문에 순자산이 크게 줄지 않는다 (채집꾼을 들였다 내보내는 시드)', () => {
-    const seed = 1;
-    const world = generateWorld(seed);
+  it('살 것 고르기(짐꾼)로 장사꾼은 더 번다: 산 쪽이 안 산 쪽보다 순자산이 크다', () => {
+    const seed = SEED;
     const run = (withGrowth: boolean) => {
-      const st = createEconomy(world, seed, { warmupDays: 20 });
+      const st = createEconomy(map, seed, { warmupDays: 20 });
       st.player.cart = createCart('handcart');
-      const p = botProfile('casual');
-      return runBotOn(st, world, withGrowth ? p : { ...p, growth: null }, { days: 144 });
+      const p = botProfile('trader');
+      return runBotOn(st, map, withGrowth ? p : { ...p, growth: null }, { days: 144 });
     };
     const on = run(true);
     const off = run(false);
-    expect(on.firsts.gatherer).toBeDefined();
-    expect(on.worth.at(-1)!).toBeGreaterThan(off.worth.at(-1)! * 0.9);
+    expect(on.firsts.porter).toBeDefined();
+    expect(on.worth.at(-1)!).toBeGreaterThan(off.worth.at(-1)!);
   }, 60000);
 });

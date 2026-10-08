@@ -140,3 +140,42 @@ describe('여관', () => {
     expect(gold - s.player.gold).toBeGreaterThanOrEqual(GROWTH.hire.informant.wage);
   });
 });
+
+describe('짐꾼 수레로 장사하기 (0.0.6)', () => {
+  it('내 수레에 다 안 들어가는 사기 신청은 짐꾼 수레로 나눠 싣고, 장날 뒤 짐꾼 수레에 들어온다', () => {
+    ok({ type: 'hire', role: 'porter' });
+    const v0 = playerView(s, map);
+    // 손수레(무게 70)에 소금(무게 2)은 35개까지. 짐꾼 수레가 있으면 더 살 수 있다
+    expect(v0.buyRoom.salt).toBeGreaterThan(v0.cart.room.salt);
+    const qty = Math.min(v0.buyRoom.salt, 45);
+    const before = s.orders.length;
+    ok({ type: 'placeBuyOrder', good: 'salt', qty, maxPrice: 20 });
+    const mine = s.orders.slice(before);
+    expect(mine.length).toBe(2);
+    expect(mine.reduce((a, o) => a + o.qty, 0)).toBe(qty);
+    expect(mine.some((o) => o.owner.kind === 'player' && o.owner.porter !== undefined)).toBe(true);
+  });
+
+  it('짐꾼 수레 짐도 장에 낼 수 있다 (내 수레 짐부터)', () => {
+    ok({ type: 'hire', role: 'porter' });
+    const h = s.player.hires[0]!;
+    loadGoods(s.player.cart, 'salt', 5);
+    loadGoods(h.board!, 'salt', 10);
+    expect(playerView(s, map).haul.filter((l) => l.good === 'salt').reduce((a, l) => a + l.qty, 0)).toBe(15);
+    const before = s.orders.length;
+    ok({ type: 'placeSellOrder', good: 'salt', qty: 12, minPrice: 1 });
+    const mine = s.orders.slice(before);
+    expect(mine.map((o) => o.qty)).toEqual([5, 7]);
+    expect(cartCount(s.player.cart, 'salt')).toBe(0);
+    expect(cartCount(h.board!, 'salt')).toBe(3);
+    expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'salt', qty: 4, minPrice: 1 })).toEqual({ ok: false, error: 'notEnoughGoods' });
+  });
+
+  it('내 수레 몫은 끄는 무게까지만 잡고, 넘치는 몫이 짐꾼 수레로 간다 (무거워서 못 떠나는 일이 없게)', () => {
+    ok({ type: 'hire', role: 'porter' });
+    ok({ type: 'placeBuyOrder', good: 'ore', qty: 30, maxPrice: 20 });
+    const main = s.orders.filter((o) => o.owner.kind === 'player' && o.owner.porter === undefined).reduce((a, o) => a + o.qty, 0);
+    // 광석 무게 3: 손수레 70이면 23개까지
+    expect(main * 3).toBeLessThanOrEqual(CART.types.handcart.humanPull);
+  });
+});

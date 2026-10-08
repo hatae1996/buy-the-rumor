@@ -21,8 +21,10 @@ export type AffordKind = 'horse' | 'porter' | 'gatherer';
 
 /** 살 것 고르기에 쓰는 봇의 기억 */
 export interface GrowthMind {
-  /** 원정에서 두고 온 짐 값 (날, 값) */
+  /** 원정에서 두고 온 짐 값 (날, 값). 짐꾼·말을 살 이유 */
   lost: { day: number; value: number }[];
+  /** 장사에서 수레가 작아 못 산 몫의 값 (날, 값). 말·큰 수레를 살 이유 (짐꾼 수레는 장에서 산 짐을 받지 않는다) */
+  capped: { day: number; value: number }[];
   /** 장비가 없어 못 고른 선택지 */
   gearWanted: Partial<Record<GearKind, number>>;
   /** 원정 한 번에 거둔 값 (최근 몇 개) */
@@ -42,7 +44,7 @@ export interface GrowthMind {
 }
 
 export function createGrowthMind(): GrowthMind {
-  return { lost: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, firsts: {}, couldAfford: {} };
+  return { lost: [], capped: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, firsts: {}, couldAfford: {} };
 }
 
 /** 이만큼 지난 일은 잊는다 (새로 들인 것도 이만큼 써 보고 판단한다) */
@@ -74,8 +76,11 @@ export function noteDay(view: PlayerView, g: GrowthMind): void {
   }
   g.hauls = g.hauls.slice(-HAUL_MEMORY);
   g.lost = g.lost.filter((x) => view.day - x.day <= RECENT_DAYS);
+  g.capped = g.capped.filter((x) => view.day - x.day <= RECENT_DAYS);
   g.gathered = g.gathered.filter((x) => view.day - x.day <= RECENT_DAYS);
   for (const h of view.hires) g.hiredOn[h.id] ??= view.day - 1;
+  // 짐꾼 수레에 짐이 있으면 짐꾼이 쓸모 있었다 (원정 짐이든 장에서 산 짐이든)
+  if (view.hires.some((h) => h.board?.pieces.length)) g.porterUsed = view.day;
 }
 
 /** 원정 카드에서 장비가 없어 빠진 선택지를 기억한다 */
@@ -114,9 +119,14 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
 
   // 1. 줄이기: 돈이 모자라면 일당이 큰 일꾼부터, 그래도 모자라면 말을 판다
   if (view.gold < growth.reserve / 2 && view.upkeep.total > 0) {
-    const hire = [...view.hires].sort((a, b) => b.wage - a.wage).find((h) => h.role !== 'carter' || !view.caravan);
+    const hire = [...view.hires].sort((a, b) => b.wage - a.wage).find((h) => (h.role !== 'carter' || !view.caravan) && !h.board?.pieces.length);
     if (hire) {
       const c = once({ type: 'dismissHire', hireId: hire.id });
+      if (c) return c;
+    }
+    // 말이 있어야 움직이는 수레는 수레방에서 손수레로 바꾸고(쳐 준 값이 남는다), 그다음 말을 판다
+    if (view.cart.horsesNeeded > 0 && view.carts.some((c) => c.type === 'handcart' && c.cost !== null)) {
+      const c = once({ type: 'buyCart', cart: 'handcart' });
       if (c) return c;
     }
     const horse = view.horses.find((h) => h.sellPrice !== null);
@@ -130,7 +140,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     if (view.day - (g.hiredOn[h.id] ?? view.day) <= RECENT_DAYS) continue;
     const losing =
       (h.role === 'gatherer' && perDay(g.gathered, view.day) < h.wage + GROWTH.warehouse.rentPerDay) ||
-      (h.role === 'porter' && view.day - g.porterUsed > RECENT_DAYS);
+      (h.role === 'porter' && view.day - g.porterUsed > RECENT_DAYS && !h.board?.pieces.length);
     if (!losing) continue;
     const c = once({ type: 'dismissHire', hireId: h.id });
     if (c) return c;
@@ -142,19 +152,6 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     if (view.orders.some((o) => o.from === 'store' && o.town === w.town)) continue;
     const c = once({ type: 'releaseWarehouse', town: w.town });
     if (c) return c;
-  }
-
-  // 짐꾼 수레에 실린 원정 짐은 내 수레로 옮겨야 장에 낼 수 있다
-  for (const h of view.hires) {
-    for (const piece of h.board?.pieces ?? []) {
-      const qty = Math.min(piece.qty, view.cart.room[piece.good]);
-      if (qty <= 0) continue;
-      const c = once({ type: 'transferGoods', from: `porter:${h.id}`, to: 'cart', good: piece.good, qty });
-      if (c) {
-        g.porterUsed = view.day;
-        return c;
-      }
-    }
   }
 
   // 2. 장비: 못 고른 선택지를 여러 번 봤고 돈이 넉넉하면
@@ -170,6 +167,8 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   }
 
   const lostPerDay = perDay(g.lost, view.day);
+  // 말·큰 수레는 원정에서 두고 온 짐과 장사에서 못 산 몫을 함께 본다
+  const roomPerDay = lostPerDay + perDay(g.capped, view.day);
 
   // 3. 첫 말: 손수레보다 많이 끄는 말 (짐말, 빠른 말). 마구간이 있는 마을에서
   if (view.horses.length === 0 && view.stable) {
@@ -178,14 +177,14 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
       .map((h) => ({ h, feed: h.feed * grainPrice(view) * HORSES.stableFeedMarkup }))
       .filter((x) => afford('horse', affordable(view, growth, x.h.price!, x.feed)))
       .sort((a, b) => b.h.pull - a.h.pull)[0];
-    if (pick && (growth.horseGoal || lostPerDay >= pick.feed * growth.payMargin)) {
+    if (pick && (growth.horseGoal || roomPerDay >= pick.feed * growth.payMargin)) {
       const c = mark('horse', once({ type: 'buyHorse', kind: pick.h.kind as HorseKind }));
       if (c) return c;
     }
   }
 
   // 4. 말이 있고 수레가 여전히 차면 짐수레 (칸이 넓다). 수레방이 있는 마을에서
-  if (view.horses.length >= 1 && (view.cart.type === 'pack' || view.cart.type === 'handcart') && (lostPerDay > 0 || growth.horseGoal)) {
+  if (view.horses.length >= 1 && (view.cart.type === 'pack' || view.cart.type === 'handcart') && (roomPerDay > 0 || growth.horseGoal)) {
     const wagon = view.carts.find((c) => c.type === 'wagon' && c.cost !== null);
     if (wagon && affordable(view, growth, wagon.cost!, 0)) {
       const c = mark('wagon', once({ type: 'buyCart', cart: 'wagon' }));
@@ -193,10 +192,10 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     }
   }
 
-  // 5. 짐꾼: 두고 온 짐 값이 일당보다 크면
+  // 5. 짐꾼: 두고 온 짐이나 수레가 작아 못 산 몫의 값이 일당보다 크면 (짐꾼 수레에도 장에서 산 짐을 싣는다)
   if (!has('porter')) {
     const offer = view.hireBoard.find((o) => o.role === 'porter');
-    if (offer && afford('porter', affordable(view, growth, offer.wage, offer.wage)) && lostPerDay >= offer.wage * growth.payMargin) {
+    if (offer && afford('porter', affordable(view, growth, offer.wage, offer.wage)) && roomPerDay >= offer.wage * growth.payMargin) {
       const c = mark('porter', once({ type: 'hire', role: 'porter' }));
       if (c) return c;
     }
@@ -266,14 +265,14 @@ function caravanStep(
   const here = view.location.town;
   const route = bestRoute(view, here);
   if (!route) return null;
+  // 내 수레를 끄는 데 필요 없는 말과 이 마을 수레방이 있어야 꾸릴 수 있다 (없는데 마부부터 데려오면 일당만 나간다)
+  const spare = view.horses.length - view.cart.horsesNeeded;
+  if (spare <= 0 || !view.carts.some((c) => c.type === 'handcart')) return null;
   const carter = view.hires.find((h) => h.role === 'carter');
   if (!carter) {
     const offer = view.hireBoard.find((o) => o.role === 'carter');
     return offer && affordable(view, growth, offer.wage, offer.wage) ? once({ type: 'hire', role: 'carter' }) : null;
   }
-  // 내 수레를 끄는 데 필요 없는 말이 있어야 넘길 수 있다
-  const spare = view.horses.length - view.cart.horsesNeeded;
-  if (spare <= 0 || !view.carts.some((c) => c.type === 'handcart')) return null;
   const horseIds = view.horses.slice(view.cart.horsesNeeded, view.cart.horsesNeeded + 1).map((h) => h.id);
   return mark('caravan', once({ type: 'formCaravan', horseIds, cart: 'handcart' }));
 }

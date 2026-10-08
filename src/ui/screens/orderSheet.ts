@@ -10,11 +10,12 @@ export function openOrderSheet(game: Game, good: GoodId): void {
   const v = game.view();
   const m = v.market;
   if (!m) return;
-  // 내일이면 상할 묶음은 장에 낼 수 없다
-  const have = sellableCount(v.cargo, good, ECONOMY.spoilRate[v.season]);
-  const spoiling = count(v.cargo, good) - have;
-  // 살 물건이 수레에 몇 개 더 들어가나 (신청하면 그 자리를 미리 잡는다)
-  const room = v.cart.room[good];
+  // 내일이면 상할 묶음은 장에 낼 수 없다. 짐꾼 수레 짐도 낸다
+  const have = sellableCount(v.haul, good, ECONOMY.spoilRate[v.season]);
+  const spoiling = count(v.haul, good) - have;
+  // 살 물건이 수레(짐꾼 수레 포함)에 몇 개 더 들어가나 (신청하면 그 자리를 미리 잡는다)
+  const room = v.buyRoom[good];
+  const porters = v.hires.some((h) => h.board);
 
   let side: 'sell' | 'buy' = have > 0 ? 'sell' : 'buy';
   let qty = side === 'sell' ? have : Math.min(1, room);
@@ -42,7 +43,7 @@ export function openOrderSheet(game: Game, good: GoodId): void {
       <div class="price-note">
         <div>오늘 시세 <b>${m.price[good]}</b> · 낼 수 있는 짐 ${have}개</div>
         ${spoiling ? `<div class="warn">곧 상할 ${spoiling}개는 장에 낼 수 없어요.</div>` : ''}
-        ${side === 'buy' ? `<div class="muted">수레에 ${room}개 더 들어가요. 신청하면 그 자리를 미리 잡아 둬요.</div>` : ''}
+        ${side === 'buy' ? `<div class="muted">${porters ? '내 수레와 짐꾼 수레에' : '수레에'} ${room}개 더 들어가요. 신청하면 그 자리를 미리 잡아 둬요.</div>` : ''}
         <div class="muted">${yText} ${marketMood(y.demand, y.supply)}</div>
       </div>
       <div class="stepper-row">

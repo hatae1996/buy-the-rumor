@@ -1,4 +1,6 @@
 // 마을 주민 (일꾼이 아닌 사람들). 마을 금고로 물건을 사서 쓴다.
+// 0.0.6 장의 깊이: 하루 양(demand × depth, 도시는 더)을 값 단계에 나눠 신청한다. 싼 값일수록 많이 사서
+// 남는 마을은 값이 바닥까지 무너지지 않고, 도시는 한 장날에 20~30개를 받아 준다.
 // 금고에는 날마다 바깥 경제에서 돈이 들어오고(돈이 생기는 곳), 너무 쌓이면 영주에게 바친다(돈이 빠지는 곳).
 import { ECONOMY } from '../constants';
 import { stochasticRound, type Rng } from '../rng';
@@ -11,7 +13,7 @@ import type { EconomyState, Order, TownEconomy } from './state';
 const C = ECONOMY.citizens;
 
 export function citizenDemand(state: EconomyState, town: TownEconomy, good: GoodId, season: Season): number {
-  let d: number = C.demand[good];
+  let d: number = C.demand[good] * C.depth;
   if (town.tier === 'city') d *= ECONOMY.city.demandFactor;
   if (season === WINTER) {
     if (good === 'wood') d *= C.winterWoodFactor;
