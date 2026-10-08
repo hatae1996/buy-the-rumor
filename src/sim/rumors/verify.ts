@@ -7,6 +7,7 @@ import { findNode } from '../economy/nodes';
 import type { EconomyState } from '../economy/state';
 import type { WorldMap } from '../worldgen';
 import { tagsNearTown } from './facts';
+import { noteMoment } from '../ranking/record';
 import type { Claim, HeardRumor } from './types';
 
 const V = RUMORS.verify;
@@ -14,6 +15,8 @@ const V = RUMORS.verify;
 function stamp(state: EconomyState, h: HeardRumor, right: boolean): void {
   h.stamp = right ? 'right' : 'wrong';
   h.stampDay = state.day;
+  // 업적 "귀가 밝은 상인"이 센다
+  if (right) noteMoment(state, 'rumorRight');
 }
 
 /** 장날이 끝난 뒤: 신문과 지금 있는 마을에서 본 것으로 도장을 찍는다. 새로 찍은 줄 수를 돌려준다 */

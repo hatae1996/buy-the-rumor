@@ -15,6 +15,8 @@ import { createSeason } from '../events/schedule';
 import { emptyRumorMill } from '../rumors/night';
 import { emptyHorseMarket } from '../horses/supply';
 import { ALL_UNLOCKS, startApprentice } from '../apprentice/progress';
+import { createCertificate } from '../ranking/certificate';
+import { ensureRecord } from '../ranking/record';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
@@ -65,6 +67,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       homeTown: 0,
       fullDays: 0,
       newsReadDay: null,
+      record: null,
+      certificate: createCertificate(),
     },
     orders: [],
     news: [],
@@ -117,6 +121,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   state.player.homeTown = state.player.town;
   if (opt.apprentice) startApprentice(state, map, createRng(seed ^ 0xa99e));
   else for (const id of ALL_UNLOCKS) state.player.unlocks[id] = state.day;
+  // 이번 시즌 기록을 연다 (수완가 부문의 시작 자금)
+  ensureRecord(state);
   return state;
 }
 

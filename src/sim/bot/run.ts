@@ -5,11 +5,11 @@ import { createRng, mixSeed } from '../rng';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { botStep, createMind } from './bot';
 import type { BotProfile } from './profiles';
-import { netWorth } from './worth';
+import { netWorth } from '../ranking/worth';
 
 export interface BotRun {
   profile: BotProfile;
-  /** 날마다 순자산 (기획서 랭킹 계산: 현금 + 맡긴 돈 + 짐 × 절반) */
+  /** 날마다 순자산 (기획서 랭킹 계산: 현금 + 맡긴 돈 + (짐과 말) × 절반, src/sim/ranking/worth.ts) */
   worth: number[];
   gold: number[];
   trades: number;
@@ -56,7 +56,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     const ledgerBefore = state.player.ledger.length;
     advanceDay(state, map);
     run.trades += state.player.ledger.slice(ledgerBefore).filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
-    run.worth.push(netWorth(playerView(state, map)));
+    run.worth.push(netWorth(state));
     run.gold.push(state.player.gold);
   }
   run.commandsPerDay = commands / Math.max(1, opt.days);

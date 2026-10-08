@@ -149,7 +149,7 @@ export interface SeasonState {
   startDay: number;
   /** 게임 속 날 수 */
   length: number;
-  /** 시즌 테마 (나중에: 대가뭄, 혹한 등). 지금은 null */
+  /** 시즌 테마 (혹한, 풍어 등. src/sim/ranking/quests.ts). 길드 의뢰가 테마를 따른다 */
   theme: string | null;
   schedule: ScheduledEvent[];
   fakeOmens: FakeOmen[];

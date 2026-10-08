@@ -45,6 +45,7 @@ import {
 import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
+import { checkBadges } from '../ranking';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -129,6 +130,7 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
     // 견습 장면을 넘기고, 조건이 맞으면 하나씩 연다
     apprenticeAfterCommand(state, map, cmd);
     updateUnlocks(state);
+    checkBadges(state);
   }
   return result;
 }

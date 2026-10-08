@@ -2,6 +2,7 @@
 import { RUMORS } from '../constants';
 import type { EconomyState } from '../economy/state';
 import type { HeardRumor } from './types';
+import { noteOmenHeard } from '../ranking/record';
 
 export type NoteInput = Omit<HeardRumor, 'id' | 'day' | 'stamp' | 'stampDay'>;
 
@@ -10,6 +11,8 @@ export function addNote(state: EconomyState, note: NoteInput): HeardRumor {
   const p = state.player;
   const entry: HeardRumor = { id: state.rumorMill.nextId++, day: state.day, ...note, stamp: null, stampDay: null };
   p.rumors.push(entry);
+  // 랭킹 Buy the Rumor: 사건 징조를 언제 들었나
+  if (note.claim?.kind === 'omen') noteOmenHeard(state, note.claim.event, note.claim.town);
   if (p.rumors.length > RUMORS.notebookMax) p.rumors.splice(0, p.rumors.length - RUMORS.notebookMax);
   return entry;
 }

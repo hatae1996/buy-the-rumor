@@ -6,6 +6,7 @@ import { createRng, mixSeed, shuffle, type Rng } from '../rng';
 import { CYCLE_DAYS, seasonOfDay } from '../season';
 import { buildNeighbors, cellsAround, townsNearTag, type WorldMap } from '../worldgen';
 import { badGoods, SCHEDULED_DEFS } from './defs';
+import { pickTheme } from '../ranking/quests';
 import type { EventDef, FakeOmen, ScheduledEvent, ScheduledEventId, SeasonState } from './types';
 
 const E = ECONOMY.events;
@@ -61,7 +62,10 @@ export function createSeason(state: EconomyState, map: WorldMap, number: number,
     if (pick) fakeOmens.push({ event: pick.def.id as ScheduledEventId, town: pick.town, day });
   }
 
-  return { number, startDay, length, theme: null, schedule, fakeOmens, log: [] };
+  // 시즌 테마는 시작 계절, 마을 특색과 함께 정한다 (기획서 "길드 의뢰"). 일정과 다른 난수를 쓴다
+  const resources = new Set(state.towns.flatMap((t) => t.nodes.map((n) => n.kind)));
+  const theme = pickTheme(state.seed, number, seasonOfDay(startDay, state.startSeason), resources);
+  return { number, startDay, length, theme, schedule, fakeOmens, log: [] };
 }
 
 /** 이 사건이 그날 일어날 수 있는 마을들 (계절, 자원지, 특색, 규모, 산길 조건) */

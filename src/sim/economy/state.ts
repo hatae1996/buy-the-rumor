@@ -4,6 +4,7 @@ import type { HeardRumor, RumorMill } from '../rumors/types';
 import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType } from '../cart';
 import type { ApprenticeState, UnlockId } from '../apprentice/types';
+import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -213,6 +214,10 @@ export interface PlayerState {
   fullDays: number;
   /** 마지막으로 신문을 읽은 날 */
   newsReadDay: number | null;
+  /** 이번 시즌 기록 (랭킹 부문 점수, 길드 의뢰, 업적). 시즌이 시작되기 전이면 null */
+  record: SeasonRecord | null;
+  /** 상인 증서: 시즌이 바뀌어도 남는다 */
+  certificate: Certificate;
 }
 
 export type OrderOwner =

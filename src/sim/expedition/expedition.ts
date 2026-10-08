@@ -15,6 +15,7 @@ import { buildDeck, EVENT_MEMORY_DAYS } from './deck';
 import { hasGear, needsMet, useGear, useTool, type GearError } from './gear';
 import { makeRumor } from './rumors';
 import { noteSeen, verifyByExpedition } from '../rumors';
+import { noteExpeditionMoments } from '../ranking/moments';
 import type { Chance, Choice, Effect } from './types';
 
 const X = ECONOMY.expedition;
@@ -120,7 +121,17 @@ export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceI
   const success = chance === null || rng.next() < chance;
   const effects = success ? choice.success : (choice.failure ?? []);
   const result = { ended: false, risk: !success && chance !== null, parts: [] as string[] };
+  const before = new Map(ex.haul.map((h) => [h.good, h.qty]));
   for (const e of effects) applyEffect(e, state, map, ex, rng, result);
+  // 랭킹: 이야기가 되는 순간 (곰을 횃불로 쫓음, 늑대를 무사히 지남 등)
+  const gained: Partial<Record<string, number>> = {};
+  let lost = 0;
+  for (const g of new Set([...before.keys(), ...ex.haul.map((h) => h.good)])) {
+    const d = (ex.haul.find((h) => h.good === g)?.qty ?? 0) - (before.get(g) ?? 0);
+    if (d > 0) gained[g] = d;
+    else lost -= d;
+  }
+  noteExpeditionMoments(state, { card: card.id, choice, success, gained, lost });
   p.fatigue = Math.min(ECONOMY.fatigue.max, Math.max(0, p.fatigue + choiceFatigue(choice, ex)));
   ex.log.push(logLine(card.title, choice, chance === null ? null : success ? 'success' : 'failure', result.parts));
 

@@ -26,6 +26,7 @@ import { playerNight } from './player';
 import { rumorNight, type HeardRumor } from '../rumors';
 import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } from '../horses';
 import { apprenticeAfterDay, countFullDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
+import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -60,6 +61,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   // 0. 시즌과 사건: 시즌이 끝났으면 새로 짜고, 오늘 일정의 사건을 시작한다 (신문은 사실만)
   news.push(...startDay(state, map));
+  // 시즌이 바뀌었으면 지난 시즌 기록을 마감하고 새로 연다
+  ensureRecord(state);
   // 말: 시즌 입고 일정대로 목장 마을 마구간에 풀린다 (신문에는 실리지 않는다)
   horseMorning(state, map);
   // 막힌 길은 돌아간다
@@ -68,7 +71,10 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   // 견습 마을 손님: 견습 동안 플레이어 신청은 장날에 따로, 반드시 다 맞춘다
   const apprenticeFills = settleApprenticeOrders(state, accounts);
-  for (const f of apprenticeFills) state.player.ledger.push({ day: state.day, kind: f.side, town: state.player.town, good: f.good, qty: f.qty, price: f.price });
+  for (const f of apprenticeFills) {
+    state.player.ledger.push({ day: state.day, kind: f.side, town: state.player.town, good: f.good, qty: f.qty, price: f.price });
+    noteTrade(state, tradeRecord(state.day, f.side, state.player.town, f.good, f.qty, f.price));
+  }
 
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
@@ -101,6 +107,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
       if (f.side === 'sell') sold += f.qty;
       if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
       state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price });
+      noteTrade(state, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
         news.push(`어느 상단이 ${name(town.id)}에서 ${GOOD_NAME[f.good]} ${f.qty}개를 한꺼번에 ${verb}.`);
@@ -201,6 +208,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 견습 장면과 하나씩 열리는 것
   apprenticeAfterDay(state, map, state.day);
   updateUnlocks(state);
+  // 랭킹: 시즌 동안 가장 낮았던 순자산, 업적과 의뢰 인장
+  trackWorth(state);
+  checkBadges(state);
   state.day++;
   state.rng = rng.state();
   return report;

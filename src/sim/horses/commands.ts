@@ -5,6 +5,7 @@ import type { EconomyState } from '../economy/state';
 import { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
 import { stableAt } from './supply';
 import type { HorseKind } from './types';
+import { noteMoment } from '../ranking/record';
 
 export type HorseError =
   | 'noStable'
@@ -33,6 +34,7 @@ export function buyHorse(state: EconomyState, kind: HorseKind): Err | null {
   p.gold -= h.price;
   p.horses.push(h);
   p.ledger.push({ day: state.day, kind: 'horse', what: 'buy', town: p.town, horse: kind, price: h.price });
+  noteMoment(state, 'firstHorse');
   return null;
 }
 
