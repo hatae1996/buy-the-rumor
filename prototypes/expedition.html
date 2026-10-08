@@ -1,0 +1,248 @@
+<title>숲 원정</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: phone-first card flow. World-state chips, one big event card you swipe or tap, the haul so far, then options. Paper on dark wood. */
+:root{
+  color-scheme: dark;
+  --wood:#3A2B22; --wood-mid:#6B4A32; --paper:#F1E2C6; --paper-dim:#E4D2B0; --ink:#3A2B22; --ink-soft:#5C4632;
+  --coral:#D2594B; --teal:#2E9C98; --olive:#7D8A2E; --mustard:#E6B43C; --wax:#B8402F; --good:#3F7F3A;
+  --f-display:"Jua", "Apple SD Gothic Neo", sans-serif;
+  --f-body:"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+html,body{background:var(--wood);color:var(--paper)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:16px 40px;
+  background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0) 0 94px,rgba(0,0,0,.35) 94px 97px)}
+.app{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--mustard);outline-offset:2px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,6vw,34px);margin:0;line-height:1.1}
+.sub{color:var(--paper-dim);font-size:14px;margin:2px 0 0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:rgba(241,226,198,.14);border:1px solid rgba(241,226,198,.35);border-radius:14px;padding:2px 10px;font-size:13px}
+.progress{display:flex;gap:6px}
+.progress i{flex:1;height:6px;border-radius:3px;background:rgba(241,226,198,.2)}
+.progress i.on{background:var(--mustard)}
+.deck{position:relative;height:440px;touch-action:pan-y}
+.card{position:absolute;inset:0;background:var(--paper);color:var(--ink);border-radius:14px;box-shadow:0 8px 0 rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;transition:transform .25s ease, opacity .25s ease;user-select:none;-webkit-user-select:none}
+.card.dragging{transition:none}
+.art{height:180px;flex:none;position:relative;overflow:hidden}
+.art svg{display:block;width:100%;height:100%}
+.body{padding:14px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.body h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0}
+.body p{margin:0;font-size:15.5px;color:var(--ink-soft)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.choice{background:#E4D2B0;border:0;border-radius:10px;padding:10px;text-align:left;display:flex;flex-direction:column;gap:3px;min-height:84px;box-shadow:0 3px 0 #A8916A}
+.choice b{font-family:var(--f-display);font-weight:400;font-size:17px;color:var(--ink)}
+.choice span{font-size:12.5px;color:var(--ink-soft)}
+.choice:active{transform:translateY(2px);box-shadow:0 1px 0 #A8916A}
+.stamp{position:absolute;top:18px;font-family:var(--f-display);font-size:26px;padding:2px 12px;border:4px solid;border-radius:8px;opacity:0;transform:rotate(-12deg)}
+.stamp.l{left:18px;color:var(--teal);border-color:var(--teal)}
+.stamp.r{right:18px;color:var(--coral);border-color:var(--coral);transform:rotate(12deg)}
+.outcome{background:rgba(241,226,198,.1);border-radius:8px;padding:8px 12px;font-size:14.5px;min-height:2.6em}
+.outcome b{color:var(--mustard)}
+.haul{display:flex;gap:8px;flex-wrap:wrap}
+.item{background:var(--paper);color:var(--ink);border-radius:6px;padding:4px 10px;font-family:var(--f-display);font-size:15px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.item.tired{background:var(--wax);color:#fff}
+.slip{background:var(--paper);color:var(--ink);padding:12px 14px;border-radius:3px;box-shadow:0 4px 0 rgba(0,0,0,.4)}
+.slip h3{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0 0 6px}
+.seg{display:flex;background:#E4D2B0;border-radius:8px;padding:3px;gap:3px}
+.seg button{background:none;border:0;border-radius:6px;padding:6px 8px;font-family:var(--f-display);font-size:15px;color:var(--ink);min-height:36px;flex:1}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.row{display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12.5px;color:var(--ink-soft)}
+.btn{background:var(--coral);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-family:var(--f-display);font-size:18px;box-shadow:0 4px 0 #8E3328;min-height:48px;width:100%}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #8E3328}
+.note{font-size:13px;color:var(--ink-soft);border-top:1px dashed #C9B48C;padding-top:6px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+
+<div class="app">
+  <div>
+    <h1>숲 원정</h1>
+    <p class="sub">카드를 왼쪽이나 오른쪽으로 넘기거나, 아래 선택지를 누르세요. 결과는 지금 세계의 상태를 따라가요.</p>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="progress" id="prog"></div>
+  <div class="deck" id="deck"></div>
+  <div class="outcome" id="out" role="status"></div>
+  <div class="haul" id="haul"></div>
+  <section class="slip row">
+    <h3>지금 세계 (원정 카드는 이 상태를 읽어요)</h3>
+    <div><div class="lbl">계절</div><div class="seg" id="segSeason"><button data-v="0" aria-pressed="false">봄</button><button data-v="1" aria-pressed="false">여름</button><button data-v="2" aria-pressed="true">가을</button><button data-v="3" aria-pressed="false">겨울</button></div></div>
+    <div><div class="lbl">숲의 사슴</div><div class="seg" id="segPop"><button data-v="2" aria-pressed="false">많음</button><button data-v="1" aria-pressed="true">보통</button><button data-v="0" aria-pressed="false">적음</button></div></div>
+    <div><div class="lbl">요즘 늑대</div><div class="seg" id="segWolf"><button data-v="0" aria-pressed="true">조용함</button><button data-v="1" aria-pressed="false">자주 나타남</button></div></div>
+    <button class="btn" id="go">새 원정 떠나기</button>
+    <p class="note">원정 한 번에 카드 3~4장, 10~20초예요. 피로가 다 차면 원정이 끝나요.</p>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const world = {season: 2, pop: 1, wolf: 0};
+const SEASON = ['봄','여름','가을','겨울'], POP = ['적음','보통','많음'];
+let E = null;
+
+const roll = p => Math.random() < p;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function chance(p){ return p >= .7 ? '성공 가능성 높음' : p >= .45 ? '반반' : '성공 가능성 낮음'; }
+
+// 원정 카드 묶음. 각 카드는 세계 상태를 읽어 선택지의 확률과 설명을 만든다
+const CARDS = [
+  {id: 'tracks', when: () => true, art: 'tracks', title: '사슴 발자국',
+    text: () => world.season === 3 ? '눈 위에 발자국이 선명해요. 아직 따뜻해요.' : '젖은 흙에 발자국이 이어져요.',
+    choices: () => {
+      const p = [0.3, 0.55, 0.8][world.pop] + (world.season === 3 ? 0.1 : 0) - (world.season === 0 ? 0.1 : 0);
+      return [
+        {label: '따라간다', hint: `피로 +3 · ${chance(p)}`, run: () => { E.fatigue += 3; if (roll(p)){ give('고기', 3); give('가죽', 1); return '발자국 끝에서 사슴을 찾아 <b>명중</b>시켰어요.'; } return '한참 따라갔지만 발자국이 개울에서 끊겼어요.'; }},
+        {label: '나무를 벤다', hint: '피로 +2 · 확실함', run: () => { E.fatigue += 2; give('목재', 3); return '발자국은 두고 근처 나무를 베었어요.'; }}
+      ];
+    }},
+  {id: 'wolf', when: () => world.wolf || world.season === 3 || roll(.35), art: 'wolf', title: '멀리서 늑대 울음',
+    text: () => world.wolf ? '요즘 늑대가 자주 나타난다더니, 꽤 가까운 것 같아요.' : '바람결에 늑대 소리가 들려요.',
+    choices: () => {
+      const risk = (world.wolf ? .55 : .3) + (world.season === 3 ? .15 : 0);
+      return [
+        {label: '돌아간다', hint: '원정 끝 · 안전함', run: () => { E.done = true; return '욕심을 접고 숲을 빠져나왔어요.'; }},
+        {label: '조용히 계속', hint: `위험 ${risk > .5 ? '높음' : '조금'}`, run: () => { if (roll(risk)){ const lost = Math.ceil((E.haul['고기'] || 0) / 2); if (lost) take('고기', lost); E.fatigue += 2; return lost ? `늑대에게 쫓겨 <b>고기 ${lost}개</b>를 버리고 달아났어요.` : '늑대에게 쫓겨 진땀을 뺐어요. 피로 +2'; } return '숨죽이고 지나갔어요. 아무 일도 없었어요.'; }}
+      ];
+    }},
+  {id: 'log', when: () => true, art: 'log', title: '쓰러진 고목',
+    text: () => '오래된 참나무가 쓰러져 있어요. 근처에 짐승 길이 나 있어요.',
+    choices: () => [
+      {label: '장작으로 쪼갠다', hint: '피로 +3 · 목재 4', run: () => { E.fatigue += 3; give('목재', 4); return '땀 흘려 장작을 넉넉히 만들었어요.'; }},
+      {label: '덫을 놓는다', hint: '지금은 없음 · 다음 원정에 고기', run: () => { E.trap = true; return '짐승 길에 덫을 놓았어요. <b>다음 원정 때 확인</b>할 수 있어요.'; }}
+    ]},
+  {id: 'herd', when: () => world.pop === 2, art: 'herd', title: '개울가의 사슴 무리',
+    text: () => '사슴 여러 마리가 물을 마시고 있어요. 소문대로 이 숲엔 사슴이 많네요.',
+    choices: () => [
+      {label: '활을 쏜다', hint: '피로 +2 · 성공 가능성 높음', run: () => { E.fatigue += 2; if (roll(.8)){ give('고기', 3); give('가죽', 1); return '한 마리를 잡았어요.'; } return '빗나갔어요. 무리가 흩어졌어요.'; }},
+      {label: '지켜본다', hint: '얻는 것 없음 · 정보', run: () => { E.rumor = '리버포드 숲에 사슴이 정말 많다. 당분간 고기와 가죽이 쌀 것이다.'; return '무리 수를 세어 두었어요. <b>장부에 소문으로 기록</b>했어요.'; }}
+    ]},
+  {id: 'hunter', when: () => true, art: 'hunter', title: '다른 사냥꾼',
+    text: () => '같은 사슴을 노리는 사냥꾼과 마주쳤어요.',
+    choices: () => [
+      {label: '이야기를 나눈다', hint: '얻는 것 없음 · 소문', run: () => { E.rumor = world.pop === 0 ? '사냥꾼 말로는 요즘 사슴이 귀하다. 가죽 값이 오를 것 같다.' : '사냥꾼 말로는 스톤힐에서 가죽을 찾는 사람이 많다.'; return '사냥꾼에게 <b>소문</b>을 하나 들었어요.'; }},
+      {label: '먼저 쏜다', hint: '피로 +2 · 반반', run: () => { E.fatigue += 2; if (roll(.5)){ give('고기', 2); give('가죽', 1); return '먼저 쏴서 잡았어요. 사냥꾼이 언짢아해요.'; } E.fatigue += 2; return '서로 다투다 놓쳤어요. 피로 +2'; }}
+    ]},
+  {id: 'rain', when: () => world.season !== 3, art: 'rain', title: '갑자기 비',
+    text: () => world.season === 1 ? '여름 소나기예요. 금방 그칠 것 같기도 해요.' : '차가운 비가 내리기 시작해요.',
+    choices: () => [
+      {label: '나무 아래서 쉰다', hint: '피로 −2 · 카드 한 장 줄어듦', run: () => { E.fatigue = Math.max(0, E.fatigue - 2); E.left = Math.max(0, E.left - 1); return '비를 피해 쉬었어요. 시간이 꽤 흘렀어요.'; }},
+      {label: '강행한다', hint: '피로 +2', run: () => { E.fatigue += 2; return '흠뻑 젖은 채 계속 나아갔어요.'; }}
+    ]},
+  {id: 'fawn', when: () => world.season === 0, art: 'fawn', title: '어린 사슴',
+    text: () => '어미를 잃은 듯한 어린 사슴이 서 있어요.',
+    choices: () => [
+      {label: '잡는다', hint: '고기 1 · 다음 해 사슴 감소', run: () => { give('고기', 1); E.note = '어린 사슴을 잡아서 다음 해 이 숲의 사슴이 조금 줄어요.'; return '어린 사슴을 잡았어요. 고기가 많지 않아요.'; }},
+      {label: '보내 준다', hint: '얻는 것 없음', run: () => '어린 사슴이 숲 속으로 사라졌어요.'}
+    ]},
+  {id: 'snowtrap', when: () => world.season === 3, art: 'snow', title: '눈 덮인 덤불',
+    text: () => '눈 속에 토끼 굴이 보여요.',
+    choices: () => [
+      {label: '파 본다', hint: '피로 +2 · 반반', run: () => { E.fatigue += 2; if (roll(.5)){ give('고기', 1); give('가죽', 1); return '토끼를 잡았어요.'; } return '굴은 비어 있었어요.'; }},
+      {label: '땔감을 모은다', hint: '피로 +1 · 목재 2', run: () => { E.fatigue += 1; give('목재', 2); return '젖지 않은 가지를 모았어요. 겨울 땔감은 비싸게 팔려요.'; }}
+    ]}
+];
+
+function give(k, n){ E.haul[k] = (E.haul[k] || 0) + n; }
+function take(k, n){ E.haul[k] = Math.max(0, (E.haul[k] || 0) - n); }
+
+function start(){
+  const trapFound = E && E.trap;
+  E = {haul: {}, fatigue: 0, left: 3 + (Math.random() < .5 ? 1 : 0), used: new Set(), done: false, trap: false, rumor: null, note: null, total: 0};
+  E.total = E.left;
+  if (trapFound){ give('고기', 2); E.first = '어제 놓은 덫에 짐승이 걸려 있었어요. <b>고기 2</b>를 얻었어요.'; }
+  renderChips(); renderHaul(); $('out').innerHTML = E.first || '숲에 들어왔어요.';
+  next();
+}
+function pick(){
+  const pool = CARDS.filter(c => !E.used.has(c.id) && c.when());
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function next(){
+  if (E.done || E.left <= 0 || E.fatigue >= 10) return finish();
+  const c = pick(); if (!c) return finish();
+  E.used.add(c.id); E.card = c; E.ch = c.choices();
+  renderProg(); renderCard();
+}
+function choose(i){
+  if (!E.card) return;
+  const res = E.ch[i].run();
+  E.card = null; E.left--;
+  E.fatigue = clamp(E.fatigue, 0, 10);
+  $('out').innerHTML = res + (E.fatigue >= 10 ? ' <b>너무 지쳤어요.</b>' : '');
+  renderHaul();
+  const el = $('deck').querySelector('.card');
+  if (el){ el.style.transform = `translateX(${i === 0 ? -130 : 130}%) rotate(${i === 0 ? -18 : 18}deg)`; el.style.opacity = '0'; }
+  setTimeout(next, 260);
+}
+function finish(){
+  renderProg(true);
+  const items = Object.entries(E.haul).filter(([, n]) => n > 0);
+  $('deck').innerHTML = `<div class="card"><div class="art">${art('home')}</div><div class="body">
+    <h2>원정 끝</h2>
+    <p>${items.length ? '수레에 실을 것: ' + items.map(([k, n]) => `${k} ${n}`).join(', ') : '빈손으로 돌아왔어요.'}</p>
+    <p>피로 ${E.fatigue} / 10</p>
+    ${E.rumor ? `<p>장부에 적은 소문: “${E.rumor}”</p>` : ''}
+    ${E.trap ? '<p>놓아 둔 덫은 다음 원정 때 확인해요.</p>' : ''}
+    ${E.note ? `<p>${E.note}</p>` : ''}
+    <div class="choices" style="grid-template-columns:1fr"><button class="btn" id="again">다시 원정</button></div></div></div>`;
+  $('again').onclick = start;
+}
+
+function renderChips(){
+  $('chips').innerHTML = [`리버포드 숲`, SEASON[world.season], `사슴 ${POP[world.pop]}`, world.wolf ? '늑대 자주 나타남' : '늑대 조용함'].map(t => `<span class="chip">${t}</span>`).join('');
+}
+function renderProg(done){ $('prog').innerHTML = Array.from({length: E.total}, (_, i) => `<i class="${done || i < E.total - E.left ? 'on' : ''}"></i>`).join(''); }
+function renderHaul(){
+  const items = Object.entries(E.haul).filter(([, n]) => n > 0).map(([k, n]) => `<span class="item">${k} ${n}</span>`);
+  items.push(`<span class="item${E.fatigue >= 7 ? ' tired' : ''}">피로 ${E.fatigue}/10</span>`);
+  $('haul').innerHTML = items.join('');
+}
+function renderCard(){
+  const c = E.card;
+  $('deck').innerHTML = `<div class="card" id="card"><div class="art">${art(c.art)}</div>
+    <span class="stamp l">${E.ch[0].label}</span><span class="stamp r">${E.ch[1].label}</span>
+    <div class="body"><h2>${c.title}</h2><p>${c.text()}</p>
+    <div class="choices">${E.ch.map((x, i) => `<button class="choice" data-i="${i}"><b>${i === 0 ? '← ' : ''}${x.label}${i === 1 ? ' →' : ''}</b><span>${x.hint}</span></button>`).join('')}</div></div></div>`;
+  $('deck').querySelectorAll('.choice').forEach(b => b.onclick = () => choose(+b.dataset.i));
+  swipe($('card'));
+}
+function swipe(el){
+  let x0 = null, dx = 0;
+  const sl = el.querySelector('.stamp.l'), sr = el.querySelector('.stamp.r');
+  el.addEventListener('pointerdown', e => { if (e.target.closest('.choice')) return; x0 = e.clientX; dx = 0; el.classList.add('dragging'); el.setPointerCapture(e.pointerId); });
+  el.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; sl.style.opacity = clamp(-dx / 90, 0, 1); sr.style.opacity = clamp(dx / 90, 0, 1); });
+  const up = () => { if (x0 === null) return; el.classList.remove('dragging'); x0 = null;
+    if (Math.abs(dx) > 90) choose(dx < 0 ? 0 : 1); else { el.style.transform = ''; sl.style.opacity = 0; sr.style.opacity = 0; } };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+
+// 카드 그림 (자리표시용 단순 그림)
+function art(k){
+  const sky = world.season === 3 ? '#DCE7EA' : '#A9D3CF', ground = world.season === 3 ? '#F2F5F6' : world.season === 2 ? '#C9B868' : '#9DBF63';
+  const leaf = ['#5E9C5A','#3F8F4C','#D9A15A','#E9EEF0'][world.season];
+  const tree = (x, s = 1) => `<g transform="translate(${x} 150) scale(${s})"><rect x="-6" y="-40" width="12" height="40" fill="#7A5236" stroke="#3A2B22" stroke-width="3"/><circle cx="0" cy="-62" r="34" fill="${leaf}" stroke="#3A2B22" stroke-width="3"/></g>`;
+  const base = `<rect width="400" height="180" fill="${sky}"/><path d="M0 130 Q100 105 200 125 T400 118 L400 180 L0 180Z" fill="${ground}"/>${tree(50, .9)}${tree(350, 1.1)}`;
+  const deer = (x, y, s = 1, f = 1) => `<g transform="translate(${x} ${y}) scale(${s * f} ${s})"><ellipse cx="0" cy="0" rx="26" ry="12" fill="#A0663A" stroke="#3A2B22" stroke-width="3"/><path d="M-16 8 v18 M-8 9 v18 M10 9 v18 M18 8 v18" stroke="#3A2B22" stroke-width="3"/><circle cx="26" cy="-16" r="9" fill="#A0663A" stroke="#3A2B22" stroke-width="3"/><path d="M22 -24 l-5 -14 M30 -24 l5 -14" stroke="#6B4423" stroke-width="3" stroke-linecap="round"/></g>`;
+  const extra = {
+    tracks: [0,1,2,3,4].map(i => `<g fill="#4A3222" transform="translate(${120 + i * 40} ${150 - i * 6})"><ellipse cx="-4" cy="0" rx="3" ry="5"/><ellipse cx="4" cy="0" rx="3" ry="5"/></g>`).join(''),
+    wolf: `<circle cx="300" cy="50" r="22" fill="#F1E2C6"/><path d="M160 140 l20 -30 l10 12 l14 -14 l6 20 l24 4 l-10 10 l-40 4 Z" fill="#5B5F73" stroke="#3A2B22" stroke-width="3"/><circle cx="196" cy="118" r="3" fill="#E6B43C"/>`,
+    log: `<rect x="110" y="128" width="190" height="26" rx="13" fill="#7A5236" stroke="#3A2B22" stroke-width="3"/><circle cx="300" cy="141" r="13" fill="#D9A15A" stroke="#3A2B22" stroke-width="3"/>`,
+    herd: `<path d="M120 160 Q200 140 290 160" stroke="#5FA8B8" stroke-width="16" fill="none"/>${deer(150, 128, .8)}${deer(215, 122, .9, -1)}${deer(270, 130, .7)}`,
+    hunter: `<g transform="translate(200 150)"><path d="M-14 0 L-8 -40 L8 -40 L14 0Z" fill="#2E9C98" stroke="#3A2B22" stroke-width="3"/><circle cx="0" cy="-52" r="12" fill="#F2C79A" stroke="#3A2B22" stroke-width="3"/><path d="M14 -60 q20 20 0 40" stroke="#6B4423" stroke-width="4" fill="none"/></g>`,
+    rain: Array.from({length: 26}, (_, i) => `<line x1="${(i * 37) % 400}" y1="${(i * 23) % 120}" x2="${(i * 37) % 400 - 8}" y2="${(i * 23) % 120 + 22}" stroke="#2E6E8C" stroke-width="3" stroke-linecap="round"/>`).join(''),
+    fawn: deer(200, 132, .7),
+    snow: `<ellipse cx="200" cy="140" rx="60" ry="22" fill="#FFFFFF" stroke="#3A2B22" stroke-width="3"/><ellipse cx="200" cy="140" rx="14" ry="9" fill="#3A2B22"/>`,
+    home: `<path d="M150 150 V112 L200 80 L250 112 V150 Z" fill="#F1E2C6" stroke="#3A2B22" stroke-width="3"/><path d="M140 114 L200 72 L260 114" fill="none" stroke="#D2594B" stroke-width="10" stroke-linejoin="round"/>`
+  }[k] || '';
+  return `<svg viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${base}${extra}</svg>`;
+}
+
+function seg(id, key){ const el = $(id); el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); world[key] = +b.dataset.v; start(); }); }
+seg('segSeason', 'season'); seg('segPop', 'pop'); seg('segWolf', 'wolf');
+$('go').onclick = start;
+start();
+</script>
