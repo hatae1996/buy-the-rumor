@@ -18,6 +18,7 @@ import {
   unitWeight,
 } from '../cart';
 import { sellableCount } from './inventory';
+import { chooseExpeditionCard, finishExpedition, startExpedition, type ExpeditionError } from '../expedition';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import type { EconomyState } from './state';
 
@@ -37,7 +38,13 @@ export type Command =
   /** 빈칸 정리 */
   | { type: 'packCart' }
   /** 짐 조각을 버린다 */
-  | { type: 'discardCartPiece'; pieceId: number };
+  | { type: 'discardCartPiece'; pieceId: number }
+  /** 원정을 나간다 (기회 1개를 쓴다) */
+  | { type: 'startExpedition' }
+  /** 펼친 원정 카드의 선택지를 고른다 (0: 왼쪽, 1: 오른쪽) */
+  | { type: 'chooseExpeditionCard'; choice: number }
+  /** 원정을 그만두고 돌아온다 */
+  | { type: 'endExpedition' };
 
 export type CommandError =
   | 'traveling'
@@ -59,11 +66,13 @@ export type CommandError =
   | 'overweight'
   | 'noPiece'
   | 'cantPlace'
-  | 'pieceBusy';
+  | 'pieceBusy'
+  | ExpeditionError;
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
 const fail = (error: CommandError): CommandResult => ({ ok: false, error });
+const done = (error: CommandError | null): CommandResult => (error ? fail(error) : { ok: true });
 
 export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandResult {
   const p = state.player;
@@ -105,6 +114,7 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
     }
     case 'travel': {
       if (p.travel) return fail('traveling');
+      if (p.expedition) return fail('inExpedition');
       if (!state.towns[cmd.to]) return fail('noTown');
       if (cmd.to === p.town) return fail('sameTown');
       const days = townTravelDays(map, seasonOfDay(state.day, state.startSeason))[p.town]![cmd.to]!;
@@ -139,6 +149,12 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return rotatePiece(p.cart, cmd.pieceId) ? { ok: true } : fail('cantPlace');
     case 'packCart':
       return packCart(p.cart) ? { ok: true } : fail('cantPlace');
+    case 'startExpedition':
+      return done(startExpedition(state, map));
+    case 'chooseExpeditionCard':
+      return done(chooseExpeditionCard(state, map, cmd.choice));
+    case 'endExpedition':
+      return done(finishExpedition(state));
     case 'discardCartPiece': {
       const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
       if (!piece) return fail('noPiece');

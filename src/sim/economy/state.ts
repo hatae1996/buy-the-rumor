@@ -1,6 +1,7 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
 import type { Season } from '../season';
 import type { Cart } from '../cart';
+import type { TownEventKind } from '../expedition/types';
 import type { ResourceKind, TownTier } from '../worldgen';
 import type { GoodId } from './goods';
 import type { Inventory, Lot } from './inventory';
@@ -40,6 +41,8 @@ export interface TownEconomy {
   /** 폭풍으로 고기잡이를 못 하는 남은 날 */
   storm: number;
   boosts: { good: GoodId; factor: number; daysLeft: number }[];
+  /** 신문에 실린 이 마을 사건 (원정 덱의 사건 카드를 부른다) */
+  recentEvents: { kind: TownEventKind; day: number }[];
 }
 
 export interface Worker {
@@ -89,7 +92,51 @@ export type LedgerEntry =
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
   | { day: number; kind: 'inn'; town: number; fee: number; recovered: number }
-  | { day: number; kind: 'discard'; good: GoodId; qty: number };
+  | { day: number; kind: 'discard'; good: GoodId; qty: number }
+  | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }
+  | { day: number; kind: 'toll'; town: number; gold: number };
+
+/** 들은 이야기 수첩 한 줄 */
+export interface Rumor {
+  day: number;
+  town: number;
+  text: string;
+}
+
+/** 진행 중인 원정 */
+export interface ActiveExpedition {
+  town: number;
+  /** 이 원정의 난수 상태 (서버가 같은 결과를 다시 낼 수 있게) */
+  rng: number;
+  /** 남은 덱 (맨 앞이 다음 카드) */
+  deck: string[];
+  /** 지금 펼친 카드 */
+  card: string;
+  /** 지금 카드를 빼고 더 볼 카드 수 */
+  left: number;
+  haul: { good: GoodId; qty: number }[];
+  rumors: string[];
+  log: ExpeditionLogLine[];
+}
+
+export interface ExpeditionLogLine {
+  title: string;
+  choice: string;
+  /** 확률이 있던 선택이면 성공했는지 */
+  outcome: 'success' | 'failure' | null;
+  text: string;
+}
+
+/** 끝난 원정 결과 (화면이 요약을 보여 준다) */
+export interface ExpeditionResult {
+  day: number;
+  town: number;
+  loaded: { good: GoodId; qty: number }[];
+  /** 수레에 자리가 없어 두고 온 것 */
+  leftBehind: { good: GoodId; qty: number }[];
+  rumors: string[];
+  log: ExpeditionLogLine[];
+}
 
 export interface PlayerState {
   gold: number;
@@ -106,6 +153,12 @@ export interface PlayerState {
   /** 오늘 먹은 끼니 수, 오늘 여관에서 쉬었는지 (날이 바뀌면 다시 센다) */
   mealsToday: number;
   restedToday: boolean;
+  expedition: ActiveExpedition | null;
+  lastExpedition: ExpeditionResult | null;
+  /** 들은 이야기 수첩 */
+  rumors: Rumor[];
+  /** 지난 원정에 남긴 카드 (놓아 둔 덫 등). 다음에 그 마을 원정 덱에 들어간다 */
+  marks: { town: number; card: string }[];
 }
 
 export type OrderOwner =

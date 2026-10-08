@@ -36,7 +36,14 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
     </section>
     <section class="card">
       <h2>들은 이야기 수첩</h2>
-      <p class="muted">아직 들은 이야기가 없어요. 원정을 나가거나 여관에 들르면 이야기를 듣게 돼요.</p>
+      <p class="muted">오가며 들은 이야기라 가끔 틀려요.</p>
+      <ul class="list">${
+        [...v.rumors]
+          .reverse()
+          .slice(0, 20)
+          .map((r) => `<li><span class="day">${agoText(v.day, r.day)} · ${townName(r.town)}</span> ${r.text}</li>`)
+          .join('') || '<li class="muted">아직 들은 이야기가 없어요. 원정을 나가면 이야기를 듣게 돼요.</li>'
+      }</ul>
     </section>
     <section class="card">
       <h2>장날 결과 기록</h2>

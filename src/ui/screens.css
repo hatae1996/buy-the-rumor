@@ -561,6 +561,81 @@
   color: var(--ink-soft);
 }
 
+/* ───── 원정 카드 ───── */
+.exp-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.exp-card {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: #fbf3e2;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  text-align: center;
+  touch-action: pan-y;
+  user-select: none;
+  transition: transform 0.15s;
+}
+
+.exp-card img {
+  width: 140px;
+  height: 110px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.exp-card h3 {
+  margin: 4px 0;
+}
+
+.exp-card p {
+  margin: 0;
+}
+
+.exp-card[data-lean='left'] {
+  box-shadow: -6px 4px 0 var(--coral);
+}
+
+.exp-card[data-lean='right'] {
+  box-shadow: 6px 4px 0 var(--teal);
+}
+
+.exp-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.exp-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--wood-mid);
+  color: var(--paper);
+  box-shadow: 0 3px 0 var(--wood-edge);
+  text-align: center;
+}
+
+.exp-choice b {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 16px;
+}
+
+.exp-choice small {
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
 /* ───── 수레 ───── */
 .cart-head {
   display: flex;

@@ -14,6 +14,8 @@ export interface TownScreenActions {
   passDay: () => void;
   restAtInn: () => void;
   openMeal: () => void;
+  startExpedition: () => void;
+  resumeExpedition: () => void;
 }
 
 /** 피로 막대: 칸 10개 */
@@ -115,7 +117,17 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
                 ? '이 마을에 머무는 동안 하루에 한 번씩 원정 기회가 생겨요. 떠나면 사라져요.'
                 : '이 마을 주변에는 원정을 나갈 자원지가 없어요.'
             }</p>
-            ${v.canExpedition ? '<button type="button" class="secondary-btn" disabled>원정 나가기<small>곧 열려요</small></button>' : ''}
+            ${
+              v.expedition
+                ? '<div class="btn-row"><button type="button" class="secondary-btn" data-exp-resume>원정 이어가기<small>펼친 카드가 있어요</small></button></div>'
+                : v.canExpedition
+                  ? `<div class="btn-row"><button type="button" class="secondary-btn" data-exp-start ${
+                      v.expeditionChances > 0 && v.fatigue < v.fatigueMax ? '' : 'disabled'
+                    }>원정 나가기<small>${
+                      v.expeditionChances === 0 ? '내일 기회가 생겨요' : v.fatigue >= v.fatigueMax ? '너무 지쳤어요' : '카드 3~4장'
+                    }</small></button></div>`
+                  : ''
+            }
           </section>`
         : ''
     }
@@ -131,4 +143,6 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   el.querySelector('[data-pass-day]')!.addEventListener('click', act.passDay);
   el.querySelector('[data-inn]')?.addEventListener('click', act.restAtInn);
   el.querySelector('[data-meal]')?.addEventListener('click', act.openMeal);
+  el.querySelector('[data-exp-start]')?.addEventListener('click', act.startExpedition);
+  el.querySelector('[data-exp-resume]')?.addEventListener('click', act.resumeExpedition);
 }

@@ -44,6 +44,12 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   noPiece: '없는 짐이에요.',
   cantPlace: '거기에는 놓을 수 없어요.',
   pieceBusy: '장날 신청이 걸린 짐은 버릴 수 없어요.',
+  noExpedition: '이 마을 주변에는 원정을 나갈 곳이 없어요.',
+  noChances: '원정 기회가 없어요. 이 마을에 머물면 하루에 하나씩 생겨요.',
+  tooTired: '너무 지쳤어요. 쉬고 나서 나가세요.',
+  inExpedition: '원정 중이에요. 원정을 마치고 하세요.',
+  notInExpedition: '원정 중이 아니에요.',
+  badChoice: '고를 수 없는 선택이에요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -63,6 +69,13 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${townName(e.town)} 여관에서 쉬었어요 (피로 −${e.recovered})`, amount: -e.fee };
     case 'discard':
       return { text: `${GOOD_NAME[e.good]} ${e.qty}개를 버렸어요`, amount: null };
+    case 'expedition': {
+      const got = e.goods.map((g) => `${GOOD_NAME[g.good]} ${g.qty}`).join(', ');
+      const left = e.leftBehind ? ` (${e.leftBehind}개는 두고 옴)` : '';
+      return { text: `${townName(e.town)} 원정: ${got || '빈손'}${left}`, amount: null };
+    }
+    case 'toll':
+      return { text: `${townName(e.town)} 근처 길에서 통행세를 냈어요`, amount: -e.gold };
   }
 }
 

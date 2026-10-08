@@ -20,7 +20,11 @@ import { generateWorld, type WorldMap } from '../sim/worldgen';
 export const DAY_MS = 2.5 * 60 * 60 * 1000;
 /** 오래 비웠을 때 한 번에 돌리는 최대 날 수 (시즌 3번) */
 const MAX_CATCH_UP_DAYS = 45;
-const SAVE_KEY = 'buy-the-rumor/save/v1';
+/**
+ * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감)
+ */
+const SAVE_KEY = 'buy-the-rumor/save/v2';
 
 interface SaveData {
   version: 1;

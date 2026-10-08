@@ -37,6 +37,16 @@ export function createRng(seed: number): Rng {
   };
 }
 
+/** 숫자 여러 개를 섞어 시드 하나로 (원정마다 다른 난수를 같은 규칙으로 만든다) */
+export function mixSeed(...parts: number[]): number {
+  let h = 0x2545f491;
+  for (const p of parts) {
+    h = Math.imul(h ^ (p | 0), 0x9e3779b1);
+    h ^= h >>> 15;
+  }
+  return h >>> 0;
+}
+
 /** 피셔-예이츠로 제자리에서 섞는다. sort에 랜덤 비교 함수를 넘기면 엔진마다 결과가 달라서 쓰지 않는다 */
 export function shuffle<T>(items: T[], rng: Rng): T[] {
   for (let i = items.length - 1; i > 0; i--) {

@@ -10,6 +10,7 @@ import type { MapScreen } from './mapScreen';
 import { showAwaySummary } from './screens/away';
 import { renderLedger } from './screens/ledger';
 import { renderNews } from './screens/news';
+import { openExpeditionSheet } from './screens/expeditionSheet';
 import { openMealSheet } from './screens/mealSheet';
 import { openOrderSheet } from './screens/orderSheet';
 import { renderTown } from './screens/town';
@@ -75,6 +76,11 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
         passDay: () => away(game.passDay(now())),
         restAtInn: () => game.dispatch({ type: 'restAtInn' }),
         openMeal: () => openMealSheet(game),
+        startExpedition: () => {
+          const r = game.dispatch({ type: 'startExpedition' });
+          if (r.ok) openExpeditionSheet(game);
+        },
+        resumeExpedition: () => openExpeditionSheet(game),
       });
     } else if (current === 'ledger') {
       renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));

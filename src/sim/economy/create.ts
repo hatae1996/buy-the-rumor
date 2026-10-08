@@ -42,6 +42,10 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       expeditionChances: 0,
       mealsToday: 0,
       restedToday: false,
+      expedition: null,
+      lastExpedition: null,
+      rumors: [],
+      marks: [],
     },
     orders: [],
     news: [],
@@ -113,6 +117,7 @@ function createTown(map: WorldMap, id: number): TownEconomy {
     treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
     storm: 0,
     boosts: [],
+    recentEvents: [],
   };
 }
 

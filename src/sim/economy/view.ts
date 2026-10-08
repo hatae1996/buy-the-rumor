@@ -6,7 +6,17 @@ import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
-import type { EconomyState, LedgerEntry, MarketResult, NewsItem, Order, PriceMemory } from './state';
+import { cardById, chanceOf } from '../expedition';
+import type {
+  EconomyState,
+  ExpeditionResult,
+  LedgerEntry,
+  MarketResult,
+  NewsItem,
+  Order,
+  PriceMemory,
+  Rumor,
+} from './state';
 
 export type PlayerLocation =
   | { kind: 'town'; town: number }
@@ -59,6 +69,49 @@ export interface PlayerView {
   mealsLeft: number;
   /** 지금 마을 여관. 길 위면 null */
   inn: { fee: number; recovery: number; rested: boolean } | null;
+  /** 진행 중인 원정 */
+  expedition: ExpeditionView | null;
+  lastExpedition: ExpeditionResult | null;
+  /** 들은 이야기 수첩 */
+  rumors: readonly Rumor[];
+}
+
+export interface ExpeditionView {
+  town: number;
+  card: {
+    id: string;
+    title: string;
+    text: string;
+    /** 결과는 대략만 보인다: "피로 +3 · 성공 가능성 높음" */
+    choices: { label: string; hint: string }[];
+  };
+  /** 지금 카드 뒤에 남은 장 수 (연결 카드가 끼면 늘 수 있다) */
+  left: number;
+  haul: { good: GoodId; qty: number }[];
+}
+
+function expeditionView(state: EconomyState): ExpeditionView | null {
+  const ex = state.player.expedition;
+  if (!ex) return null;
+  const card = cardById(ex.card);
+  return {
+    town: ex.town,
+    card: {
+      id: card.id,
+      title: card.title,
+      text: card.text,
+      choices: card.choices.map((c) => {
+        const parts = [c.fatigue > 0 ? `피로 +${c.fatigue}` : c.fatigue < 0 ? `피로 −${-c.fatigue}` : '피로 그대로'];
+        if (c.chance) {
+          const p = chanceOf(c.chance, state, ex.town);
+          parts.push(p >= 0.7 ? '성공 가능성 높음' : p >= 0.45 ? '성공 가능성 반반' : '성공 가능성 낮음');
+        }
+        return { label: c.label, hint: parts.join(' · ') };
+      }),
+    },
+    left: Math.max(0, ex.left),
+    haul: ex.haul.map((h) => ({ ...h })),
+  };
 }
 
 export interface CartPieceView {
@@ -158,5 +211,8 @@ export function playerView(state: EconomyState): PlayerView {
     canExpedition: !p.travel && hasExpeditions(state.towns[p.town]!),
     mealsLeft: ECONOMY.fatigue.mealsPerDay - p.mealsToday,
     inn: p.travel ? null : { ...innOf(state.towns[p.town]!), rested: p.restedToday },
+    expedition: expeditionView(state),
+    lastExpedition: p.lastExpedition,
+    rumors: p.rumors,
   };
 }
