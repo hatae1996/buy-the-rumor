@@ -7,6 +7,7 @@ import { FOODS, GOODS, shelfLife } from '../economy';
 import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { cardById } from '../expedition';
+import { caravanPlanStep, createGrowthMind, growthStep, noteDay, noteMissing, type GrowthMind } from './growth';
 import type { BotProfile } from './profiles';
 
 /** 봇이 날을 넘겨 기억하는 것 (게임 상태가 아니라 봇의 머릿속) */
@@ -18,10 +19,12 @@ export interface BotMind {
   expeditionsToday: number;
   /** 오늘 이미 해 본 명령 (실패한 것을 되풀이하지 않게) */
   tried: Set<string>;
+  /** 살 것 고르기에 쓰는 기억 (수레가 찼던 날, 못 고른 선택지, 원정 값) */
+  growth: GrowthMind;
 }
 
 export function createMind(): BotMind {
-  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set() };
+  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind() };
 }
 
 /** 이 정도 지난 기억은 믿지 않는다 */
@@ -37,6 +40,7 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     mind.day = view.day;
     mind.expeditionsToday = 0;
     mind.tried.clear();
+    noteDay(view, mind.growth);
   }
   const once = (cmd: Command): Command | null => {
     const key = JSON.stringify(cmd);
@@ -46,7 +50,7 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   };
 
   // 원정 중: 카드마다 고른다
-  if (view.expedition) return once(chooseCard(view)) ?? once({ type: 'endExpedition' });
+  if (view.expedition) return once(chooseCard(view, mind)) ?? once({ type: 'endExpedition' });
   if (view.location.kind !== 'town' || !view.market) return null;
   const here = view.location.town;
   const price = view.market.price;
@@ -63,6 +67,12 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   }
   if (view.fatigue >= profile.restAt + 2 && view.inn && !view.inn.rested && view.gold > view.inn.fee * 6) {
     const c = once({ type: 'restAtInn' });
+    if (c) return c;
+  }
+
+  // 살 것 고르기 (말, 수레, 일꾼, 창고, 두 번째 행렬, 장비)
+  if (profile.growth) {
+    const c = growthStep(view, profile.growth, mind.growth, once) ?? (caravanPlanStep(view) && once(caravanPlanStep(view)!));
     if (c) return c;
   }
 
@@ -85,8 +95,8 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   // 3. 짐 팔기: 다른 마을에 가져가도 더 남지 않으면 여기서 판다
   const selling = new Set(view.orders.filter((o) => o.side === 'sell').map((o) => o.good));
   for (const good of GOODS) {
-    const qty = sellableQty(view, good);
-    if (qty === 0 || selling.has(good)) continue;
+    const qty = sellableQty(view, good) - (good === 'grain' ? feedKeep(view) : 0);
+    if (qty <= 0 || selling.has(good)) continue;
     // 사 온 물건은 가져갈 마을에 닿으면 판다. 원정 물건은 더 비싼 곳이 없으면 여기서
     const arrived = mind.plan?.good === good && mind.plan.to === here;
     const planned = mind.plan?.good === good && mind.plan.to !== here;
@@ -105,8 +115,8 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   const overweight = view.cart.weight > view.cart.maxWeight;
   if (overweight) {
     for (const good of GOODS) {
-      const qty = sellableQty(view, good);
-      if (qty === 0 || selling.has(good) || mind.plan?.good === good) continue;
+      const qty = sellableQty(view, good) - (good === 'grain' ? feedKeep(view) : 0);
+      if (qty <= 0 || selling.has(good) || mind.plan?.good === good) continue;
       const c = once({ type: 'placeSellOrder', good, qty, minPrice: Math.max(1, Math.round(price[good] * 0.7)) });
       if (c) return c;
     }
@@ -125,9 +135,9 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     }
   }
 
-  // 5. 떠나기: 산 물건을 실었으면 가져갈 마을로
+  // 5. 떠나기: 산 물건을 실었으면 가져갈 마을로 (말이 있으면 길에서 먹일 곡물부터)
   if (!buying && !overweight && selling.size === 0 && mind.plan && mind.plan.to !== here && cargo > 0) {
-    const c = once({ type: 'travel', to: mind.plan.to });
+    const c = once(feedFor(view, mind.plan.to) ?? { type: 'travel', to: mind.plan.to });
     if (c) return c;
   }
   // 사려던 것을 못 샀으면 계획을 버린다
@@ -141,7 +151,7 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
       .sort((a, b) => (view.memory[a.id]?.day ?? -1) - (view.memory[b.id]?.day ?? -1))[0];
     const fee = stale ? days[here]![stale.id]! * ECONOMY.player.travelFeePerDay : Infinity;
     if (stale && view.gold > fee * 3) {
-      const c = once({ type: 'travel', to: stale.id });
+      const c = once(feedFor(view, stale.id) ?? { type: 'travel', to: stale.id });
       if (c) return c;
     }
   }
@@ -155,9 +165,12 @@ const FATIGUE_COST = 3;
  * 카드 선택: 얻는 물건 값 × 성공 가능성 − 피로 값이 가장 큰 것.
  * 카드에 적힌 결과는 화면에 보이는 정보로 보고(숙련된 플레이어), 성공 확률은 화면 힌트(높음/반반/낮음)만 쓴다
  */
-function chooseCard(view: PlayerView): Command {
+function chooseCard(view: PlayerView, mind: BotMind): Command {
   const ex = view.expedition!;
   const card = cardById(ex.card.id);
+  // 장비가 없어 빠진 선택지를 기억한다 (다음에 살 이유)
+  const shownIdx = new Set(ex.card.choices.map((c) => c.index));
+  noteMissing(mind.growth, card.choices.filter((_, i) => !shownIdx.has(i)).map((c) => c.needs ?? {}));
   const prices = view.market?.price ?? view.memory[ex.town]?.prices;
   let best = ex.card.choices.find((c) => !c.disabled)?.index ?? 0;
   let bestScore = -Infinity;
@@ -181,6 +194,24 @@ function chooseCard(view: PlayerView): Command {
     }
   }
   return { type: 'chooseExpeditionCard', choice: best };
+}
+
+/** 말을 데리고 길을 떠나기 전: 길에서 먹일 곡물이 모자라면 먼저 산다 (마을 밖에서는 수레 곡물을 먹는다) */
+function feedFor(view: PlayerView, to: number): Command | null {
+  if (!view.horses.length || !view.market) return null;
+  const days = view.travel.days[to] ?? 0;
+  const need = view.horses.reduce((s, h) => s + h.feed, 0) * days;
+  const have = view.cargo.filter((l) => l.good === 'grain').reduce((s, l) => s + l.qty, 0);
+  if (have >= need || view.orders.some((o) => o.side === 'buy' && o.good === 'grain')) return null;
+  const maxPrice = Math.max(1, Math.round(view.market.price.grain * 1.3));
+  return { type: 'placeBuyOrder', good: 'grain', qty: need - have, maxPrice };
+}
+
+/** 말 먹이로 남겨 두는 곡물 (가장 먼 마을까지 갈 만큼) */
+function feedKeep(view: PlayerView): number {
+  if (!view.horses.length) return 0;
+  const far = Math.max(0, ...view.travel.days.filter(Number.isFinite));
+  return view.horses.reduce((s, h) => s + h.feed, 0) * far;
 }
 
 function oldestFood(view: PlayerView): GoodId | null {

@@ -1,7 +1,7 @@
 // 봇 돌리기: 플레이어 봇을 성향별로 한 시즌 돌려 순자산이 어떻게 느는지 본다 (기획서 "숫자를 맞출 기준").
 // 플레이어 자리가 하나라 봇마다 같은 시드의 세계를 따로 돌린다 (서로 경쟁하지 않는다).
 import { CYCLE_DAYS } from '../sim/season';
-import { BOT_PROFILES, runBot, type BotRun } from '../sim/bot';
+import { BOT_PROFILES, runBot, type BotRun, type GrowthKind } from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
@@ -53,10 +53,15 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
         const runs = SUMMARY_SEEDS.map((seed) => runBot(seed, p, { days: CYCLE_DAYS }, generateWorld(seed)));
         const mid = runs.map((r) => r.worth[Math.floor(CYCLE_DAYS / 2) - 1]!);
         const end = runs.map((r) => r.worth.at(-1)!);
-        return `<tr><th>${p.name}</th><td>${spread(mid)}</td><td>${spread(end)}</td><td>${end.filter((v) => v < runs[0]!.worth[0]!).length}</td></tr>`;
+        // 처음 산 날·살 수 있게 된 날의 가운데 값 (기획 목표: 보통 사람이 29일쯤 첫 말이나 짐꾼, 67일쯤 첫 채집꾼이나 창고)
+        const first = (pick: (r: BotRun) => number | undefined) => medianDay(runs.map(pick), runs.length);
+        const firstHorse = first((r) => minDay(r.firsts.horse, r.firsts.porter));
+        const firstGather = first((r) => minDay(r.firsts.gatherer, r.firsts.warehouse));
+        const afford = `말 ${first((r) => r.couldAfford.horse)} · 짐꾼 ${first((r) => r.couldAfford.porter)} · 채집꾼 ${first((r) => r.couldAfford.gatherer)}`;
+        return `<tr><th>${p.name}</th><td>${spread(mid)}</td><td>${spread(end)}</td><td>${end.filter((v) => v < runs[0]!.worth[0]!).length}</td><td>${firstHorse}</td><td>${firstGather}</td><td>${afford}</td></tr>`;
       });
       $('[data-bot-many-table]').innerHTML =
-        `<tr><th>성향</th><th>중반 (최소 · 가운데 · 최대)</th><th>끝 (최소 · 가운데 · 최대)</th><th>잃은 시드</th></tr>` + rows.join('');
+        `<tr><th>성향</th><th>중반 (최소 · 가운데 · 최대)</th><th>끝 (최소 · 가운데 · 최대)</th><th>잃은 시드</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th><th>살 수 있게 된 날</th></tr>` + rows.join('');
     });
   });
 
@@ -71,7 +76,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
 
 function runTable(runs: BotRun[]): string {
   const mid = Math.floor(CYCLE_DAYS / 2) - 1;
-  const head = '<tr><th>성향</th><th>중반</th><th>끝</th><th>최고</th><th>거래</th><th>원정</th><th>이동</th><th>하루 명령</th><th>틀린 명령</th></tr>';
+  const head = '<tr><th>성향</th><th>중반</th><th>끝</th><th>최고</th><th>거래</th><th>원정</th><th>이동</th><th>하루 명령</th><th>틀린 명령</th><th>처음 산 날</th></tr>';
   return (
     head +
     runs
@@ -79,10 +84,36 @@ function runTable(runs: BotRun[]): string {
         const errors = Object.entries(r.errors)
           .map(([k, v]) => `${k} ${v}`)
           .join(', ');
-        return `<tr><th>${r.profile.name}</th><td>${r.worth[mid]}</td><td>${r.worth.at(-1)}</td><td>${Math.max(...r.worth)}</td><td>${r.trades}</td><td>${r.expeditions}</td><td>${r.travels}</td><td>${r.commandsPerDay.toFixed(1)}</td><td>${errors || '없음'}</td></tr>`;
+        const firsts = Object.entries(r.firsts)
+          .map(([k, v]) => `${GROWTH_NAME[k as GrowthKind]} ${v}일`)
+          .join(', ');
+        return `<tr><th>${r.profile.name}</th><td>${r.worth[mid]}</td><td>${r.worth.at(-1)}</td><td>${Math.max(...r.worth)}</td><td>${r.trades}</td><td>${r.expeditions}</td><td>${r.travels}</td><td>${r.commandsPerDay.toFixed(1)}</td><td>${errors || '없음'}</td><td>${firsts || '없음'}</td></tr>`;
       })
       .join('')
   );
+}
+
+const GROWTH_NAME: Record<GrowthKind, string> = {
+  horse: '말',
+  wagon: '짐수레',
+  porter: '짐꾼',
+  gatherer: '채집꾼',
+  warehouse: '창고',
+  caravan: '두 번째 행렬',
+  gear: '장비',
+};
+
+const minDay = (...days: (number | undefined)[]) => {
+  const d = days.filter((x): x is number => x !== undefined);
+  return d.length ? Math.min(...d) : undefined;
+};
+
+/** 시드들 중 가운데 날. 안 산 시드는 맨 뒤로 친다. 절반 넘게 없으면 "없음" */
+function medianDay(days: (number | undefined)[], n: number): string {
+  const s = days.map((d) => d ?? Infinity).sort((a, b) => a - b);
+  const m = s[Math.floor(n / 2)]!;
+  const got = days.filter((d) => d !== undefined).length;
+  return Number.isFinite(m) ? `${m}일 (${got}/${n})` : `없음 (${got}/${n})`;
 }
 
 function spread(values: number[]): string {

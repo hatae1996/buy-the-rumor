@@ -4,6 +4,8 @@ import { applyCommand, createEconomy, advanceDay, playerView, type CommandError,
 import { createRng, mixSeed } from '../rng';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { botStep, createMind } from './bot';
+import type { AffordKind, GrowthKind } from './growth';
+import { createCart } from '../cart';
 import type { BotProfile } from './profiles';
 import { netWorth } from '../ranking/worth';
 
@@ -19,6 +21,10 @@ export interface BotRun {
   commandsPerDay: number;
   /** 실패한 명령 (봇이 잘못 판단한 횟수) */
   errors: Partial<Record<CommandError, number>>;
+  /** 처음 산 날 (말, 짐수레, 짐꾼, 채집꾼, 창고, 두 번째 행렬, 장비). 시즌 안에 안 샀으면 없다 */
+  firsts: Partial<Record<GrowthKind, number>>;
+  /** 셈과 상관없이 돈으로는 살 수 있게 된 첫날 (그 마을에 마구간·게시판이 있을 때) */
+  couldAfford: Partial<Record<AffordKind, number>>;
 }
 
 export interface BotRunOptions {
@@ -32,6 +38,8 @@ export interface BotRunOptions {
 export function runBot(seed: number, profile: BotProfile, opt: BotRunOptions, world?: WorldMap): BotRun {
   const map = world ?? generateWorld(seed);
   const state = createEconomy(map, seed, { warmupDays: opt.warmupDays ?? 20 });
+  // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레 (기획서 "처음 하는 플레이어")
+  state.player.cart = createCart('handcart');
   return runBotOn(state, map, profile, opt);
 }
 
@@ -39,7 +47,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, worth: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {} };
+  const run: BotRun = { profile, worth: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
 
