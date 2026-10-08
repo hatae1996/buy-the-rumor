@@ -235,11 +235,33 @@ export const ECONOMY = {
   warmupDays: 20,
 
   player: {
+    /** 시작 조건: 모두 같은 돈 (기획서 "시작 조건") */
     startGold: 200,
     capacity: 40,
     travelFeePerDay: 3,
     /** 이보다 큰 거래(금액)는 신문에 실린다 */
     bigTradeNews: 400,
+  },
+
+  /** 피로와 원정 기회 (기획서 "퍼즐 기회와 피로도"). 숫자는 초안 */
+  fatigue: {
+    max: 10,
+    /** 하룻밤 자면 저절로 줄어드는 양 */
+    nightlyRecovery: 3,
+    /** 음식 한 개를 먹으면 줄어드는 양 (신선할수록 많이) */
+    meal: { fresh: 3, days: 2, keeps: 2, soon: 1 },
+    mealsPerDay: 3,
+    /** 여관: 하루 한 번. 여관비는 경제에서 빠져나가는 돈 */
+    inn: {
+      town: { fee: 8, recovery: 5 },
+      city: { fee: 16, recovery: 8 },
+    },
+    /** 이만큼 지치면 원정 결과가 나빠진다 */
+    tiredAt: 7,
+  },
+  expedition: {
+    /** 자원지가 있는 마을에 머무는 동안 하루 1개씩, 최대 이만큼 */
+    maxChances: 6,
   },
 
   events: {

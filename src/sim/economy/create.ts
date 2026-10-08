@@ -30,12 +30,17 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     traders: [],
     player: {
       gold: ECONOMY.player.startGold,
-      town: 0,
+      // 시작 마을은 마을 4곳에 고르게 랜덤 (기획서 "시작 조건")
+      town: rng.int(0, map.towns.length - 1),
       travel: null,
       cargo: [],
       capacity: ECONOMY.player.capacity,
       memory: {},
       ledger: [],
+      fatigue: 0,
+      expeditionChances: 0,
+      mealsToday: 0,
+      restedToday: false,
     },
     orders: [],
     news: [],
@@ -87,6 +92,11 @@ function warmUp(state: EconomyState, map: WorldMap, days: number): void {
   state.news = [];
   state.player.ledger = [];
   state.player.memory = {};
+  // 플레이어는 미리 돌린 날에 없었다: 기회와 피로도 처음부터
+  state.player.expeditionChances = 0;
+  state.player.fatigue = 0;
+  state.player.mealsToday = 0;
+  state.player.restedToday = false;
 }
 
 function createTown(map: WorldMap, id: number): TownEconomy {

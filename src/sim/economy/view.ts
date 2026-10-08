@@ -1,6 +1,8 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
+import { ECONOMY } from '../constants';
 import { seasonOfDay, type Season } from '../season';
+import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
 import type { EconomyState, LedgerEntry, MarketResult, NewsItem, PriceMemory } from './state';
@@ -45,6 +47,16 @@ export interface PlayerView {
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
   news: readonly NewsItem[];
+  fatigue: number;
+  fatigueMax: number;
+  /** 많이 지쳐서 원정 결과가 나빠지는 상태 */
+  tired: boolean;
+  expeditionChances: number;
+  /** 지금 마을에서 원정을 나갈 수 있나 (자원지가 있는 마을, 길 위가 아님) */
+  canExpedition: boolean;
+  mealsLeft: number;
+  /** 지금 마을 여관. 길 위면 null */
+  inn: { fee: number; recovery: number; rested: boolean } | null;
 }
 
 export function playerView(state: EconomyState): PlayerView {
@@ -84,5 +96,12 @@ export function playerView(state: EconomyState): PlayerView {
     memory: p.memory,
     ledger: p.ledger,
     news: state.news,
+    fatigue: p.fatigue,
+    fatigueMax: ECONOMY.fatigue.max,
+    tired: p.fatigue >= ECONOMY.fatigue.tiredAt,
+    expeditionChances: p.expeditionChances,
+    canExpedition: !p.travel && hasExpeditions(state.towns[p.town]!),
+    mealsLeft: ECONOMY.fatigue.mealsPerDay - p.mealsToday,
+    inn: p.travel ? null : { ...innOf(state.towns[p.town]!), rested: p.restedToday },
   };
 }

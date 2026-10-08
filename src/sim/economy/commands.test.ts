@@ -13,6 +13,8 @@ let s: EconomyState;
 
 beforeEach(() => {
   s = createEconomy(map, 20261008);
+  // 시작 마을은 랜덤이다. 아래 테스트는 0번 마을에서 시작한다고 보고 쓴다
+  s.player.town = 0;
 });
 
 describe('플레이어 명령', () => {

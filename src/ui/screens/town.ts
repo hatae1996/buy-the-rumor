@@ -12,6 +12,15 @@ export interface TownScreenActions {
   openOrder: (good: (typeof GOODS)[number]) => void;
   cancelOrder: (orderId: number) => void;
   passDay: () => void;
+  restAtInn: () => void;
+  openMeal: () => void;
+}
+
+/** 피로 막대: 칸 10개 */
+function fatigueBar(v: PlayerView): string {
+  const cells = Array.from({ length: v.fatigueMax }, (_, i) => `<i class="${i < v.fatigue ? 'on' : ''}"></i>`).join('');
+  const word = v.fatigue === 0 ? '쌩쌩해요' : v.tired ? '많이 지쳤어요' : v.fatigue >= 4 ? '조금 지쳤어요' : '괜찮아요';
+  return `<div class="fatigue"><div class="fatigue-cells" aria-hidden="true">${cells}</div><span>${word}</span></div>`;
 }
 
 export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: TownScreenActions): void {
@@ -78,6 +87,38 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
           </section>`
         : ''
     }
+    <section class="card">
+      <h2>내 몸</h2>
+      ${fatigueBar(v)}
+      <p class="muted">밤마다 조금씩 나아요. 음식을 먹거나 여관에서 쉬면 빨리 나아요.</p>
+      <div class="btn-row">
+        <button type="button" class="secondary-btn" data-meal ${v.fatigue > 0 && v.mealsLeft > 0 ? '' : 'disabled'}>
+          음식 먹기<small>오늘 ${v.mealsLeft}끼 더</small>
+        </button>
+        ${
+          v.inn
+            ? `<button type="button" class="secondary-btn" data-inn ${v.fatigue > 0 && !v.inn.rested && v.gold >= v.inn.fee ? '' : 'disabled'}>
+                여관에서 쉬기<small>${v.inn.rested ? '오늘은 쉬었어요' : `여관비 ${v.inn.fee} · 피로 −${v.inn.recovery}`}</small>
+              </button>`
+            : ''
+        }
+      </div>
+    </section>
+    ${
+      v.location.kind === 'town'
+        ? `<section class="card">
+            <header class="card-head"><h2>바깥 (원정)</h2>${
+              v.canExpedition ? `<span class="badge">기회 ${v.expeditionChances} / 6</span>` : ''
+            }</header>
+            <p class="muted">${
+              v.canExpedition
+                ? '이 마을에 머무는 동안 하루에 한 번씩 원정 기회가 생겨요. 떠나면 사라져요.'
+                : '이 마을 주변에는 원정을 나갈 자원지가 없어요.'
+            }</p>
+            ${v.canExpedition ? '<button type="button" class="secondary-btn" disabled>원정 나가기<small>곧 열려요</small></button>' : ''}
+          </section>`
+        : ''
+    }
     <button type="button" class="test-btn" data-pass-day>시험용: 장날 바로 열기</button>
   `;
 
@@ -88,4 +129,6 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
     b.addEventListener('click', () => act.cancelOrder(Number(b.dataset.cancel))),
   );
   el.querySelector('[data-pass-day]')!.addEventListener('click', act.passDay);
+  el.querySelector('[data-inn]')?.addEventListener('click', act.restAtInn);
+  el.querySelector('[data-meal]')?.addEventListener('click', act.openMeal);
 }

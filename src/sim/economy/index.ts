@@ -9,4 +9,5 @@ export { count, sellableCount, totalCount, type Inventory, type Lot } from './in
 export { moneySupply, population, jobCounts, hungryWorkers, townStock } from './stats';
 export { expectedIncome } from './workers';
 export { citizenDemand } from './citizens';
+export { hasExpeditions, innOf, mealRecovery } from './player';
 export { playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';

@@ -14,6 +14,7 @@ import { ageAndSpoil } from './inventory';
 import { JOB_NAME } from './jobs';
 import { runMarket } from './market';
 import { regrow } from './nodes';
+import { playerNight } from './player';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -102,6 +103,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     p.town = p.travel.to;
     p.travel = null;
   }
+  playerNight(state);
 
   // 하루가 지나 음식이 상한다
   let spoiled = 0;

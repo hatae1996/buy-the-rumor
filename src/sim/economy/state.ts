@@ -85,7 +85,9 @@ export interface PriceMemory {
 export type LedgerEntry =
   | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number }
   | { day: number; kind: 'travel'; from: number; to: number; days: number; fee: number }
-  | { day: number; kind: 'spoil'; good: GoodId; qty: number };
+  | { day: number; kind: 'spoil'; good: GoodId; qty: number }
+  | { day: number; kind: 'eat'; good: GoodId; recovered: number }
+  | { day: number; kind: 'inn'; town: number; fee: number; recovered: number };
 
 export interface PlayerState {
   gold: number;
@@ -95,6 +97,13 @@ export interface PlayerState {
   capacity: number;
   memory: Record<number, PriceMemory>;
   ledger: LedgerEntry[];
+  /** 피로 0~max. 원정마다 쌓이고, 밤잠·음식·여관으로 준다 */
+  fatigue: number;
+  /** 원정 기회. 자원지가 있는 마을에 머무는 동안 하루 1개씩 쌓이고, 떠나면 사라진다 */
+  expeditionChances: number;
+  /** 오늘 먹은 끼니 수, 오늘 여관에서 쉬었는지 (날이 바뀌면 다시 센다) */
+  mealsToday: number;
+  restedToday: boolean;
 }
 
 export type OrderOwner =

@@ -10,6 +10,7 @@ const map = generateWorld(20261008);
 describe('플레이어에게 보이는 것', () => {
   it('지금 있는 마을 시세만 정확히 보이고, 다른 마을은 본 적 있는 날짜의 기억뿐', () => {
     const s = createEconomy(map, 20261008);
+    s.player.town = 0;
     for (let d = 0; d < 5; d++) advanceDay(s, map);
     const v = playerView(s);
     expect(v.market?.town).toBe(0);
@@ -22,6 +23,7 @@ describe('플레이어에게 보이는 것', () => {
 
   it('길 위에서는 시장이 안 보인다', () => {
     const s = createEconomy(map, 20261008);
+    s.player.town = 0;
     applyCommand(s, map, { type: 'travel', to: 1 });
     const v = playerView(s);
     expect(v.market).toBeNull();
@@ -30,6 +32,7 @@ describe('플레이어에게 보이는 것', () => {
 
   it('맡긴 돈과 짐이 따로 보인다', () => {
     const s = createEconomy(map, 20261008);
+    s.player.town = 0;
     applyCommand(s, map, { type: 'placeBuyOrder', good: 'grain', qty: 4, maxPrice: 10 });
     const v = playerView(s);
     expect(v.reserved).toBe(40);
@@ -38,6 +41,7 @@ describe('플레이어에게 보이는 것', () => {
 
   it('전에 본 시세를 기억해 오르내림을 보여 줄 수 있다', () => {
     const s = createEconomy(map, 20261008);
+    s.player.town = 0;
     advanceDay(s, map);
     expect(playerView(s).market?.previous).toBeNull();
     advanceDay(s, map);

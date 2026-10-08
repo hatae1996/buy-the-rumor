@@ -36,6 +36,10 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   sameTown: '이미 이 마을에 있어요.',
   noTown: '없는 마을이에요.',
   noRoute: '그 마을로 가는 길이 없어요.',
+  notFood: '먹을 수 없는 물건이에요.',
+  tooManyMeals: '오늘은 더 못 먹겠어요. 내일 다시 먹어요.',
+  alreadyRested: '오늘은 이미 여관에서 쉬었어요.',
+  notTired: '지치지 않았어요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -49,6 +53,10 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${townName(e.from)} → ${townName(e.to)} 출발 (${e.days}일)`, amount: -e.fee };
     case 'spoil':
       return { text: `${GOOD_NAME[e.good]} ${e.qty}개가 상해서 버렸어요`, amount: null };
+    case 'eat':
+      return { text: `${GOOD_NAME[e.good]} 하나를 먹었어요 (피로 −${e.recovered})`, amount: null };
+    case 'inn':
+      return { text: `${townName(e.town)} 여관에서 쉬었어요 (피로 −${e.recovered})`, amount: -e.fee };
   }
 }
 

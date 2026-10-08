@@ -4,15 +4,20 @@ import { ECONOMY } from '../constants';
 import { seasonOfDay } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { Accounts } from './accounts';
-import { GOODS, type GoodId } from './goods';
+import { FOODS, GOODS, type GoodId } from './goods';
 import { count, sellableCount, totalCount } from './inventory';
+import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import type { EconomyState } from './state';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
   | { type: 'placeSellOrder'; good: GoodId; qty: number; minPrice: number }
   | { type: 'cancelOrder'; orderId: number }
-  | { type: 'travel'; to: number };
+  | { type: 'travel'; to: number }
+  /** 짐에 있는 음식 하나를 먹어 피로를 던다 */
+  | { type: 'eat'; good: GoodId }
+  /** 지금 마을 여관에서 쉰다 (하루 한 번) */
+  | { type: 'restAtInn' };
 
 export type CommandError =
   | 'traveling'
@@ -26,7 +31,11 @@ export type CommandError =
   | 'noOrder'
   | 'sameTown'
   | 'noTown'
-  | 'noRoute';
+  | 'noRoute'
+  | 'notFood'
+  | 'tooManyMeals'
+  | 'alreadyRested'
+  | 'notTired';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -86,9 +95,47 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       state.towns[p.town]!.treasury += fee;
       p.ledger.push({ day: state.day, kind: 'travel', from: p.town, to: cmd.to, days, fee });
       p.travel = { from: p.town, to: cmd.to, days, daysLeft: days };
+      // 원정 기회는 그 마을에 묶여 있다. 떠나면 사라진다
+      p.expeditionChances = 0;
       return { ok: true };
     }
+    case 'eat':
+      return eat(state, cmd.good);
+    case 'restAtInn':
+      return restAtInn(state);
   }
+}
+
+function eat(state: EconomyState, good: GoodId): CommandResult {
+  const p = state.player;
+  if (p.fatigue <= 0) return fail('notTired');
+  if (p.mealsToday >= ECONOMY.fatigue.mealsPerDay) return fail('tooManyMeals');
+  const lot = pickMeal(p, good);
+  if (!lot) return fail(FOODS.includes(good) ? 'notEnoughGoods' : 'notFood');
+  const recovered = Math.min(p.fatigue, mealRecovery(lot, spoilRateToday(state)));
+  lot.qty -= 1;
+  p.cargo = p.cargo.filter((l) => l.qty > 0);
+  p.fatigue -= recovered;
+  p.mealsToday += 1;
+  p.ledger.push({ day: state.day, kind: 'eat', good, recovered });
+  return { ok: true };
+}
+
+function restAtInn(state: EconomyState): CommandResult {
+  const p = state.player;
+  if (p.travel) return fail('traveling');
+  if (p.restedToday) return fail('alreadyRested');
+  if (p.fatigue <= 0) return fail('notTired');
+  const town = state.towns[p.town]!;
+  const { fee, recovery } = innOf(town);
+  if (p.gold < fee) return fail('notEnoughGold');
+  // 여관비는 경제에서 빠져나가는 돈이다 (기획서 "퍼즐 기회와 피로도")
+  p.gold -= fee;
+  const recovered = Math.min(p.fatigue, recovery);
+  p.fatigue -= recovered;
+  p.restedToday = true;
+  p.ledger.push({ day: state.day, kind: 'inn', town: town.id, fee, recovered });
+  return { ok: true };
 }
 
 function isCount(n: number): boolean {
