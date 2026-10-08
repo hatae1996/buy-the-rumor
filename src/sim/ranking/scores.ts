@@ -65,6 +65,7 @@ export function eventGoods(event: EventId, good?: GoodId): GoodId[] {
     }
     if (e.kind === 'saleBan') out.add(e.good);
     if (e.kind === 'bulk' && good) out.add(good);
+    if (e.kind === 'bigOrder' && (e.good ?? good)) out.add((e.good ?? good)!);
   }
   return [...out];
 }

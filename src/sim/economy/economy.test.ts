@@ -53,7 +53,8 @@ describe(`${DAYS}일 안정성 (시드 ${SEEDS.length}개)`, () => {
   it('돈은 정해진 곳으로만 들어오고 나간다 (장날 정산에서 새거나 생기지 않음)', () => {
     for (const { seed, reports, money } of runs) {
       reports.forEach((r, i) => {
-        const expected = money[i]! + r.stipend + r.arrivedGold - r.tribute - r.leftGold;
+        // 큰 주문(0.0.7)은 바깥 돈으로 산다
+        const expected = money[i]! + r.stipend + r.outsideGold + r.arrivedGold - r.tribute - r.leftGold;
         expect(money[i + 1], `시드 ${seed}, ${r.day}일`).toBe(expected);
       });
     }

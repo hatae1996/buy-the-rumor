@@ -7,7 +7,9 @@ import { seasonOfDay, WINTER, type Season } from '../season';
 import type { WorldMap } from '../worldgen';
 import {
   bannedGoods,
+  bigOrdersToday,
   bulkTradesToday,
+  settleBigOrders,
   reactiveEvents,
   salesTax,
   startDay,
@@ -45,6 +47,8 @@ export interface DayReport {
   tribute: number;
   /** 바깥에서 들어온 돈 (주민 금고) */
   stipend: number;
+  /** 큰 주문이 바깥 돈으로 산 값 (0.0.7) */
+  outsideGold: number;
   /** 새로 온 일꾼이 갖고 온 돈, 떠난 일꾼이 갖고 간 돈 */
   arrivedGold: number;
   leftGold: number;
@@ -99,6 +103,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     const o = bulkOrder(state, accounts, b);
     if (o) byTown[b.town]!.push(o);
   }
+  // 큰 주문 (0.0.7): 사건 기간 동안 남은 양을 높은 값에 사들인다 (바깥 돈)
+  for (const { event, order } of bigOrdersToday(state)) {
+    const o = accounts.place({ kind: 'buyer', event: event.id }, event.town, order.good, 'buy', order.left, order.price);
+    if (o) byTown[event.town]!.push(o);
+  }
+  const buyerFills: { event: number; good: GoodId; qty: number; price: number }[] = [];
 
   // 2. 장날 정산
   const offered = state.orders.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
@@ -110,6 +120,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
       tax: salesTax(state, town.id),
     });
     town.lastMarket = results;
+    for (const f of fills) if (f.owner.kind === 'buyer' && f.side === 'buy') buyerFills.push({ event: f.owner.event, good: f.good, qty: f.qty, price: f.price });
     for (const f of fills) {
       // 수레 짐, 창고 짐, 두 번째 행렬 모두 플레이어 거래다
       if (f.owner.kind !== 'player' && f.owner.kind !== 'store' && f.owner.kind !== 'caravan') continue;
@@ -126,6 +137,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     return results;
   });
   state.orders = [];
+  // 큰 주문이 산 만큼 남은 양을 줄인다. 큰 주문이 낸 돈은 바깥에서 들어온 돈이다
+  const outsideGold = settleBigOrders(state, buyerFills);
   noteUnsold(state, offered, sold);
   const p = state.player;
   if (!p.travel) {
@@ -215,6 +228,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     markets,
     tribute,
     stipend: state.towns.reduce((s, t) => s + stipendOf(t), 0),
+    outsideGold,
     arrivedGold,
     leftGold,
     spoiled,

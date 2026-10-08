@@ -43,7 +43,8 @@ export function createSeason(state: EconomyState, map: WorldMap, number: number,
     if (def.goods) ev.good = def.goods[rng.int(0, def.goods.length - 1)]!;
     const tiles = roadTilesToBlock(def, map, nbs, town, rng);
     if (tiles) ev.tiles = tiles;
-    if (def.omen && rng.next() < E.omenShare) ev.omenDay = Math.max(startDay, day - rng.int(E.omenLead[0], E.omenLead[1]));
+    const lead = def.omenLead ?? E.omenLead;
+    if (def.omen && rng.next() < (def.omenShare ?? E.omenShare)) ev.omenDay = Math.max(startDay, day - rng.int(lead[0], lead[1]));
     schedule.push(ev);
     if (def.days === 'season') longOnce.add(`${def.id}:${town}`);
     const bad = badGoods(def);

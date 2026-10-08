@@ -258,7 +258,9 @@ export type OrderOwner =
   | { kind: 'trader'; id: number }
   | { kind: 'citizens'; town: number }
   /** 도시 공방. 돈은 마을 금고를 쓴다 */
-  | { kind: 'workshop'; town: number };
+  | { kind: 'workshop'; town: number }
+  /** 큰 주문 (0.0.7): 사건이 바깥 돈으로 사들인다. 산 물건은 바깥으로 나간다 */
+  | { kind: 'buyer'; event: number };
 
 /** 장날 신청. 낼 때 돈(사자)이나 물건(팔자)을 맡겨 두고, 정산 뒤 남은 것을 돌려준다 */
 export interface Order {

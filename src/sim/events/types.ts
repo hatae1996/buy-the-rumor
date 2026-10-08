@@ -57,6 +57,11 @@ export type EventEffect =
   | { kind: 'node'; resource: ResourceKind; amountFactor?: number; addTiles?: number }
   /** NPC 대상인이 그 물건을 한꺼번에 사거나 판다 (시작하는 날 장날) */
   | { kind: 'bulk'; side: 'buy' | 'sell'; qty: number }
+  /**
+   * 큰 주문 (0.0.7): 사건 기간 동안 그 마을 장날마다 한 물품을 기준 가격의 factor배에 사들인다. 모두 qty개가 차면 끝.
+   * good을 비우면 사건에 붙은 물품. 돈은 바깥(조선소, 영주, 군대, 대상단)에서 온다
+   */
+  | { kind: 'bigOrder'; good?: GoodId; qty: number; factor: number }
   /** 말 입고가 늦어진다 (말은 0.0.4 작업 4에서) */
   | { kind: 'horseDelay'; days: number };
 
@@ -94,6 +99,16 @@ export interface EventDef {
   deck: TownEventKind | null;
   /** 대상단처럼 물품 하나를 골라 붙이는 사건이면 고를 수 있는 물품 */
   goods?: readonly GoodId[];
+  /** 징조 소문이 도는 비율과 며칠 전에 도는지. 없으면 ECONOMY.events의 기본값 (큰 주문은 늘 일찍 돈다) */
+  omenShare?: number;
+  omenLead?: readonly [number, number];
+}
+
+/** 큰 주문 하나: 남은 양과 사는 값 */
+export interface BigOrder {
+  good: GoodId;
+  left: number;
+  price: number;
 }
 
 /** 일정표의 사건 하나 */
@@ -129,6 +144,8 @@ export interface ActiveEvent {
   good?: GoodId;
   job?: JobId;
   tiles?: number[];
+  /** 큰 주문 (남은 양). 다 차면 사건이 끝난다 */
+  orders?: BigOrder[];
 }
 
 /** 시즌 기록 한 줄: 랭킹의 "Buy the Rumor" 부문이 징조와 신문 날짜를 본다 */

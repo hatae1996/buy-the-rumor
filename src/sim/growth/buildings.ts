@@ -2,6 +2,7 @@
 // 마을마다 건물이 달라서 "말을 사려면 목장 마을에 가야 한다"가 자연스럽게 생긴다.
 // 건물 카드에는 지금 할 일이 있으면 도장(!)이 찍힌다. 도장 조건은 플레이어가 아는 것만 본다.
 import { cartLots } from '../cart';
+import { bigOrdersToday } from '../events/active';
 import { ECONOMY } from '../constants';
 import { shelfLife } from '../economy/goods';
 import { seasonOfDay } from '../season';
@@ -81,6 +82,8 @@ export function buildingAlerts(state: EconomyState, map: WorldMap): Partial<Reco
     if (soon.length) out.warehouse = `곧 상함 ${soon.reduce((s, l) => s + l.qty, 0)}`;
     else if (w.owed > 0) out.warehouse = '보관료 밀림';
   }
+  // 시장: 큰 주문이 열려 있다 (0.0.7)
+  if (bigOrdersToday(state).some(({ event }) => event.town === town)) out.market = '큰 주문';
   // 마구간: 어제나 오늘 말이 들어왔다
   if (state.horses.arrived.some((a) => a.town === town && state.day - a.day <= 1)) out.stable = '말 입고';
   return out;

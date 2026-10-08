@@ -7,6 +7,7 @@ import { buildNeighbors, generateWorld, townTravelDays, type WorldMap } from '..
 import {
   activate,
   badGoods,
+  bigOrdersToday,
   bannedGoods,
   blockedTiles,
   createSeason,
@@ -71,17 +72,27 @@ describe('사건 일정 (시드 40개 × 시즌 3개)', () => {
     }
   });
 
-  it('징조는 사건 1~3일 전, 절반쯤의 사건에만 돈다', () => {
+  it('징조는 사건 1~3일 전, 절반쯤의 사건에만 돈다. 큰 주문 사건은 늘 4~7일 전에 돈다 (0.0.7)', () => {
     let withOmen = 0;
     let total = 0;
     for (const { season } of seasons) {
       for (const s of season.schedule) {
+        const def = eventDef(s.event);
+        const lead = def.omenLead ?? E.omenLead;
+        // 시즌 첫날보다 앞설 수는 없다
+        const early = s.omenDay !== null && s.omenDay === season.startDay;
+        if (def.omenShare === 1) {
+          expect(s.omenDay, s.event).not.toBeNull();
+          if (!early) expect(s.day - s.omenDay!).toBeGreaterThanOrEqual(lead[0]);
+          expect(s.day - s.omenDay!).toBeLessThanOrEqual(lead[1]);
+          continue;
+        }
         total++;
         if (s.omenDay === null) continue;
         withOmen++;
-        expect(eventDef(s.event).omen).not.toBeNull();
-        expect(s.day - s.omenDay).toBeGreaterThanOrEqual(1);
-        expect(s.day - s.omenDay).toBeLessThanOrEqual(E.omenLead[1]);
+        expect(def.omen).not.toBeNull();
+        expect(s.day - s.omenDay).toBeGreaterThanOrEqual(early ? 0 : 1);
+        expect(s.day - s.omenDay).toBeLessThanOrEqual(lead[1]);
       }
     }
     expect(withOmen / total).toBeGreaterThan(0.25);
@@ -195,6 +206,49 @@ describe('사건 효과 (가격은 직접 바꾸지 않고 시뮬 숫자만)', (
     activate(state, map, 'newVein', id, state.day + 10);
     expect(node.tiles).toBe(tiles + 1);
     expect(state.towns[id]!.recentEvents.some((e) => e.kind === 'newVein')).toBe(true);
+  });
+});
+
+describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
+  it('사건 기간 동안 한 물품을 기준 가격보다 비싸게 사들이고, 주문량이 다 차면 사건이 끝난다', async () => {
+    const { createCart, loadGoods } = await import('../cart');
+    const { basePrice } = await import('../economy/goods');
+    const seed = SEEDS[0]!;
+    const { map, state } = world(seed);
+    for (let d = 0; d < 10; d++) advanceDay(state, map);
+    const town = state.player.town;
+    const ev = activate(state, map, 'shipyard', town, state.day + 7);
+    expect(ev.orders).toEqual([{ good: 'wood', left: 200, price: Math.round(basePrice('wood') * 1.6) }]);
+    expect(bigOrdersToday(state).map((x) => x.order.good)).toEqual(['wood']);
+    // 플레이어가 목재를 내면 큰 주문 값에 가깝게 팔린다
+    state.player.cart = createCart('wagon');
+    state.player.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
+    const n = loadGoods(state.player.cart, 'wood', 20);
+    expect(applyCommand(state, map, { type: 'placeSellOrder', good: 'wood', qty: n, minPrice: basePrice('wood') })).toEqual(expect.objectContaining({ ok: true }));
+    const money = moneySupply(state);
+    const r = advanceDay(state, map);
+    const sold = state.player.ledger.filter((e) => e.kind === 'sell' && e.good === 'wood');
+    expect(sold.reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0)).toBe(n);
+    expect(sold[0]!.kind === 'sell' && sold[0]!.price).toBeGreaterThan(basePrice('wood') * 1.2);
+    // 큰 주문이 낸 돈은 바깥에서 들어온 돈이다
+    expect(r.outsideGold).toBeGreaterThan(0);
+    expect(moneySupply(state)).toBe(money + r.stipend + r.outsideGold + r.arrivedGold - r.tribute - r.leftGold);
+    expect(ev.orders![0]!.left).toBeLessThanOrEqual(200 - n);
+    // 남은 양이 다 차면 그날로 끝난다
+    ev.orders![0]!.left = 1;
+    advanceDay(state, map);
+    expect(ev.orders![0]!.left === 0 ? ev.end : -1).toBe(state.day - 1);
+  });
+
+  it('큰 주문 사건은 시즌에 몇 번 있고, 징조가 늘 먼저 돈다', () => {
+    const counts = SEEDS.slice(0, 20).map((seed) => {
+      const { map, state } = world(seed);
+      const season = createSeason(state, map, 1, 1);
+      return season.schedule.filter((s) => eventDef(s.event).effects.some((e) => e.kind === 'bigOrder')).length;
+    });
+    const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+    expect(avg).toBeGreaterThanOrEqual(1.5);
+    expect(avg).toBeLessThanOrEqual(4.5);
   });
 });
 

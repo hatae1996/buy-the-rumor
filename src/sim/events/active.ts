@@ -1,14 +1,14 @@
 // 사건을 시작하고 끝내고, 지금 벌어지는 사건의 효과를 묻는다.
 // 다른 시뮬 코드는 효과를 직접 들여다보지 않고 여기 함수(생산 배율, 수요, 막힌 길 등)만 부른다.
 import { ECONOMY } from '../constants';
-import { FOODS, type GoodId } from '../economy/goods';
+import { basePrice, FOODS, type GoodId } from '../economy/goods';
 import type { JobId } from '../economy/jobs';
 import type { EconomyState } from '../economy/state';
 import { AUTUMN } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { eventDef } from './defs';
 import { createSeason } from './schedule';
-import type { ActiveEvent, EventEffect, EventId, ScheduledEvent } from './types';
+import type { ActiveEvent, BigOrder, EventEffect, EventId, ScheduledEvent } from './types';
 
 /** 같은 마을에서 사건을 기억해 두는 날 (원정 사건 카드용) */
 const RECENT_EVENT_DAYS = 30;
@@ -101,6 +101,29 @@ export function travelDaysToday(state: EconomyState, map: WorldMap, season: Para
   return townTravelDays(map, season, blockedTiles(state));
 }
 
+/** 오늘 열려 있는 큰 주문 (남은 양이 있는 것) */
+export function bigOrdersToday(state: EconomyState): { event: ActiveEvent; order: BigOrder }[] {
+  return state.events
+    .filter((ev) => ev.start <= state.day && state.day <= ev.end)
+    .flatMap((event) => (event.orders ?? []).filter((o) => o.left > 0).map((order) => ({ event, order })));
+}
+
+/** 장날 뒤: 큰 주문이 산 만큼 남은 양을 줄이고, 다 찬 사건은 오늘로 끝낸다. 바깥에서 들어온 돈을 돌려준다 */
+export function settleBigOrders(state: EconomyState, bought: readonly { event: number; good: GoodId; qty: number; price: number }[]): number {
+  let paid = 0;
+  for (const b of bought) {
+    const ev = state.events.find((e) => e.id === b.event);
+    const o = ev?.orders?.find((x) => x.good === b.good);
+    if (!ev || !o) continue;
+    o.left = Math.max(0, o.left - b.qty);
+    paid += b.qty * b.price;
+  }
+  for (const ev of state.events) {
+    if (ev.orders?.length && ev.orders.every((o) => o.left === 0) && ev.end > state.day) ev.end = state.day;
+  }
+  return paid;
+}
+
 /** 오늘 시작한 대상단 거래 */
 export function bulkTradesToday(state: EconomyState): { town: number; good: GoodId; side: 'buy' | 'sell'; qty: number }[] {
   const out: { town: number; good: GoodId; side: 'buy' | 'sell'; qty: number }[] = [];
@@ -155,6 +178,13 @@ export function activate(
         ? nearbyTowns(map, town)
         : [town];
   const ev: ActiveEvent = { id: state.nextId++, event, town, towns, start: state.day, end, ...stripUndefined(extra) };
+  // 큰 주문: 물품과 값은 시작할 때 정한다 (기준 가격의 배율)
+  const orders = def.effects.flatMap((e) => {
+    if (e.kind !== 'bigOrder') return [];
+    const good = e.good ?? extra.good;
+    return good ? [{ good, left: e.qty, price: Math.round(basePrice(good) * e.factor) }] : [];
+  });
+  if (orders.length) ev.orders = orders;
   state.events.push(ev);
   // 시작할 때 한 번 일어나는 일: 자원지가 줄거나 는다
   for (const e of def.effects) {

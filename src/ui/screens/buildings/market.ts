@@ -39,7 +39,14 @@ export function openMarket(game: Game): void {
           </li>`,
         )
         .join('') || '<li class="muted">아직 낸 신청이 없어요.</li>';
+    // 큰 주문 (0.0.7): 사건이 기간 동안 한 물품을 많이 비싸게 사들인다
+    const big = v.bigOrders
+      .map(
+        (o) => `<li class="row"><span><b>${o.event}</b> · ${goodName(o.good)} ${o.left}개 남음<br /><small class="muted">${o.price}냥 이하로 내면 팔려요 · ${o.until - v.day + 1}일 남음</small></span></li>`,
+      )
+      .join('');
     body.innerHTML = `
+      ${big ? `<h3>큰 주문</h3><ul class="list">${big}</ul>` : ''}
       <p class="muted">사고팔 물건을 누르세요. 신청은 장날에 한꺼번에 맞춰서 값 하나로 정해져요.</p>
       <ul class="good-list">${rows}</ul>
       <h3>장날에 낼 신청</h3>

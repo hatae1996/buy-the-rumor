@@ -32,7 +32,7 @@ import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
 import { euro, iGa } from '../josa';
 import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, guideFee, needsMet, type GearKind } from '../expedition';
-import { blockedTiles, tollAt } from '../events';
+import { bigOrdersToday, blockedTiles, eventDef, tollAt } from '../events';
 import type {
   ActiveExpedition,
   EconomyState,
@@ -127,6 +127,8 @@ export interface PlayerView {
   location: PlayerLocation;
   /** 길 위면 null */
   market: MarketView | null;
+  /** 지금 마을의 큰 주문 (0.0.7). 남은 양은 그 마을에 와야 보인다 */
+  bigOrders: { event: string; good: GoodId; left: number; price: number; until: number }[];
   orders: PendingOrder[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
@@ -574,6 +576,12 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     cart: cartView(p.cart, state.orders, p.horses),
     location,
     market,
+    bigOrders:
+      location.kind === 'town'
+        ? bigOrdersToday(state)
+            .filter(({ event }) => event.town === location.town)
+            .map(({ event, order }) => ({ event: eventDef(event.event).name, good: order.good, left: order.left, price: order.price, until: event.end }))
+        : [],
     orders,
     memory: p.memory,
     ledger: p.ledger,

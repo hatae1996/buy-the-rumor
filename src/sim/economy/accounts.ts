@@ -33,6 +33,9 @@ export class Accounts {
       case 'citizens':
       case 'workshop':
         return this.state.towns[owner.town]!.treasury;
+      case 'buyer':
+        // 큰 주문은 바깥 돈이라 모자라지 않는다
+        return Number.MAX_SAFE_INTEGER;
     }
   }
 
@@ -53,6 +56,8 @@ export class Accounts {
       case 'workshop':
         this.state.towns[owner.town]!.treasury += amount;
         break;
+      case 'buyer':
+        break;
     }
   }
 
@@ -69,6 +74,7 @@ export class Accounts {
       case 'trader':
         return this.traders.get(owner.id)!.inv;
       case 'citizens':
+      case 'buyer':
         return null;
       case 'workshop':
         return this.state.towns[owner.town]!.workshop;

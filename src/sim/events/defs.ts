@@ -34,6 +34,9 @@ const RUSH_PLACE: Record<JobId, string> = {
   smith: '대장간으로',
 };
 
+/** 큰 주문 사건이 일정에 뽑히는 무게 (다른 사건은 1) */
+const BIG_ORDER_WEIGHT = 1.6;
+
 export const EVENT_DEFS: readonly EventDef[] = [
   // ───── 공급 ↓ ─────
   {
@@ -186,6 +189,9 @@ export const EVENT_DEFS: readonly EventDef[] = [
   },
 
   // ───── 수요 ↑ ─────
+  // 큰 주문 (0.0.7 "큰 벌이는 사건에서 온다"): 정해진 기간 동안 한 물품을 많이, 기준 가격보다 비싸게 사들인다.
+  // 시즌에 2~4번 나오도록 다른 사건보다 조금 더 잘 뽑힌다 (BIG_ORDER_WEIGHT).
+  // 징조가 늘 일찍(4~7일 전) 돌아서, 듣고 미리 쌓아 둔 사람이 크게 번다. 숫자는 초안
   {
     id: 'shipyard',
     name: '조선소 대형 상선',
@@ -193,12 +199,15 @@ export const EVENT_DEFS: readonly EventDef[] = [
     scope: 'town',
     needs: { resource: 'fish' },
     effects: [
-      { kind: 'demand', good: 'wood', extra: 6 },
+      { kind: 'bigOrder', good: 'wood', qty: 200, factor: 1.6 },
       { kind: 'demand', good: 'tools', extra: 1 },
     ],
-    days: 5,
+    days: 8,
     omen: '조선소에 목수가 모인다더군.',
-    news: ({ town: t }) => `${t} 조선소가 큰 상선을 짓기 시작했습니다.`,
+    omenShare: 1,
+    omenLead: [4, 7],
+    weight: BIG_ORDER_WEIGHT,
+    news: ({ town: t }) => `${t} 조선소가 큰 상선을 짓기 시작했습니다. 목재 200개를 비싸게 사들입니다.`,
     deck: 'boost',
   },
   {
@@ -207,12 +216,16 @@ export const EVENT_DEFS: readonly EventDef[] = [
     category: 'demandUp',
     scope: 'town',
     effects: [
-      { kind: 'demand', good: 'wood', extra: 5 },
-      { kind: 'demand', good: 'ore', extra: 4 },
+      // 광석을 많이 사들이면 대장장이 도구 재료가 바닥나서 목재를 크게, 광석은 조금만
+      { kind: 'bigOrder', good: 'wood', qty: 150, factor: 1.6 },
+      { kind: 'bigOrder', good: 'ore', qty: 40, factor: 1.5 },
     ],
-    days: 4,
+    days: 8,
     omen: '영주가 일꾼을 모은다더라.',
-    news: ({ town: t }) => `영주가 ${t} 성벽 보수를 시작했습니다.`,
+    omenShare: 1,
+    omenLead: [4, 7],
+    weight: BIG_ORDER_WEIGHT,
+    news: ({ town: t }) => `영주가 ${t} 성벽 보수를 시작했습니다. 광석과 목재를 비싸게 사들입니다.`,
     deck: 'boost',
   },
   {
@@ -222,12 +235,15 @@ export const EVENT_DEFS: readonly EventDef[] = [
     scope: 'town',
     needs: { tier: 'city' },
     effects: [
-      { kind: 'demand', good: 'meat', factor: 2 },
-      { kind: 'demand', good: 'grain', factor: 2 },
+      { kind: 'bigOrder', good: 'meat', qty: 100, factor: 1.6 },
+      { kind: 'bigOrder', good: 'grain', qty: 150, factor: 1.6 },
     ],
-    days: 2,
+    days: 5,
     omen: '영주 딸이 곧 혼인한다더군.',
-    news: ({ town: t }) => `${t}에서 영주 딸의 혼례 잔치가 열립니다.`,
+    omenShare: 1,
+    omenLead: [4, 7],
+    weight: BIG_ORDER_WEIGHT,
+    news: ({ town: t }) => `${t}에서 영주 딸의 혼례 잔치가 열립니다. 고기와 곡물을 비싸게 사들입니다.`,
     deck: 'boost',
   },
   {
@@ -236,13 +252,16 @@ export const EVENT_DEFS: readonly EventDef[] = [
     category: 'demandUp',
     scope: 'town',
     effects: [
-      { kind: 'demand', good: 'salted', extra: 6 },
-      { kind: 'demand', good: 'leather', extra: 4 },
+      { kind: 'bigOrder', good: 'salted', qty: 100, factor: 1.7 },
+      { kind: 'bigOrder', good: 'leather', qty: 80, factor: 1.6 },
       { kind: 'demand', good: 'tools', extra: 1 },
     ],
-    days: 3,
+    days: 6,
     omen: '동쪽에 군대가 오간다더라.',
-    news: ({ town: t }) => `군대가 ${t}에 머물며 보급품을 사들입니다.`,
+    omenShare: 1,
+    omenLead: [4, 7],
+    weight: BIG_ORDER_WEIGHT,
+    news: ({ town: t }) => `군대가 ${t}에 머물며 염장 식품과 가죽을 비싸게 사들입니다.`,
     deck: 'boost',
   },
 
@@ -302,10 +321,13 @@ export const EVENT_DEFS: readonly EventDef[] = [
     name: '대상단 도착',
     category: 'market',
     scope: 'town',
-    effects: [{ kind: 'bulk', side: 'buy', qty: 30 }],
+    effects: [{ kind: 'bigOrder', qty: 150, factor: 1.5 }],
     goods: ['wood', 'leather', 'ore', 'salt', 'salted', 'grain'],
-    days: 1,
+    days: 4,
     omen: '서쪽에서 수레 행렬이 온다더군.',
+    omenShare: 1,
+    omenLead: [4, 7],
+    weight: BIG_ORDER_WEIGHT,
     news: ({ town: t, good }) => `서쪽 대상단이 ${t}에 와서 ${eulReul(name(good))} 한꺼번에 사들입니다.`,
     deck: 'caravan',
   },
