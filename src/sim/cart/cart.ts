@@ -60,8 +60,9 @@ export function findSpot(cart: Cart, good: GoodId): { x: number; y: number; rot:
   let best: { x: number; y: number; rot: number; contact: number } | null = null;
   for (const [x, y] of slots) {
     for (const rot of distinctRotations(good)) {
-      if (!fits(cart, good, x, y, rot)) continue;
+      // 빈칸 집합을 한 번만 만들어 쓴다 (fits와 같은 판단)
       const cells = pieceCells({ good, x, y, rot });
+      if (!cells.every(([cx, cy]) => open.has(key(cx, cy)))) continue;
       const mine = new Set(cells.map(([cx, cy]) => key(cx, cy)));
       let contact = 0;
       for (const [cx, cy] of cells) {

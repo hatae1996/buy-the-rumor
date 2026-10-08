@@ -1,5 +1,6 @@
 // 맵 생성기 관찰: 2D 지도, 생성 규칙, 마을 특색, 이동 일수, 맵 지문.
 import { SEASON_NAME, type Season } from '../sim/season';
+import { mountBotPanel } from './botPanel';
 import { mountEconomyPanel } from './economyPanel';
 import {
   checkWorldRules,
@@ -65,6 +66,7 @@ export function mountWorldgenView(root: HTMLElement): void {
         </div>
       </div>
       <section class="dev-econ" data-economy></section>
+      <section class="dev-econ" data-bots></section>
     </div>
   `;
 
@@ -92,6 +94,7 @@ export function mountWorldgenView(root: HTMLElement): void {
   const map3d = import('./map3dPanel').then((m) => m.mountMap3dPanel($('[data-map3d]')));
 
   const economy = mountEconomyPanel($('[data-economy]'));
+  const bots = mountBotPanel($('[data-bots]'));
   let economyMap: WorldMap | null = null;
 
   function render() {
@@ -99,6 +102,7 @@ export function mountWorldgenView(root: HTMLElement): void {
     if (economyMap !== map) {
       economyMap = map;
       economy.reset(map);
+      bots.reset(map);
     }
     void map3d.then((p) => p.update(map, season));
     root
