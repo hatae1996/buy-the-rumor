@@ -121,6 +121,8 @@ export function traderHorseDeal(state: EconomyState, t: Trader): void {
     return;
   }
   if (t.gold < HORSES.traderBuyGold) return;
+  // 플레이어 몫을 남긴다
+  if (Object.values(stable.stock).reduce((a, b) => a + b, 0) <= HORSES.traderLeaveStock) return;
   const order: HorseKind[] = ['draft', 'swift', 'pony'];
   for (const kind of order) {
     const price = buyPrice(stable, kind);

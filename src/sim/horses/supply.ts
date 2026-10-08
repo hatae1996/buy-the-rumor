@@ -1,7 +1,7 @@
 // 말은 시즌마다 정해진 수만 있다 (기획서 "말"): 시즌 시작 때 총수와 입고 일정을 시드로 정하고,
 // 목장 마을 마구간에 며칠 간격으로 몇 마리씩 푼다. 봄에는 망아지가 조금 더 나온다.
 // 목장 화재 같은 사건이 있는 동안은 입고가 미뤄진다.
-import { HORSES } from '../constants';
+import { HORSES, WORLDGEN } from '../constants';
 import type { EconomyState } from '../economy/state';
 import { horseDelayAt } from '../events/active';
 import { createRng, mixSeed, type Rng } from '../rng';
@@ -21,13 +21,13 @@ export function emptyHorseMarket(): HorseMarket {
 
 const stableCache = new WeakMap<WorldMap, number[]>();
 
-/** 마구간이 있는 마을: 목장 특색 근처의 생산 마을 (없으면 목장 근처 아무 마을) */
+/** 마구간이 있는 마을: 목장 특색 근처의 생산 마을, 맵마다 WORLDGEN.ranchTowns곳 (맵 생성이 보장한다) */
 export function stableTowns(map: WorldMap): number[] {
   let towns = stableCache.get(map);
   if (towns) return towns;
   const near = townsNearTag(map, buildNeighbors(map.tiles), 'ranch');
   const producers = near.filter((id) => map.towns[id]!.tier === 'town');
-  towns = producers.length ? producers : near;
+  towns = (producers.length ? producers : near).slice(0, WORLDGEN.ranchTowns);
   stableCache.set(map, towns);
   return towns;
 }
@@ -48,11 +48,12 @@ export function scheduleArrivals(
   season: { number: number; startDay: number; length: number },
   startSeason: Parameters<typeof seasonOfDay>[1],
   towns: readonly number[],
+  players: number = HORSES.localPlayers,
 ): HorseArrival[] {
   if (!towns.length) return [];
   const rng = createRng(mixSeed(seed, 0x4053, season.number));
   const out: HorseArrival[] = [];
-  let left = rng.int(HORSES.perSeason[0], HORSES.perSeason[1]);
+  let left = rng.int(HORSES.perPlayer[0], HORSES.perPlayer[1]) * players;
   const last = season.startDay + season.length - 1 - HORSES.quietLastDays;
   let day = season.startDay + rng.int(0, HORSES.firstWithin - 1);
   while (left > 0 && day <= last) {

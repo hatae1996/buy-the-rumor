@@ -113,6 +113,10 @@ function placeTownsAndRoads(
       picked.map((p) => p.i),
       rng,
     );
+    // 목장 특색이 생산 마을 두 곳 근처에 있어야 한다 (마구간 마을, 0.0.7). 못 맞추면 다른 배치로
+    const ranch = new Set(regions.filter((r) => r.tag === 'ranch').flatMap((r) => r.tiles));
+    const ranchTowns = picked.filter((p) => [p.i, ...cellsAround(neighbors, p.i, WORLDGEN.specialtyRange)].some((i) => ranch.has(i))).length;
+    if (ranchTowns < WORLDGEN.ranchTowns) continue;
 
     const names = shuffle([...TOWN_NAMES], rng);
     const towns: Town[] = picked.map((p, id) => ({ id, name: names[id]!, tier: 'town', tile: p.i, specialties: p.sp }));

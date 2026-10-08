@@ -73,8 +73,13 @@ describe('끄는 무게와 속도', () => {
 });
 
 describe('시즌 입고 (시드 40개)', () => {
-  it('목장 근처에 마구간이 적어도 한 곳 있다', () => {
-    for (const seed of SEEDS) expect(stableTowns(generateWorld(seed)).length).toBeGreaterThan(0);
+  it('마구간 마을은 맵마다 꼭 두 곳, 모두 목장 근처 생산 마을이다 (0.0.7)', () => {
+    for (const seed of SEEDS) {
+      const map = generateWorld(seed);
+      const towns = stableTowns(map);
+      expect(towns.length, `시드 ${seed}`).toBe(2);
+      for (const t of towns) expect(map.towns[t]!.tier).toBe('town');
+    }
   });
 
   it('정해진 수만 시즌 안에, 마구간 마을에, 같은 시드면 같게 풀린다', () => {
@@ -86,8 +91,12 @@ describe('시즌 입고 (시드 40개)', () => {
       expect(scheduleArrivals(seed, season, 0, towns)).toEqual(a);
       const spring = a.filter((x) => seasonOfDay(x.day, 0) === SPRING).length;
       const total = a.reduce((s, x) => s + x.count, 0);
-      expect(total).toBeGreaterThanOrEqual(HORSES.perSeason[0]);
-      expect(total).toBeLessThanOrEqual(HORSES.perSeason[1] + spring * HORSES.springExtra);
+      // 혼자일 때 시즌 8~10마리 (플레이어 수에 비례, 0.0.7)
+      expect(total).toBeGreaterThanOrEqual(HORSES.perPlayer[0] * HORSES.localPlayers);
+      expect(total).toBeLessThanOrEqual(HORSES.perPlayer[1] * HORSES.localPlayers + spring * HORSES.springExtra);
+      // 플레이어가 셋이면 세 배
+      const many = scheduleArrivals(seed, season, 0, towns, 3).reduce((s, x) => s + x.count, 0);
+      expect(many).toBeGreaterThan(total);
       for (const x of a) {
         expect(towns).toContain(x.town);
         expect(x.day).toBeLessThanOrEqual(season.length - HORSES.quietLastDays);

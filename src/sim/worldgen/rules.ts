@@ -63,8 +63,8 @@ export function checkWorldRules(map: WorldMap): RuleCheck[] {
     },
     {
       id: 'ranch',
-      label: '목장 특색이 생산 마을 근처에 최소 한 곳 (마구간이 생기는 마을)',
-      ok: townsNearTag(map, nbs, 'ranch').some((id) => map.towns[id]!.tier === 'town'),
+      label: `목장 특색이 생산 마을 ${WORLDGEN.ranchTowns}곳 근처에 (마구간이 생기는 마을, 0.0.7)`,
+      ok: townsNearTag(map, nbs, 'ranch').filter((id) => map.towns[id]!.tier === 'town').length >= WORLDGEN.ranchTowns,
     },
   ];
 }

@@ -12,7 +12,8 @@ import { runBotOn } from './run';
 const SEED = 20261008;
 const map = generateWorld(SEED);
 const casual = botProfile('casual').growth!;
-const trader = botProfile('trader').growth!;
+// 두 번째 행렬은 기본 성향에서 꺼 두었다 (0.0.7). 잘하는 봇이 켰을 때 동작을 본다
+const trader = { ...botProfile('trader').growth!, caravan: true };
 let s: EconomyState;
 let g: GrowthMind;
 

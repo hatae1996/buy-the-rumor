@@ -112,8 +112,25 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
       ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
       <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>
       ${v.orders.some((o) => o.from === 'cart') ? `<p class="warn">이 마을에 수레 짐으로 낸 신청은 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}
+      ${
+        v.cart.horsesNeeded > v.horses.length
+          ? `<p class="warn">말이 모자라 ${v.cart.name}가 움직이지 않아요. 손수레로 바꾸면 떠날 수 있어요.</p>
+             <button type="button" class="secondary-btn" data-handcart>손수레로 바꾸기</button>`
+          : ''
+      }
       <p class="error" data-error hidden></p>
       <button type="button" class="primary-btn" data-go>여기로 가기</button>`;
+    sheet.body.querySelector('[data-handcart]')?.addEventListener('click', () => {
+      const r = game.dispatch({ type: 'buyCart', cart: 'handcart' });
+      const err = sheet.body.querySelector<HTMLElement>('[data-error]')!;
+      if (r.ok) {
+        sheet.close();
+        render();
+      } else {
+        err.textContent = ERROR_TEXT[r.error];
+        err.hidden = false;
+      }
+    });
     sheet.body.querySelector('[data-go]')!.addEventListener('click', () => {
       departing = true;
       const r = game.dispatch({ type: 'travel', to });

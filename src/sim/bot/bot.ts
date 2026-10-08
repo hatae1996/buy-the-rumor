@@ -39,6 +39,8 @@ const SCOUT_TOWNS = 3;
 const BUY_DAYS = 4;
 /** 수레가 이만큼 차면 떠난다 (무게 비율) */
 const LOAD_FULL = 0.8;
+/** 한 번 실어 가서 팔 수 있다고 보는 양 (수레를 키울지 셈할 때) */
+const TRIP_SELL_CAP = 25;
 /** 사 모을 때 여비 말고도 남기는 돈 */
 const TRIP_RESERVE = 20;
 
@@ -297,8 +299,11 @@ function feedFor(view: PlayerView, to: number): Command | null {
   const need = Math.ceil(view.horses.reduce((s, h) => s + h.feed, 0) * days);
   const have = view.cargo.filter((l) => l.good === 'grain').reduce((s, l) => s + l.qty, 0);
   if (have >= need || view.orders.some((o) => o.side === 'buy' && o.good === 'grain')) return null;
+  // 수레에 자리가 없으면 그냥 간다 (가는 마을 마구간에서 먹는다)
+  const qty = Math.min(need - have, view.buyRoom.grain);
+  if (qty <= 0) return null;
   const maxPrice = Math.max(1, Math.round(view.market.price.grain * 1.3));
-  return { type: 'placeBuyOrder', good: 'grain', qty: need - have, maxPrice };
+  return { type: 'placeBuyOrder', good: 'grain', qty, maxPrice };
 }
 
 /** 말 먹이로 남겨 두는 곡물 (가장 먼 마을까지 갈 만큼) */
@@ -414,7 +419,8 @@ function bestDeal(
     // 실제로 살 수 있을 양(어제 나온 양)으로 견준다
     const profit = unit * Math.min(qty, supply);
     // 수레가 작아 못 사는 몫 (며칠 사 모을 때 나올 양과 돈으로 살 수 있는 양 중 작은 것까지): 하루 값으로
-    const want = Math.min(goldCap, supply * BUY_DAYS);
+    // 한 번 실어 가서 팔 수 있는 양도 넘지 않게 본다 (도시가 한 장날에 받아 주는 양쯤)
+    const want = Math.min(goldCap, supply * BUY_DAYS, TRIP_SELL_CAP);
     const capped = cartCap < want ? ((want - cartCap) * unit) / BUY_DAYS : 0;
     if (!best || profit > best.profit) best = { good, qty, maxPrice, to: target.town, profit, capped };
   }

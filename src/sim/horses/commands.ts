@@ -3,6 +3,7 @@ import { cartLots, createCart, loadGoods, type CartType } from '../cart';
 import { CART, HORSES } from '../constants';
 import type { EconomyState } from '../economy/state';
 import { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
+import { lacksHorses } from './pull';
 import { stableAt } from './supply';
 import type { HorseKind } from './types';
 import type { WorldMap } from '../worldgen';
@@ -90,8 +91,10 @@ export function cartCost(from: CartType, to: CartType): number {
 export function buyCart(state: EconomyState, map: WorldMap, type: CartType): Err | null {
   const p = state.player;
   if (p.travel) return 'traveling';
-  // 수레방은 목재 마을과 도시에만 있다 (0.0.5)
-  if (!hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
+  // 수레방은 목재 마을과 도시에만 있다 (0.0.5). 다만 말이 모자라 수레가 움직이지 않으면
+  // 어느 마을에서나 손수레로 바꿀 수 있다 (말을 잃고 갇히지 않게, 0.0.7)
+  const stuck = type === 'handcart' && lacksHorses(p.cart, p.horses);
+  if (!stuck && !hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
   if (p.cart.type === type) return 'sameCart';
   if (state.orders.some((o) => o.owner.kind === 'player')) return 'ordersPending';
   const cost = cartCost(p.cart.type, type);

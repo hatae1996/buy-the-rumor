@@ -39,12 +39,12 @@ describe('같은 시드면 같은 맵', () => {
       regions: map.regions.map((r) => r.tag),
     }).toMatchInlineSnapshot(`
       {
-        "fingerprint": "d7e80cea",
+        "fingerprint": "30548367",
         "regions": [
           "reef",
           "bears",
           "fertile",
-          "fertile",
+          "ranch",
           "bandits",
           "bandits",
           "ranch",

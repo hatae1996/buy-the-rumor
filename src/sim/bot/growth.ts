@@ -8,7 +8,7 @@
 // 셈과 상관없이 "살 수 있게 된 날"도 따로 적는다 (기획 숫자 맞추기용).
 import { ECONOMY, GROWTH, HORSES } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
-import { GOODS } from '../economy';
+import { basePrice, GOODS } from '../economy';
 import type { GearKind } from '../expedition';
 import type { CaravanPlan } from '../caravan';
 import type { HorseKind } from '../horses';
@@ -49,6 +49,8 @@ export function createGrowthMind(): GrowthMind {
 
 /** 이만큼 지난 일은 잊는다 (새로 들인 것도 이만큼 써 보고 판단한다) */
 const RECENT_DAYS = 10;
+/** 말·수레 값을 이 날 수 안에 갚을 만큼 벌어야 산다 */
+const PAYBACK_DAYS = 30;
 /** 짐꾼은 몇 명까지 */
 const MAX_PORTERS = 1;
 /** 장비가 없어 못 고른 선택지를 이만큼 보면 산다 */
@@ -90,9 +92,9 @@ export function noteMissing(g: GrowthMind, needs: { gear?: GearKind }[]): void {
   for (const n of needs) if (n.gear) g.gearWanted[n.gear] = (g.gearWanted[n.gear] ?? 0) + 1;
 }
 
-/** 이 마을 곡물 한 개 값 (모르면 보통 값) */
+/** 말 먹이로 칠 곡물 한 개 값: 여기 값과 곡물 기준 가격의 1.3배 중 큰 것 (도시처럼 비싼 곳에 머무는 날도 있다) */
 function grainPrice(view: PlayerView): number {
-  return view.market?.price.grain ?? 6;
+  return Math.max(view.market?.price.grain ?? 0, Math.round(basePrice('grain') * 1.3));
 }
 
 /** 하루 유지비가 이만큼 늘어도 버틸 돈이 있나 */
@@ -119,8 +121,14 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   };
   const has = (role: string) => view.hires.some((h) => h.role === role);
 
-  // 1. 줄이기: 돈이 모자라면 일당이 큰 일꾼부터, 그래도 모자라면 말을 판다
-  if (view.gold < growth.reserve / 2 && view.upkeep.total > 0) {
+  // 말을 잃어 수레가 움직이지 않으면 손수레로 바꾼다 (어느 마을에서나 된다)
+  if (view.cart.horsesNeeded > view.horses.length) {
+    const c = once({ type: 'buyCart', cart: 'handcart' });
+    if (c) return c;
+  }
+
+  // 1. 줄이기: 돈이 모자라면 일당이 큰 일꾼부터, 그래도 모자라면 말을 판다 (장에 맡긴 돈도 내 돈으로 센다)
+  if (view.gold + view.reserved < growth.reserve / 2 && view.upkeep.total > 0) {
     const hire = [...view.hires].sort((a, b) => b.wage - a.wage).find((h) => (h.role !== 'carter' || !view.caravan) && !h.board?.pieces.length);
     if (hire) {
       const c = once({ type: 'dismissHire', hireId: hire.id });
@@ -169,7 +177,8 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   }
 
   const lostPerDay = perDay(g.lost, view.day);
-  // 말·큰 수레는 원정에서 두고 온 짐과 장사에서 못 산 몫을 함께 본다
+  // 짐꾼은 원정에서 두고 온 짐과 장사에서 못 산 몫을 함께 본다.
+  // 말·큰 수레는 원정 짐만 본다: 장사 물량을 늘리면 도착한 장이 넘치고 먹이값이 더 커서 오히려 잃었다 (0.0.7 측정)
   const roomPerDay = lostPerDay + perDay(g.capped, view.day);
 
   // 3. 첫 말: 손수레보다 많이 끄는 말 (짐말, 빠른 말). 마구간이 있는 마을에서
@@ -179,16 +188,17 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
       .map((h) => ({ h, feed: h.feed * grainPrice(view) * HORSES.stableFeedMarkup }))
       .filter((x) => afford('horse', affordable(view, growth, x.h.price!, x.feed)))
       .sort((a, b) => b.h.pull - a.h.pull)[0];
-    if (pick && (growth.horseGoal || roomPerDay >= pick.feed * growth.payMargin)) {
+    // 먹이에 말값을 갚는 몫(PAYBACK_DAYS일에 나눠)까지 벌어야 산다
+    if (pick && (growth.horseGoal || lostPerDay >= (pick.feed + pick.h.price! / PAYBACK_DAYS) * growth.payMargin)) {
       const c = mark('horse', once({ type: 'buyHorse', kind: pick.h.kind as HorseKind }));
       if (c) return c;
     }
   }
 
   // 4. 말이 있고 수레가 여전히 차면 짐수레 (칸이 넓다). 수레방이 있는 마을에서
-  if (view.horses.length >= 1 && (view.cart.type === 'pack' || view.cart.type === 'handcart') && (roomPerDay > 0 || growth.horseGoal)) {
+  if (view.horses.length >= 1 && (view.cart.type === 'pack' || view.cart.type === 'handcart') && (lostPerDay > 0 || growth.horseGoal)) {
     const wagon = view.carts.find((c) => c.type === 'wagon' && c.cost !== null);
-    if (wagon && affordable(view, growth, wagon.cost!, 0)) {
+    if (wagon && affordable(view, growth, wagon.cost!, 0) && (growth.horseGoal || lostPerDay >= (wagon.cost! / PAYBACK_DAYS) * growth.payMargin)) {
       const c = mark('wagon', once({ type: 'buyCart', cart: 'wagon' }));
       if (c) return c;
     }

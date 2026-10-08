@@ -92,7 +92,10 @@ export function tagRegions(
   return out;
 }
 
-/** 생산 마을 근처(특색 범위 안)에 목장이 없으면, 가장 가까운 들판 덩어리를 목장으로 만든다 */
+/**
+ * 목장 특색이 근처(특색 범위 안)에 있는 생산 마을이 WORLDGEN.ranchTowns곳이 되게 한다 (0.0.7: 마구간 마을은 맵마다 2곳).
+ * 모자라면 아직 목장이 없는 생산 마을마다, 그 마을 근처 들판 덩어리를 목장으로 만든다 (없으면 바로 옆 땅)
+ */
 function ensureRanch(
   tiles: readonly Tile[],
   neighbors: readonly number[][],
@@ -100,24 +103,37 @@ function ensureRanch(
   out: TaggedRegion[],
   plains: readonly number[][],
 ): void {
-  const near = new Set(producerTiles.flatMap((t) => [t, ...cellsAround(neighbors, t, WORLDGEN.specialtyRange)]));
-  if (out.some((r) => r.tag === 'ranch' && r.tiles.some((i) => near.has(i)))) return;
-  // 마을 근처에 걸친 들판 덩어리 중 태그가 없는 것 먼저, 그다음 큰 것
+  const area = (t: number) => new Set([t, ...cellsAround(neighbors, t, WORLDGEN.specialtyRange)]);
+  const served = (t: number) => {
+    const near = area(t);
+    return out.some((r) => r.tag === 'ranch' && r.tiles.some((i) => near.has(i)));
+  };
+  // 태그가 없는 들판 덩어리 먼저, 그다음 큰 것
   const tagged = (region: readonly number[]) => out.findIndex((r) => r.tiles[0] === region[0] && r.tiles.length === region.length);
-  const candidates = plains
-    .filter((r) => r.some((i) => near.has(i)))
-    .sort((a, b) => Number(tagged(a) >= 0) - Number(tagged(b) >= 0) || b.length - a.length || a[0]! - b[0]!);
-  const region = candidates[0];
-  if (region) {
-    const at = tagged(region);
-    if (at >= 0) out[at] = { tag: 'ranch', tiles: [...region] };
-    else out.push({ tag: 'ranch', tiles: [...region] });
-    return;
+  for (const town of producerTiles) {
+    if (producerTiles.filter(served).length >= WORLDGEN.ranchTowns) return;
+    if (served(town)) continue;
+    const near = area(town);
+    const candidates = plains
+      .filter((r) => r.some((i) => near.has(i)) && (tagged(r) < 0 || out[tagged(r)]!.tag !== 'ranch'))
+      .sort((a, b) => Number(tagged(a) >= 0) - Number(tagged(b) >= 0) || b.length - a.length || a[0]! - b[0]!);
+    const region = candidates[0];
+    if (region) {
+      const at = tagged(region);
+      if (at >= 0) out[at] = { tag: 'ranch', tiles: [...region] };
+      else out.push({ tag: 'ranch', tiles: [...region] });
+      continue;
+    }
+    // 들판 덩어리가 없으면 근처 들판 칸 하나와 이어진 들판 칸들로 (그것도 없으면 이 마을은 건너뛴다:
+    // 맵 규칙 'ranch'가 못 맞추면 다른 지형으로 다시 만든다)
+    const start = [...near].filter((i) => tiles[i]!.terrain === 'plain' && !out.some((r) => r.tiles.includes(i))).sort((a, b) => a - b)[0];
+    if (start === undefined) continue;
+    const land = [start];
+    for (let k = 0; k < land.length; k++) {
+      for (const n of neighbors[land[k]!]!) if (near.has(n) && tiles[n]!.terrain === 'plain' && !land.includes(n) && !out.some((r) => r.tiles.includes(n))) land.push(n);
+    }
+    out.push({ tag: 'ranch', tiles: land.sort((a, b) => a - b) });
   }
-  // 근처에 들판이 없으면 첫 생산 마을 바로 옆 땅을 목장으로
-  const first = producerTiles[0]!;
-  const land = [first, ...neighbors[first]!].filter((i) => tiles[i]!.terrain !== 'sea').sort((a, b) => a - b);
-  out.push({ tag: 'ranch', tiles: land });
 }
 
 /** 이 태그가 특색 범위 안에 있는 마을들 (목장이면 마구간이 있는 마을) */
