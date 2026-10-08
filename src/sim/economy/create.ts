@@ -25,15 +25,21 @@ export interface CreateOptions {
   warmupDays?: number;
   /** 견습으로 시작한다 (처음 하는 플레이어). 아니면 모든 것이 열린 채로 시작한다 (봇, 시험, 두 번째 시즌부터) */
   apprentice?: boolean;
+  /**
+   * 플레이어가 오는 날(1일)의 계절을 정한다. 시험과 관찰 화면에서 시작 계절마다 재 볼 때만 쓴다 (0.0.8).
+   * 없으면 시드로 랜덤 (실제 게임). 정해도 시드의 다른 난수는 그대로라, 계절 말고는 같은 세계다
+   */
+  startSeason?: Season;
 }
 
 export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = {}): EconomyState {
   const rng = createRng(seed ^ 0x5eed);
+  const drawnSeason = rng.int(0, 3) as Season;
   const state: EconomyState = {
     version: 1,
     seed,
     day: 1,
-    startSeason: rng.int(0, 3) as Season,
+    startSeason: opt.startSeason === undefined ? drawnSeason : seasonBeforeWarmup(opt.startSeason, opt.warmupDays ?? 0),
     rng: 0,
     nextId: 1,
     towns: map.towns.map((t) => createTown(map, t.id)),
@@ -133,6 +139,12 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   // 이번 시즌 기록을 연다 (수완가 부문의 시작 자금)
   ensureRecord(state);
   return state;
+}
+
+/** 미리 돌린 날이 지나 플레이어가 올 때 want 계절이 되도록, 미리 돌리기를 시작할 계절 */
+function seasonBeforeWarmup(want: Season, warmupDays: number): Season {
+  for (let s = 0; s < 4; s++) if (seasonOfDay(warmupDays + 1, s as Season) === want) return s as Season;
+  return want;
 }
 
 /** 미리 돌린 뒤 1일째로 되돌린다. 계절은 이어지도록 시작 계절을 맞춘다 */

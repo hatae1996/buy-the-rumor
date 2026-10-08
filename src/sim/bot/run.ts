@@ -8,9 +8,12 @@ import type { AffordKind, GrowthKind } from './growth';
 import { createCart } from '../cart';
 import type { BotProfile } from './profiles';
 import { netWorth, worthParts } from '../ranking/worth';
+import type { Season } from '../season';
 
 export interface BotRun {
   profile: BotProfile;
+  /** 플레이어가 온 날(1일)의 계절 */
+  startSeason: Season;
   /** 날마다 순자산 (기획서 랭킹 계산: 현금 + 맡긴 돈 + (짐과 말) × 절반, src/sim/ranking/worth.ts) */
   worth: number[];
   /** 날마다 가진 것의 온값 (현금 + 예금 − 빚 + 짐 + 말). 하루 벌이는 이것의 변화로 잰다 (순자산은 짐을 절반만 쳐서 산 날 줄어 보인다) */
@@ -39,11 +42,13 @@ export interface BotRunOptions {
   warmupDays?: number;
   /** 하루에 고를 수 있는 명령 수 상한 (끝없이 돌지 않게) */
   maxCommandsPerDay?: number;
+  /** 시작 계절을 정한다 (없으면 시드로 랜덤). 시작 계절마다 재 볼 때 (0.0.8) */
+  startSeason?: Season;
 }
 
 export function runBot(seed: number, profile: BotProfile, opt: BotRunOptions, world?: WorldMap): BotRun {
   const map = world ?? generateWorld(seed);
-  const state = createEconomy(map, seed, { warmupDays: opt.warmupDays ?? 20 });
+  const state = createEconomy(map, seed, { warmupDays: opt.warmupDays ?? 20, startSeason: opt.startSeason });
   // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레 (기획서 "처음 하는 플레이어")
   state.player.cart = createCart('handcart');
   return runBotOn(state, map, profile, opt);
@@ -55,6 +60,25 @@ export function dailyIncome(run: BotRun, from: number, to: number, start = 200):
   const b = Math.min(to, w.length - 1);
   const a = Math.min(from, b - 1);
   return (w[b]! - w[a]!) / Math.max(1, b - a);
+}
+
+/**
+ * 판 것의 이익으로 잰 하루 벌이: from일 다음 날부터 to일까지 (날은 1부터, dailyIncome과 같은 구간) 하루 평균.
+ * 기획에서 정한 "그날 벌이" = 판 값 − 산 값, 원정에서 얻은 것은 산 값 0 (questions.md 75번)
+ */
+export function profitIncome(run: BotRun, from: number, to: number): number {
+  const days = run.profit.slice(Math.max(0, from), Math.max(0, to));
+  return days.length ? days.reduce((a, b) => a + b, 0) / days.length : 0;
+}
+
+/**
+ * 시즌 벌이 (0.0.8 목표): 시즌 평균 하루 벌이, 전반(앞쪽 절반)과 후반(뒤쪽 절반) 평균.
+ * 겨울은 얇은 계절이라 시즌 끝 하루 벌이로 재지 않고, 후반 평균이 전반보다 높은지를 본다
+ */
+export function seasonIncome(run: BotRun): { avg: number; firstHalf: number; secondHalf: number } {
+  const n = run.profit.length;
+  const half = Math.floor(n / 2);
+  return { avg: profitIncome(run, 0, n), firstHalf: profitIncome(run, 0, half), secondHalf: profitIncome(run, half, n) };
 }
 
 /**
@@ -71,7 +95,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
+  const run: BotRun = { profile, startSeason: state.startSeason, worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
   const cost: Partial<Record<GoodId, { qty: number; value: number }>> = {};

@@ -7,6 +7,7 @@ import { createEconomy } from './create';
 import { GOODS, priceBounds } from './goods';
 import { hungryWorkers, moneySupply, population } from './stats';
 import type { EconomyState } from './state';
+import { AUTUMN, seasonOfDay, SPRING, SUMMER, WINTER } from '../season';
 
 const SEEDS = [20261008, 777, 4242, 1, 99999];
 const DAYS = 360;
@@ -149,6 +150,30 @@ describe('미리 돌린 세계', () => {
     expect(supply(cold)).toBe(0);
     expect(supply(warm)).toBeGreaterThan(0);
     expect(createEconomy(map, 20261008, { warmupDays: 20 })).toEqual(warm);
+  });
+});
+
+describe('시작 계절 정하기 (0.0.8 시험용)', () => {
+  const map = generateWorld(777);
+
+  it('정한 계절에 플레이어가 온다 (미리 돌린 날이 있어도)', () => {
+    for (const season of [SPRING, SUMMER, AUTUMN, WINTER]) {
+      for (const warmupDays of [0, 20]) {
+        const s = createEconomy(map, 777, { warmupDays, startSeason: season });
+        expect(s.day).toBe(1);
+        expect(seasonOfDay(s.day, s.startSeason)).toBe(season);
+      }
+    }
+  });
+
+  it('정하지 않으면 지금까지와 같은 세계 (시드로 랜덤), 정한 계절이 같으면 그 세계와 같다', () => {
+    const natural = createEconomy(map, 777, { warmupDays: 20 });
+    expect(createEconomy(map, 777, { warmupDays: 20, startSeason: natural.startSeason })).toEqual(natural);
+  });
+
+  it('계절 말고는 같은 시드의 시작 (시작 마을이 같다)', () => {
+    const towns = [SPRING, SUMMER, AUTUMN, WINTER].map((season) => createEconomy(map, 777, { startSeason: season }).player.town);
+    expect(new Set(towns).size).toBe(1);
   });
 });
 
