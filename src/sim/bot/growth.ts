@@ -13,6 +13,7 @@ import type { GearKind } from '../expedition';
 import type { CaravanPlan } from '../caravan';
 import type { HorseKind } from '../horses';
 import type { BotGrowth } from './profiles';
+import { seasonsOf, timeShiftStep } from './seasonal';
 
 /** 봇이 처음 산 날 (보고용) */
 export type GrowthKind = 'horse' | 'wagon' | 'porter' | 'gatherer' | 'warehouse' | 'caravan' | 'gear';
@@ -37,6 +38,8 @@ export interface GrowthMind {
   hiredOn: Record<number, number>;
   /** 창고를 빌린 날 (마을 → 날) */
   rentedOn: Record<number, number>;
+  /** 시간차 장사로 사 둔 물품의 산 값 (물품 → 한 개 값) */
+  shiftCost: Partial<Record<GoodId, number>>;
   /** 처음 산 날 */
   firsts: Partial<Record<GrowthKind, number>>;
   /** 돈으로는 살 수 있게 된 첫날 */
@@ -44,7 +47,7 @@ export interface GrowthMind {
 }
 
 export function createGrowthMind(): GrowthMind {
-  return { lost: [], capped: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, firsts: {}, couldAfford: {} };
+  return { lost: [], capped: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, shiftCost: {}, firsts: {}, couldAfford: {} };
 }
 
 /** 이만큼 지난 일은 잊는다 (새로 들인 것도 이만큼 써 보고 판단한다) */
@@ -233,8 +236,14 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     }
   }
 
+  // 시간차 장사: 싼 철에 사서 창고에 두고 비싼 철에 판다 (0.0.7)
+  if (growth.timeShift) {
+    const c = timeShiftStep(view, growth.reserve + view.upkeep.total * growth.upkeepDays, g, once);
+    if (c) return c;
+  }
+
   // 7. 채집꾼이 넣은 창고 짐을 장에 낸다 (이 마을이면 지금 시세, 아니면 기억하는 시세로)
-  const sell = sellStored(view);
+  const sell = sellStored(view, growth.timeShift);
   if (sell) {
     const c = once(sell);
     if (c) return c;
@@ -249,7 +258,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
 }
 
 /** 창고 짐을 장에 내기. 이미 낸 물건은 빼고 */
-function sellStored(view: PlayerView): Command | null {
+function sellStored(view: PlayerView, timeShift: boolean): Command | null {
   for (const w of view.warehouses) {
     if (w.owed > 0 || w.count === 0) continue;
     const here = view.location.kind === 'town' && view.location.town === w.town;
@@ -261,8 +270,9 @@ function sellStored(view: PlayerView): Command | null {
     for (const good of GOODS) {
       const n = qty[good] ?? 0;
       if (n === 0 || onSale.has(good)) continue;
-      // 채집꾼이 없는 창고는 비우려고 내놓는다 (값을 따지지 않는다)
+      // 채집꾼이 없는 창고는 비우려고 내놓는다 (값을 따지지 않는다). 철을 넘기려고 둔 짐은 시간차 장사가 판다
       const clearing = !view.hires.some((h) => h.role === 'gatherer' && h.town === w.town);
+      if (clearing && timeShift && seasonsOf(good)) continue;
       return { type: 'placeStoreSellOrder', town: w.town, good, qty: n, minPrice: clearing ? 1 : Math.max(1, Math.round(prices[good] * 0.8)) };
     }
   }

@@ -125,7 +125,11 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     const planned = mine && mind.plan!.to !== here;
     const best = bestKnownPrice(view, good, here, days, qty);
     if (planned) continue;
-    if (!arrived && best && best.net > price[good] * (1 + profile.minMargin) && profile.trades) continue;
+    if (!arrived && best && best.net > price[good] * (1 + profile.minMargin) && profile.trades) {
+      // 더 비싸게 팔 마을이 있으면 그리로 가져간다 (계획이 없으면 세운다: 짐을 든 채 멈추지 않게)
+      if (!mind.plan) mind.plan = { goods: [good], to: best.town, days: BUY_DAYS };
+      continue;
+    }
     const c = once({ type: 'placeSellOrder', good, qty, minPrice: Math.max(1, Math.round(price[good] * 0.85)) });
     if (c) return c;
   }

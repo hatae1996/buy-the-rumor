@@ -36,13 +36,16 @@ describe('빌리기와 넣고 빼기', () => {
 
   it('다 안 들어가면 옮기지 않는다', () => {
     ok({ type: 'rentWarehouse' });
+    // 창고 5×3칸에 곡물(2×2) 조각은 둘, 창고는 네 배로 쌓아 8개까지 (0.0.7). 미리 소금으로 반쯤 채워 둔다
+    const w = warehouseAt(s.player, s.player.town)!;
+    loadGoods(w.board, 'salt', 12 * 9);
+    const stored = JSON.stringify(w.board);
     const grain = loadGoods(s.player.cart, 'grain', 12);
-    expect(grain).toBeGreaterThan(3);
+    expect(grain).toBeGreaterThan(4);
     const before = JSON.stringify(s.player.cart);
-    // 창고 5×3칸에 곡물(2×2, 한 칸에 1개)은 2개까지만
     expect(applyCommand(s, map, { type: 'storeGoods', good: 'grain', qty: grain })).toEqual({ ok: false, error: 'noRoom' });
     expect(JSON.stringify(s.player.cart)).toBe(before);
-    expect(warehouseAt(s.player, s.player.town)!.board.pieces).toEqual([]);
+    expect(JSON.stringify(w.board)).toBe(stored);
   });
 
   it('창고 짐도 순자산에 든다', () => {

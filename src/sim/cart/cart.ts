@@ -4,6 +4,7 @@
 //   팔자 신청: 내놓은 물건이 안 팔리면 돌아올 자리를 남겨 둔다
 import { shelfLife, type GoodId } from '../economy/goods';
 import type { Lot } from '../economy/inventory';
+import { GROWTH } from '../constants';
 import { cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type BoardType, type CartType, type Cell } from './shapes';
 
 export interface Piece {
@@ -40,7 +41,12 @@ const key = (x: number, y: number) => `${x},${y}`;
 const qtyOf = (p: Piece) => p.lots.reduce((s, l) => s + l.qty, 0);
 const incomingOf = (p: Piece) => p.incoming.reduce((s, i) => s + i.qty, 0);
 /** 조각에 더 담을 수 있는 양 */
-const roomIn = (p: Piece) => stackLimit(p.good) - qtyOf(p) - incomingOf(p);
+const roomIn = (board: Board, p: Piece) => boardStack(board, p.good) - qtyOf(p) - incomingOf(p);
+
+/** 이 판에서 한 조각에 쌓는 양. 창고는 수레보다 높이 쌓는다 (0.0.7 시간차 장사) */
+export function boardStack(board: Board, good: GoodId): number {
+  return stackLimit(good) * (board.type === 'warehouse' ? GROWTH.warehouse.stackFactor : 1);
+}
 
 export function pieceCells(p: Pick<Piece, 'good' | 'x' | 'y' | 'rot'>): Cell[] {
   return shapeOf(p.good, p.rot).map(([dx, dy]) => [p.x + dx, p.y + dy] as const);
@@ -101,7 +107,7 @@ export function loadGoods(cart: Board, good: GoodId, qty: number, age = 0): numb
   for (const p of cart.pieces) {
     if (left <= 0) break;
     if (p.good !== good) continue;
-    const n = Math.min(left, roomIn(p));
+    const n = Math.min(left, roomIn(cart, p));
     if (n > 0) {
       addLotTo(p, { good, qty: n, age });
       left -= n;
@@ -110,7 +116,7 @@ export function loadGoods(cart: Board, good: GoodId, qty: number, age = 0): numb
   while (left > 0) {
     const spot = findSpot(cart, good);
     if (!spot) break;
-    const n = Math.min(left, stackLimit(good));
+    const n = Math.min(left, boardStack(cart, good));
     addLotTo(newPiece(cart, good, spot), { good, qty: n, age });
     left -= n;
   }
@@ -179,7 +185,7 @@ export function reserveRoom(cart: Board, good: GoodId, qty: number, orderId: num
   for (const p of cart.pieces) {
     if (left <= 0) break;
     if (p.good !== good) continue;
-    const n = Math.min(left, roomIn(p));
+    const n = Math.min(left, roomIn(cart, p));
     if (n > 0) {
       addIncoming(p, orderId, n);
       left -= n;
@@ -193,7 +199,7 @@ export function reserveRoom(cart: Board, good: GoodId, qty: number, orderId: num
       cart.nextPieceId = nextId;
       return false;
     }
-    const n = Math.min(left, stackLimit(good));
+    const n = Math.min(left, boardStack(cart, good));
     addIncoming(newPiece(cart, good, spot), orderId, n);
     left -= n;
   }
@@ -251,7 +257,7 @@ export function movePiece(cart: Board, pieceId: number, x: number, y: number, ro
     (q) => q.id !== p.id && q.good === p.good && pieceCells(q).some(([cx, cy]) => cx === x && cy === y),
   );
   if (target && p.incoming.length === 0) {
-    const n = Math.min(roomIn(target), qtyOf(p));
+    const n = Math.min(roomIn(cart, target), qtyOf(p));
     if (n <= 0) return false;
     for (const lot of takeFromPiece(p, n)) addLotTo(target, lot);
     tidy(cart);
@@ -299,7 +305,7 @@ export function packCart(cart: Board): boolean {
     if (p.incoming.length) continue;
     for (const q of cart.pieces) {
       if (q === p || q.good !== p.good || q.incoming.length || qtyOf(q) === 0) continue;
-      const n = Math.min(roomIn(p), qtyOf(q));
+      const n = Math.min(roomIn(cart, p), qtyOf(q));
       if (n > 0) for (const lot of takeFromPiece(q, n)) addLotTo(p, lot);
     }
   }

@@ -1,6 +1,6 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, unitWeight, type Board, type Cart, type CartType } from '../cart';
+import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, unitWeight, type Board, type Cart, type CartType } from '../cart';
 import {
   buyPrice,
   cartCost,
@@ -26,7 +26,7 @@ import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
-import { seasonOfDay, type Season } from '../season';
+import { CYCLE_DAYS, seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
@@ -106,12 +106,16 @@ export interface WarehouseView {
   /** 밀린 보관료 (밀리면 꺼내거나 팔 수 없다) */
   owed: number;
   rentPerDay: number;
+  /** 물품마다 더 넣을 수 있는 양 (창고는 수레보다 높이 쌓는다) */
+  room: Record<GoodId, number>;
 }
 
 export interface PlayerView {
   /** 오늘 (이날 장날에 신청이 정산된다) */
   day: number;
   season: Season;
+  /** 이 계절(봄·여름·가을·겨울)이 오늘 뒤로 며칠 더 가나 */
+  seasonDaysLeft: number;
   gold: number;
   /** 사자 신청에 맡겨 둔 돈 */
   reserved: number;
@@ -498,7 +502,7 @@ function piecesView(board: Board, orders: readonly Order[]): CartPieceView[] {
       rot: p.rot,
       cells: pieceCells(p),
       qty: p.lots.reduce((s, l) => s + l.qty, 0),
-      stack: stackLimit(p.good),
+      stack: boardStack(board, p.good),
       incoming: p.incoming.reduce((s, i) => s + i.qty, 0),
       pending: p.incoming.length ? (sideOf.get(p.incoming[0]!.orderId) ?? null) : null,
       oldest: p.lots.length ? p.lots.reduce((a, l) => (l.age > a.age ? l : a)) : null,
@@ -516,6 +520,14 @@ function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]
     horsesNeeded: horsesNeeded(cart),
     room: Object.fromEntries(GOODS.map((g) => [g, roomFor(cart, g)])) as Record<GoodId, number>,
   };
+}
+
+/** 이 계절이 오늘 뒤로 며칠 더 가나 */
+function seasonDaysLeft(day: number, start: Season): number {
+  const now = seasonOfDay(day, start);
+  let n = 0;
+  while (n < CYCLE_DAYS && seasonOfDay(day + n + 1, start) === now) n++;
+  return n;
 }
 
 /** 장에서 사서 더 실을 수 있는 양: 내 수레(칸, 끄는 무게) + 짐꾼 수레 */
@@ -567,6 +579,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
   return {
     day: state.day,
     season: seasonOfDay(state.day, state.startSeason),
+    seasonDaysLeft: seasonDaysLeft(state.day, state.startSeason),
     gold: p.gold,
     reserved,
     cargo: cartLots(p.cart),
@@ -642,6 +655,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       count: cartLots(w.board).reduce((s, l) => s + l.qty, 0),
       owed: w.owed,
       rentPerDay: GROWTH.warehouse.rentPerDay,
+      room: Object.fromEntries(GOODS.map((g) => [g, roomFor(w.board, g)])) as Record<GoodId, number>,
     })),
     hires: p.hires.map((h) => ({
       id: h.id,

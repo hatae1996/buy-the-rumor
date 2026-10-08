@@ -39,18 +39,20 @@ export interface BotGrowth {
   caravan: boolean;
   /** 이 돈이 모이면 두 번째 행렬을 생각한다 */
   caravanGold: number;
+  /** 시간차 장사: 싼 철에 사서 창고에 두었다가 비싼 철에 판다 (0.0.7) */
+  timeShift: boolean;
 }
 
 export const BOT_PROFILES: readonly BotProfile[] = [
   // 원정으로 모은 것을 그 마을에서 판다. 마을은 잘 옮기지 않는다
   { id: 'gatherer', name: '원정꾼', trades: false, expeditions: true, expeditionsPerDay: 3, minMargin: 0.25, explore: 0.02, restAt: 6,
-    growth: { reserve: 80, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity } },
+    growth: { reserve: 80, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },
   // 원정은 안 나가고 싼 마을에서 사서 비싼 마을에 판다
   { id: 'trader', name: '장사꾼', trades: true, expeditions: false, expeditionsPerDay: 0, minMargin: 0.2, explore: 0.1, restAt: 7,
-    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: false, caravanGold: 800 } },
+    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: false, caravanGold: 800, timeShift: true } },
   // 기획서의 "평범하게 하는 사람": 원정도 조금, 장사도 조금
   { id: 'casual', name: '보통 사람', trades: true, expeditions: true, expeditionsPerDay: 2, minMargin: 0.3, explore: 0.08, restAt: 5,
-    growth: { reserve: 60, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity } },
+    growth: { reserve: 60, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },
 ];
 
 export const botProfile = (id: BotProfileId): BotProfile => BOT_PROFILES.find((p) => p.id === id)!;

@@ -11,9 +11,10 @@ import { runBotOn } from './run';
 
 const SEED = 20261008;
 const map = generateWorld(SEED);
-const casual = botProfile('casual').growth!;
+// 살 것 고르기만 본다 (시간차 장사는 따로)
+const casual = { ...botProfile('casual').growth!, timeShift: false };
 // 두 번째 행렬은 기본 성향에서 꺼 두었다 (0.0.7). 잘하는 봇이 켰을 때 동작을 본다
-const trader = { ...botProfile('trader').growth!, caravan: true };
+const trader = { ...botProfile('trader').growth!, caravan: true, timeShift: false };
 let s: EconomyState;
 let g: GrowthMind;
 
@@ -126,7 +127,8 @@ describe('시즌을 돌려도', () => {
     const run = (withGrowth: boolean) => {
       const st = createEconomy(map, seed, { warmupDays: 20 });
       st.player.cart = createCart('handcart');
-      const p = botProfile('trader');
+      // 짐꾼만 본다 (시간차 장사는 seasonal.test.ts)
+      const p = { ...botProfile('trader'), growth: { ...botProfile('trader').growth!, timeShift: false } };
       return runBotOn(st, map, withGrowth ? p : { ...p, growth: null }, { days: 144 });
     };
     const on = run(true);
