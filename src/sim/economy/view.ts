@@ -1,7 +1,7 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
 import { cartLots, cartWeight, maxWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
-import { CART, ECONOMY } from '../constants';
+import { CART, ECONOMY, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
@@ -16,8 +16,8 @@ import type {
   NewsItem,
   Order,
   PriceMemory,
-  Rumor,
 } from './state';
+import { drinkFee, type HeardRumor } from '../rumors';
 
 export type PlayerLocation =
   | { kind: 'town'; town: number }
@@ -73,12 +73,25 @@ export interface PlayerView {
   /** 진행 중인 원정 */
   expedition: ExpeditionView | null;
   lastExpedition: ExpeditionResult | null;
-  /** 들은 이야기 수첩 */
-  rumors: readonly Rumor[];
+  /** 들은 이야기 수첩. 도장 판정용 주장은 빼고 보인다 */
+  rumors: readonly NoteView[];
+  /** 지금 마을 여관의 술 한 잔 (소문 1개 더). 길 위면 null */
+  drink: { fee: number; drank: boolean } | null;
+  /** 전서구: 한 번 값과 날려 보낸 마을 (다음 날 시세가 온다) */
+  pigeon: { fee: number; pending: number[] };
+  /** 정보원을 심어 둔 마을 */
+  informants: readonly number[];
   /** 몇 번째 시즌, 시즌의 며칠째, 시즌 길이 (미리 돌린 세계 전에는 null) */
   seasonInfo: { number: number; day: number; length: number } | null;
   /** 길 사정 (신문에 실린 사실): 막힌 칸, 마을마다 통행세 */
   roads: { blocked: number[]; tolls: Record<number, number> };
+}
+
+export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'>;
+
+/** 수첩 한 줄을 화면용으로: 도장 판정용 주장과 세계 소문 번호는 뺀다 */
+export function noteView({ claim: _claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
+  return rest;
 }
 
 export interface ExpeditionView {
@@ -218,7 +231,10 @@ export function playerView(state: EconomyState): PlayerView {
     inn: p.travel ? null : { ...innOf(state.towns[p.town]!), rested: p.restedToday },
     expedition: expeditionView(state),
     lastExpedition: p.lastExpedition,
-    rumors: p.rumors,
+    rumors: p.rumors.map(noteView),
+    drink: p.travel ? null : { fee: drinkFee(state, p.town), drank: p.drankToday },
+    pigeon: { fee: RUMORS.pigeonFee, pending: p.pigeons.map((pg) => pg.town) },
+    informants: p.informants,
     seasonInfo: state.season
       ? { number: state.season.number, day: state.day - state.season.startDay + 1, length: state.season.length }
       : null,

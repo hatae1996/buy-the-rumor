@@ -10,7 +10,6 @@ export {
   demandModifier,
   eventsAt,
   jobIncomeFactor,
-  omensToday,
   produceFactor,
   salesTax,
   startDay,

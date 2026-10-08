@@ -758,3 +758,49 @@
 .cart-hint {
   text-align: center;
 }
+
+/* ───── 들은 이야기 수첩 ───── */
+.note-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-text {
+  margin: 2px 0 0;
+}
+
+/* 맞았다/틀렸다 도장: 비스듬히 찍은 잉크 */
+.stamp {
+  flex: none;
+  display: inline-block;
+  padding: 0 6px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  font-family: var(--f-display);
+  font-size: 13px;
+  line-height: 1.5;
+  transform: rotate(-6deg);
+}
+
+.stamp.right {
+  color: var(--olive);
+}
+
+.stamp.wrong {
+  color: var(--wax);
+}
+
+.stamp-count {
+  display: flex;
+  gap: 6px;
+}
+
+.teller-list {
+  margin-bottom: 8px;
+}
+
+.card h3 + .list {
+  margin-top: 2px;
+}

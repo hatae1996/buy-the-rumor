@@ -25,3 +25,12 @@ export function iGa(word: string): string {
   const s = lastSyllable(word);
   return word + (s?.has ? '이' : '가');
 }
+
+/** 숫자 읽는 소리로 은/는: 40은, 15는, 100은 */
+export function numEunNeun(n: number): string {
+  const v = Math.abs(Math.round(n));
+  // 일의 자리가 0이면 십·백·천(받침 있음)으로 끝난다
+  const last = v % 10;
+  const has = v === 0 || last === 0 || [1, 3, 6, 7, 8].includes(last);
+  return `${v}${has ? '은' : '는'}`;
+}

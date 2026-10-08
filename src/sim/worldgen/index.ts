@@ -8,3 +8,4 @@ export { hexDistance, hexToXY, buildNeighbors, cellsAround, HEX_DIRS, type Axial
 export { townSpecialties, TOWN_NAMES } from './towns';
 export { worldFingerprint } from './fingerprint';
 export { findRoute, type Route } from './route';
+export { townLinks, townHops } from './townLinks';

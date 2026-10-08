@@ -208,17 +208,19 @@ describe('하루 흐름에서', () => {
     expect(state.season!.log.some((e) => e.event === first.event && e.day === first.day)).toBe(true);
   });
 
-  it('그 마을에 있으면 징조 소문을 듣는다', () => {
-    for (const seed of SEEDS) {
+  it('징조 소문은 징조 날에 사건이 날 마을에서 생긴다 (퍼지는 건 src/sim/rumors)', () => {
+    let checked = 0;
+    for (const seed of SEEDS.slice(0, 10)) {
       const { map, state } = world(seed);
       const omen = state.season!.schedule.find((s) => s.omenDay !== null);
       if (!omen) continue;
-      state.player.town = omen.town;
       while (state.day <= omen.omenDay!) advanceDay(state, map);
-      expect(state.player.rumors.some((r) => r.day === omen.omenDay && r.town === omen.town)).toBe(true);
-      return;
+      const r = state.rumorMill.live.find((x) => x.fact.kind === 'omen' && x.fact.event === omen.event && x.day === omen.omenDay);
+      expect(r?.origin).toBe(omen.town);
+      expect(r?.truth).toBe(true);
+      checked++;
     }
-    throw new Error('징조가 있는 시드가 없다');
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('시즌이 끝나면 다음 시즌 일정을 새로 짠다 (세계는 이어진다)', () => {

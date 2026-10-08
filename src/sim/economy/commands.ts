@@ -21,6 +21,7 @@ import {
 import { sellableCount } from './inventory';
 import { chooseExpeditionCard, finishExpedition, startExpedition, type ExpeditionError } from '../expedition';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
+import { buyDrink, dismissInformant, hireInformant, sendPigeon, type RumorError } from '../rumors';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -45,7 +46,14 @@ export type Command =
   /** 펼친 원정 카드의 선택지를 고른다 (0: 왼쪽, 1: 오른쪽) */
   | { type: 'chooseExpeditionCard'; choice: number }
   /** 원정을 그만두고 돌아온다 */
-  | { type: 'endExpedition' };
+  | { type: 'endExpedition' }
+  /** 여관에서 술 한 잔을 사고 소문 하나를 더 듣는다 (하루 한 번) */
+  | { type: 'buyDrink' }
+  /** 먼 마을로 전서구를 보낸다 (그 마을 오늘 시세가 다음 날 온다) */
+  | { type: 'sendPigeon'; to: number }
+  /** 지금 마을에 정보원을 심는다 (상단 단계부터. 화면에는 아직 없다) */
+  | { type: 'hireInformant' }
+  | { type: 'dismissInformant'; town: number };
 
 export type CommandError =
   | 'traveling'
@@ -68,7 +76,8 @@ export type CommandError =
   | 'noPiece'
   | 'cantPlace'
   | 'pieceBusy'
-  | ExpeditionError;
+  | ExpeditionError
+  | RumorError;
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -161,6 +170,15 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return done(chooseExpeditionCard(state, map, cmd.choice));
     case 'endExpedition':
       return done(finishExpedition(state));
+    case 'buyDrink':
+      if (p.expedition) return fail('inExpedition');
+      return done(buyDrink(state, map));
+    case 'sendPigeon':
+      return done(sendPigeon(state, cmd.to));
+    case 'hireInformant':
+      return done(hireInformant(state));
+    case 'dismissInformant':
+      return done(dismissInformant(state, cmd.town));
     case 'discardCartPiece': {
       const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
       if (!piece) return fail('noPiece');

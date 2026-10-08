@@ -20,6 +20,7 @@ export function playerNight(state: EconomyState): void {
   p.fatigue = Math.max(0, p.fatigue - F.nightlyRecovery);
   p.mealsToday = 0;
   p.restedToday = false;
+  p.drankToday = false;
   if (p.travel) p.expeditionChances = 0;
   else if (hasExpeditions(state.towns[p.town]!)) {
     p.expeditionChances = Math.min(ECONOMY.expedition.maxChances, p.expeditionChances + 1);

@@ -50,6 +50,10 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   inExpedition: '원정 중이에요. 원정을 마치고 하세요.',
   notInExpedition: '원정 중이 아니에요.',
   badChoice: '고를 수 없는 선택이에요.',
+  alreadyDrank: '오늘은 이미 한 잔 했어요. 내일 다시 와요.',
+  noRumor: '여관 손님들도 오늘은 새로 들려줄 이야기가 없대요.',
+  alreadyInformant: '이 마을에는 이미 정보원이 있어요.',
+  noInformant: '그 마을에는 정보원이 없어요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -76,6 +80,10 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
     }
     case 'toll':
       return { text: `${townName(e.town)} 근처 길에서 통행세를 냈어요`, amount: -e.gold };
+    case 'info': {
+      const what = { drink: `${townName(e.town)} 여관에서 술 한 잔 (소문 하나)`, pigeon: `${townName(e.town)}에 전서구를 보냈어요`, informant: `${townName(e.town)} 정보원 품삯` }[e.what];
+      return { text: what, amount: -e.fee };
+    }
   }
 }
 

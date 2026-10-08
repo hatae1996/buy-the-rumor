@@ -8,7 +8,6 @@ import type { WorldMap } from '../worldgen';
 import {
   bannedGoods,
   bulkTradesToday,
-  omensToday,
   reactiveEvents,
   salesTax,
   startDay,
@@ -24,6 +23,7 @@ import { JOB_NAME } from './jobs';
 import { limitPrice, runMarket } from './market';
 import { regrow } from './nodes';
 import { playerNight } from './player';
+import { rumorNight, type HeardRumor } from '../rumors';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -44,6 +44,10 @@ export interface DayReport {
   spoiled: number;
   workerEvents: WorkerEvent[];
   news: string[];
+  /** 오늘 밤 수첩에 새로 적힌 줄 */
+  heard: HeardRumor[];
+  /** 오늘 밤 새로 찍힌 도장 수 */
+  stamped: number;
 }
 
 export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
@@ -153,8 +157,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   // 4. 소식
   news.push(...reactiveEvents(state, map, playerBuys));
-  // 징조 소문: 소문 시스템(작업 3) 전까지는 그 마을에 있는 플레이어만 듣는다
-  for (const r of omensToday(state, map)) if (!p.travel && p.town === r.town) p.rumors.push(r);
+  // 소문: 새로 생기고 길을 따라 퍼진다. 마을에 있으면 소문꾼에게 듣고, 수첩에 도장이 찍힌다
+  const rumors = rumorNight(state, map);
   for (const e of workerEvents) {
     if (e.kind === 'leave') news.push(`굶주린 ${JOB_NAME[e.job]} 한 명이 ${eulReul(name(e.town))} 떠났습니다.`);
   }
@@ -171,6 +175,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     spoiled,
     workerEvents,
     news,
+    heard: rumors.heard,
+    stamped: rumors.stamped,
   };
   state.day++;
   state.rng = rng.state();

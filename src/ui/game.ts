@@ -5,12 +5,14 @@ import {
   advanceDay,
   applyCommand,
   createEconomy,
+  noteView,
   playerView,
   type Command,
   type CommandResult,
   type EconomyState,
   type LedgerEntry,
   type NewsItem,
+  type NoteView,
   type PlayerView,
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
@@ -22,9 +24,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v4';
+const SAVE_KEY = 'buy-the-rumor/save/v5';
 
 interface SaveData {
   version: 1;
@@ -43,6 +45,10 @@ export interface AwaySummary {
   news: NewsItem[];
   /** 그 사이 도착한 마을 */
   arrivedAt: number | null;
+  /** 그 사이 수첩에 새로 적힌 이야기 */
+  heard: NoteView[];
+  /** 그 사이 새로 찍힌 도장 수 */
+  stamped: number;
 }
 
 export class Game {
@@ -117,7 +123,13 @@ export class Game {
     const wasOnRoad = this.state.player.travel !== null;
     const ledgerFrom = this.state.player.ledger.length;
     const newsFrom = this.state.news.length;
-    for (let i = 0; i < days; i++) advanceDay(this.state, this.map);
+    const heard: NoteView[] = [];
+    let stamped = 0;
+    for (let i = 0; i < days; i++) {
+      const r = advanceDay(this.state, this.map);
+      heard.push(...r.heard.map(noteView));
+      stamped += r.stamped;
+    }
     const arrived = wasOnRoad && this.state.player.travel === null;
     return {
       days,
@@ -126,6 +138,8 @@ export class Game {
       ledger: this.state.player.ledger.slice(ledgerFrom),
       news: this.state.news.slice(newsFrom),
       arrivedAt: arrived ? this.state.player.town : null,
+      heard,
+      stamped,
     };
   }
 

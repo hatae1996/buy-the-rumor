@@ -3,7 +3,7 @@
 import { ECONOMY } from '../constants';
 import { FOODS, type GoodId } from '../economy/goods';
 import type { JobId } from '../economy/jobs';
-import type { EconomyState, Rumor } from '../economy/state';
+import type { EconomyState } from '../economy/state';
 import { AUTUMN } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { eventDef } from './defs';
@@ -184,20 +184,4 @@ function nearbyTowns(map: WorldMap, town: number): number[] {
 
 function stripUndefined<T extends object>(o: T): Partial<T> {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
-}
-
-/**
- * 오늘 도는 징조 소문 (진짜와 헛징조). 소문 시스템(작업 3) 전까지는 그 마을에 있는 플레이어만 듣는다
- */
-export function omensToday(state: EconomyState, map: WorldMap): Rumor[] {
-  const season = state.season;
-  if (!season) return [];
-  const out: Rumor[] = [];
-  const say = (event: EventId, town: number) => {
-    const omen = eventDef(event).omen;
-    if (omen) out.push({ day: state.day, town, text: `"${map.towns[town]!.name} 쪽에서 ${omen}"` });
-  };
-  for (const s of season.schedule) if (s.omenDay === state.day) say(s.event, s.town);
-  for (const f of season.fakeOmens) if (f.day === state.day) say(f.event, f.town);
-  return out;
 }

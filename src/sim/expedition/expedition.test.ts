@@ -180,7 +180,7 @@ describe('원정 진행', () => {
     }
   });
 
-  it('들은 이야기는 수첩에 날짜와 마을과 함께 적힌다', () => {
+  it('원정에서 본 것은 수첩에 "직접 봄"으로 날짜와 마을과 함께 적힌다', () => {
     for (let n = 0; n < 6 && s.player.expeditionChances > 0; n++) {
       s.player.fatigue = 0;
       // 말 걸기처럼 이야기를 듣는 선택을 고른다
@@ -191,9 +191,12 @@ describe('원정 진행', () => {
         applyCommand(s, map, { type: 'chooseExpeditionCard', choice: talk < 0 ? 1 : talk });
       }
     }
-    for (const r of s.player.rumors) {
+    const seen = s.player.rumors.filter((r) => r.via === 'seen');
+    expect(seen.length).toBeGreaterThan(0);
+    for (const r of seen) {
       expect(r.town).toBe(s.player.town);
       expect(r.text.length).toBeGreaterThan(5);
+      expect(r.from).toBe('원정에서 직접 봄');
     }
   });
 });

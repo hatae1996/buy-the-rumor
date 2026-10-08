@@ -5,8 +5,9 @@ import notePin from '../../../assets/ui/note_pin.png';
 import village from '../../../assets/ui/village.png';
 import { count, GOODS, type PlayerView } from '../../sim/economy';
 import { euro } from '../../sim/josa';
-import { goodName } from '../format';
+import { goodName, money } from '../format';
 import type { Game } from '../game';
+import { noteItem, topNotes } from './noteItem';
 
 export interface TownScreenActions {
   openOrder: (good: (typeof GOODS)[number]) => void;
@@ -16,6 +17,35 @@ export interface TownScreenActions {
   openMeal: () => void;
   startExpedition: () => void;
   resumeExpedition: () => void;
+  buyDrink: () => void;
+  openPigeon: () => void;
+}
+
+/** 소문: 어젯밤 소문꾼에게 들은 이야기, 술 한 잔, 전서구 */
+function rumorCard(game: Game, v: PlayerView): string {
+  if (!v.drink) return '';
+  const townName = (id: number) => game.map.towns[id]!.name;
+  const lastNight = topNotes(
+    v.rumors.filter((n) => n.day === v.day - 1 && n.via === 'gossip'),
+    3,
+  );
+  const pending = v.pigeon.pending.length;
+  return `<section class="card">
+      <h2>소문</h2>
+      ${
+        lastNight.length
+          ? `<p class="muted">어젯밤 마을 소문꾼들에게 들은 이야기예요.</p><ul class="list">${lastNight.map((n) => noteItem(n, v.day, townName)).join('')}</ul>`
+          : '<p class="muted">마을에 머물면 밤마다 소문꾼들이 이야기를 두세 개 들려줘요.</p>'
+      }
+      <div class="btn-row">
+        <button type="button" class="secondary-btn" data-drink ${!v.drink.drank && v.gold >= v.drink.fee ? '' : 'disabled'}>
+          술 한 잔<small>${v.drink.drank ? '오늘은 마셨어요' : `소문 하나 더 · ${money(v.drink.fee)}`}</small>
+        </button>
+        <button type="button" class="secondary-btn" data-pigeon>
+          전서구 보내기<small>${pending ? `${pending}마리 날아가는 중` : `먼 마을 시세 · ${money(v.pigeon.fee)}`}</small>
+        </button>
+      </div>
+    </section>`;
 }
 
 /** 피로 막대: 칸 10개 */
@@ -106,6 +136,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
         }
       </div>
     </section>
+    ${rumorCard(game, v)}
     ${
       v.location.kind === 'town'
         ? `<section class="card">
@@ -145,4 +176,6 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   el.querySelector('[data-meal]')?.addEventListener('click', act.openMeal);
   el.querySelector('[data-exp-start]')?.addEventListener('click', act.startExpedition);
   el.querySelector('[data-exp-resume]')?.addEventListener('click', act.resumeExpedition);
+  el.querySelector('[data-drink]')?.addEventListener('click', act.buyDrink);
+  el.querySelector('[data-pigeon]')?.addEventListener('click', act.openPigeon);
 }

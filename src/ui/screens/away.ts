@@ -1,8 +1,10 @@
 // 자리를 비운 사이: 앱을 다시 열거나 장날이 지나면 그동안 일어난 일을 쪽지로 보여 준다.
 import merchant from '../../../assets/ui/merchant.png';
+import { RUMORS } from '../../sim/constants';
 import { goodName, ledgerLine, money } from '../format';
 import type { AwaySummary, Game } from '../game';
 import { openSheet } from '../sheet';
+import { noteItem, topNotes } from './noteItem';
 
 export function showAwaySummary(game: Game, s: AwaySummary): void {
   const townName = (id: number) => game.map.towns[id]!.name;
@@ -18,6 +20,15 @@ export function showAwaySummary(game: Game, s: AwaySummary): void {
     lines.push(`거래로 ${net >= 0 ? '번' : '쓴'} 돈 <b>${money(Math.abs(net))}</b>`);
   } else lines.push('장날에 맞춰진 신청이 없었어요.');
   for (const e of spoiled) if (e.kind === 'spoil') lines.push(`${goodName(e.good)} ${e.qty}개가 상했어요.`);
+
+  // 한 번 접속에 새 소문은 많아야 몇 개만, 중요한 것부터 (기획서 "소문 - 듣는 방법")
+  const heard = topNotes(s.heard, RUMORS.perVisit);
+  const rumors = s.heard.length
+    ? `<h3>들은 이야기</h3><ul class="list">${heard.map((n) => noteItem(n, s.toDay, townName)).join('')}</ul>${
+        s.heard.length > heard.length ? `<p class="muted">그 밖에 ${s.heard.length - heard.length}개는 수첩에 적어 두었어요.</p>` : ''
+      }`
+    : '';
+  const stamps = s.stamped ? `<p class="muted">수첩에 도장이 ${s.stamped}개 새로 찍혔어요.</p>` : '';
 
   sheet.body.innerHTML = `
     <div class="away-head">
@@ -35,6 +46,8 @@ export function showAwaySummary(game: Game, s: AwaySummary): void {
             .join('')}</ul>${s.news.length > 3 ? `<p class="muted">그 밖에 ${s.news.length - 3}개 소식이 더 있어요.</p>` : ''}`
         : ''
     }
+    ${rumors}
+    ${stamps}
     <button type="button" class="primary-btn" data-ok>확인</button>`;
   sheet.body.querySelector('[data-ok]')!.addEventListener('click', () => sheet.close());
 }

@@ -12,6 +12,7 @@ import type { EconomyState, MarketResult, TownEconomy, Worker } from './state';
 import { TRADER_NAMES } from './traders';
 import { advanceDay } from './day';
 import { createSeason } from '../events/schedule';
+import { emptyRumorMill } from '../rumors/night';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
@@ -46,6 +47,9 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       expedition: null,
       lastExpedition: null,
       rumors: [],
+      drankToday: false,
+      pigeons: [],
+      informants: [],
       marks: [],
     },
     orders: [],
@@ -54,6 +58,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     season: null,
     events: [],
     reactive: { low: {}, high: {}, cooldown: {} },
+    rumorMill: emptyRumorMill(),
   };
 
   for (const town of state.towns) {

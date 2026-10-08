@@ -18,6 +18,7 @@ import {
 import { RESOURCE_NAME, type WorldMap } from '../sim/worldgen';
 import { seasonOfDay, SEASON_NAME } from '../sim/season';
 import { eventDef, eventsAt } from '../sim/events';
+import { tell, type Personality, type RumorSource } from '../sim/rumors';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
 interface History {
@@ -59,6 +60,8 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
     <section class="dev-slip"><h2>마을</h2><div class="dev-towns" data-towns></div></section>
     <section class="dev-slip"><h2>소식</h2><ul class="dev-news" data-news></ul></section>
     <section class="dev-slip"><h2>이번 시즌 사건 일정 (플레이어는 모름)</h2><div class="dev-scroll"><table class="dev-table" data-schedule></table></div></section>
+    <section class="dev-slip"><h2>소문꾼 성격 (플레이어는 모름)</h2><div class="dev-towns" data-gossips></div></section>
+    <section class="dev-slip"><h2>도는 소문 (진짜 여부 포함)</h2><div class="dev-scroll"><table class="dev-table" data-rumors></table></div></section>
   `;
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
 
@@ -153,7 +156,34 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
         .map((n) => `<li><span class="dev-mono">${n.day}일</span> ${n.text}</li>`)
         .join('') || '<li class="dev-mono">아직 소식이 없어요.</li>';
     renderSchedule();
+    renderRumors();
     renderCharts();
+  }
+
+  function renderRumors() {
+    const mill = state.rumorMill;
+    const name = (id: number) => map.towns[id]!.name;
+    $('[data-gossips]').innerHTML = map.towns
+      .map((t) => {
+        const gs = mill.gossips
+          .filter((g) => g.town === t.id)
+          .map((g) => `${g.name} · ${PERSONALITY_NAME[g.personality]}${g.good ? `(${GOOD_NAME[g.good]})` : ''}`);
+        return `<div class="dev-town"><h3>${t.name}</h3><div>${gs.join('<br />') || '시즌 시작 전'}</div></div>`;
+      })
+      .join('');
+    const rows = [...mill.live]
+      .sort((a, b) => b.day - a.day || b.importance - a.importance)
+      .slice(0, 40)
+      .map((r) => {
+        // 생긴 마을에서 흐려지기 전의 말
+        const text = tell(r, r.reach[0]!, null, map).text;
+        const reached = r.reach.filter((c) => c.day <= state.day - 1).length;
+        return `<tr><td>${r.day}일</td><td>${name(r.origin)}</td><td>${SOURCE_NAME[r.source]}</td><td>${r.truth ? '진짜' : '<b>거짓</b>'}</td><td>~${r.expires}일</td><td>${reached}/${map.towns.length}</td><td>${text}</td></tr>`;
+      })
+      .join('');
+    $('[data-rumors]').innerHTML =
+      `<tr><th>생김</th><th>시작</th><th>출처</th><th>진짜</th><th>사라짐</th><th>닿은 마을</th><th>내용</th></tr>` +
+      (rows || '<tr><td colspan="7" class="dev-mono">아직 도는 소문이 없어요 (하루를 돌려 보세요).</td></tr>');
   }
 
   function renderSchedule() {
@@ -238,6 +268,23 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
 
   return { reset };
 }
+
+const PERSONALITY_NAME: Record<Personality, string> = {
+  elder: '믿을 만한 노인',
+  braggart: '허풍쟁이',
+  merchant: '장사꾼',
+  coward: '겁쟁이',
+};
+
+const SOURCE_NAME: Record<RumorSource, string> = {
+  omen: '징조',
+  hidden: '숨은 숫자',
+  price: '시세',
+  orders: '신청 현황',
+  trait: '특색',
+  horse: '말 입고',
+  false: '헛소문',
+};
 
 function tile(label: string, value: string, sub: string): string {
   return `<div class="dev-tile"><div class="dev-tile-k">${label}</div><div class="dev-tile-v">${value}</div><div class="dev-tile-s">${sub}</div></div>`;

@@ -1,5 +1,6 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
 import type { ActiveEvent, ReactiveMemo, SeasonState } from '../events/types';
+import type { HeardRumor, RumorMill } from '../rumors/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { TownEventKind } from '../expedition/types';
@@ -100,14 +101,9 @@ export type LedgerEntry =
   | { day: number; kind: 'inn'; town: number; fee: number; recovered: number }
   | { day: number; kind: 'discard'; good: GoodId; qty: number }
   | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }
-  | { day: number; kind: 'toll'; town: number; gold: number };
-
-/** 들은 이야기 수첩 한 줄 */
-export interface Rumor {
-  day: number;
-  town: number;
-  text: string;
-}
+  | { day: number; kind: 'toll'; town: number; gold: number }
+  /** 소식을 산 돈: 여관 술 한 잔, 전서구, 정보원 */
+  | { day: number; kind: 'info'; what: 'drink' | 'pigeon' | 'informant'; town: number; fee: number };
 
 /** 진행 중인 원정 */
 export interface ActiveExpedition {
@@ -161,8 +157,14 @@ export interface PlayerState {
   restedToday: boolean;
   expedition: ActiveExpedition | null;
   lastExpedition: ExpeditionResult | null;
-  /** 들은 이야기 수첩 */
-  rumors: Rumor[];
+  /** 들은 이야기 수첩 (src/sim/rumors) */
+  rumors: HeardRumor[];
+  /** 오늘 여관에서 술 한 잔을 샀는지 (소문 1개 더, 하루 한 번) */
+  drankToday: boolean;
+  /** 날려 보낸 전서구. 장날이 끝나면 그 마을 시세를 갖고 온다 */
+  pigeons: { town: number; day: number }[];
+  /** 정보원을 심어 둔 마을 */
+  informants: number[];
   /** 지난 원정에 남긴 카드 (놓아 둔 덫 등). 다음에 그 마을 원정 덱에 들어간다 */
   marks: { town: number; card: string }[];
 }
@@ -219,4 +221,6 @@ export interface EconomyState {
   events: ActiveEvent[];
   /** 반응 사건을 위한 기억 */
   reactive: ReactiveMemo;
+  /** 세계의 소문과 소문꾼 (플레이어에게 숨김) */
+  rumorMill: RumorMill;
 }

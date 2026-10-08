@@ -12,6 +12,7 @@ import type { WorldMap } from '../worldgen';
 import { cardById } from './cards';
 import { buildDeck } from './deck';
 import { makeRumor } from './rumors';
+import { noteSeen, verifyByExpedition } from '../rumors';
 import type { Chance, Choice, Effect } from './types';
 
 /** 많이 지쳤을 때 성공 확률이 이만큼 줄고, 얻는 양이 하나 준다 */
@@ -31,6 +32,8 @@ export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionE
   const deck = shuffle(buildDeck(state, map, p.town), rng);
   if (deck.length === 0) return 'noExpedition';
   p.expeditionChances -= 1;
+  // 자원지를 직접 보니 그 마을 자원지 소문에 도장을 찍는다
+  verifyByExpedition(state, p.town);
   // 한 번의 원정은 카드 3~4장
   const total = rng.next() < 0.5 ? 3 : 4;
   const card = deck.shift()!;
@@ -169,7 +172,7 @@ export function finishExpedition(state: EconomyState): ExpeditionError | null {
     if (n > 0) loaded.push({ good: h.good, qty: n });
     if (h.qty - n > 0) leftBehind.push({ good: h.good, qty: h.qty - n });
   }
-  for (const text of ex.rumors) p.rumors.push({ day: state.day, town: ex.town, text });
+  for (const text of ex.rumors) noteSeen(state, ex.town, text);
   p.ledger.push({
     day: state.day,
     kind: 'expedition',

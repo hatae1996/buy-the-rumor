@@ -335,6 +335,86 @@ export const ECONOMY = {
 } as const;
 
 /**
+ * 소문 (기획서 "소문"). 숫자는 모두 초안이다.
+ * 소문은 진짜 상태에서 만들어져 길을 따라 하루에 한 마을씩 퍼지고, 건널 때마다 흐려진다.
+ */
+export const RUMORS = {
+  /** 소문이 사라지기까지 날 (생긴 날부터). 징조는 사건 날 다음 날까지 */
+  life: { omen: 1, node: 6, price: 5, orders: 3, trait: 12, false: 5 },
+  /** 중요한 소문이 먼저 나온다 (높을수록 먼저) */
+  importance: { omen: 5, orders: 3, price: 3, node: 2, trait: 1 },
+  /** 한 마을 건널 때마다: 숫자가 뭉개질 확률, 부풀려질 확률과 배율 */
+  hop: { blurChance: 0.5, exaggerateChance: 0.25, exaggerate: 1.3 },
+
+  /** 숨은 숫자: 자원지 남은 양이 이 비율 아래/위면 소문이 날 수 있다 */
+  node: { low: 0.3, high: 0.85, chance: 0.25 },
+  /**
+   * 다른 마을 시세: 기준 가격의 이 배율 위/아래면.
+   * 같은 물품은 지난번 소문 낸 값에서 이 비율 넘게 바뀌어야 다시 소문 난다
+   */
+  price: { high: 1.6, low: 0.5, chance: 0.3, changeToRetell: 0.3 },
+  /**
+   * 장날 신청 현황: 사려는 양과 팔려는 양 차이가 이만큼 넘고, 그 차이가 전체의 이 비율 넘으면.
+   * 같은 물품은 모자람/남음이 뒤집히거나 차이가 이 배 넘게 커져야 다시 소문 난다
+   */
+  orders: { minGap: 6, minShare: 0.4, chance: 0.3, growToRetell: 1.5 },
+  /** 마을 특색: 하루에 마을마다 이 확률. 시즌 내내 그대로라 같은 특색은 오래 쉬었다가 다시 돈다 */
+  trait: { chance: 0.05, retellDays: 48 },
+  /** 헛소문: 하루에 세계 전체에서 이 확률 */
+  false: { chance: 0.2 },
+  /** 같은 이야기(마을·물품·종류)를 다시 소문 내지 않는 날 */
+  cooldownDays: 6,
+
+  /** 소문꾼: 마을마다 몇 명 (최소, 최대) */
+  gossipsPerTown: [2, 3],
+  /**
+   * 성격 (기획서 "소문꾼의 성격"). 성격은 화면에 보이지 않는다.
+   * lag: 소문이 마을에 닿은 뒤 며칠 지나야 아는지 (−1이면 이웃 마을에 있을 때 미리 안다).
+   * talk: 하루에 많아야 몇 개 말하나. trust: 헛소문을 걸러 내는 비율.
+   * calm: 건너오며 부푼 숫자를 덜어 내는 비율. inflate: 자기가 숫자를 부풀리는 배율
+   */
+  personality: {
+    elder: { lag: 1, talk: 1, trust: 0.7, calm: 0.5, inflate: 1 },
+    braggart: { lag: -1, talk: 2, trust: 0, calm: 0, inflate: 1.35 },
+    merchant: { lag: 0, talk: 1, trust: 0.3, calm: 0, inflate: 1 },
+    coward: { lag: 0, talk: 1, trust: 0, calm: 0, inflate: 1 },
+  },
+  /** 장사꾼이 자기 물품 값을 부풀리는 배율. 할 말이 없으면 이 확률로 자기 물품 자랑을 한다 */
+  merchantInflate: 1.4,
+  merchantPitchChance: 0.35,
+  /** 겁쟁이가 나쁜 소식에 더하는 중요도 */
+  cowardBadBonus: 2,
+
+  /** 마을에 있으면 하루에 공짜로 듣는 소문 수 (최소, 최대) */
+  freePerDay: [2, 3],
+  /** 여관에서 술 한 잔을 사면 소문 1개 더 (하루 한 번). 여관비처럼 경제에서 빠져나간다 */
+  innDrink: { town: 4, city: 6 },
+  /** 화면: 한 번 접속에 새 소문은 많아야 이만큼 보여 준다 (나머지는 수첩에) */
+  perVisit: 4,
+  /** 수첩에 남기는 줄 수 (오래된 것부터 지운다) */
+  notebookMax: 150,
+
+  /** 수첩 도장: 들은 뒤 며칠 안에 확인할 수 있으면 찍는다 */
+  verify: {
+    /** 징조: 이 날까지 사건이 신문에 안 나오면 틀렸다 (소문이 생긴 날부터) */
+    omenDays: 5,
+    priceDays: 6,
+    ordersDays: 3,
+    nodeDays: 10,
+    /** 숫자를 들은 시세: 실제 값과 이 비율 안이면 맞았다 */
+    priceTolerance: 0.25,
+    /** 숫자 없이 "금값"/"헐값"이면 기준 가격의 이 배율 위/아래여야 맞았다 */
+    dearAbove: 1.3,
+    cheapBelow: 0.75,
+  },
+
+  /** 전서구: 먼 마을 하나의 오늘 시세, 다음 날 도착 */
+  pigeonFee: 10,
+  /** 정보원: 매일 그 마을 시세와 장날 신청 현황 (상단 단계부터, 아직 열리는 조건 없음) */
+  informant: { hireFee: 60, dailyWage: 8 },
+} as const;
+
+/**
  * 수레 인벤토리 (기획서 "수레 인벤토리"). 모양과 쌓기 수는 기획서 초안, 무게는 개발 초안.
  * 모양 칸 좌표는 [x, y], 수레 그림은 '#'가 실을 수 있는 칸.
  */
