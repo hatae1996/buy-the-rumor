@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createCart } from '../cart';
 import { applyCommand, createEconomy, playerView, type Command, type EconomyState } from '../economy';
 import { hasBuilding } from '../growth/buildings';
-import { stableTowns, type Horse } from '../horses';
+import { stableTowns } from '../horses';
 import { generateWorld } from '../worldgen';
-import { caravanPlanStep, createGrowthMind, growthStep, type GrowthMind } from './growth';
+import { createGrowthMind, growthStep, type GrowthMind } from './growth';
 import { botProfile } from './profiles';
 import { runBotOn } from './run';
 
@@ -13,12 +13,9 @@ const SEED = 20261008;
 const map = generateWorld(SEED);
 // 살 것 고르기만 본다 (시간차 장사는 따로)
 const casual = { ...botProfile('casual').growth!, timeShift: false };
-// 두 번째 행렬은 기본 성향에서 꺼 두었다 (0.0.7). 잘하는 봇이 켰을 때 동작을 본다
-const trader = { ...botProfile('trader').growth!, caravan: true, timeShift: false };
 let s: EconomyState;
 let g: GrowthMind;
 
-const horse = (id: number, kind: Horse['kind'] = 'draft'): Horse => ({ id, kind, fatigue: 0, hungry: 0, price: 220, home: 0 });
 /** 봇이 고른 명령 하나를 보내고 돌려준다 */
 const step = (growth = casual): Command | null => {
   const c = growthStep(playerView(s, map), growth, g, (x) => x);
@@ -92,32 +89,6 @@ describe('줄이기', () => {
     s.player.gold = 10;
     const id = s.player.hires[0]!.id;
     expect(step()).toEqual({ type: 'dismissHire', hireId: id });
-  });
-});
-
-describe('두 번째 행렬 (잘하는 봇만)', () => {
-  it('돈이 모이면 마부를 데려오고, 남는 말로 행렬을 꾸려, 기억하는 비싼 마을로 지시서를 보낸다', () => {
-    s.player.horses = [horse(901), horse(902)];
-    const here = s.player.town;
-    const to = map.towns.find((t) => t.id !== here)!.id;
-    const price = playerView(s, map).market!.price;
-    s.player.memory[to] = { day: s.day, prices: Object.fromEntries(Object.entries(price).map(([k, v]) => [k, v * 3])) as typeof price, previous: null };
-    expect(step(trader)).toEqual({ type: 'hire', role: 'carter' });
-    expect(step(trader)).toEqual(expect.objectContaining({ type: 'formCaravan', cart: 'handcart' }));
-    expect(g.firsts.caravan).toBe(s.day);
-    const plan = caravanPlanStep(playerView(s, map));
-    expect(plan).toEqual(expect.objectContaining({ type: 'setCaravanPlan' }));
-    expect(applyCommand(s, map, plan!)).toEqual({ ok: true });
-    const stops = s.player.caravan!.plan!.stops;
-    expect(stops.map((x) => x.town)).toEqual([here, to]);
-    expect(stops[0]!.buys).toHaveLength(1);
-    expect(stops[1]!.sells[0]!.good).toBe(stops[0]!.buys[0]!.good);
-  });
-
-  it('보통 사람은 두 번째 행렬을 꾸리지 않는다', () => {
-    s.player.horses = [horse(901), horse(902)];
-    expect(step()).toBeNull();
-    expect(s.player.hires).toEqual([]);
   });
 });
 

@@ -1,5 +1,6 @@
 // 두 번째 행렬 카드와 지시서 (기획서 "지도 탭", 시안 prototypes/screens-0.0.5.html의 지시서).
 // 마을을 차례로 넣으면 길이 되고, 마을마다 "무엇을 얼마까지 사고/팔지"를 넣는다. 마부는 지시를 바꾸지 않는다.
+// 0.0.8: 두 번째 행렬은 큰 주문 도구라, "이 마을로 가서 이것을 판다" 한 번짜리 지시를 카드에서 바로 보낸다 (반복 없음).
 import { CART } from '../../sim/constants';
 import { GOODS, type GoodId, type PlayerView } from '../../sim/economy';
 import type { CaravanPlan, CaravanStop } from '../../sim/caravan';
@@ -11,11 +12,20 @@ import { openLiveSheet, type LiveSheet } from '../liveSheet';
 
 const goodOptions = (sel: GoodId) => GOODS.map((g) => `<option value="${g}" ${g === sel ? 'selected' : ''}>${goodName(g)}</option>`).join('');
 
-export function openCaravanSheet(game: Game): void {
+/** 한 번 가서 팔기를 미리 채워 여는 값 (시장의 큰 주문에서 열 때) */
+export interface QuickSell {
+  town: number;
+  good: GoodId;
+  minPrice: number;
+}
+
+export function openCaravanSheet(game: Game, preset?: QuickSell): void {
   const townName = (id: number) => game.map.towns[id]!.name;
   const townOptions = (sel: number) => game.map.towns.map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${t.name}</option>`).join('');
   /** 고치는 중인 지시서 (보내기 전까지는 쪽지 안에만 있다) */
   let draft: CaravanPlan | null = null;
+  /** 한 번 가서 팔기 칸 (쪽지를 다시 그려도 남는다) */
+  let quick: QuickSell | null = preset ?? null;
 
   const drawEditor = (body: HTMLElement, sheet: LiveSheet) => {
     const plan = draft!;
@@ -91,6 +101,15 @@ export function openCaravanSheet(game: Game): void {
       return;
     }
     if (draft) return drawEditor(body, sheet);
+    // 한 번 가서 팔기: 정하지 않았으면 행렬 짐 중 가장 많은 것을 행렬이 있는 마을에서, 기억하는 값으로
+    const cargo = new Map<GoodId, number>();
+    for (const p of c.cart.pieces) cargo.set(p.good, (cargo.get(p.good) ?? 0) + p.qty);
+    const knownPrice = (town: number, good: GoodId) => v.memory[town]?.prices[good] ?? (v.market?.town === town ? v.market.price[good] : 1);
+    if (!quick) {
+      const good = [...cargo.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'salt';
+      quick = { town: c.town, good, minPrice: knownPrice(c.town, good) };
+    }
+    const q = quick;
     const where = c.travel ? `${euro(townName(c.travel.to))} 가는 중 · ${c.travel.daysLeft}일 남음` : `${townName(c.town)}에 있어요`;
     const plan = c.plan
       ? `<ol class="list">${c.plan.stops
@@ -111,13 +130,40 @@ export function openCaravanSheet(game: Game): void {
       <h3>지시서</h3>
       ${plan}
       <p class="muted">짐은 마부가 알아서 실어요 (칸 80%). 마부는 소문을 듣고 지시를 바꾸지 않아요.</p>
+      ${
+        c.carter
+          ? `<h3>한 번 가서 팔기</h3>
+      <div class="plan-line"><select data-quick-town aria-label="갈 마을">${townOptions(q.town)}</select>에서
+        <select data-quick-good aria-label="팔 물건">${goodOptions(q.good)}</select> 전부, 최소
+        <input type="number" min="1" inputmode="numeric" data-quick-price aria-label="최소 값" value="${q.minPrice}" /></div>
+      <p class="muted">행렬 짐: ${[...cargo.entries()].map(([g, n]) => `${goodName(g)} ${n}`).join(', ') || '없음'} · 지금 지시서 대신 보내요. 다 팔면 그 마을에서 멈춰요.</p>
+      <button type="button" class="primary-btn" data-quick-send>한 번 가서 팔기 보내기</button>`
+          : ''
+      }
       <div class="btn-row">
         <button type="button" class="secondary-btn" data-edit ${c.carter ? '' : 'disabled'}>지시서 고치기</button>
         <button type="button" class="secondary-btn" data-recall ${c.here ? 'disabled' : ''}>불러들이기</button>
         ${c.here ? '<button type="button" class="secondary-btn" data-disband>행렬 풀기<small>수레는 팔고 말은 내 행렬로</small></button>' : ''}
       </div>`;
+    body.querySelector<HTMLSelectElement>('[data-quick-town]')?.addEventListener('change', (e) => {
+      q.town = Number((e.target as HTMLSelectElement).value);
+      q.minPrice = knownPrice(q.town, q.good);
+      body.querySelector<HTMLInputElement>('[data-quick-price]')!.value = String(q.minPrice);
+    });
+    body.querySelector<HTMLSelectElement>('[data-quick-good]')?.addEventListener('change', (e) => {
+      q.good = (e.target as HTMLSelectElement).value as GoodId;
+      q.minPrice = knownPrice(q.town, q.good);
+      body.querySelector<HTMLInputElement>('[data-quick-price]')!.value = String(q.minPrice);
+    });
+    body.querySelector<HTMLInputElement>('[data-quick-price]')?.addEventListener('change', (e) => {
+      q.minPrice = Math.max(1, Math.floor(Number((e.target as HTMLInputElement).value) || 1));
+    });
+    body.querySelector('[data-quick-send]')?.addEventListener('click', () => {
+      sheet.send({ type: 'setCaravanPlan', plan: { stops: [{ town: q.town, buys: [], sells: [{ good: q.good, qty: 'all', minPrice: q.minPrice }] }], repeat: false } });
+    });
     body.querySelector('[data-edit]')?.addEventListener('click', () => {
-      draft = c.plan ? (JSON.parse(JSON.stringify(c.plan)) as CaravanPlan) : { stops: [{ town: c.town, buys: [], sells: [] }], repeat: true };
+      // 새 지시서는 한 번짜리가 기본이다 (0.0.8: 같은 길을 도는 반복은 장이 넘치기 쉽다)
+      draft = c.plan ? (JSON.parse(JSON.stringify(c.plan)) as CaravanPlan) : { stops: [{ town: c.town, buys: [], sells: [] }], repeat: false };
       drawEditor(body, sheet);
     });
     body.querySelector('[data-recall]')?.addEventListener('click', () => sheet.send({ type: 'recallCaravan' }));

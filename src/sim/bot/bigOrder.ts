@@ -23,28 +23,36 @@ export interface BigPlan {
 /** 징조를 들은 지 이만큼 안이면 새로 노린다 */
 const FRESH_DAYS = 2;
 
-/** 수첩의 새 징조로 노릴 큰 주문을 고른다. 지난 것은 버린다 */
-export function updateBigPlan(view: PlayerView, plan: BigPlan | null, profile: BotProfile): BigPlan | null {
-  if (plan && view.day > plan.until) plan = null;
-  if (plan || !profile.trades) return plan;
+/** 수첩의 새 징조(들은 지 FRESH_DAYS일 안)로 노릴 수 있는 큰 주문들. 새로 들은 것부터 */
+export function omenPlans(view: PlayerView, profile: BotProfile): BigPlan[] {
+  if (!profile.trades) return [];
+  const out: BigPlan[] = [];
   for (const n of [...view.rumors].reverse()) {
     if (!n.omen || view.day - n.day > FRESH_DAYS) continue;
+    if (out.some((p) => p.event === n.omen!.event && p.town === n.omen!.town)) continue;
     const def = eventDef(n.omen.event);
     const orders = def.effects.flatMap((e) => (e.kind === 'bigOrder' && e.good ? [{ good: e.good, factor: e.factor }] : []));
     if (!orders.length) continue;
     const days = typeof def.days === 'number' ? def.days : 10;
     const lead = def.omenLead?.[1] ?? 3;
     const earliest = def.omenLead?.[0] ?? 1;
-    return {
+    out.push({
       event: n.omen.event,
       town: n.omen.town,
       goods: orders.map((o) => o.good),
       price: Object.fromEntries(orders.map((o) => [o.good, Math.round(basePrice(o.good) * o.factor)])),
       start: n.day + earliest,
       until: n.day + lead + days,
-    };
+    });
   }
-  return null;
+  return out;
+}
+
+/** 수첩의 새 징조로 노릴 큰 주문을 고른다. 지난 것은 버린다 */
+export function updateBigPlan(view: PlayerView, plan: BigPlan | null, profile: BotProfile): BigPlan | null {
+  if (plan && view.day > plan.until) plan = null;
+  if (plan) return plan;
+  return omenPlans(view, profile)[0] ?? null;
 }
 
 /** 이 물품을 노리는 큰 주문이 있으면 그 마을과 값 */

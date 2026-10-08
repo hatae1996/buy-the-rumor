@@ -6,6 +6,7 @@ import { goodName } from '../../format';
 import type { Game } from '../../game';
 import { openLiveSheet } from '../../liveSheet';
 import { openOrderSheet } from '../orderSheet';
+import { openCaravanSheet } from '../caravanSheet';
 
 export function openMarket(game: Game): void {
   openLiveSheet(game, '시장', (body, v, sheet) => {
@@ -40,9 +41,13 @@ export function openMarket(game: Game): void {
         )
         .join('') || '<li class="muted">아직 낸 신청이 없어요.</li>';
     // 큰 주문 (0.0.7): 사건이 기간 동안 한 물품을 많이 비싸게 사들인다
+    // 두 번째 행렬이 있으면 이 주문에 행렬을 보낸다 (0.0.8: 한 번 가서 팔기를 채워 연다)
+    const canSend = v.caravan?.carter != null;
     const big = v.bigOrders
       .map(
-        (o) => `<li class="row"><span><b>${o.event}</b> · ${goodName(o.good)} ${o.left}개 남음<br /><small class="muted">${o.price}냥 이하로 내면 팔려요 · ${o.until - v.day + 1}일 남음</small></span></li>`,
+        (o) => `<li class="row"><span><b>${o.event}</b> · ${goodName(o.good)} ${o.left}개 남음<br /><small class="muted">${o.price}냥 이하로 내면 팔려요 · ${o.until - v.day + 1}일 남음</small></span>${
+          canSend ? `<button type="button" class="secondary-btn" data-send-caravan="${o.good}" data-price="${Math.max(1, Math.round(o.price * 0.9))}">행렬 보내기</button>` : ''
+        }</li>`,
       )
       .join('');
     body.innerHTML = `
@@ -53,6 +58,9 @@ export function openMarket(game: Game): void {
       <ul class="order-list">${orders}</ul>`;
     body.querySelectorAll<HTMLButtonElement>('[data-good]').forEach((b) =>
       b.addEventListener('click', () => openOrderSheet(game, b.dataset.good as GoodId)),
+    );
+    body.querySelectorAll<HTMLButtonElement>('[data-send-caravan]').forEach((b) =>
+      b.addEventListener('click', () => openCaravanSheet(game, { town: here, good: b.dataset.sendCaravan as GoodId, minPrice: Number(b.dataset.price) })),
     );
     body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
       b.addEventListener('click', () => sheet.send({ type: 'cancelOrder', orderId: Number(b.dataset.cancel) })),

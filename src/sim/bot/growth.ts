@@ -10,7 +10,6 @@ import { ECONOMY, GROWTH, HORSES } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { basePrice, GOODS } from '../economy';
 import type { GearKind } from '../expedition';
-import type { CaravanPlan } from '../caravan';
 import type { HorseKind } from '../horses';
 import type { BotGrowth } from './profiles';
 import { seasonsOf, timeShiftStep } from './seasonal';
@@ -250,11 +249,6 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     if (c) return c;
   }
 
-  // 8. 두 번째 행렬 (잘하는 봇만): 마부를 데려오고, 남는 말 한 필과 손수레로 꾸려 두 마을 사이를 오가게 한다
-  if (growth.caravan && !view.caravan) {
-    const c = caravanStep(view, growth, once, mark);
-    if (c) return c;
-  }
   return null;
 }
 
@@ -278,60 +272,4 @@ function sellStored(view: PlayerView, timeShift: boolean): Command | null {
     }
   }
   return null;
-}
-
-/** 두 번째 행렬: 마부 → 말(내 것 중 하나를 넘기거나 새로) → 행렬 꾸리기 → 지시서 */
-function caravanStep(
-  view: PlayerView,
-  growth: BotGrowth,
-  once: (c: Command) => Command | null,
-  mark: (kind: GrowthKind, c: Command | null) => Command | null,
-): Command | null {
-  if (view.gold < growth.caravanGold || view.location.kind !== 'town') return null;
-  const here = view.location.town;
-  const route = bestRoute(view, here);
-  if (!route) return null;
-  // 내 수레를 끄는 데 필요 없는 말과 이 마을 수레방이 있어야 꾸릴 수 있다 (없는데 마부부터 데려오면 일당만 나간다)
-  const spare = view.horses.length - view.cart.horsesNeeded;
-  if (spare <= 0 || !view.carts.some((c) => c.type === 'handcart')) return null;
-  const carter = view.hires.find((h) => h.role === 'carter');
-  if (!carter) {
-    const offer = view.hireBoard.find((o) => o.role === 'carter');
-    return offer && affordable(view, growth, offer.wage, offer.wage) ? once({ type: 'hire', role: 'carter' }) : null;
-  }
-  const horseIds = view.horses.slice(view.cart.horsesNeeded, view.cart.horsesNeeded + 1).map((h) => h.id);
-  return mark('caravan', once({ type: 'formCaravan', horseIds, cart: 'handcart' }));
-}
-
-/** 기억하는 시세로 여기서 사서 가장 남는 마을 하나 (두 번째 행렬 지시서) */
-function bestRoute(view: PlayerView, here: number): CaravanPlan | null {
-  const price = view.market?.price;
-  if (!price) return null;
-  let best: { plan: CaravanPlan; gain: number } | null = null;
-  for (const [id, mem] of Object.entries(view.memory)) {
-    const to = Number(id);
-    if (to === here || view.day - mem.day > 30) continue;
-    for (const good of GOODS) {
-      const gain = mem.prices[good] * 0.9 - price[good] * 1.1;
-      if (gain <= price[good] * 0.2 || (best && gain <= best.gain)) continue;
-      best = {
-        gain,
-        plan: {
-          stops: [
-            { town: here, buys: [{ good, qty: 20, maxPrice: Math.round(price[good] * 1.1) }], sells: [] },
-            { town: to, buys: [], sells: [{ good, qty: 'all', minPrice: Math.round(mem.prices[good] * 0.85) }] },
-          ],
-          repeat: true,
-        },
-      };
-    }
-  }
-  return best?.plan ?? null;
-}
-
-/** 행렬을 꾸렸는데 지시서가 없으면 보낸다 */
-export function caravanPlanStep(view: PlayerView): Command | null {
-  if (!view.caravan || view.caravan.plan || !view.caravan.here || view.location.kind !== 'town') return null;
-  const plan = bestRoute(view, view.location.town);
-  return plan ? { type: 'setCaravanPlan', plan } : null;
 }

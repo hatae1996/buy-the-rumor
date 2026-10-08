@@ -7,7 +7,8 @@ import { FOODS, GOODS, shelfLife } from '../economy';
 import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { cardById } from '../expedition';
-import { caravanPlanStep, createGrowthMind, growthStep, noteDay, noteMissing, type GrowthMind } from './growth';
+import { createGrowthMind, growthStep, noteDay, noteMissing, type GrowthMind } from './growth';
+import { caravanBigStep, createCaravanMind, type CaravanMind } from './caravanBig';
 import { bigOrderSell, bigPlanStep, bigTarget, holdForBigOrder, updateBigPlan, type BigPlan } from './bigOrder';
 import type { BotProfile } from './profiles';
 
@@ -24,10 +25,12 @@ export interface BotMind {
   growth: GrowthMind;
   /** 징조를 듣고 노리는 큰 주문 (0.0.7): 그 마을에 그 물품을 미리 모아 간다 */
   bigPlan: BigPlan | null;
+  /** 두 번째 행렬이 맡은 큰 주문 (0.0.8) */
+  caravan: CaravanMind;
 }
 
 export function createMind(): BotMind {
-  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind(), bigPlan: null };
+  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind(), bigPlan: null, caravan: createCaravanMind() };
 }
 
 /** 이 정도 지난 기억은 믿지 않는다 */
@@ -84,10 +87,18 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     if (c) return c;
   }
 
-  // 살 것 고르기 (말, 수레, 일꾼, 창고, 두 번째 행렬, 장비)
+  // 살 것 고르기 (말, 수레, 일꾼, 창고, 장비)
   if (profile.growth) {
-    const c = growthStep(view, profile.growth, mind.growth, once) ?? (caravanPlanStep(view) && once(caravanPlanStep(view)!));
+    const c = growthStep(view, profile.growth, mind.growth, once);
     if (c) return c;
+  }
+  // 두 번째 행렬은 큰 주문 도구 (0.0.8): 꾸리기, 한 번짜리 지시, 쉬면 풀기
+  {
+    const c = caravanBigStep(view, profile, mind.caravan, mind.bigPlan, days, once);
+    if (c) {
+      if (c.type === 'formCaravan') mind.growth.firsts.caravan ??= view.day;
+      return c;
+    }
   }
 
   // 장사할 짐을 다 모았으면 원정보다 떠나기가 먼저다 (원정 기회는 날마다 생겨 기다리면 끝이 없다)

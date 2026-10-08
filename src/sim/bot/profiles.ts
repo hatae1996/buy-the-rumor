@@ -33,8 +33,8 @@ export interface BotGrowth {
   /** 얻는 값이 하루 유지비(먹이, 일당 + 보관료)의 이 배는 되어야 산다 */
   payMargin: number;
   /**
-   * 두 번째 행렬을 꾸린다 (잘하는 봇만). 0.0.7: 행렬이 지시서대로 사고팔다 돈을 잃는 일이 잦아 기본 성향에서는 끈다
-   * (행렬 셈을 맞춘 뒤 장사꾼에 다시 켠다, questions.md 73번)
+   * 두 번째 행렬을 큰 주문 도구로 쓴다 (0.0.8, src/sim/bot/caravanBig.ts). 같은 길을 도는 반복 지시는 쓰지 않는다
+   * (0.0.7: 반복 지시로 장이 넘쳐 잃었다, questions.md 73번)
    */
   caravan: boolean;
   /** 이 돈이 모이면 두 번째 행렬을 생각한다 */
@@ -49,7 +49,7 @@ export const BOT_PROFILES: readonly BotProfile[] = [
     growth: { reserve: 80, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },
   // 원정은 안 나가고 싼 마을에서 사서 비싼 마을에 판다
   { id: 'trader', name: '장사꾼', trades: true, expeditions: false, expeditionsPerDay: 0, minMargin: 0.2, explore: 0.1, restAt: 7,
-    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: false, caravanGold: 800, timeShift: true } },
+    growth: { reserve: 100, upkeepDays: 10, horseGoal: false, gatherer: false, payMargin: 1.2, caravan: true, caravanGold: 450, timeShift: true } },
   // 기획서의 "평범하게 하는 사람": 원정도 조금, 장사도 조금
   { id: 'casual', name: '보통 사람', trades: true, expeditions: true, expeditionsPerDay: 2, minMargin: 0.3, explore: 0.08, restAt: 5,
     growth: { reserve: 60, upkeepDays: 10, horseGoal: false, gatherer: true, payMargin: 1.2, caravan: false, caravanGold: Infinity, timeShift: false } },
