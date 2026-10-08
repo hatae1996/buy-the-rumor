@@ -52,6 +52,11 @@ export function pieceCells(p: Pick<Piece, 'good' | 'x' | 'y' | 'rot'>): Cell[] {
   return shapeOf(p.good, p.rot).map(([dx, dy]) => [p.x + dx, p.y + dy] as const);
 }
 
+/** 짐 조각이 차지한 칸 수 (장날 신청으로 비워 둔 자리도 차지한 것으로 친다) */
+export function usedCells(board: Board): number {
+  return board.pieces.reduce((s, p) => s + shapeOf(p.good, p.rot).length, 0);
+}
+
 /** 그 자리에 놓을 수 있나 (except: 옮기는 중인 자기 자신) */
 export function fits(cart: Board, good: GoodId, x: number, y: number, rot: number, except?: number): boolean {
   const slots = new Set(cartSlots(cart.type).map(([sx, sy]) => key(sx, sy)));

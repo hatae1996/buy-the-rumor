@@ -1,5 +1,5 @@
 // 창고 (기획서 "성장", 0.0.5): 마을마다 빌리는 칸 판. 짐을 두고 다니고, 내가 없어도 그 마을 장날에 판다.
-// 수레 판과 같은 짐 조각 규칙을 쓰고, 음식은 창고에서도 상한다. 보관료는 날마다 낸다.
+// 수레 판과 같은 짐 조각 규칙을 쓰고, 음식은 창고에서도 상한다. 보관료는 짐이 차지한 칸 수만큼 날마다 낸다 (0.0.8).
 // 보관료가 밀리면 짐을 꺼내거나 팔 수 없고, 너무 오래 밀리면 창고지기가 짐을 거둬 간다(빚이 되지 않는다).
 import { cartCount, cartLots, createCart, type Cart } from '../cart';
 import { moveBetween } from '../hire/boards';
@@ -7,6 +7,7 @@ import { GROWTH } from '../constants';
 import type { GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
 import { hasBuilding } from '../growth/buildings';
+import { boardFee } from './fee';
 import type { WorldMap } from '../worldgen';
 
 const W = GROWTH.warehouse;
@@ -24,6 +25,11 @@ export interface Warehouse {
 
 export type WarehouseError = 'noWarehouse' | 'haveWarehouse' | 'warehouseNotEmpty' | 'warehouseOwed';
 type Err = WarehouseError | 'traveling' | 'notEnoughGold' | 'notEnoughGoods' | 'noRoom' | 'badQty' | 'ordersPending';
+
+/** 이 창고의 오늘 보관료 (짐이 차지한 칸 수만큼) */
+export function warehouseFeeOf(w: Warehouse): number {
+  return boardFee(w.board);
+}
 
 export function warehouseAt(p: PlayerState, town: number): Warehouse | null {
   return p.warehouses.find((w) => w.town === town) ?? null;
@@ -82,11 +88,13 @@ export function warehouseNight(state: EconomyState): void {
   const p = state.player;
   const keep: Warehouse[] = [];
   for (const w of p.warehouses) {
-    w.owed += W.rentPerDay;
+    w.owed += warehouseFeeOf(w);
     if (p.gold >= w.owed) {
-      p.gold -= w.owed;
-      state.towns[w.town]!.treasury += w.owed;
-      p.ledger.push({ day: state.day, kind: 'warehouse', what: 'rent', town: w.town, fee: w.owed });
+      if (w.owed > 0) {
+        p.gold -= w.owed;
+        state.towns[w.town]!.treasury += w.owed;
+        p.ledger.push({ day: state.day, kind: 'warehouse', what: 'rent', town: w.town, fee: w.owed });
+      }
       w.owed = 0;
       w.owedDays = 0;
     } else w.owedDays++;

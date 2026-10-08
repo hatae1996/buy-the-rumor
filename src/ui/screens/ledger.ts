@@ -45,7 +45,7 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
         ]
       : []),
     ...v.warehouses.map(
-      (w) => `<li class="row"><span><b>${townName(w.town)} 창고</b> <small class="muted">짐 ${w.count}개${w.owed ? ` · 밀린 보관료 ${money(w.owed)}` : ''}</small><br /><small>${piecesSummary(w.pieces)}</small></span></li>`,
+      (w) => `<li class="row"><span><b>${townName(w.town)} 창고</b> <small class="muted">짐 ${w.count}개 · 보관료 하루 ${money(w.fee)}${w.owed ? ` · 밀린 보관료 ${money(w.owed)}` : ''}</small><br /><small>${piecesSummary(w.pieces)}</small></span></li>`,
     ),
   ].join('');
 

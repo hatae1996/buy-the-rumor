@@ -24,7 +24,7 @@ export function openWarehouse(game: Game): void {
     if (!w) {
       body.innerHTML = `
         <p>짐을 두고 다니고, 내가 없어도 이 마을 장날에 팔 수 있어요. 채집꾼이 거둔 것도 여기에 모여요.</p>
-        <p class="muted">${GROWTH.warehouse.rows.length * GROWTH.warehouse.rows[0]!.length}칸 · 보관료 하루 ${money(GROWTH.warehouse.rentPerDay)} · 음식은 창고에서도 상해요.</p>
+        <p class="muted">${GROWTH.warehouse.rows.length * GROWTH.warehouse.rows[0]!.length}칸 · 보관료는 짐 ${GROWTH.warehouse.cellsPerCoin}칸마다 하루 ${money(1)} (비어 있으면 없어요) · 음식은 창고에서도 상해요.</p>
         <button type="button" class="primary-btn" data-rent ${v.gold < GROWTH.warehouse.deposit ? 'disabled' : ''}>빌리기 (${money(GROWTH.warehouse.deposit)})</button>`;
       body.querySelector('[data-rent]')?.addEventListener('click', () => sheet.send({ type: 'rentWarehouse' }));
       return;
@@ -44,7 +44,7 @@ export function openWarehouse(game: Game): void {
       )
       .join('');
     body.innerHTML = `
-      <p class="muted">짐 ${w.count}개 · 보관료 하루 ${money(w.rentPerDay)}${w.owed ? ` · <span class="warn">밀린 보관료 ${money(w.owed)}</span>` : ''}</p>
+      <p class="muted">짐 ${w.count}개 · 오늘 보관료 ${money(w.fee)} (${w.usedCells}/${w.cells}칸)${w.owed ? ` · <span class="warn">밀린 보관료 ${money(w.owed)}</span>` : ''}</p>
       <ul class="list">${rows || '<li class="muted">수레와 창고가 비었어요.</li>'}</ul>
       <p class="muted">"넣기·꺼내기"는 한 번에 다 옮겨요. "장에 내기"는 창고 짐 전부를 이 마을 다음 장날에 팔아요. 길을 떠나도 남아요.</p>
       <button type="button" class="link-btn" data-release ${w.count ? 'disabled' : ''}>빈 창고 돌려주기</button>`;

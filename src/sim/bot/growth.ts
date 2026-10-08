@@ -14,6 +14,7 @@ import type { CaravanPlan } from '../caravan';
 import type { HorseKind } from '../horses';
 import type { BotGrowth } from './profiles';
 import { seasonsOf, timeShiftStep } from './seasonal';
+import { WAREHOUSE_FULL_FEE } from '../warehouse/fee';
 
 /** 봇이 처음 산 날 (보고용) */
 export type GrowthKind = 'horse' | 'wagon' | 'porter' | 'gatherer' | 'warehouse' | 'caravan' | 'gear';
@@ -152,7 +153,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   for (const h of view.hires) {
     if (view.day - (g.hiredOn[h.id] ?? view.day) <= RECENT_DAYS) continue;
     const losing =
-      (h.role === 'gatherer' && perDay(g.gathered, view.day) < h.wage + GROWTH.warehouse.rentPerDay) ||
+      (h.role === 'gatherer' && perDay(g.gathered, view.day) < h.wage + WAREHOUSE_FULL_FEE) ||
       (h.role === 'porter' && view.day - g.porterUsed > RECENT_DAYS && !h.board?.pieces.length);
     if (!losing) continue;
     const c = once({ type: 'dismissHire', hireId: h.id });
@@ -223,7 +224,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   if (growth.gatherer && !has('gatherer') && view.canExpedition) {
     const offer = view.hireBoard.find((o) => o.role === 'gatherer');
     const hasWarehouse = view.warehouses.some((w) => w.town === here);
-    const cost = (offer?.wage ?? Infinity) + GROWTH.warehouse.rentPerDay;
+    const cost = (offer?.wage ?? Infinity) + WAREHOUSE_FULL_FEE;
     // 창고를 이미 빌렸으면 보관료는 유지비에 들어 있다
     const add = hasWarehouse ? (offer?.wage ?? 0) : cost;
     const ok = offer !== undefined && afford('gatherer', affordable(view, growth, offer.wage + (hasWarehouse ? 0 : GROWTH.warehouse.deposit), add));

@@ -1,6 +1,7 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, unitWeight, type Board, type Cart, type CartType } from '../cart';
+import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, unitWeight, usedCells, type Board, type Cart, type CartType } from '../cart';
+import { boardFee, WAREHOUSE_CELLS } from '../warehouse/fee';
 import {
   buyPrice,
   cartCost,
@@ -105,7 +106,11 @@ export interface WarehouseView {
   count: number;
   /** 밀린 보관료 (밀리면 꺼내거나 팔 수 없다) */
   owed: number;
-  rentPerDay: number;
+  /** 오늘 밤 보관료 (짐이 차지한 칸 수만큼, 0.0.8) */
+  fee: number;
+  /** 짐이 차지한 칸 / 창고 칸 */
+  usedCells: number;
+  cells: number;
   /** 물품마다 더 넣을 수 있는 양 (창고는 수레보다 높이 쌓는다) */
   room: Record<GoodId, number>;
 }
@@ -361,7 +366,8 @@ function upkeepView(state: EconomyState): PlayerView['upkeep'] {
   const feedTown = p.travel ? p.travel.to : p.town;
   const feed = Math.round(horses.reduce((s, h) => s + HORSES.kinds[h.kind].feed, 0) * feedPrice(state, feedTown));
   if (feed) parts.push({ what: '말 먹이 (어림)', perDay: feed });
-  if (p.warehouses.length) parts.push({ what: '창고 보관료', perDay: p.warehouses.length * GROWTH.warehouse.rentPerDay });
+  const storage = p.warehouses.reduce((s, w) => s + boardFee(w.board), 0);
+  if (storage) parts.push({ what: '창고 보관료', perDay: storage });
   return { total: parts.reduce((s, x) => s + x.perDay, 0), parts };
 }
 
@@ -657,7 +663,9 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       pieces: piecesView(w.board, state.orders),
       count: cartLots(w.board).reduce((s, l) => s + l.qty, 0),
       owed: w.owed,
-      rentPerDay: GROWTH.warehouse.rentPerDay,
+      fee: boardFee(w.board),
+      usedCells: usedCells(w.board),
+      cells: WAREHOUSE_CELLS,
       room: Object.fromEntries(GOODS.map((g) => [g, roomFor(w.board, g)])) as Record<GoodId, number>,
     })),
     hires: p.hires.map((h) => ({

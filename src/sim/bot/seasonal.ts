@@ -6,6 +6,7 @@ import type { Command, GoodId, PlayerView } from '../economy';
 import { basePrice, GOODS, shelfLife } from '../economy';
 import type { Season } from '../season';
 import type { GrowthMind } from './growth';
+import { WAREHOUSE_FULL_FEE } from '../warehouse/fee';
 
 /** 물품을 거두는 일 (생산 계절을 본다) */
 const PRODUCER: Partial<Record<GoodId, keyof typeof ECONOMY.seasonYield>> = {
@@ -85,7 +86,7 @@ export function timeShiftStep(view: PlayerView, reserve: number, g: GrowthMind, 
     if (price > basePrice(good) * BUY_BELOW || view.market.yesterday[good].supply === 0) continue;
     // 창고가 없으면 빌린다
     if (!view.warehouses.some((w) => w.town === here)) {
-      if (view.gold < reserve + GROWTH.warehouse.deposit + GROWTH.warehouse.rentPerDay * 30) continue;
+      if (view.gold < reserve + GROWTH.warehouse.deposit + WAREHOUSE_FULL_FEE * 30) continue;
       const c = once({ type: 'rentWarehouse' });
       if (c) {
         g.rentedOn[here] = view.day;

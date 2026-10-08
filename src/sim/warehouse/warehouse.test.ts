@@ -1,10 +1,11 @@
-// 창고 (기획서 "성장", 0.0.5): 빌리기, 넣고 빼기, 보관료, 상함, 내가 없어도 그 마을 장날에 팔기.
+// 창고 (기획서 "성장", 0.0.5): 빌리기, 넣고 빼기, 보관료(0.0.8: 칸 수만큼), 상함, 내가 없어도 그 마을 장날에 팔기.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { cartCount, createCart, loadGoods } from '../cart';
+import { cartCount, createCart, loadGoods, usedCells } from '../cart';
 import { GROWTH } from '../constants';
 import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
 import { netWorth } from '../ranking';
 import { generateWorld } from '../worldgen';
+import { boardFee, WAREHOUSE_CELLS, WAREHOUSE_FULL_FEE, warehouseFee } from './fee';
 import { warehouseAt } from './warehouse';
 
 const SEED = 20261008;
@@ -62,12 +63,17 @@ describe('보관료와 상함', () => {
     ok({ type: 'rentWarehouse' });
     loadGoods(s.player.cart, 'salt', 3);
     ok({ type: 'storeGoods', good: 'salt', qty: 3 });
+    const fee = boardFee(warehouseAt(s.player, s.player.town)!.board);
+    expect(fee).toBeGreaterThan(0);
     const gold = s.player.gold;
     advanceDay(s, map);
-    expect(s.player.gold).toBeLessThanOrEqual(gold - GROWTH.warehouse.rentPerDay);
+    expect(s.player.gold).toBeLessThanOrEqual(gold - fee);
     s.player.gold = 0;
     advanceDay(s, map);
-    expect(warehouseAt(s.player, s.player.town)!.owed).toBe(GROWTH.warehouse.rentPerDay);
+    expect(warehouseAt(s.player, s.player.town)!.owed).toBe(fee);
+    s.player.gold = 0;
+    advanceDay(s, map);
+    expect(warehouseAt(s.player, s.player.town)!.owed).toBe(fee * 2);
     expect(applyCommand(s, map, { type: 'retrieveGoods', good: 'salt', qty: 1 })).toEqual({ ok: false, error: 'warehouseOwed' });
     for (let d = 0; d < GROWTH.warehouse.maxOwedDays + 1; d++) {
       s.player.gold = 0;
@@ -75,6 +81,38 @@ describe('보관료와 상함', () => {
     }
     expect(s.player.warehouses).toEqual([]);
     expect(s.player.ledger.some((e) => e.kind === 'warehouse' && e.what === 'seized')).toBe(true);
+  });
+
+  it('보관료는 짐이 차지한 칸 수만큼: 5칸마다 1냥 (올림), 빈 창고는 0, 꽉 찬 15칸은 3 (0.0.8)', () => {
+    expect(WAREHOUSE_CELLS).toBe(15);
+    expect([0, 1, 5, 6, 10, 11, 15].map(warehouseFee)).toEqual([0, 1, 1, 2, 2, 3, 3]);
+    expect(WAREHOUSE_FULL_FEE).toBe(3);
+  });
+
+  it('빈 창고는 보관료가 없다', () => {
+    ok({ type: 'rentWarehouse' });
+    const rents = () => s.player.ledger.filter((e) => e.kind === 'warehouse' && e.what === 'rent').length;
+    const before = rents();
+    advanceDay(s, map);
+    expect(warehouseAt(s.player, s.player.town)!.owed).toBe(0);
+    expect(rents()).toBe(before);
+    expect(playerView(s, map).upkeep.parts.some((x) => x.what === '창고 보관료')).toBe(false);
+  });
+
+  it('곡물 조각 하나(2×2)는 4칸이라 1냥, 둘은 8칸이라 2냥, 꽉 차면 3냥', () => {
+    ok({ type: 'rentWarehouse' });
+    const w = warehouseAt(s.player, s.player.town)!;
+    const view = () => playerView(s, map).warehouses[0]!;
+    loadGoods(w.board, 'grain', 1);
+    expect(usedCells(w.board)).toBe(4);
+    expect(view()).toEqual(expect.objectContaining({ usedCells: 4, cells: 15, fee: 1 }));
+    // 한 조각에 네 개까지 쌓으니 5개째에서 두 번째 조각
+    loadGoods(w.board, 'grain', 4);
+    expect(view()).toEqual(expect.objectContaining({ usedCells: 8, fee: 2 }));
+    expect(playerView(s, map).upkeep.parts).toContainEqual({ what: '창고 보관료', perDay: 2 });
+    loadGoods(w.board, 'salt', 999);
+    expect(view().usedCells).toBeGreaterThan(10);
+    expect(view().fee).toBe(3);
   });
 
   it('음식은 창고에서도 상한다', () => {
@@ -101,7 +139,7 @@ describe('내가 없어도 그 마을 장날에 팔기', () => {
     advanceDay(s, map);
     const sold = s.player.ledger.filter((e) => e.kind === 'sell' && e.town === home && e.good === 'salt');
     expect(sold.length).toBeGreaterThan(0);
-    expect(s.player.gold).toBeGreaterThan(gold - GROWTH.warehouse.rentPerDay - 30);
+    expect(s.player.gold).toBeGreaterThan(gold - WAREHOUSE_FULL_FEE - 30);
     expect(playerView(s, map).warehouses[0]!.count).toBe(5 - sold.reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0));
   });
 
