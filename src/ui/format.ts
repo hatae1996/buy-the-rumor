@@ -76,6 +76,11 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   noHire: '그 일꾼은 이미 없어요.',
   boardNotEmpty: '짐꾼 수레의 짐을 먼저 옮기세요.',
   noBoard: '그 짐칸이 없어요.',
+  noCarter: '마부가 없어요. 여관 고용 게시판에서 마부를 고용하세요.',
+  haveCaravan: '두 번째 행렬이 이미 있어요.',
+  noCaravan: '두 번째 행렬이 없어요.',
+  caravanAway: '행렬이 이 마을에 와 있어야 해요. 불러들이세요.',
+  badPlan: '지시서를 확인해 주세요. 마을은 다섯 곳까지예요.',
   needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
   needGear: '그 장비가 없거나 망가졌어요.',
   haveGear: '이미 쓸 만한 장비가 있어요.',
@@ -83,13 +88,16 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   alreadyGuide: '안내인을 이미 고용했어요. 다음 원정에 따라가요.',
 };
 
+/** 누가 한 거래인지: 창고 짐, 두 번째 행렬 */
+const byText = (by: 'store' | 'caravan' | undefined): string => (by === 'caravan' ? '[행렬] ' : by === 'store' ? '[창고] ' : '');
+
 /** 장부 한 줄: 글과 돈 변화 */
 export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { text: string; amount: number | null } {
   switch (e.kind) {
     case 'buy':
-      return { text: `${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 샀어요 (개당 ${e.price})`, amount: -e.qty * e.price };
+      return { text: `${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 샀어요 (개당 ${e.price})`, amount: -e.qty * e.price };
     case 'sell':
-      return { text: `${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 팔았어요 (개당 ${e.price})`, amount: e.qty * e.price };
+      return { text: `${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 팔았어요 (개당 ${e.price})`, amount: e.qty * e.price };
     case 'travel':
       return { text: `${townName(e.from)} → ${townName(e.to)} 출발 (${e.days}일)`, amount: -e.fee };
     case 'spoil':
@@ -143,6 +151,11 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       const got = e.goods.map((g) => `${GOOD_NAME[g.good]} ${g.qty}`).join(', ');
       return { text: `채집꾼 ${e.name}: ${townName(e.town)} 창고에 ${got || '넣은 것 없음'}${e.lost ? ` (${e.lost}개는 둘 곳이 없어 버림)` : ''}`, amount: null };
     }
+    case 'caravan':
+      if (e.what === 'form') return { text: `${townName(e.town)}에서 두 번째 행렬을 꾸렸어요 (수레값)`, amount: -e.fee };
+      if (e.what === 'disband') return { text: `두 번째 행렬을 풀고 수레를 팔았어요`, amount: -e.fee };
+      if (e.what === 'travel') return { text: `두 번째 행렬이 ${townName(e.town)}에서 ${euro(townName(e.to ?? e.town))} 떠났어요`, amount: -e.fee };
+      return { text: `두 번째 행렬이 ${townName(e.town)}에 도착했어요`, amount: null };
     case 'warehouse':
       return e.what === 'rent'
         ? { text: `${townName(e.town)} 창고 보관료`, amount: -e.fee }

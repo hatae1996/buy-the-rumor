@@ -4,8 +4,8 @@ import { cartCount, cartLots, loadGoods, takeGoods, type Board } from '../cart';
 import type { GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
 
-/** 판 이름: 'cart', 'porter:<일꾼 번호>', 'warehouse'(지금 마을 창고) */
-export type BoardRef = 'cart' | 'warehouse' | `porter:${number}`;
+/** 판 이름: 'cart', 'porter:<일꾼 번호>', 'warehouse'(지금 마을 창고), 'caravan'(같은 마을에 와 있는 두 번째 행렬) */
+export type BoardRef = 'cart' | 'warehouse' | 'caravan' | `porter:${number}`;
 
 export type BoardError = 'noBoard' | 'warehouseOwed';
 
@@ -13,6 +13,11 @@ export type BoardError = 'noBoard' | 'warehouseOwed';
 export function resolveBoard(state: EconomyState, ref: BoardRef): Board | BoardError {
   const p = state.player;
   if (ref === 'cart') return p.cart;
+  if (ref === 'caravan') {
+    const c = p.caravan;
+    if (!c || p.travel || c.travel || c.town !== p.town) return 'noBoard';
+    return c.cart;
+  }
   if (ref === 'warehouse') {
     if (p.travel) return 'noBoard';
     const w = p.warehouses.find((x) => x.town === p.town);

@@ -29,7 +29,8 @@ export function buyHorse(state: EconomyState, kind: HorseKind): Err | null {
   if (p.travel) return 'traveling';
   const stable = stableAt(state, p.town);
   if (!stable) return 'noStable';
-  if (p.horses.length >= HORSES.maxPerOwner) return 'tooManyHorses';
+  // 두 행렬 합쳐 한 사람 최대 2필
+  if (p.horses.length + (p.caravan?.horses.length ?? 0) >= HORSES.maxPerOwner) return 'tooManyHorses';
   const price = buyPrice(stable, kind);
   if (price === null) return 'noHorseLeft';
   if (p.gold < price) return 'notEnoughGold';

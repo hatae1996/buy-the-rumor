@@ -7,6 +7,7 @@ import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Warehouse } from '../warehouse/warehouse';
 import type { Hire, HireRole } from '../hire/hire';
+import type { Caravan } from '../caravan/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -104,7 +105,8 @@ export interface PriceMemory {
 }
 
 export type LedgerEntry =
-  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number }
+  /** by: 창고 짐이나 두 번째 행렬이 한 거래 (없으면 내가 직접) */
+  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number; by?: 'store' | 'caravan' }
   | { day: number; kind: 'travel'; from: number; to: number; days: number; fee: number }
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
@@ -127,6 +129,8 @@ export type LedgerEntry =
   | { day: number; kind: 'earn'; town: number; gold: number }
   /** 수레방에서 수레를 바꿈 (쓰던 수레를 쳐 준 값을 뺀 값) */
   | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number }
+  /** 두 번째 행렬: 꾸림(수레값), 풂(수레를 쳐 준 값은 fee가 음수), 떠남(여비), 도착 */
+  | { day: number; kind: 'caravan'; what: 'form' | 'disband' | 'travel' | 'arrive'; town: number; to?: number; fee: number }
   /** 고용: 데려옴, 하루 일당 합, 일당을 못 받아 떠남, 내보냄 */
   | { day: number; kind: 'hire'; what: 'hire' | 'wage' | 'quit' | 'dismiss'; role: HireRole | null; name: string | null; town: number; fee: number }
   /** 채집꾼이 그 마을 창고에 넣은 것 (창고가 없거나 차서 버린 양) */
@@ -228,12 +232,16 @@ export interface PlayerState {
   warehouses: Warehouse[];
   /** 고용한 일꾼 (짐꾼, 채집꾼, 마부) */
   hires: Hire[];
+  /** 두 번째 행렬 (마부 + 말 + 수레). 없으면 null */
+  caravan: Caravan | null;
 }
 
 export type OrderOwner =
   | { kind: 'player' }
   /** 플레이어 창고: 그 마을 창고 짐으로 낸 팔기 신청 (내가 없어도 장날에 맞춰진다). 돈은 플레이어에게 */
   | { kind: 'store'; town: number }
+  /** 두 번째 행렬: 행렬 수레 짐으로 팔고, 내 돈으로 사서 행렬 수레에 싣는다 */
+  | { kind: 'caravan' }
   | { kind: 'worker'; id: number }
   | { kind: 'trader'; id: number }
   | { kind: 'citizens'; town: number }

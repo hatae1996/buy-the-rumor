@@ -24,6 +24,7 @@ export class Accounts {
     switch (owner.kind) {
       case 'player':
       case 'store':
+      case 'caravan':
         return this.state.player.gold;
       case 'worker':
         return this.workers.get(owner.id)!.gold;
@@ -39,6 +40,7 @@ export class Accounts {
     switch (owner.kind) {
       case 'player':
       case 'store':
+      case 'caravan':
         this.state.player.gold += amount;
         break;
       case 'worker':
@@ -59,7 +61,8 @@ export class Accounts {
     switch (owner.kind) {
       case 'player':
       case 'store':
-        // 플레이어 짐은 수레와 창고 판이다. 넣고 빼기는 receive와 place가 따로 다룬다
+      case 'caravan':
+        // 플레이어 짐은 수레, 창고, 행렬 수레 판이다. 넣고 빼기는 receive와 place가 따로 다룬다
         return null;
       case 'worker':
         return this.workers.get(owner.id)!.inv;
@@ -74,7 +77,7 @@ export class Accounts {
 
   /** 정산 뒤 물건을 넘긴다. 플레이어는 그 신청으로 잡아 둔 수레 자리에 넣고 자리를 푼다 */
   receive(owner: OrderOwner, lots: readonly Lot[], orderId?: number): void {
-    if (owner.kind === 'player' || owner.kind === 'store') {
+    if (owner.kind === 'player' || owner.kind === 'store' || owner.kind === 'caravan') {
       // 창고를 그새 잃었으면(보관료가 너무 밀림) 돌아갈 곳이 없다
       const board = this.boardOf(owner);
       if (!board) return;
@@ -100,12 +103,13 @@ export class Accounts {
     if (side === 'buy') {
       const cost = qty * limit;
       if (this.gold(owner) < cost) return null;
-      // 플레이어는 살 물건이 들어갈 수레 자리를 미리 잡는다. 자리가 없으면 신청할 수 없다
-      if (owner.kind === 'player' && !reserveRoom(this.state.player.cart, good, qty, order.id)) return null;
+      // 플레이어(내 수레, 행렬 수레)는 살 물건이 들어갈 자리를 미리 잡는다. 자리가 없으면 신청할 수 없다
+      const board = this.boardOf(owner);
+      if (board && !reserveRoom(board, good, qty, order.id)) return null;
       this.addGold(owner, -cost);
       order.reserved = cost;
     } else {
-      if (owner.kind === 'player' || owner.kind === 'store') {
+      if (owner.kind === 'player' || owner.kind === 'store' || owner.kind === 'caravan') {
         // 수레(창고)에서 꺼내되, 안 팔리면 돌아올 자리는 남겨 둔다
         const board = this.boardOf(owner);
         if (!board) return null;
@@ -127,6 +131,7 @@ export class Accounts {
   private boardOf(owner: OrderOwner): Board | null {
     if (owner.kind === 'player') return this.state.player.cart;
     if (owner.kind === 'store') return this.state.player.warehouses.find((w) => w.town === owner.town)?.board ?? null;
+    if (owner.kind === 'caravan') return this.state.player.caravan?.cart ?? null;
     return null;
   }
 
@@ -134,7 +139,8 @@ export class Accounts {
   cancel(order: Order): void {
     if (order.side === 'buy') {
       this.addGold(order.owner, order.reserved);
-      if (order.owner.kind === 'player') settleIncoming(this.state.player.cart, order.id, []);
+      const board = this.boardOf(order.owner);
+      if (board) settleIncoming(board, order.id, []);
     } else this.receive(order.owner, order.lots, order.id);
     order.reserved = 0;
     order.lots = [];

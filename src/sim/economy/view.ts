@@ -19,6 +19,7 @@ import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
 import { hireBoard, type HireOffer, type HireRole } from '../hire';
+import type { CaravanPlan } from '../caravan';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
@@ -77,6 +78,19 @@ export interface HireView {
   wage: number;
   /** 짐꾼 손수레 (아니면 null) */
   board: { rows: readonly string[]; pieces: CartPieceView[]; weight: number; maxWeight: number } | null;
+}
+
+export interface CaravanView {
+  carter: string | null;
+  horses: HorseView[];
+  cart: { type: CartType; name: string; rows: readonly string[]; pieces: CartPieceView[]; weight: number; maxWeight: number };
+  town: number;
+  travel: { from: number; to: number; daysLeft: number } | null;
+  plan: CaravanPlan | null;
+  stop: number;
+  recalled: boolean;
+  /** 내가 있는 마을에 와 있어 짐을 주고받을 수 있나 */
+  here: boolean;
 }
 
 export interface WarehouseView {
@@ -151,6 +165,8 @@ export interface PlayerView {
   hires: HireView[];
   /** 지금 마을 여관 고용 게시판 (짐꾼, 채집꾼, 마부). 정보원은 informant */
   hireBoard: HireOffer[];
+  /** 두 번째 행렬. 없으면 null */
+  caravan: CaravanView | null;
   /** 정보원 일당 (여관 게시판), 지금 마을에 이미 있나 */
   informant: { wage: number; here: boolean } | null;
   /** 지금 마을 건물 (화면 차례대로)과 할 일 도장(!). 길 위면 빈 목록 */
@@ -282,6 +298,30 @@ export interface ExpeditionView {
   /** 지금 카드 뒤에 남은 장 수 (연결 카드가 끼면 늘 수 있다) */
   left: number;
   haul: { good: GoodId; qty: number }[];
+}
+
+function caravanView(state: EconomyState): CaravanView | null {
+  const p = state.player;
+  const c = p.caravan;
+  if (!c) return null;
+  return {
+    carter: p.hires.find((h) => h.id === c.carter)?.name ?? null,
+    horses: c.horses.map((h) => horseView(h, null)),
+    cart: {
+      type: c.cart.type,
+      name: CART.types[c.cart.type].name,
+      rows: CART.types[c.cart.type].rows,
+      pieces: piecesView(c.cart, state.orders),
+      weight: cartWeight(c.cart),
+      maxWeight: maxWeight(c.cart, c.horses),
+    },
+    town: c.town,
+    travel: c.travel ? { from: c.travel.from, to: c.travel.to, daysLeft: c.travel.daysLeft } : null,
+    plan: c.plan,
+    stop: c.stop,
+    recalled: c.recalled,
+    here: !p.travel && !c.travel && c.town === p.town,
+  };
 }
 
 function apprenticeView(state: EconomyState, map: WorldMap): ApprenticeView | null {
@@ -527,6 +567,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
         : null,
     })),
     hireBoard: hireBoard(state, map),
+    caravan: caravanView(state),
     informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },
     buildings: p.travel
       ? []

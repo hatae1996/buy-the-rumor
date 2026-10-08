@@ -46,6 +46,7 @@ import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
+import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { dismiss, hire, porterBoards, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import type { EconomyState } from './state';
@@ -107,7 +108,12 @@ export type Command =
   | { type: 'hire'; role: HireRole }
   | { type: 'dismissHire'; hireId: number }
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
-  | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number };
+  | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number }
+  /** 두 번째 행렬: 꾸리기(마부, 내 말 중 일부, 이 마을 수레방에서 산 수레), 지시서 보내기, 불러들이기, 풀기 */
+  | { type: 'formCaravan'; horseIds: number[]; cart: CartType }
+  | { type: 'setCaravanPlan'; plan: CaravanPlan }
+  | { type: 'recallCaravan' }
+  | { type: 'disbandCaravan' };
 
 export type CommandError =
   | 'traveling'
@@ -136,6 +142,7 @@ export type CommandError =
   | WarehouseError
   | HireError
   | BoardError
+  | CaravanError
   | 'boardNotEmpty';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
@@ -288,6 +295,14 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return done(hire(state, map, cmd.role));
     case 'dismissHire':
       return done(dismiss(state, cmd.hireId));
+    case 'formCaravan':
+      return done(formCaravan(state, map, cmd.horseIds, cmd.cart));
+    case 'setCaravanPlan':
+      return done(setCaravanPlan(state, cmd.plan));
+    case 'recallCaravan':
+      return done(recallCaravan(state));
+    case 'disbandCaravan':
+      return done(disbandCaravan(state));
     case 'transferGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       return done(transferGoods(state, cmd.from, cmd.to, cmd.good, cmd.qty));

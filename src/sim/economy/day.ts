@@ -29,6 +29,7 @@ import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks }
 import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import { warehouseNight } from '../warehouse/warehouse';
 import { hireNight, porterBoards } from '../hire';
+import { caravanNight, caravanOrders } from '../caravan';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -88,6 +89,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 마구간이 먹인 곡물은 오늘 주민 신청에 들어갔다
   for (const town of state.towns) town.stableGrain = 0;
   for (const town of state.towns) byTown[town.id]!.push(...workshopOrders(town, accounts));
+  // 두 번째 행렬: 지시서 마을에 와 있으면 지시대로 신청한다
+  for (const o of caravanOrders(state, accounts)) byTown[o.town]!.push(o);
   // 대상단: 그날 장에서 한 물품을 한꺼번에 사거나 판다 (마을 금고를 거쳐 돈이 새지 않는다)
   for (const b of bulkTradesToday(state)) {
     const o = bulkOrder(state, accounts, b);
@@ -105,11 +108,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     });
     town.lastMarket = results;
     for (const f of fills) {
-      // 수레 짐과 창고 짐 모두 플레이어 거래다
-      if (f.owner.kind !== 'player' && f.owner.kind !== 'store') continue;
+      // 수레 짐, 창고 짐, 두 번째 행렬 모두 플레이어 거래다
+      if (f.owner.kind !== 'player' && f.owner.kind !== 'store' && f.owner.kind !== 'caravan') continue;
+      const by = f.owner.kind === 'player' ? undefined : f.owner.kind;
       if (f.side === 'sell' && f.owner.kind === 'player') sold += f.qty;
       if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
-      state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price });
+      state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price, ...(by ? { by } : {}) });
       noteTrade(state, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
@@ -173,6 +177,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   playerNight(state);
   playerHorsesNight(state);
   hireNight(state);
+  caravanNight(state, map);
   warehouseNight(state);
 
   // 하루가 지나 음식이 상한다
@@ -182,7 +187,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const t of state.traders) spoiled += sum(ageAndSpoil(t.inv, rate));
   for (const t of state.towns) if (t.workshop) spoiled += sum(ageAndSpoil(t.workshop, rate));
   // 수레와 창고: 음식은 창고에서도 상한다
-  for (const board of [p.cart, ...porterBoards(p), ...p.warehouses.map((w) => w.board)]) {
+  for (const board of [p.cart, ...porterBoards(p), ...(p.caravan ? [p.caravan.cart] : []), ...p.warehouses.map((w) => w.board)]) {
     for (const [good, qty] of Object.entries(ageCart(board, rate)) as [GoodId, number][]) {
       spoiled += qty;
       p.ledger.push({ day: state.day, kind: 'spoil', good, qty });
