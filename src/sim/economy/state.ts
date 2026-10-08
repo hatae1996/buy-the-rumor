@@ -8,6 +8,8 @@ import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Warehouse } from '../warehouse/warehouse';
 import type { Hire, HireRole } from '../hire/hire';
 import type { Caravan } from '../caravan/types';
+import type { BankAccount } from '../bank/bank';
+import type { OwnedWorkshop } from '../growth/workshop';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -234,6 +236,10 @@ export interface PlayerState {
   hires: Hire[];
   /** 두 번째 행렬 (마부 + 말 + 수레). 없으면 null */
   caravan: Caravan | null;
+  /** 은행 계좌 (도시 은행, 어느 도시에서나 같다). 이번 버전은 구조만 */
+  bank: BankAccount;
+  /** 가진 작업장 (염장소, 대장간). 이번 버전은 구조만 */
+  workshops: OwnedWorkshop[];
 }
 
 export type OrderOwner =

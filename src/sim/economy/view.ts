@@ -167,6 +167,8 @@ export interface PlayerView {
   hireBoard: HireOffer[];
   /** 두 번째 행렬. 없으면 null */
   caravan: CaravanView | null;
+  /** 은행 계좌 (도시에만 은행이 있다. 이번 버전은 보기만) */
+  bank: { deposit: number; loan: number; depositRate: number; loanRate: number };
   /** 정보원 일당 (여관 게시판), 지금 마을에 이미 있나 */
   informant: { wage: number; here: boolean } | null;
   /** 지금 마을 건물 (화면 차례대로)과 할 일 도장(!). 길 위면 빈 목록 */
@@ -568,6 +570,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     })),
     hireBoard: hireBoard(state, map),
     caravan: caravanView(state),
+    bank: { deposit: p.bank.deposit, loan: p.bank.loan, depositRate: GROWTH.bank.depositRate, loanRate: GROWTH.bank.loanRate },
     informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },
     buildings: p.travel
       ? []

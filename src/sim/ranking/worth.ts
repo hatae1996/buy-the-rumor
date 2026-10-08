@@ -1,6 +1,6 @@
 // 순자산 (기획서 "랭킹과 보상", 확정): 현금 + 예금 − 빚 + (짐과 말의 값 × 절반).
 // 짐은 마지막 장날 가격, 말은 구입가로 친다. 막판에 물건을 사 두기만 하는 꼼수를 막는다.
-// 예금과 빚은 은행이 생기면 더한다 (아직 0).
+// 예금과 빚은 은행 계좌(src/sim/bank)를 본다.
 import { cartLots } from '../cart';
 import { porterBoards } from '../hire/boards';
 import { GOODS, type GoodId } from '../economy/goods';
@@ -48,8 +48,9 @@ export function worthParts(state: EconomyState): WorthParts {
   const goods = GOODS.reduce((s, g) => s + qty[g] * lastMarketPrice(state, town, g), 0);
   const horses = [...p.horses, ...(p.caravan?.horses ?? [])].reduce((s, h) => s + h.price, 0);
   const cash = p.gold + reserved;
-  const deposit = 0;
-  const debt = 0;
+  // 은행 계좌 (도시 은행, 이번 버전은 구조만이라 늘 0)
+  const deposit = p.bank.deposit;
+  const debt = p.bank.loan;
   return { cash, deposit, debt, goods, horses, total: Math.round(cash + deposit - debt + (goods + horses) * HOLDINGS_SHARE) };
 }
 
