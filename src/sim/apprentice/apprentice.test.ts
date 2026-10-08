@@ -1,0 +1,165 @@
+// 견습 (기획서 "첫 5분의 흐름"): 7장면을 명령으로 차례로 지나고, 첫 이익은 반드시 나고, 탭이 하나씩 열린다.
+import { describe, expect, it } from 'vitest';
+import { cartLots } from '../cart';
+import { ECONOMY } from '../constants';
+import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
+import { hasExpeditions } from '../economy/player';
+import { generateWorld, type WorldMap } from '../worldgen';
+import { ALL_UNLOCKS, SCENES } from './index';
+
+const SEEDS = Array.from({ length: 15 }, (_, i) => i * 7919 + 3);
+
+function world(seed: number): { map: WorldMap; state: EconomyState } {
+  const map = generateWorld(seed);
+  return { map, state: createEconomy(map, seed, { warmupDays: ECONOMY.warmupDays, apprentice: true }) };
+}
+
+const ok = (state: EconomyState, map: WorldMap, cmd: Parameters<typeof applyCommand>[2]) => {
+  const r = applyCommand(state, map, cmd);
+  expect(r, JSON.stringify(cmd)).toEqual(expect.objectContaining({ ok: true }));
+};
+
+/** 견습을 처음부터 끝까지 지난다. picks: 첫 원정 카드마다 고를 쪽 */
+function graduate(state: EconomyState, map: WorldMap, picks = [1, 1, 0]): { firstProfit: number } {
+  const scene = () => state.player.apprentice?.scene;
+  // 1. 시작 → 2. 첫 원정 (스크립트 카드 3장)
+  ok(state, map, { type: 'startExpedition' });
+  expect(scene()).toBe('firstExpedition');
+  for (const pick of picks) ok(state, map, { type: 'chooseExpeditionCard', choice: pick });
+  expect(state.player.expedition).toBeNull();
+  // 3. 첫 짐 싣기: 짐을 하나 돌려 본다
+  expect(scene()).toBe('firstLoad');
+  ok(state, map, { type: 'packCart' });
+  // 4. 첫 판매: 추천 값(시세의 0.9)으로 다 내고 하루 보낸다
+  expect(scene()).toBe('firstSale');
+  const v = playerView(state, map);
+  const goldBefore = state.player.gold;
+  for (const g of new Set(v.cargo.map((l) => l.good))) {
+    const qty = v.cargo.filter((l) => l.good === g).reduce((s, l) => s + l.qty, 0);
+    if (g === 'meat') continue; // 고기는 내일 먹을 수도 있으니 남겨 둔다
+    ok(state, map, { type: 'placeSellOrder', good: g, qty, minPrice: Math.max(1, Math.round(v.market!.price[g] * 0.9)) });
+  }
+  advanceDay(state, map);
+  const firstProfit = state.player.gold - goldBefore;
+  // 낸 것은 모두 팔렸다 (견습 마을 손님)
+  expect(cartLots(state.player.cart).filter((l) => l.good !== 'meat')).toEqual([]);
+  // 5. 첫 신문: 소식 탭을 연다
+  expect(scene()).toBe('firstNews');
+  ok(state, map, { type: 'readNews' });
+  // 6. 첫 구매: 목재를 산다
+  expect(scene()).toBe('firstBuy');
+  const price = playerView(state, map).market!.price.wood;
+  ok(state, map, { type: 'placeBuyOrder', good: 'wood', qty: 2, maxPrice: Math.round(price * 1.1) });
+  advanceDay(state, map);
+  // 7. 졸업: 손수레를 받고 첫 출발
+  expect(scene()).toBe('graduation');
+  expect(state.player.cart.type).toBe('handcart');
+  ok(state, map, { type: 'travel', to: state.player.apprentice!.destination });
+  expect(state.player.apprentice).toBeNull();
+  return { firstProfit };
+}
+
+describe('견습 시작', () => {
+  it('자원지가 있는 생산 마을에서 빈 등짐과 금화 50으로, 마을 화면만 열고 시작한다', () => {
+    for (const seed of SEEDS) {
+      const { state } = world(seed);
+      const p = state.player;
+      expect(p.apprentice?.scene).toBe('start');
+      expect(hasExpeditions(state.towns[p.town]!)).toBe(true);
+      expect(p.gold).toBe(ECONOMY.apprentice.startGold);
+      expect(p.cart.type).toBe('pack');
+      expect(cartLots(p.cart)).toEqual([]);
+      expect(p.unlocks).toEqual({});
+      expect(p.apprentice!.destination).not.toBe(p.town);
+    }
+  });
+
+  it('견습 없이 시작하면 처음부터 모두 열려 있다 (봇, 두 번째 시즌부터)', () => {
+    const map = generateWorld(SEEDS[0]!);
+    const state = createEconomy(map, SEEDS[0]!);
+    expect(state.player.apprentice).toBeNull();
+    expect(Object.keys(state.player.unlocks).sort()).toEqual([...ALL_UNLOCKS].sort());
+  });
+});
+
+describe('7장면 (시드 15개)', () => {
+  it('명령으로 차례로 지나고, 첫 판매는 반드시 이익이 난다', () => {
+    for (const seed of SEEDS) {
+      const { map, state } = world(seed);
+      const { firstProfit } = graduate(state, map);
+      expect(firstProfit, `시드 ${seed}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('첫 원정은 무엇을 골라도 다 성공하고, 얻은 짐이 등짐에 다 들어간다', () => {
+    for (let combo = 0; combo < 8; combo++) {
+      const { map, state } = world(SEEDS[combo]!);
+      ok(state, map, { type: 'startExpedition' });
+      for (let i = 0; i < 3; i++) ok(state, map, { type: 'chooseExpeditionCard', choice: (combo >> i) & 1 });
+      const r = state.player.lastExpedition!;
+      expect(r.leftBehind, `조합 ${combo}`).toEqual([]);
+      expect(r.log.every((l) => l.outcome !== 'failure')).toBe(true);
+      if (combo !== 7) expect(r.loaded.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('탭이 장부 → 소식 → 지도 순서로 열린다', () => {
+    const { map, state } = world(SEEDS[1]!);
+    expect(playerView(state, map).unlocks).toEqual([]);
+    graduate(state, map);
+    expect(playerView(state, map).unlocks).toEqual(expect.arrayContaining(['ledger', 'news', 'map']));
+    expect(state.player.unlocks.ledger! <= state.player.unlocks.news!).toBe(true);
+    expect(state.player.unlocks.news! <= state.player.unlocks.map!).toBe(true);
+  });
+
+  it('첫 신문에는 졸업하고 갈 마을의 사건이 실린다', () => {
+    const { map, state } = world(SEEDS[2]!);
+    const dest = state.player.apprentice!.destination;
+    graduate(state, map);
+    expect(state.news.some((n) => n.text.includes(map.towns[dest]!.name))).toBe(true);
+  });
+
+  it('장면 수는 기획서대로 7개', () => {
+    expect(SCENES.map((s) => s.id)).toEqual(['start', 'firstExpedition', 'firstLoad', 'firstSale', 'firstNews', 'firstBuy', 'graduation']);
+  });
+});
+
+describe('견습 뒤에도 하나씩 열린다', () => {
+  it('다른 마을에 처음 닿으면 내가 아는 시세와 소문이 열린다', () => {
+    const { map, state } = world(SEEDS[3]!);
+    graduate(state, map);
+    expect(state.player.unlocks.memory).toBeUndefined();
+    while (state.player.travel) advanceDay(state, map);
+    expect(state.player.unlocks.memory).toBeDefined();
+    expect(state.player.unlocks.rumors).toBeDefined();
+  });
+
+  it('장날에 다 안 팔리면 최소 가격을 직접 고칠 수 있게 된다', () => {
+    const { map, state } = world(SEEDS[4]!);
+    graduate(state, map);
+    while (state.player.travel) advanceDay(state, map);
+    expect(state.player.unlocks.editPrice).toBeUndefined();
+    const wood = cartLots(state.player.cart).filter((l) => l.good === 'wood').reduce((s, l) => s + l.qty, 0);
+    if (wood === 0) return;
+    // 아무도 안 살 값으로 내놓는다
+    ok(state, map, { type: 'placeSellOrder', good: 'wood', qty: wood, minPrice: 999 });
+    advanceDay(state, map);
+    expect(state.player.unlocks.editPrice).toBeDefined();
+  });
+
+  it('금화 300이면 예약 주문, 도시에 가면 은행, 손수레가 자주 꽉 차면 말과 큰 수레가 열린다', () => {
+    const { map, state } = world(SEEDS[5]!);
+    graduate(state, map);
+    while (state.player.travel) advanceDay(state, map);
+    state.player.gold = ECONOMY.apprentice.reservationGold;
+    applyCommand(state, map, { type: 'readNews' });
+    expect(state.player.unlocks.reservation).toBeDefined();
+    state.player.fullDays = ECONOMY.apprentice.fullDaysForHorses;
+    applyCommand(state, map, { type: 'readNews' });
+    expect(state.player.unlocks.horses).toBeDefined();
+    const city = map.towns.find((t) => t.tier === 'city')!;
+    state.player.town = city.id;
+    applyCommand(state, map, { type: 'readNews' });
+    expect(state.player.unlocks.bank).toBeDefined();
+  });
+});

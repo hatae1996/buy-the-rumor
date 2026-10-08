@@ -78,11 +78,16 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       <h2>넣어 둔 신청</h2>
       <ul class="order-list">${orders}</ul>
     </section>
-    <section class="card">
-      <h2>내가 아는 시세</h2>
-      <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
-      ${known}
-    </section>
+    ${
+      // 다른 마을에 처음 닿으면 열린다 (기획서 "견습 뒤에도 시스템은 하나씩 열린다")
+      v.unlocks.includes('memory')
+        ? `<section class="card">
+            <h2>내가 아는 시세</h2>
+            <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
+            ${known}
+          </section>`
+        : ''
+    }
     <section class="card">
       <h2>손익</h2>
       <ul class="list">${ledger}</ul>

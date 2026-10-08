@@ -2,6 +2,7 @@
 // 이름이 같은 카드는 기획서 쪽을 따랐고, 지금만 있던 염전·길·광부 카드 등은 살렸다.
 // 숫자(피로, 확률, 얻는 양)는 초안이며 돌려보며 맞춘다.
 import type { CardDef } from '../types';
+import { APPRENTICE_CARDS } from './apprentice';
 import { EVENT_CARDS } from './events';
 import { FIELD_CARDS } from './field';
 import { FOREST_CARDS } from './forest';
@@ -20,7 +21,10 @@ export const CARDS: readonly CardDef[] = [
   ...SEASON_CARDS,
   ...EVENT_CARDS,
   ...MINE_CARDS,
+  ...APPRENTICE_CARDS,
 ];
+
+export { APPRENTICE_DECK } from './apprentice';
 
 const byId = new Map(CARDS.map((c) => [c.id, c]));
 

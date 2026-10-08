@@ -3,6 +3,7 @@ import type { ActiveEvent, ReactiveMemo, SeasonState } from '../events/types';
 import type { HeardRumor, RumorMill } from '../rumors/types';
 import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType } from '../cart';
+import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -202,6 +203,16 @@ export interface PlayerState {
   guide: boolean;
   /** 원정에서 도구를 쓴 횟수 (usesPerTool번 쓰면 도구 하나가 닳아 없어진다) */
   toolUses: number;
+  /** 견습 중이면 지금 장면. 견습을 마쳤거나 건너뛰었으면 null */
+  apprentice: ApprenticeState | null;
+  /** 하나씩 열리는 것과 열린 날 (탭, 내가 아는 시세, 소문, 최소 가격 고치기 등) */
+  unlocks: Partial<Record<UnlockId, number>>;
+  /** 처음 시작한 마을 (견습 마을). 다른 마을에 처음 닿으면 시세 기억과 소문이 열린다 */
+  homeTown: number;
+  /** 손수레 이상이 거의 꽉 찬 날 수 (말과 큰 수레가 열린다) */
+  fullDays: number;
+  /** 마지막으로 신문을 읽은 날 */
+  newsReadDay: number | null;
 }
 
 export type OrderOwner =

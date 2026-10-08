@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { euro, eulReul, iGa, numEunNeun } from './josa';
+import { euro, eulReul, iGa, numEunNeun, numEuro } from './josa';
 
 describe('조사', () => {
   it('으로/로: 받침이 없거나 ㄹ이면 로', () => {
@@ -23,5 +23,13 @@ describe('조사', () => {
     expect(numEunNeun(100)).toBe('100은');
     expect(numEunNeun(3)).toBe('3은');
     expect(numEunNeun(9)).toBe('9는');
+  });
+
+  it('숫자 뒤 으로/로: 받침이 없거나 ㄹ이면 로', () => {
+    expect(numEuro(4)).toBe('4로');
+    expect(numEuro(3)).toBe('3으로');
+    expect(numEuro(10)).toBe('10으로');
+    expect(numEuro(7)).toBe('7로');
+    expect(numEuro(16)).toBe('16으로');
   });
 });

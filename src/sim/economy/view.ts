@@ -17,12 +17,13 @@ import {
 } from '../horses';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
+import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, HORSES, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
-import { iGa } from '../josa';
+import { euro, iGa } from '../josa';
 import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, guideFee, needsMet, type GearKind } from '../expedition';
 import { blockedTiles, tollAt } from '../events';
 import type {
@@ -119,6 +120,12 @@ export interface PlayerView {
   tools: number;
   /** 여관 안내인: 고용 값과 고용했는지. 원정을 못 나가는 마을이나 길 위면 null */
   guide: { fee: number; hired: boolean } | null;
+  /** 견습 중이면 지금 장면 (기획서 "첫 5분의 흐름"). 아니면 null */
+  apprentice: ApprenticeView | null;
+  /** 열린 것 (탭, 내가 아는 시세, 소문, 최소 가격 고치기, 말과 큰 수레 등) */
+  unlocks: readonly UnlockId[];
+  /** 마지막으로 신문을 읽은 날 */
+  newsReadDay: number | null;
 }
 
 export interface HorseKindInfo {
@@ -178,6 +185,18 @@ function horseView(h: Horse, stable: ReturnType<typeof stableAt>): HorseView {
   };
 }
 
+export interface ApprenticeView {
+  scene: SceneId;
+  /** 몇 번째 장면 (1부터), 모두 몇 장면 */
+  step: number;
+  steps: number;
+  title: string;
+  /** 노상인 한두 줄 */
+  hint: string;
+  /** 졸업하고 갈 마을 */
+  destination: number;
+}
+
 export interface GearView {
   kind: GearKind;
   name: string;
@@ -222,6 +241,20 @@ export interface ExpeditionView {
   /** 지금 카드 뒤에 남은 장 수 (연결 카드가 끼면 늘 수 있다) */
   left: number;
   haul: { good: GoodId; qty: number }[];
+}
+
+function apprenticeView(state: EconomyState, map: WorldMap): ApprenticeView | null {
+  const ap = state.player.apprentice;
+  if (!ap) return null;
+  const def = sceneDef(ap.scene);
+  return {
+    scene: ap.scene,
+    step: SCENES.indexOf(def) + 1,
+    steps: SCENES.length,
+    title: def.title,
+    hint: def.hint.replaceAll('{destTo}', euro(map.towns[ap.destination]!.name)).replaceAll('{dest}', map.towns[ap.destination]!.name),
+    destination: ap.destination,
+  };
 }
 
 const FLAG_TEXT: Record<ActiveExpedition['flags'][number], string> = {
@@ -412,6 +445,9 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       maxUses: ECONOMY.expedition.gear[kind].durability,
     })),
     tools: cartCount(p.cart, 'tools'),
+    apprentice: apprenticeView(state, map),
+    newsReadDay: p.newsReadDay,
+    unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
     guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },
     carts: CART_TYPES.map((type) => ({
       type,

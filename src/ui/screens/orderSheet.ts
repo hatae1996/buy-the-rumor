@@ -1,7 +1,7 @@
 // 판매(구매) 신청 쪽지: 몇 개를, 얼마 이상(이하)으로. 장날에 정산된다.
 import { ECONOMY } from '../../sim/constants';
 import { count, sellableCount, type GoodId } from '../../sim/economy';
-import { eulReul } from '../../sim/josa';
+import { eulReul, numEuro } from '../../sim/josa';
 import { ERROR_TEXT, goodName, marketMood, money } from '../format';
 import type { Game } from '../game';
 import { openSheet } from '../sheet';
@@ -27,6 +27,7 @@ export function openOrderSheet(game: Game, good: GoodId): void {
   }
   const maxQty = () => (side === 'sell' ? have : Math.min(room, Math.floor(v.gold / Math.max(1, price))));
 
+  const canEditPrice = v.unlocks.includes('editPrice');
   const sheet = openSheet(`${goodName(good)} 신청`);
   const render = () => {
     qty = Math.max(0, Math.min(qty, maxQty()));
@@ -52,14 +53,19 @@ export function openOrderSheet(game: Game, good: GoodId): void {
           <button type="button" data-q="1">+1</button><button type="button" data-q="10">+10</button>
         </div>
       </div>
-      <div class="stepper-row">
-        <span class="stepper-label">${side === 'sell' ? '개당 이 값보다 싸게는 안 팔아요' : '개당 이 값보다 비싸게는 안 사요'}</span>
-        <div class="stepper">
-          <button type="button" data-p="-5">−5</button><button type="button" data-p="-1">−1</button>
-          <output>${price}</output>
-          <button type="button" data-p="1">+1</button><button type="button" data-p="5">+5</button>
-        </div>
-      </div>
+      ${
+        // 처음엔 추천 값으로 탭 한 번에. 첫 장날에 안 팔린 뒤로 값을 직접 고칠 수 있다
+        canEditPrice
+          ? `<div class="stepper-row">
+              <span class="stepper-label">${side === 'sell' ? '개당 이 값보다 싸게는 안 팔아요' : '개당 이 값보다 비싸게는 안 사요'}</span>
+              <div class="stepper">
+                <button type="button" data-p="-5">−5</button><button type="button" data-p="-1">−1</button>
+                <output>${price}</output>
+                <button type="button" data-p="1">+1</button><button type="button" data-p="5">+5</button>
+              </div>
+            </div>`
+          : `<p class="muted">추천 값 <b>${numEuro(price)}</b> ${side === 'sell' ? '팔아요' : '사요'}.</p>`
+      }
       <p class="order-summary">${
         side === 'sell'
           ? `다 팔리면 적어도 <b>${money(total)}</b> 받아요. 장날 값이 더 높으면 더 받아요.`

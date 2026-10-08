@@ -10,7 +10,7 @@ import { hasExpeditions } from '../economy/player';
 import type { ActiveExpedition, EconomyState, ExpeditionLogLine } from '../economy/state';
 import { createRng, mixSeed, type Rng } from '../rng';
 import type { WorldMap } from '../worldgen';
-import { cardById } from './cards';
+import { APPRENTICE_DECK, cardById } from './cards';
 import { buildDeck, EVENT_MEMORY_DAYS } from './deck';
 import { hasGear, needsMet, useGear, useTool, type GearError } from './gear';
 import { makeRumor } from './rumors';
@@ -42,13 +42,15 @@ export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionE
   if (p.fatigue >= ECONOMY.fatigue.max) return 'tooTired';
 
   const rng = createRng(mixSeed(state.seed, state.day, state.nextId++));
-  const { deck, markDays } = buildDeck(state, map, p.town, rng);
+  // 견습 첫 원정은 스크립트로 정한 쉬운 카드 3장 (반드시 성공)
+  const scripted = p.apprentice?.scene === 'start';
+  const { deck, markDays } = scripted ? { deck: [...APPRENTICE_DECK], markDays: {} } : buildDeck(state, map, p.town, rng);
   if (deck.length === 0) return 'noExpedition';
   p.expeditionChances -= 1;
   // 자원지를 직접 보니 그 마을 자원지 소문에 도장을 찍는다
   verifyByExpedition(state, p.town);
   // 한 번의 원정은 카드 3~4장. 안내인은 이번 원정 한 번만 따라간다
-  const total = rng.next() < 0.5 ? 3 : 4;
+  const total = scripted ? deck.length : rng.next() < 0.5 ? 3 : 4;
   const ex: ActiveExpedition = {
     town: p.town,
     rng: 0,

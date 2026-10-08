@@ -14,10 +14,13 @@ import { advanceDay } from './day';
 import { createSeason } from '../events/schedule';
 import { emptyRumorMill } from '../rumors/night';
 import { emptyHorseMarket } from '../horses/supply';
+import { ALL_UNLOCKS, startApprentice } from '../apprentice/progress';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
   warmupDays?: number;
+  /** 견습으로 시작한다 (처음 하는 플레이어). 아니면 모든 것이 열린 채로 시작한다 (봇, 시험, 두 번째 시즌부터) */
+  apprentice?: boolean;
 }
 
 export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = {}): EconomyState {
@@ -57,6 +60,11 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       gear: {},
       guide: false,
       toolUses: 0,
+      apprentice: null,
+      unlocks: {},
+      homeTown: 0,
+      fullDays: 0,
+      newsReadDay: null,
     },
     orders: [],
     news: [],
@@ -106,6 +114,9 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   if (opt.warmupDays) warmUp(state, map, opt.warmupDays);
   // 플레이어가 오는 날 첫 시즌이 시작된다 (사건 일정은 이때 짠다)
   state.season = createSeason(state, map, 1, state.day);
+  state.player.homeTown = state.player.town;
+  if (opt.apprentice) startApprentice(state, map, createRng(seed ^ 0xa99e));
+  else for (const id of ALL_UNLOCKS) state.player.unlocks[id] = state.day;
   return state;
 }
 

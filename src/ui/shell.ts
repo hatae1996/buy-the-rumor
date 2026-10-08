@@ -70,13 +70,21 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     const v = game.view();
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
-    $('[data-market]').textContent = `장날까지 ${durationText(game.msUntilMarket(now()))}`;
+    // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
+    $('[data-market]').textContent = v.apprentice ? '견습 중' : `장날까지 ${durationText(game.msUntilMarket(now()))}`;
+    // 탭은 하나씩 열린다 (견습: 마을 → 장부 → 소식 → 지도)
+    buttons.forEach((b) => {
+      const id = b.dataset.tab as TabId;
+      b.hidden = id !== 'town' && !v.unlocks.includes(id);
+    });
+    if (current !== 'town' && !v.unlocks.includes(current)) return select('town');
     const el = screens[current];
     if (current === 'town') {
       renderTown(el, game, v, {
         openOrder: (good) => openOrderSheet(game, good),
         cancelOrder: (id) => game.dispatch({ type: 'cancelOrder', orderId: id }),
         passDay: () => away(game.passDay(now())),
+        passApprenticeDay: () => away(game.passApprenticeDay(now())),
         restAtInn: () => game.dispatch({ type: 'restAtInn' }),
         openMeal: () => openMealSheet(game),
         startExpedition: () => {
@@ -106,6 +114,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     body.classList.toggle('is-map', id === 'map');
     body.scrollTop = 0;
     if (id === 'map' && !map) map = import('./mapScreen').then((m) => m.mountMapScreen(screens.map, game));
+    // 소식 탭을 열면 오늘 신문을 읽은 것으로 친다 (견습의 첫 신문 장면)
+    if (id === 'news' && game.view().newsReadDay !== game.view().day) game.dispatch({ type: 'readNews' });
     void map?.then((m) => m.setActive(id === 'map'));
     render();
   };

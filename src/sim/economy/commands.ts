@@ -44,6 +44,7 @@ import {
 } from '../horses';
 import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
+import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -88,7 +89,9 @@ export type Command =
   /** 닳은 장비를 수레의 도구 하나로 고친다 */
   | { type: 'repairGear'; gear: GearKind }
   /** 여관에서 안내인을 고용한다 (다음 원정 한 번) */
-  | { type: 'hireGuide' };
+  | { type: 'hireGuide' }
+  /** 신문을 읽었다 (견습: 첫 신문 장면이 끝난다. 나중에 신문값을 받는 자리) */
+  | { type: 'readNews' };
 
 export type CommandError =
   | 'traveling'
@@ -121,6 +124,16 @@ const fail = (error: CommandError): CommandResult => ({ ok: false, error });
 const done = (error: CommandError | null): CommandResult => (error ? fail(error) : { ok: true });
 
 export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandResult {
+  const result = runCommand(state, map, cmd);
+  if (result.ok) {
+    // 견습 장면을 넘기고, 조건이 맞으면 하나씩 연다
+    apprenticeAfterCommand(state, map, cmd);
+    updateUnlocks(state);
+  }
+  return result;
+}
+
+function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandResult {
   const p = state.player;
   const accounts = new Accounts(state);
   const owner = { kind: 'player' } as const;
@@ -234,6 +247,9 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return done(repairGear(state, cmd.gear));
     case 'hireGuide':
       return done(hireGuide(state));
+    case 'readNews':
+      p.newsReadDay = state.day;
+      return { ok: true };
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');

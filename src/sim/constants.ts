@@ -266,6 +266,19 @@ export const ECONOMY = {
   /** 새 세계를 플레이어가 오기 전에 미리 돌리는 날. 첫날부터 장에 물건이 돌게 한다 */
   warmupDays: 20,
 
+  /** 견습 (기획서 "처음 하는 플레이어"). 숫자는 초안 */
+  apprentice: {
+    /** 견습은 빈 등짐과 금화 50으로 시작한다 */
+    startGold: 50,
+    /** 견습 마을 손님: 플레이어가 팔면 시세의 이 배로 사 주고, 사면 이 배로 팔아 준다 */
+    buyMarkup: 1.1,
+    sellMarkdown: 0.95,
+    /** 견습 뒤 열리는 조건: 예약 주문은 금화 이만큼, 말과 큰 수레는 손수레가 이 비율 넘게 찬 날이 이만큼 */
+    reservationGold: 300,
+    fullShare: 0.9,
+    fullDaysForHorses: 3,
+  },
+
   player: {
     /** 시작 조건: 모두 같은 돈 (기획서 "시작 조건") */
     startGold: 200,

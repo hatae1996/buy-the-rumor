@@ -25,6 +25,7 @@ import { regrow } from './nodes';
 import { playerNight } from './player';
 import { rumorNight, type HeardRumor } from '../rumors';
 import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } from '../horses';
+import { apprenticeAfterDay, countFullDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -65,6 +66,10 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const days = travelDaysToday(state, map, season);
   const accounts = new Accounts(state);
 
+  // 견습 마을 손님: 견습 동안 플레이어 신청은 장날에 따로, 반드시 다 맞춘다
+  const apprenticeFills = settleApprenticeOrders(state, accounts);
+  for (const f of apprenticeFills) state.player.ledger.push({ day: state.day, kind: f.side, town: state.player.town, good: f.good, qty: f.qty, price: f.price });
+
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
   for (const o of state.orders) byTown[o.town]!.push(o);
@@ -82,6 +87,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   }
 
   // 2. 장날 정산
+  const offered = state.orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.qty, 0);
+  let sold = 0;
   const playerBuys: Partial<Record<GoodId, number>>[] = state.towns.map(() => ({}));
   const markets = state.towns.map((town) => {
     const { results, fills } = runMarket(town, byTown[town.id]!, accounts, rng, {
@@ -91,6 +98,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     town.lastMarket = results;
     for (const f of fills) {
       if (f.owner.kind !== 'player') continue;
+      if (f.side === 'sell') sold += f.qty;
       if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
       state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price });
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
@@ -101,6 +109,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     return results;
   });
   state.orders = [];
+  noteUnsold(state, offered, sold);
   const p = state.player;
   if (!p.travel) {
     const t = state.towns[p.town]!;
@@ -153,6 +162,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   }
   playerNight(state);
   playerHorsesNight(state);
+  countFullDay(state);
 
   // 하루가 지나 음식이 상한다
   let spoiled = 0;
@@ -188,6 +198,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     heard: rumors.heard,
     stamped: rumors.stamped,
   };
+  // 견습 장면과 하나씩 열리는 것
+  apprenticeAfterDay(state, map, state.day);
+  updateUnlocks(state);
   state.day++;
   state.rng = rng.state();
   return report;

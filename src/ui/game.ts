@@ -24,9 +24,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v7';
+const SAVE_KEY = 'buy-the-rumor/save/v8';
 
 interface SaveData {
   version: 1;
@@ -67,9 +67,10 @@ export class Game {
     return Game.fresh(now, now % 1_000_000_007);
   }
 
-  static fresh(now: number, seed: number): Game {
+  /** 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다 */
+  static fresh(now: number, seed: number, opt: { apprentice?: boolean } = {}): Game {
     const map = generateWorld(seed);
-    const game = new Game(map, createEconomy(map, map.seed, { warmupDays: ECONOMY.warmupDays }), now);
+    const game = new Game(map, createEconomy(map, map.seed, { warmupDays: ECONOMY.warmupDays, apprentice: opt.apprentice ?? true }), now);
     game.save();
     return game;
   }
@@ -93,8 +94,17 @@ export class Game {
     return Math.max(0, this.dayStartedAt + DAY_MS - now);
   }
 
-  /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null */
+  /** 견습 중인가. 견습 마을은 혼자 쓰는 마을이라 실제 시간이 흐르지 않는다 */
+  get inApprentice(): boolean {
+    return this.state.player.apprentice !== null;
+  }
+
+  /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null. 견습 중에는 시간이 멈춰 있다 */
   catchUp(now: number): AwaySummary | null {
+    if (this.inApprentice) {
+      this.dayStartedAt = now;
+      return null;
+    }
     const passed = Math.floor((now - this.dayStartedAt) / DAY_MS);
     if (passed <= 0) return null;
     const days = Math.min(passed, MAX_CATCH_UP_DAYS);
@@ -103,6 +113,12 @@ export class Game {
     this.dayStartedAt = passed > days ? now - ((now - this.dayStartedAt) % DAY_MS) : this.dayStartedAt + days * DAY_MS;
     this.changed();
     return summary;
+  }
+
+  /** 견습의 "하루 보내기": 견습 마을에서만 바로 다음 날로 넘긴다 */
+  passApprenticeDay(now: number): AwaySummary | null {
+    if (!this.inApprentice) return null;
+    return this.passDay(now);
   }
 
   /** 시험용: 기다리지 않고 장날을 연다 */

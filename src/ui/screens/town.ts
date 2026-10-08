@@ -15,6 +15,7 @@ export interface TownScreenActions {
   openOrder: (good: (typeof GOODS)[number]) => void;
   cancelOrder: (orderId: number) => void;
   passDay: () => void;
+  passApprenticeDay: () => void;
   restAtInn: () => void;
   openMeal: () => void;
   startExpedition: () => void;
@@ -30,7 +31,8 @@ export interface TownScreenActions {
 
 /** 탈것: 수레와 말, 말 쉬게 하기, 마구간(목장 마을), 수레방 */
 function rideCard(v: PlayerView): string {
-  if (!v.horseCare) return '';
+  // 견습 동안은 장면 하나에 새것 하나만: 탈것은 졸업 뒤에
+  if (!v.horseCare || v.apprentice) return '';
   const care = v.horseCare;
   const noHorse = v.horses.length < v.cart.horsesNeeded;
   const horses = v.horses.length
@@ -38,6 +40,8 @@ function rideCard(v: PlayerView): string {
        <p class="muted">밤마다 마구간에서 곡물을 먹여요 (지금 마을 한 개 ${money(care.feedPrice)}). 길 위에서는 수레에 실은 곡물을 먹어요.</p>`
     : `<p class="muted">말이 없어요. 사람이 끌면 ${v.cart.name} 무게 ${v.cart.maxWeight}까지. 말은 목장 마을 마구간에서 팔아요.</p>`;
   const tired = v.horses.some((h) => h.fatigue > 0);
+  // 말과 큰 수레는 손수레가 자주 꽉 차면 열린다
+  const horsesOpen = v.unlocks.includes('horses');
   return `<section class="card">
       <header class="card-head"><h2>탈것</h2><span class="badge">${v.cart.name}${noHorse ? ' · 말 필요' : ` · 무게 ${v.cart.maxWeight}`}</span></header>
       ${horses}
@@ -49,15 +53,26 @@ function rideCard(v: PlayerView): string {
               </button>`
             : ''
         }
-        ${v.stable ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
-        <button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>
+        ${v.stable && horsesOpen ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
+        ${horsesOpen ? '<button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>' : ''}
       </div>
     </section>`;
 }
 
-/** 소문: 어젯밤 소문꾼에게 들은 이야기, 술 한 잔, 전서구 */
+/** 견습: 지금 장면과 노상인 한마디, 하루 보내기 (대사와 연출은 나중 버전) */
+function apprenticeCard(v: PlayerView): string {
+  const ap = v.apprentice;
+  if (!ap) return '';
+  return `<section class="card pinned apprentice">
+      <header class="card-head"><h2>견습 · ${ap.title}</h2><span class="badge">${ap.step} / ${ap.steps}</span></header>
+      <p>${ap.hint}</p>
+      <div class="btn-row"><button type="button" class="secondary-btn" data-apprentice-day>하루 보내기<small>견습 마을에서만 바로 다음 날로</small></button></div>
+    </section>`;
+}
+
+/** 소문: 어젯밤 소문꾼에게 들은 이야기, 술 한 잔, 전서구 (다른 마을에 처음 닿으면 열린다) */
 function rumorCard(game: Game, v: PlayerView): string {
-  if (!v.drink) return '';
+  if (!v.drink || !v.unlocks.includes('rumors')) return '';
   const townName = (id: number) => game.map.towns[id]!.name;
   const lastNight = topNotes(
     v.rumors.filter((n) => n.day === v.day - 1 && n.via === 'gossip'),
@@ -138,6 +153,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
     : '<li class="muted">아직 낸 신청이 없어요.</li>';
 
   el.innerHTML = `
+    ${apprenticeCard(v)}
     <div class="town-banner">
       <img src="${village}" alt="" />
       <div class="ribbon"><span>${place}</span></div>
@@ -183,7 +199,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
                 ? '이 마을에 머무는 동안 하루에 한 번씩 원정 기회가 생겨요. 떠나면 사라져요.'
                 : '이 마을 주변에는 원정을 나갈 자원지가 없어요.'
             }</p>
-            <div class="btn-row">
+            ${v.apprentice ? '' : `<div class="btn-row">
               <button type="button" class="secondary-btn" data-gear>잡화점<small>장비 ${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 · 도구 ${v.tools}개</small></button>
               ${
                 v.guide
@@ -192,7 +208,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
                     </button>`
                   : ''
               }
-            </div>
+            </div>`}
             ${
               v.expedition
                 ? '<div class="btn-row"><button type="button" class="secondary-btn" data-exp-resume>원정 이어가기<small>펼친 카드가 있어요</small></button></div>'
@@ -217,6 +233,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
     b.addEventListener('click', () => act.cancelOrder(Number(b.dataset.cancel))),
   );
   el.querySelector('[data-pass-day]')!.addEventListener('click', act.passDay);
+  el.querySelector('[data-apprentice-day]')?.addEventListener('click', act.passApprenticeDay);
   el.querySelector('[data-inn]')?.addEventListener('click', act.restAtInn);
   el.querySelector('[data-meal]')?.addEventListener('click', act.openMeal);
   el.querySelector('[data-exp-start]')?.addEventListener('click', act.startExpedition);

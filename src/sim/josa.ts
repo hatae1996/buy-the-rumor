@@ -34,3 +34,12 @@ export function numEunNeun(n: number): string {
   const has = v === 0 || last === 0 || [1, 3, 6, 7, 8].includes(last);
   return `${v}${has ? '은' : '는'}`;
 }
+
+/** 숫자 읽는 소리로 으로/로: 4로, 3으로, 10으로, 7로(ㄹ 받침) */
+export function numEuro(n: number): string {
+  const v = Math.abs(Math.round(n));
+  const last = v % 10;
+  // 영·삼·육, 그리고 십·백·천으로 끝나면 으로 (일·칠·팔은 ㄹ 받침이라 로)
+  const eu = v === 0 || last === 0 || last === 3 || last === 6;
+  return `${v}${eu ? '으로' : '로'}`;
+}
