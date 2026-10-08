@@ -49,6 +49,8 @@ export function createGrowthMind(): GrowthMind {
 
 /** 이만큼 지난 일은 잊는다 (새로 들인 것도 이만큼 써 보고 판단한다) */
 const RECENT_DAYS = 10;
+/** 짐꾼은 몇 명까지 */
+const MAX_PORTERS = 1;
 /** 장비가 없어 못 고른 선택지를 이만큼 보면 산다 */
 const GEAR_REASON = 2;
 /** 원정 값을 몇 개까지 기억하나 */
@@ -192,8 +194,11 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     }
   }
 
-  // 5. 짐꾼: 두고 온 짐이나 수레가 작아 못 산 몫의 값이 일당보다 크면 (짐꾼 수레에도 장에서 산 짐을 싣는다)
-  if (!has('porter')) {
+  // 5. 짐꾼: 두고 온 짐이나 수레가 작아 못 산 몫의 값이 일당보다 크면 (짐꾼 수레에도 장에서 산 짐을 싣는다).
+  // 데려온 뒤에도 여전히 모자라면 한 명 더 (MAX_PORTERS까지). 새로 데려온 짐꾼은 열흘 써 보고 판단한다
+  const porterCount = view.hires.filter((h) => h.role === 'porter').length;
+  const lastPorter = Math.max(-Infinity, ...view.hires.filter((h) => h.role === 'porter').map((h) => g.hiredOn[h.id] ?? view.day));
+  if (porterCount < MAX_PORTERS && view.day - lastPorter > RECENT_DAYS) {
     const offer = view.hireBoard.find((o) => o.role === 'porter');
     if (offer && afford('porter', affordable(view, growth, offer.wage, offer.wage)) && roomPerDay >= offer.wage * growth.payMargin) {
       const c = mark('porter', once({ type: 'hire', role: 'porter' }));

@@ -33,6 +33,14 @@ describe('플레이어 봇', () => {
     }
   });
 
+  it('장사가 주 수입이다: 시즌 끝 순자산 가운데 값이 장사꾼 > 원정꾼 (0.0.6 "벌이의 균형")', () => {
+    const median = (id: string) => {
+      const w = runs.filter((r) => r.run.profile.id === id).map((r) => r.run.worth.at(-1)!).sort((a, b) => a - b);
+      return w[Math.floor(w.length / 2)]!;
+    };
+    expect(median('trader')).toBeGreaterThan(median('gatherer') * 1.5);
+  });
+
   it('장사꾼 봇도 실제로 사고팔고 마을을 옮긴다', () => {
     for (const { seed, run } of runs.filter((r) => r.run.profile.id === 'trader')) {
       expect(run.trades, `시드 ${seed}`).toBeGreaterThan(5);

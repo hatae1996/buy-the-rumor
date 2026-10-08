@@ -84,8 +84,14 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     if (c) return c;
   }
 
+  // 장사할 짐을 다 모았으면 원정보다 떠나기가 먼저다 (원정 기회는 날마다 생겨 기다리면 끝이 없다)
+  const fillNow = view.cart.weight / Math.max(1, view.cart.maxWeight);
+  const tripReady =
+    mind.plan !== null && mind.plan.to !== here && (mind.plan.days >= BUY_DAYS || fillNow >= LOAD_FULL) && !view.orders.some((o) => o.side === 'buy');
+
   // 2. 원정
   if (
+    !tripReady &&
     profile.expeditions &&
     view.canExpedition &&
     view.expeditionChances > 0 &&
@@ -189,23 +195,24 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     } else noSource = true;
   }
 
+  // 시세는 장날을 겪어야 기억에 남으니, 이 마을 장날을 한 번은 보고 떠난다
+  const sawHere = (view.memory[here]?.day ?? -Infinity) >= view.day - 1;
+
   // 원정도 하는 봇이 원정할 수 없는 마을에서 장사거리도 없으면 가까운 자원지 마을로 간다 (놀면서 말 먹이만 내지 않게)
-  if (profile.expeditions && !view.canExpedition && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
+  if (profile.expeditions && sawHere && !view.canExpedition && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
     const c = goToResourceTown(view, map, here, days, once);
     if (c) return c;
   }
-
-  // 시세는 장날을 겪어야 기억에 남으니, 이 마을 장날을 한 번은 보고 떠난다
-  const sawHere = (view.memory[here]?.day ?? -Infinity) >= view.day - 1;
   if (profile.trades && sawHere && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
     const known = Object.entries(view.memory).filter(([id, m]) => Number(id) !== here && view.day - m.day <= MEMORY_TRUST_DAYS).length;
-    // 아는 길에 남는 장사가 없으면 가장 오래 못 본 마을을 둘러본다
-    if (known < SCOUT_TOWNS || noSource) {
+    // 아는 길에 남는 장사가 없으면 가장 오래 못 본 마을을 둘러본다 (원정할 수 있는 마을이면 원정하며 기다린다)
+    const rescout = noSource && !(profile.expeditions && view.canExpedition);
+    if (known < SCOUT_TOWNS || rescout) {
       const unknown = map.towns
-        .filter((t) => t.id !== here && Number.isFinite(days[here]![t.id]!) && (noSource || view.day - (view.memory[t.id]?.day ?? -Infinity) > MEMORY_TRUST_DAYS))
+        .filter((t) => t.id !== here && Number.isFinite(days[here]![t.id]!) && (rescout || view.day - (view.memory[t.id]?.day ?? -Infinity) > MEMORY_TRUST_DAYS))
         .sort(
           (a, b) =>
-            Number(b.tier === 'city') - Number(a.tier === 'city') ||
+            (known < SCOUT_TOWNS ? Number(b.tier === 'city') - Number(a.tier === 'city') : 0) ||
             (view.memory[a.id]?.day ?? -Infinity) - (view.memory[b.id]?.day ?? -Infinity) ||
             days[here]![a.id]! - days[here]![b.id]!,
         )[0];

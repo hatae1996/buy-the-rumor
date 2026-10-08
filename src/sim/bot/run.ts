@@ -15,6 +15,8 @@ export interface BotRun {
   worth: number[];
   /** 날마다 가진 것의 온값 (현금 + 예금 − 빚 + 짐 + 말). 하루 벌이는 이것의 변화로 잰다 (순자산은 짐을 절반만 쳐서 산 날 줄어 보인다) */
   wealth: number[];
+  /** 날마다 하루 유지비 (일당, 말 먹이, 보관료) */
+  upkeep: number[];
   gold: number[];
   trades: number;
   expeditions: number;
@@ -45,11 +47,19 @@ export function runBot(seed: number, profile: BotProfile, opt: BotRunOptions, wo
   return runBotOn(state, map, profile, opt);
 }
 
+/** 하루 벌이: from일부터 to일까지 가진 것의 온값이 하루에 는 양 (시작 200에서) */
+export function dailyIncome(run: BotRun, from: number, to: number, start = 200): number {
+  const w = [start, ...run.wealth];
+  const b = Math.min(to, w.length - 1);
+  const a = Math.min(from, b - 1);
+  return (w[b]! - w[a]!) / Math.max(1, b - a);
+}
+
 export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile, opt: BotRunOptions): BotRun {
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, worth: [], wealth: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
+  const run: BotRun = { profile, worth: [], wealth: [], upkeep: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
 
@@ -69,6 +79,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     run.worth.push(netWorth(state));
     const p = worthParts(state);
     run.wealth.push(Math.round(p.cash + p.deposit - p.debt + p.goods + p.horses));
+    run.upkeep.push(playerView(state, map).upkeep.total);
     run.gold.push(state.player.gold);
   }
   run.commandsPerDay = commands / Math.max(1, opt.days);
