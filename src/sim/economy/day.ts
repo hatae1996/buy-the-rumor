@@ -178,6 +178,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     p.town = p.travel.to;
     p.travel = null;
     arrived = p.town;
+    if (!p.visited.includes(p.town)) p.visited.push(p.town);
   }
   playerNight(state);
   playerHorsesNight(state);

@@ -81,6 +81,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   noCaravan: '두 번째 행렬이 없어요.',
   caravanAway: '행렬이 이 마을에 와 있어야 해요. 불러들이세요.',
   badPlan: '지시서를 확인해 주세요. 마을은 다섯 곳까지예요.',
+  badArrangement: '짐 배치가 맞지 않아요. 다시 놓아 주세요.',
   needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
   needGear: '그 장비가 없거나 망가졌어요.',
   haveGear: '이미 쓸 만한 장비가 있어요.',

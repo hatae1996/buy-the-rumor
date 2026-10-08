@@ -243,6 +243,8 @@ export interface PlayerState {
   workshops: OwnedWorkshop[];
   /** 알림 설정 (종류별 켜고 끄기, 하루 상한, 조용한 시간). 실제 푸시는 서버 버전에서 */
   notify: NotifySettings;
+  /** 가 본 마을 (플레이어가 아는 것: 서버가 이 경계로 데이터를 보낸다) */
+  visited: number[];
 }
 
 export type OrderOwner =

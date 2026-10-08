@@ -168,6 +168,8 @@ export interface PlayerView {
   hireBoard: HireOffer[];
   /** 두 번째 행렬. 없으면 null */
   caravan: CaravanView | null;
+  /** 가 본 마을 */
+  visited: readonly number[];
   /** 알림 설정. askNow: 견습 졸업이라 알림 허락을 물을 때 */
   notify: NotifySettings & { askNow: boolean };
   /** 은행 계좌 (도시에만 은행이 있다. 이번 버전은 보기만) */
@@ -573,6 +575,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     })),
     hireBoard: hireBoard(state, map),
     caravan: caravanView(state),
+    visited: p.visited,
     notify: { ...p.notify, askNow: p.apprentice?.scene === 'graduation' && p.notify.askedDay === null },
     bank: { deposit: p.bank.deposit, loan: p.bank.loan, depositRate: GROWTH.bank.depositRate, loanRate: GROWTH.bank.loanRate },
     informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },

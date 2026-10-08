@@ -76,6 +76,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       bank: emptyAccount(),
       workshops: [],
       notify: defaultNotifySettings(),
+      visited: [],
     },
     orders: [],
     news: [],
@@ -126,6 +127,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   // 플레이어가 오는 날 첫 시즌이 시작된다 (사건 일정은 이때 짠다)
   state.season = createSeason(state, map, 1, state.day);
   state.player.homeTown = state.player.town;
+  state.player.visited = [state.player.town];
   if (opt.apprentice) startApprentice(state, map, createRng(seed ^ 0xa99e));
   else for (const id of ALL_UNLOCKS) state.player.unlocks[id] = state.day;
   // 이번 시즌 기록을 연다 (수완가 부문의 시작 자금)

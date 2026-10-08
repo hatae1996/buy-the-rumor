@@ -34,6 +34,7 @@ export function startApprentice(state: EconomyState, map: WorldMap, rng: Rng): v
     .sort((a, b) => days[a.id]! - days[b.id]! || a.id - b.id)[0]!.id;
   p.town = town;
   p.homeTown = town;
+  p.visited = [town];
   p.gold = A.startGold;
   p.cart = createCart('pack');
   p.fatigue = 0;
@@ -89,7 +90,12 @@ export function apprenticeAfterCommand(state: EconomyState, map: WorldMap, cmd: 
   const is = (scene: SceneId) => ap.scene === scene;
   if (is('start') && cmd.type === 'startExpedition') advance(state, map);
   else if (is('firstExpedition') && !state.player.expedition) advance(state, map);
-  else if (is('firstLoad') && (cmd.type === 'moveCartPiece' || cmd.type === 'rotateCartPiece' || cmd.type === 'packCart')) advance(state, map);
+  else if (
+    is('firstLoad') &&
+    (cmd.type === 'moveCartPiece' || cmd.type === 'rotateCartPiece' || cmd.type === 'packCart' || cmd.type === 'arrangeCart')
+  ) {
+    advance(state, map);
+  }
   else if (is('firstNews') && cmd.type === 'readNews') advance(state, map);
   else if (is('graduation') && cmd.type === 'travel') {
     // 첫 출발: 견습을 마치고 공유 시장으로 들어간다

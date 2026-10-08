@@ -48,7 +48,8 @@ import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
-import { dismiss, hire, porterBoards, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
+import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
+import { dismiss, hire, porterBoards, resolveBoard, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import type { EconomyState } from './state';
 
@@ -67,6 +68,8 @@ export type Command =
   | { type: 'rotateCartPiece'; pieceId: number }
   /** 빈칸 정리 */
   | { type: 'packCart' }
+  /** 수레(또는 내 판) 최종 배치: 폰이 퍼즐을 풀고 마지막 자리만 보낸다. 시뮬이 모양·겹침을 다시 검사한다 */
+  | { type: 'arrangeCart'; board?: BoardRef; pieces: Placement[] }
   /** 짐 조각을 버린다 */
   | { type: 'discardCartPiece'; pieceId: number }
   /** 원정을 나간다 (기회 1개를 쓴다) */
@@ -146,6 +149,7 @@ export type CommandError =
   | HireError
   | BoardError
   | CaravanError
+  | ArrangeError
   | 'boardNotEmpty';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
@@ -250,6 +254,11 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return rotatePiece(p.cart, cmd.pieceId) ? { ok: true } : fail('cantPlace');
     case 'packCart':
       return packCart(p.cart) ? { ok: true } : fail('cantPlace');
+    case 'arrangeCart': {
+      const board = resolveBoard(state, cmd.board ?? 'cart');
+      if (typeof board === 'string') return fail(board);
+      return done(arrangeBoard(board, cmd.pieces));
+    }
     case 'startExpedition':
       return done(startExpedition(state, map));
     case 'chooseExpeditionCard':
