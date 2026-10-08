@@ -41,7 +41,15 @@ export function horseDays(d: number, horses: readonly Horse[]): number {
   return Math.max(1, Math.round(d * speedFactor(horses)));
 }
 
-/** 말이 하루에 먹는 곡물 */
+/**
+ * 오늘 먹는 곡물 개수. 하루 먹이가 0.5면 이틀에 한 개 (날짜로 정해져 따로 기억하지 않는다)
+ */
+export function grainToday(kind: Horse['kind'], day: number): number {
+  const feed = HORSES.kinds[kind].feed;
+  return Math.floor((day + 1) * feed) - Math.floor(day * feed);
+}
+
+/** 말이 하루에 먹는 곡물 (평균, 0.5 단위) */
 export function feedPerDay(horses: readonly Horse[]): number {
   return horses.reduce((s, h) => s + HORSES.kinds[h.kind].feed, 0);
 }

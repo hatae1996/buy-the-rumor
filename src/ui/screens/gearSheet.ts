@@ -38,7 +38,7 @@ export function openGearSheet(game: Game): void {
       })
       .join('');
     sheet.body.innerHTML = `
-      <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 쓰다 보면 닳고, 수레에 실은 도구 하나로 고쳐요. (수레의 도구 ${v.tools}개)</p>
+      <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 쓰다 보면 닳고, 수레에 실은 도구 하나로 고쳐요. (수레의 도구 ${v.tools}개${v.tools ? `, 지금 도구 ${v.toolUsesLeft}번 더` : ''})</p>
       <ul class="list">${rows}</ul>
       ${done ? `<p>${done}</p>` : ''}
       ${error ? `<p class="error">${error}</p>` : ''}`;

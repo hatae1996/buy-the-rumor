@@ -12,6 +12,7 @@ import { seasonOfDay, SPRING } from '../season';
 import { generateWorld, type WorldMap } from '../worldgen';
 import {
   buyPrice,
+  grainToday,
   horseDays,
   horseMorning,
   lacksHorses,
@@ -184,16 +185,27 @@ describe('먹이와 체력', () => {
     expect(withStable - citizenDemand(state, t, 'grain', season)).toBeCloseTo(HORSES.kinds.draft.feed);
   });
 
+  it('하루 먹이 0.5인 조랑말은 이틀에 곡물 한 개를 먹는다 (0.0.6)', () => {
+    expect(HORSES.kinds.pony.feed).toBe(0.5);
+    expect(HORSES.kinds.draft.feed).toBe(1);
+    expect(HORSES.kinds.swift.feed).toBe(1);
+    const days = Array.from({ length: 10 }, (_, d) => grainToday('pony', d));
+    expect(days.reduce((a, b) => a + b, 0)).toBe(5);
+    expect(days.every((n) => n === 0 || n === 1)).toBe(true);
+    expect(Array.from({ length: 10 }, (_, d) => grainToday('draft', d))).toEqual(Array(10).fill(1));
+  });
+
   it('길 위에서는 수레 곡물을 먹고, 없으면 굶다가 마구간으로 돌아가 버린다', () => {
     const { map, state, town } = atStable();
-    applyCommand(state, map, { type: 'buyHorse', kind: 'pony' });
+    stableAt(state, town)!.stock.draft = 3;
+    applyCommand(state, map, { type: 'buyHorse', kind: 'draft' });
     state.player.travel = { from: town, to: town, days: 99, daysLeft: 99 };
     loadGoods(state.player.cart, 'grain', 1);
     advanceDay(state, map);
     expect(state.player.horses[0]!.hungry).toBe(0);
     for (let d = 0; d < HORSES.runAwayAfterHungryDays; d++) advanceDay(state, map);
     expect(state.player.horses).toEqual([]);
-    expect(stableAt(state, town)!.stock.pony).toBe(3);
+    expect(stableAt(state, town)!.stock.draft).toBe(3);
     expect(state.player.ledger.some((e) => e.kind === 'horse' && e.what === 'lost')).toBe(true);
   });
 

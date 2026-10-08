@@ -10,6 +10,7 @@ import { createRng } from '../rng';
 import { generateWorld } from '../worldgen';
 import { CARDS, cardById } from './cards';
 import { chooseExpeditionCard } from './expedition';
+import { useTool } from './gear';
 import type { Effect } from './types';
 
 const X = ECONOMY.expedition;
@@ -83,13 +84,20 @@ describe('카드 데이터 (기획서 약 60장 + 지금 카드)', () => {
 });
 
 describe('도구', () => {
-  it('도구가 없으면 고를 수 없고, 있으면 하나를 쓴다', () => {
+  it('도구가 없으면 고를 수 없고, 있으면 한 번 쓴다 (도구 하나로 4번, 0.0.6)', () => {
     onCard('oak');
     expect(choose(0)).toEqual({ ok: false, error: 'needTool' });
     expect(playerView(s, map).expedition!.card.choices[0]!.disabled).not.toBeNull();
     loadGoods(s.player.cart, 'tools', 2);
     expect(choose(0).ok).toBe(true);
-    expect(cartCount(s.player.cart, 'tools')).toBe(2 - 1 / X.usesPerTool);
+    expect(X.usesPerTool).toBe(4);
+    expect(cartCount(s.player.cart, 'tools')).toBe(2);
+    expect(s.player.toolUses).toBe(1);
+    expect(playerView(s, map).toolUsesLeft).toBe(3);
+    // 세 번 더 쓰면 도구 하나가 닳아 없어진다
+    expect(useTool(s.player, 3)).toBe(1);
+    expect(cartCount(s.player.cart, 'tools')).toBe(1);
+    expect(playerView(s, map).toolUsesLeft).toBe(4);
     expect(s.player.expedition!.haul.find((h) => h.good === 'wood')?.qty).toBeGreaterThan(0);
   });
 });

@@ -82,7 +82,7 @@ describe('꺼내기와 상하기', () => {
     const c = createCart('pack');
     loadGoods(c, 'fish', 2);
     loadGoods(c, 'ore', 1);
-    for (let d = 0; d < 2; d++) expect(ageCart(c, 1)).toEqual({});
+    for (let d = 0; d < 3; d++) expect(ageCart(c, 1)).toEqual({});
     expect(ageCart(c, 1)).toEqual({ fish: 2 });
     expect(c.pieces.map((p) => p.good)).toEqual(['ore']);
   });

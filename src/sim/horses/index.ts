@@ -1,5 +1,5 @@
 export * from './types';
-export { horsesNeeded, lacksHorses, horsePull, maxWeight, speedFactor, horseDays, feedPerDay } from './pull';
+export { horsesNeeded, lacksHorses, horsePull, maxWeight, speedFactor, horseDays, feedPerDay, grainToday } from './pull';
 export { HORSE_KINDS, emptyHorseMarket, emptyStock, stableTowns, scheduleArrivals, stableAt, horseMorning } from './supply';
 export { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
 export { feedHorses, feedPrice, playerHorsesNight, traderHorsesNight, traderHorseDeal } from './care';

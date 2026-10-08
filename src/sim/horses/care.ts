@@ -4,6 +4,7 @@
 import { HORSES } from '../constants';
 import { cartCount, takeGoods, type Board } from '../cart';
 import type { EconomyState, Trader } from '../economy/state';
+import { grainToday } from './pull';
 import { buyPrice, returnHorse, sellPrice, takeHorse } from './stable';
 import { stableAt } from './supply';
 import type { Horse, HorseKind } from './types';
@@ -47,9 +48,10 @@ export function feedHorses(state: EconomyState, horses: readonly Horse[], town: 
   let fedAtStable = 0;
   const keep: Horse[] = [];
   for (const h of horses) {
-    const need = HORSES.kinds[h.kind].feed;
-    let fed = false;
-    if (town !== null) {
+    const need = grainToday(h.kind, state.day);
+    // 오늘 먹을 차례가 아니면 먹은 것으로 친다 (조랑말은 이틀에 한 개)
+    let fed = need === 0;
+    if (!fed && town !== null) {
       fed = stableFeed(state, town, need, (f) => {
         if (p.gold < f) return false;
         p.gold -= f;
@@ -86,7 +88,8 @@ export function traderHorsesNight(state: EconomyState, t: Trader): void {
   const keep: Horse[] = [];
   const town = t.travel ? t.travel.to : t.town;
   for (const h of t.horses) {
-    const fed = stableFeed(state, town, HORSES.kinds[h.kind].feed, (f) => {
+    const need = grainToday(h.kind, state.day);
+    const fed = need === 0 || stableFeed(state, town, need, (f) => {
       if (t.gold < f) return false;
       t.gold -= f;
       return true;

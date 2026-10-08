@@ -92,6 +92,17 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     }
   }
 
+  // 원정만 하는 봇이 원정할 수 없는 마을(도시)에 있으면, 길로 가장 가까운 자원지 마을로 간다 (지도의 특산으로 안다)
+  if (profile.expeditions && !profile.trades && !view.canExpedition && view.orders.length === 0) {
+    const near = map.towns
+      .filter((t) => t.id !== here && t.specialties.length > 0 && Number.isFinite(days[here]![t.id]!))
+      .sort((a, b) => days[here]![a.id]! - days[here]![b.id]!)[0];
+    if (near) {
+      const c = once(feedFor(view, near.id) ?? { type: 'travel', to: near.id });
+      if (c) return c;
+    }
+  }
+
   // 3. 짐 팔기: 다른 마을에 가져가도 더 남지 않으면 여기서 판다
   const selling = new Set(view.orders.filter((o) => o.side === 'sell').map((o) => o.good));
   for (const good of GOODS) {
@@ -200,7 +211,7 @@ function chooseCard(view: PlayerView, mind: BotMind): Command {
 function feedFor(view: PlayerView, to: number): Command | null {
   if (!view.horses.length || !view.market) return null;
   const days = view.travel.days[to] ?? 0;
-  const need = view.horses.reduce((s, h) => s + h.feed, 0) * days;
+  const need = Math.ceil(view.horses.reduce((s, h) => s + h.feed, 0) * days);
   const have = view.cargo.filter((l) => l.good === 'grain').reduce((s, l) => s + l.qty, 0);
   if (have >= need || view.orders.some((o) => o.side === 'buy' && o.good === 'grain')) return null;
   const maxPrice = Math.max(1, Math.round(view.market.price.grain * 1.3));
@@ -211,7 +222,7 @@ function feedFor(view: PlayerView, to: number): Command | null {
 function feedKeep(view: PlayerView): number {
   if (!view.horses.length) return 0;
   const far = Math.max(0, ...view.travel.days.filter(Number.isFinite));
-  return view.horses.reduce((s, h) => s + h.feed, 0) * far;
+  return Math.ceil(view.horses.reduce((s, h) => s + h.feed, 0) * far);
 }
 
 function oldestFood(view: PlayerView): GoodId | null {

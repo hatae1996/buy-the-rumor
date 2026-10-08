@@ -1,5 +1,8 @@
 // 잡화점, 바깥(원정), 작업장, 은행, 길드 회관 쪽지.
+import { ECONOMY } from '../../../sim/constants';
 import { money } from '../../format';
+
+const USES = ECONOMY.expedition.usesPerTool;
 import type { Game } from '../../game';
 import { openLiveSheet } from '../../liveSheet';
 import { openExpeditionSheet } from '../expeditionSheet';
@@ -26,7 +29,7 @@ export function openStore(game: Game): void {
         v.apprentice
           ? ''
           : `<h3>장비</h3>
-             <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 수레의 도구 ${v.tools}개.</p>
+             <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 수레의 도구 ${v.tools}개${v.tools ? ` (지금 도구 ${v.toolUsesLeft}번 더)` : ''}. 도구 하나로 나무 베기·광석 캐기를 ${USES}번 해요.</p>
              <div class="btn-row"><button type="button" class="secondary-btn" data-gear>장비 사기·고치기<small>${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 쓸 만함</small></button></div>`
       }`;
     body.querySelector('[data-meal]')?.addEventListener('click', () => openMealSheet(game));

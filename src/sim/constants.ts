@@ -79,7 +79,7 @@ export const CALENDAR = {
 export const ECONOMY = {
   /** 물품 기준 가격과 상하는 날. shelfLife가 null이면 상하지 않는다 */
   goods: {
-    fish: { basePrice: 8, shelfLife: 3 },
+    fish: { basePrice: 8, shelfLife: 4 },
     meat: { basePrice: 10, shelfLife: 5 },
     grain: { basePrice: 6, shelfLife: 60 },
     wood: { basePrice: 8, shelfLife: null },
@@ -319,8 +319,8 @@ export const ECONOMY = {
      * 여기서 3~4장을 뽑는다
      */
     deck: { terrain: 6, tag: 2, season: [1, 2], event: [0, 2], mine: [0, 2] },
-    /** 도구는 소모품: 나무 베기·광석 캐기 몇 번에 도구 하나를 다 쓰나 (기획서는 1번에 1개) */
-    usesPerTool: 1,
+    /** 도구는 소모품: 나무 베기·광석 캐기 몇 번에 도구 하나를 다 쓰나 (0.0.6: 4번) */
+    usesPerTool: 4,
     /** 다침: 피로가 크게 오른다 */
     hurtFatigue: 4,
     /** 놓아 둔 덫: 이 날까지는 잡혀 있고, 그 뒤로는 반반, 이 날이 지나면 다른 짐승이 먹어 버린다 */
@@ -469,13 +469,14 @@ export const RUMORS = {
  */
 export const HORSES = {
   /**
-   * pull: 끄는 무게. speed: 이동 일수 배율 (사람 걸음 1). feed: 하루 곡물 (쉬는 날에도).
+   * pull: 끄는 무게. speed: 이동 일수 배율 (사람 걸음 1). feed: 하루 곡물 (쉬는 날에도, 0.0.6에서 줄임).
+   * 곡물은 한 개씩이라 0.5는 이틀에 한 개를 먹는다 (src/sim/horses/pull.ts grainToday).
    * price: 마구간 기준 값. travelFatigue: 길에서 하루에 쌓이는 피로 (조랑말은 잘 지친다)
    */
   kinds: {
-    pony: { name: '늙은 조랑말', pull: 60, speed: 0.85, feed: 1, price: 90, travelFatigue: 3 },
-    draft: { name: '짐말', pull: 150, speed: 1, feed: 2, price: 220, travelFatigue: 2 },
-    swift: { name: '빠른 말', pull: 90, speed: 0.65, feed: 2, price: 260, travelFatigue: 2 },
+    pony: { name: '늙은 조랑말', pull: 60, speed: 0.85, feed: 0.5, price: 90, travelFatigue: 3 },
+    draft: { name: '짐말', pull: 150, speed: 1, feed: 1, price: 220, travelFatigue: 2 },
+    swift: { name: '빠른 말', pull: 90, speed: 0.65, feed: 1, price: 260, travelFatigue: 2 },
   },
   /** 한 사람이 가질 수 있는 말 (마차용 두 필) */
   maxPerOwner: 2,

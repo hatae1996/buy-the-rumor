@@ -196,6 +196,8 @@ export interface PlayerView {
   gear: GearView[];
   /** 수레에 실은 도구 수 (원정에서 나무 베기·광석 캐기에 쓰고, 장비를 고친다) */
   tools: number;
+  /** 지금 쓰는 도구가 원정 선택지를 몇 번 더 버티나 (도구가 없으면 0) */
+  toolUsesLeft: number;
   /** 여관 안내인: 고용 값과 고용했는지. 원정을 못 나가는 마을이나 길 위면 null */
   guide: { fee: number; hired: boolean } | null;
   /** 견습 중이면 지금 장면 (기획서 "첫 5분의 흐름"). 아니면 null */
@@ -344,7 +346,7 @@ function upkeepView(state: EconomyState): PlayerView['upkeep'] {
   if (p.informants.length) parts.push({ what: '정보원', perDay: p.informants.length * GROWTH.hire.informant.wage });
   const horses = [...p.horses, ...(p.caravan?.horses ?? [])];
   const feedTown = p.travel ? p.travel.to : p.town;
-  const feed = horses.reduce((s, h) => s + HORSES.kinds[h.kind].feed, 0) * feedPrice(state, feedTown);
+  const feed = Math.round(horses.reduce((s, h) => s + HORSES.kinds[h.kind].feed, 0) * feedPrice(state, feedTown));
   if (feed) parts.push({ what: '말 먹이 (어림)', perDay: feed });
   if (p.warehouses.length) parts.push({ what: '창고 보관료', perDay: p.warehouses.length * GROWTH.warehouse.rentPerDay });
   return { total: parts.reduce((s, x) => s + x.perDay, 0), parts };
@@ -602,6 +604,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       maxUses: ECONOMY.expedition.gear[kind].durability,
     })),
     tools: cartCount(p.cart, 'tools'),
+    toolUsesLeft: cartCount(p.cart, 'tools') > 0 ? ECONOMY.expedition.usesPerTool - p.toolUses : 0,
     apprentice: apprenticeView(state, map),
     newsReadDay: p.newsReadDay,
     unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
