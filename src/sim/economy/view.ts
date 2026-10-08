@@ -7,6 +7,7 @@ import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
 import { cardById, chanceOf } from '../expedition';
+import { blockedTiles, tollAt } from '../events';
 import type {
   EconomyState,
   ExpeditionResult,
@@ -74,6 +75,10 @@ export interface PlayerView {
   lastExpedition: ExpeditionResult | null;
   /** 들은 이야기 수첩 */
   rumors: readonly Rumor[];
+  /** 몇 번째 시즌, 시즌의 며칠째, 시즌 길이 (미리 돌린 세계 전에는 null) */
+  seasonInfo: { number: number; day: number; length: number } | null;
+  /** 길 사정 (신문에 실린 사실): 막힌 칸, 마을마다 통행세 */
+  roads: { blocked: number[]; tolls: Record<number, number> };
 }
 
 export interface ExpeditionView {
@@ -214,5 +219,14 @@ export function playerView(state: EconomyState): PlayerView {
     expedition: expeditionView(state),
     lastExpedition: p.lastExpedition,
     rumors: p.rumors,
+    seasonInfo: state.season
+      ? { number: state.season.number, day: state.day - state.season.startDay + 1, length: state.season.length }
+      : null,
+    roads: {
+      blocked: [...blockedTiles(state)].sort((a, b) => a - b),
+      tolls: Object.fromEntries(
+        state.towns.map((t) => [t.id, tollAt(state, t.id)] as const).filter(([, gold]) => gold > 0),
+      ),
+    },
   };
 }

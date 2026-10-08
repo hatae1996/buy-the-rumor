@@ -5,11 +5,12 @@ import { stochasticRound, type Rng } from '../rng';
 import { AUTUMN, WINTER, type Season } from '../season';
 import type { Accounts } from './accounts';
 import { basePrice, FOODS, GOODS, type GoodId } from './goods';
-import type { Order, TownEconomy } from './state';
+import { citizenBidFactor, demandModifier } from '../events/active';
+import type { EconomyState, Order, TownEconomy } from './state';
 
 const C = ECONOMY.citizens;
 
-export function citizenDemand(town: TownEconomy, good: GoodId, season: Season): number {
+export function citizenDemand(state: EconomyState, town: TownEconomy, good: GoodId, season: Season): number {
   let d: number = C.demand[good];
   if (town.tier === 'city') d *= ECONOMY.city.demandFactor;
   if (season === WINTER) {
@@ -18,18 +19,20 @@ export function citizenDemand(town: TownEconomy, good: GoodId, season: Season): 
     if (FOODS.includes(good)) d *= C.winterFoodFactor;
   }
   if (season === AUTUMN && good === 'grain') d *= C.autumnGrainFactor;
-  for (const b of town.boosts) if (b.good === good) d *= b.factor;
-  return d;
+  // 사건: 수요 배율과 더 사는 양 (조선소, 축제, 군대 보급, 역병 소문 등)
+  const ev = demandModifier(state, town.id, good);
+  return d * ev.factor + ev.extra;
 }
 
-export function citizenOrders(town: TownEconomy, season: Season, accounts: Accounts, rng: Rng): Order[] {
+export function citizenOrders(state: EconomyState, town: TownEconomy, season: Season, accounts: Accounts, rng: Rng): Order[] {
   const owner = { kind: 'citizens', town: town.id } as const;
   const out: Order[] = [];
   for (const good of GOODS) {
-    const daily = citizenDemand(town, good, season);
+    const daily = citizenDemand(state, town, good, season);
+    const bidUp = citizenBidFactor(state, town.id, good);
     const premium = town.tier === 'city' && (ECONOMY.city.premiumGoods as readonly GoodId[]).includes(good);
     for (const step of C.priceSteps) {
-      const limit = Math.max(1, Math.round(basePrice(good) * step.factor * (premium ? ECONOMY.city.premiumFactor : 1)));
+      const limit = Math.max(1, Math.round(basePrice(good) * step.factor * bidUp * (premium ? ECONOMY.city.premiumFactor : 1)));
       const qty = Math.min(stochasticRound(daily * step.share, rng), Math.floor(town.treasury / limit));
       const o = accounts.place(owner, town.id, good, 'buy', qty, limit);
       if (o) out.push(o);
@@ -52,8 +55,5 @@ export function treasuryDay(town: TownEconomy): number {
     tribute = Math.floor((town.treasury - cap) * C.tributeRate);
     town.treasury -= tribute;
   }
-  for (const b of town.boosts) b.daysLeft--;
-  town.boosts = town.boosts.filter((b) => b.daysLeft > 0);
-  if (town.storm > 0) town.storm--;
   return tribute;
 }

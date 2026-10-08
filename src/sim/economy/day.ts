@@ -1,19 +1,27 @@
-// 하루 진행: 신청 받기 → 장날 정산 → 일꾼 생산과 소비 → 소식.
+// 하루 진행: 사건 시작 → 신청 받기 → 장날 정산 → 일꾼 생산과 소비 → 반응 사건과 소식.
 // 앱을 다시 열면 지나간 날만큼 이 함수를 빠르게 돌린다.
 import { ECONOMY } from '../constants';
 import { eulReul } from '../josa';
 import { createRng, shuffle } from '../rng';
 import { seasonOfDay, WINTER, type Season } from '../season';
-import { townTravelDays, type WorldMap } from '../worldgen';
+import type { WorldMap } from '../worldgen';
+import {
+  bannedGoods,
+  bulkTradesToday,
+  omensToday,
+  reactiveEvents,
+  salesTax,
+  startDay,
+  travelDaysToday,
+} from '../events';
 import { Accounts } from './accounts';
 import { citizenOrders, stipendOf, treasuryDay } from './citizens';
 import { newWorker } from './create';
-import { rollEvents } from './events';
 import { GOOD_NAME, GOODS, type GoodId } from './goods';
 import { ageCart } from '../cart';
 import { ageAndSpoil } from './inventory';
 import { JOB_NAME } from './jobs';
-import { runMarket } from './market';
+import { limitPrice, runMarket } from './market';
 import { regrow } from './nodes';
 import { playerNight } from './player';
 import type { EconomyState, MarketResult, Order } from './state';
@@ -41,10 +49,14 @@ export interface DayReport {
 export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const rng = createRng(state.rng);
   const season = seasonOfDay(state.day, state.startSeason);
-  const days = townTravelDays(map, season);
-  const accounts = new Accounts(state);
   const news: string[] = [];
   const name = (town: number) => map.towns[town]!.name;
+
+  // 0. 시즌과 사건: 시즌이 끝났으면 새로 짜고, 오늘 일정의 사건을 시작한다 (신문은 사실만)
+  news.push(...startDay(state, map));
+  // 막힌 길은 돌아간다
+  const days = travelDaysToday(state, map, season);
+  const accounts = new Accounts(state);
 
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
@@ -52,15 +64,25 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 일꾼 신청은 다른 마을 장에 낼 수도 있다 (가공 재료를 사 온다)
   for (const w of state.workers) for (const o of workerOrders(w, state, season, accounts)) byTown[o.town]!.push(o);
   for (const t of state.traders) if (!t.travel) byTown[t.town]!.push(...traderOrders(t, state, days, accounts));
-  for (const town of state.towns) byTown[town.id]!.push(...citizenOrders(town, season, accounts, rng));
+  for (const town of state.towns) byTown[town.id]!.push(...citizenOrders(state, town, season, accounts, rng));
   for (const town of state.towns) byTown[town.id]!.push(...workshopOrders(town, accounts));
+  // 대상단: 그날 장에서 한 물품을 한꺼번에 사거나 판다 (마을 금고를 거쳐 돈이 새지 않는다)
+  for (const b of bulkTradesToday(state)) {
+    const o = bulkOrder(state, accounts, b);
+    if (o) byTown[b.town]!.push(o);
+  }
 
   // 2. 장날 정산
+  const playerBuys: Partial<Record<GoodId, number>>[] = state.towns.map(() => ({}));
   const markets = state.towns.map((town) => {
-    const { results, fills } = runMarket(town, byTown[town.id]!, accounts, rng);
+    const { results, fills } = runMarket(town, byTown[town.id]!, accounts, rng, {
+      banned: bannedGoods(state, town.id),
+      tax: salesTax(state, town.id),
+    });
     town.lastMarket = results;
     for (const f of fills) {
       if (f.owner.kind !== 'player') continue;
+      if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
       state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price });
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
@@ -130,7 +152,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   }
 
   // 4. 소식
-  news.push(...rollEvents(state, map, rng));
+  news.push(...reactiveEvents(state, map, playerBuys));
+  // 징조 소문: 소문 시스템(작업 3) 전까지는 그 마을에 있는 플레이어만 듣는다
+  for (const r of omensToday(state, map)) if (!p.travel && p.town === r.town) p.rumors.push(r);
   for (const e of workerEvents) {
     if (e.kind === 'leave') news.push(`굶주린 ${JOB_NAME[e.job]} 한 명이 ${eulReul(name(e.town))} 떠났습니다.`);
   }
@@ -162,3 +186,16 @@ function sum(rec: Partial<Record<string, number>>): number {
   return Object.values(rec).reduce<number>((a, b) => a + (b ?? 0), 0);
 }
 
+
+/** 대상단 신청: 살 때는 마을 금고로 비싸게, 팔 때는 바깥에서 들여온 물건을 싸게 내놓는다 */
+function bulkOrder(
+  state: EconomyState,
+  accounts: Accounts,
+  b: { town: number; good: GoodId; side: 'buy' | 'sell'; qty: number },
+): Order | null {
+  const town = state.towns[b.town]!;
+  const owner = { kind: 'citizens', town: b.town } as const;
+  if (b.side === 'buy') return accounts.place(owner, b.town, b.good, 'buy', b.qty, limitPrice(town, b.good, ECONOMY.events.bulkBuyMarkup));
+  const limit = limitPrice(town, b.good, ECONOMY.events.bulkSellMarkdown);
+  return { id: state.nextId++, town: b.town, good: b.good, side: 'sell', qty: b.qty, limit, owner, reserved: 0, lots: [{ good: b.good, qty: b.qty, age: 0 }] };
+}

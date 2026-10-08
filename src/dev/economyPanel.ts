@@ -17,6 +17,7 @@ import {
 } from '../sim/economy';
 import { RESOURCE_NAME, type WorldMap } from '../sim/worldgen';
 import { seasonOfDay, SEASON_NAME } from '../sim/season';
+import { eventDef, eventsAt } from '../sim/events';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
 interface History {
@@ -57,6 +58,7 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
     <section class="dev-slip"><h2>오늘 장날 (기준 시세 · 거래량)</h2><div class="dev-scroll"><table class="dev-table" data-market></table></div></section>
     <section class="dev-slip"><h2>마을</h2><div class="dev-towns" data-towns></div></section>
     <section class="dev-slip"><h2>소식</h2><ul class="dev-news" data-news></ul></section>
+    <section class="dev-slip"><h2>이번 시즌 사건 일정 (플레이어는 모름)</h2><div class="dev-scroll"><table class="dev-table" data-schedule></table></div></section>
   `;
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
 
@@ -150,7 +152,29 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
         .reverse()
         .map((n) => `<li><span class="dev-mono">${n.day}일</span> ${n.text}</li>`)
         .join('') || '<li class="dev-mono">아직 소식이 없어요.</li>';
+    renderSchedule();
     renderCharts();
+  }
+
+  function renderSchedule() {
+    const season = state.season;
+    if (!season) return;
+    const name = (id: number) => map.towns[id]!.name;
+    const rows = [
+      ...season.schedule.map((s) => ({ day: s.day, omen: s.omenDay, text: `${eventDef(s.event).name}${s.good ? `(${GOOD_NAME[s.good]})` : ''}`, town: s.town, fake: false })),
+      ...season.fakeOmens.map((f) => ({ day: f.day, omen: f.day, text: `헛징조: ${eventDef(f.event).name}`, town: f.town, fake: true })),
+    ].sort((a, b) => a.day - b.day);
+    const reactive = season.log.filter((e) => eventDef(e.event).category === 'reactive');
+    $('[data-schedule]').innerHTML =
+      `<tr><th>날</th><th>사건</th><th>마을</th><th>징조</th><th></th></tr>` +
+      rows
+        .map(
+          (r) =>
+            `<tr><td>${r.day}일</td><td>${r.text}</td><td>${name(r.town)}</td><td>${r.fake ? '거짓' : r.omen === null ? '-' : `${r.omen}일`}</td><td>${r.day < state.day ? '지남' : ''}</td></tr>`,
+        )
+        .join('') +
+      reactive.map((e) => `<tr><td>${e.day}일</td><td>반응: ${eventDef(e.event).name}${e.good ? `(${GOOD_NAME[e.good]})` : ''}</td><td>${name(e.town)}</td><td>-</td><td>지남</td></tr>`).join('') +
+      `<tr><td colspan="5" class="dev-mono">${season.number}번째 시즌 · ${season.startDay}일부터 ${season.length}일</td></tr>`;
   }
 
   function renderCharts() {
@@ -198,8 +222,9 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
         const nodes = t.nodes
           .map((n) => `${RESOURCE_NAME[n.kind]} ${Math.round((n.amount / n.capacity) * 100)}%`)
           .join(', ');
-        const tags = [t.storm ? `폭풍 ${t.storm}일` : '', ...t.boosts.map((b) => `${GOOD_NAME[b.good]} 수요 ↑ ${b.daysLeft}일`)]
-          .filter(Boolean)
+        // 지금 이 마을에 미치는 사건
+        const tags = eventsAt(state, t.id)
+          .map((e) => `${eventDef(e.event).name}${e.good ? `(${GOOD_NAME[e.good]})` : ''} ~${e.end}일`)
           .join(' · ');
         return `<div class="dev-town">
           <h3><i class="dev-key" style="background:${SERIES_COLORS[t.id]}"></i>${map.towns[t.id]!.name}</h3>

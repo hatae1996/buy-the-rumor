@@ -15,11 +15,18 @@ export interface Fill {
   price: number;
 }
 
+/** 장날 규칙 (사건): 팔 수 없는 물품, 거래세 비율 */
+export interface MarketRules {
+  banned?: ReadonlySet<GoodId>;
+  tax?: number;
+}
+
 export function runMarket(
   town: TownEconomy,
   orders: readonly Order[],
   accounts: Accounts,
   rng: Rng,
+  rules: MarketRules = {},
 ): { results: Record<GoodId, MarketResult>; fills: Fill[] } {
   const results = {} as Record<GoodId, MarketResult>;
   const fills: Fill[] = [];
@@ -27,7 +34,9 @@ export function runMarket(
   for (const good of GOODS) {
     const buys = orders.filter((o) => o.good === good && o.side === 'buy');
     const sells = orders.filter((o) => o.good === good && o.side === 'sell');
-    const res = clearAuction(buys, sells, town.refPrice[good], rng);
+    // 팔 수 없는 물품은 팔자 신청을 받지 않는다 (맡긴 물건은 그대로 돌려준다)
+    const banned = rules.banned?.has(good) ?? false;
+    const res = clearAuction(buys, banned ? [] : sells, town.refPrice[good], rng);
     const price = res.price ?? 0;
 
     // 팔린 물건을 한데 모은다
@@ -36,7 +45,10 @@ export function runMarket(
       const n = res.sellFills.get(o.id) ?? 0;
       if (n > 0) {
         pool.push(...takeOldest(o.lots, good, n));
-        accounts.addGold(o.owner, n * price);
+        // 거래세는 마을 금고로 (돈이 새지 않는다)
+        const tax = Math.floor(n * price * (rules.tax ?? 0));
+        accounts.addGold(o.owner, n * price - tax);
+        town.treasury += tax;
         fills.push({ owner: o.owner, good, side: 'sell', qty: n, price });
       }
       accounts.receive(o.owner, o.lots, o.id);

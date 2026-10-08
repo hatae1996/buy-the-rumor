@@ -8,6 +8,7 @@ import { addGoods, capStorage, count, sellableCount, spoilingSoon, takeOldest } 
 import { isGatherJob, JOB_RESOURCE, JOBS, type CraftJob, type GatherJob, type JobId } from './jobs';
 import { limitPrice } from './market';
 import { findNode, nodeYield } from './nodes';
+import { jobIncomeFactor, produceFactor } from '../events/active';
 import type { EconomyState, Order, TownEconomy, Worker } from './state';
 
 const W = ECONOMY.worker;
@@ -179,7 +180,7 @@ export function workerDay(w: Worker, ctx: WorkerDayContext): 'stay' | 'gone' {
   const town = state.towns[w.town]!;
   const eff = (w.tool > 0 ? 1 : W.noToolEfficiency) * (w.hunger > 0 ? W.hungryEfficiency : 1);
 
-  const earned = isGatherJob(w.job) ? gather(w, town, w.job, eff, season, rng) : craft(w, w.job, eff, rng, state);
+  const earned = isGatherJob(w.job) ? gather(w, state, town, w.job, eff, season, rng) : craft(w, w.job, eff, rng, state);
   w.income += (earned - w.income) * W.incomeMemory;
   w.jobDays++;
 
@@ -199,14 +200,15 @@ export function workerDay(w: Worker, ctx: WorkerDayContext): 'stay' | 'gone' {
 }
 
 /** 채집하고, 거둔 것을 기준 시세로 친 값을 돌려준다 */
-function gather(w: Worker, town: TownEconomy, job: GatherJob, eff: number, season: Season, rng: Rng): number {
+function gather(w: Worker, state: EconomyState, town: TownEconomy, job: GatherJob, eff: number, season: Season, rng: Rng): number {
   const node = findNode(town, JOB_RESOURCE[job]);
-  if (!node || (job === 'fisher' && town.storm > 0)) return 0;
+  if (!node) return 0;
   let value = 0;
   const factor = eff * nodeYield(node) * ECONOMY.seasonYield[job][season];
   let used = 0;
   for (const [good, base] of Object.entries(ECONOMY.gather[job]) as [GoodId, number][]) {
-    let qty = stochasticRound(base * factor, rng);
+    // 사건(폭풍, 늑대, 풍어 등)이 생산 배율을 바꾼다
+    let qty = stochasticRound(base * factor * produceFactor(state, town.id, good), rng);
     // 줄어드는 자원지는 첫 번째 결과물만큼 쓴다 (고기 한 덩이 = 사슴 한 마리 몫)
     if (used === 0 && node.amount < qty) qty = Math.floor(node.amount);
     if (used === 0) used = qty;
@@ -268,16 +270,23 @@ function foodCount(w: Worker): number {
 
 // ───────── 일 바꾸기와 이주 ─────────
 
-/** 직업별 예상 하루 수입 (기준 시세로). 그 마을에서 할 수 없으면 null */
+/**
+ * 직업별 예상 하루 수입 (기준 시세로). 그 마을에서 할 수 없으면 null.
+ * 사건이 그 일의 벌이를 다르게 보이게 한다 (일을 줄임, 일꾼이 몰림)
+ */
 export function expectedIncome(job: JobId, state: EconomyState, townId: number, season: Season): number | null {
+  const income = baseIncome(job, state, townId, season);
+  return income === null ? null : income * jobIncomeFactor(state, townId, job);
+}
+
+function baseIncome(job: JobId, state: EconomyState, townId: number, season: Season): number | null {
   const town = state.towns[townId]!;
   if (isGatherJob(job)) {
     const node = findNode(town, JOB_RESOURCE[job]);
     if (!node) return null;
-    if (job === 'fisher' && town.storm > 0) return 0;
     const factor = nodeYield(node) * ECONOMY.seasonYield[job][season];
     return (Object.entries(ECONOMY.gather[job]) as [GoodId, number][]).reduce(
-      (s, [g, n]) => s + n * factor * town.refPrice[g] * W.askMarkdown,
+      (s, [g, n]) => s + n * factor * produceFactor(state, townId, g) * town.refPrice[g] * W.askMarkdown,
       0,
     );
   }
@@ -414,7 +423,7 @@ function reconsider(w: Worker, ctx: WorkerDayContext): 'stay' | 'gone' {
   const best = bestJob(state, w.town, season, w);
   if (!best || best.job === w.job) return 'stay';
   // 지금 일은 실제로 번 값으로 본다 (재료를 못 구하는 가공 일꾼은 장부상 이익이 커도 버는 게 없다)
-  const current = w.income;
+  const current = w.income * jobIncomeFactor(state, w.town, w.job);
   const envy =
     w.jobDays >= W.switchCooldownDays &&
     best.income > current * W.switchEnvyFactor + 2 &&

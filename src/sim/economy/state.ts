@@ -1,4 +1,5 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
+import type { ActiveEvent, ReactiveMemo, SeasonState } from '../events/types';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { TownEventKind } from '../expedition/types';
@@ -38,9 +39,6 @@ export interface TownEconomy {
   refPrice: Record<GoodId, number>;
   lastMarket: Record<GoodId, MarketResult>;
   treasury: number;
-  /** 폭풍으로 고기잡이를 못 하는 남은 날 */
-  storm: number;
-  boosts: { good: GoodId; factor: number; daysLeft: number }[];
   /** 도시 공방의 재료와 만든 물건. 공방이 없는 마을은 null */
   workshop: Inventory | null;
   /** 신문에 실린 이 마을 사건 (원정 덱의 사건 카드를 부른다) */
@@ -215,4 +213,10 @@ export interface EconomyState {
   news: NewsItem[];
   /** 이번 겨울 첫날의 일꾼 수 (겨울에 줄어드는 한도를 잰다). 겨울이 아니면 null */
   winterStartWorkers: number | null;
+  /** 지금 시즌과 사건 일정. 세계를 미리 돌리는 동안은 null (사건 없음) */
+  season: SeasonState | null;
+  /** 벌어지고 있는 사건 */
+  events: ActiveEvent[];
+  /** 반응 사건을 위한 기억 */
+  reactive: ReactiveMemo;
 }

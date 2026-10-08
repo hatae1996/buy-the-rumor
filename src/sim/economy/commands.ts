@@ -2,7 +2,8 @@
 // 나중에 멀티플레이를 붙이면 이 명령을 서버로 보낸다.
 import { ECONOMY } from '../constants';
 import { seasonOfDay } from '../season';
-import { townTravelDays, type WorldMap } from '../worldgen';
+import type { WorldMap } from '../worldgen';
+import { tollAt, travelDaysToday } from '../events';
 import { Accounts } from './accounts';
 import { FOODS, GOODS, type GoodId } from './goods';
 import {
@@ -117,9 +118,12 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (p.expedition) return fail('inExpedition');
       if (!state.towns[cmd.to]) return fail('noTown');
       if (cmd.to === p.town) return fail('sameTown');
-      const days = townTravelDays(map, seasonOfDay(state.day, state.startSeason))[p.town]![cmd.to]!;
+      // 사건으로 막힌 길은 돌아간다
+      const days = travelDaysToday(state, map, seasonOfDay(state.day, state.startSeason))[p.town]![cmd.to]!;
       if (!Number.isFinite(days)) return fail('noRoute');
-      const fee = days * ECONOMY.player.travelFeePerDay;
+      // 산적 통행세: 떠나는 마을과 가는 마을 길목
+      const toll = tollAt(state, p.town) + tollAt(state, cmd.to);
+      const fee = days * ECONOMY.player.travelFeePerDay + toll;
       if (p.gold < fee) return fail('notEnoughGold');
       // 무게를 넘으면 출발할 수 없다. 팔려고 내놓은 짐도 떠나면 돌아오므로 같이 센다
       const selling = state.orders
@@ -130,8 +134,10 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       for (const o of state.orders) accounts.cancel(o);
       state.orders = [];
       p.gold -= fee;
-      state.towns[p.town]!.treasury += fee;
-      p.ledger.push({ day: state.day, kind: 'travel', from: p.town, to: cmd.to, days, fee });
+      // 이동비는 마을 금고로, 통행세는 산적이 가져간다 (경제에서 빠져나간다)
+      state.towns[p.town]!.treasury += fee - toll;
+      p.ledger.push({ day: state.day, kind: 'travel', from: p.town, to: cmd.to, days, fee: fee - toll });
+      if (toll > 0) p.ledger.push({ day: state.day, kind: 'toll', town: tollAt(state, p.town) > 0 ? p.town : cmd.to, gold: toll });
       p.travel = { from: p.town, to: cmd.to, days, daysLeft: days };
       // 원정 기회는 그 마을에 묶여 있다. 떠나면 사라진다
       p.expeditionChances = 0;

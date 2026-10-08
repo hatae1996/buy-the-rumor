@@ -11,6 +11,7 @@ import { townNodes } from './nodes';
 import type { EconomyState, MarketResult, TownEconomy, Worker } from './state';
 import { TRADER_NAMES } from './traders';
 import { advanceDay } from './day';
+import { createSeason } from '../events/schedule';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
@@ -50,6 +51,9 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     orders: [],
     news: [],
     winterStartWorkers: null,
+    season: null,
+    events: [],
+    reactive: { low: {}, high: {}, cooldown: {} },
   };
 
   for (const town of state.towns) {
@@ -87,6 +91,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
 
   state.rng = rng.state();
   if (opt.warmupDays) warmUp(state, map, opt.warmupDays);
+  // 플레이어가 오는 날 첫 시즌이 시작된다 (사건 일정은 이때 짠다)
+  state.season = createSeason(state, map, 1, state.day);
   return state;
 }
 
@@ -117,8 +123,6 @@ function createTown(map: WorldMap, id: number): TownEconomy {
     refPrice,
     lastMarket: emptyGoodMap<MarketResult>({ price: null, volume: 0, demand: 0, supply: 0, bestBid: null, bestAsk: null, imbalance: 0 }),
     treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
-    storm: 0,
-    boosts: [],
     workshop: tier === 'city' ? [] : null,
     recentEvents: [],
   };

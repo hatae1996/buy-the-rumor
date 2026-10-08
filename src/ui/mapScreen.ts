@@ -38,7 +38,7 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     const v = game.view();
     if (v.location.kind === 'town') return { tile: game.map.towns[v.location.town]!.tile, route: null };
     const { from, to, days, daysLeft } = v.location;
-    const route = findRoute(game.map, from, to, v.season)?.tiles ?? [game.map.towns[from]!.tile];
+    const route = findRoute(game.map, from, to, v.season, new Set(v.roads.blocked))?.tiles ?? [game.map.towns[from]!.tile];
     // 떠난 날에도 마을 밖 첫 칸에 서서 길을 나섰다는 게 보이게 한다
     const inner = Math.max(1, route.length - 2);
     const i = Math.min(route.length - 1, 1 + Math.floor(((days - daysLeft) / days) * inner));
@@ -69,13 +69,19 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
       status.textContent = `${name(here)}에 있어요.`;
       return;
     }
-    const days = townTravelDays(game.map, v.season)[here]![to]!;
-    const fee = days * ECONOMY.player.travelFeePerDay;
+    // 신문에 실린 막힌 길은 돌아가고, 산적 길목에는 통행세를 낸다
+    const blocked = new Set(v.roads.blocked);
+    const days = townTravelDays(game.map, v.season, blocked)[here]![to]!;
+    const usual = townTravelDays(game.map, v.season)[here]![to]!;
+    const toll = (v.roads.tolls[here] ?? 0) + (v.roads.tolls[to] ?? 0);
+    const fee = days * ECONOMY.player.travelFeePerDay + toll;
     const mem = v.memory[to];
     const city = game.map.towns[to]!.tier === 'city';
     const sheet = openSheet(`${euro(name(to))} 떠날까요?`);
     sheet.body.innerHTML = `
       <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
+      ${days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : ''}
+      ${toll > 0 ? `<p class="warn">산적이 있는 길목이라 여비에 통행세 ${money(toll)} 포함이에요.</p>` : ''}
       ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
       <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>
       ${v.orders.length ? `<p class="warn">이 마을에 낸 신청 ${v.orders.length}개는 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}

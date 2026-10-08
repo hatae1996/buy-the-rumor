@@ -295,13 +295,42 @@ export const ECONOMY = {
     maxChances: 6,
   },
 
+  /** 사건 일정 (기획서 "사건"). 사건마다의 효과와 기간은 src/sim/events/defs.ts */
   events: {
-    dailyChance: 0.045,
-    stormDays: 3,
-    wolvesFactor: 0.6,
-    newVeinTiles: 1,
-    boostFactor: 2.2,
-    boostDays: 6,
+    /** 시즌에 큰 사건 몇 개 (최소, 최대). 하루에 새 사건은 최대 1개 */
+    perSeason: [6, 10],
+    /** 큰 사건 중 징조 소문이 도는 비율, 며칠 전에 (최소, 최대) */
+    omenShare: 0.5,
+    omenLead: [1, 3],
+    /** 일어나지 않는 헛징조 몇 개 (최소, 최대) */
+    fakeOmens: [1, 3],
+    /** 시즌 첫날과 마지막 며칠에는 큰 사건을 새로 넣지 않는다 */
+    quietFirstDays: 1,
+    quietLastDays: 2,
+    /** "인근 마을": 이 날수 안에 닿는 마을 */
+    nearbyDays: 3,
+    /** 길을 막을 때 마을에서 몇 칸 안의 길 */
+    blockRange: 3,
+    /** 대상단이 부르는 값: 살 때 기준 시세의 이 배, 팔 때 이 배 */
+    bulkBuyMarkup: 1.4,
+    bulkSellMarkdown: 0.7,
+    /** 반응 사건 */
+    reactive: {
+      /** 기준 가격의 이 배율보다 낮은 날이 이어지면 일꾼이 일을 줄인다 */
+      lowBelow: 0.3,
+      /** 기준 가격의 이 배율보다 높은 날이 이어지면 일꾼이 몰려든다 */
+      highAbove: 2.2,
+      streakDays: 10,
+      /** 같은 마을에 같은 반응 사건을 다시 내지 않는 날 */
+      cooldownDays: 36,
+      /** 반응 사건은 하루에 하나, 시즌에 이만큼까지 (신문이 반응 사건으로 덮이지 않게) */
+      perSeason: 6,
+      /** 일꾼 중 이 비율 넘게 굶고 장에 음식이 없으면 굶주린 마을 */
+      famineHungryShare: 0.3,
+      /** 플레이어가 그날 장에서 이 비율 넘게, 이만큼 넘게 사 가면 품귀 기사 */
+      selloutShare: 0.6,
+      selloutMinQty: 10,
+    },
   },
 } as const;
 

@@ -5,7 +5,6 @@ import { ECONOMY } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { FOODS, GOODS, shelfLife } from '../economy';
 import type { Rng } from '../rng';
-import type { Season } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { cardById } from '../expedition';
 import type { BotProfile } from './profiles';
@@ -32,16 +31,6 @@ const STALE_DAYS = 15;
 /** 이보다 빨리 상하는 물건은 사서 옮기지 않는다 (산 묶음이 얼마나 묵었는지 모른다) */
 const MIN_TRADE_SHELF_LIFE = 10;
 
-/** 마을 사이 이동 일수는 지도와 계절로 정해진다 (계산이 무거워 기억해 둔다) */
-const daysCache = new WeakMap<WorldMap, Map<Season, number[][]>>();
-function travelDays(map: WorldMap, season: Season): number[][] {
-  let bySeason = daysCache.get(map);
-  if (!bySeason) daysCache.set(map, (bySeason = new Map()));
-  let days = bySeason.get(season);
-  if (!days) bySeason.set(season, (days = townTravelDays(map, season)));
-  return days;
-}
-
 /** 오늘 할 다음 명령. 할 게 없으면 null */
 export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: BotMind, rng: Rng): Command | null {
   if (mind.day !== view.day) {
@@ -61,7 +50,8 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   if (view.location.kind !== 'town' || !view.market) return null;
   const here = view.location.town;
   const price = view.market.price;
-  const days = travelDays(map, view.season);
+  // 신문에 실린 막힌 길은 돌아간다
+  const days = townTravelDays(map, view.season, new Set(view.roads.blocked));
 
   // 1. 지쳤으면 먹고, 그래도 많이 지쳤으면 여관
   if (view.fatigue >= profile.restAt && view.mealsLeft > 0) {

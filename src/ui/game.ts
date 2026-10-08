@@ -24,7 +24,7 @@ const MAX_CATCH_UP_DAYS = 45;
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
  * (v2: 0.0.3 수레, 피로, 원정이 들어감)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v3';
+const SAVE_KEY = 'buy-the-rumor/save/v4';
 
 interface SaveData {
   version: 1;

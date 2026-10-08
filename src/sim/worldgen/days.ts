@@ -4,9 +4,23 @@ import { buildNeighbors } from './hex';
 import { costToDays, moveCost, shortestPaths } from './travel';
 import type { Tile, WorldMap } from './types';
 
-/** days[a][b]: 마을 a에서 b까지 걸리는 날. 못 가면 Infinity. blocked는 막힌 칸 번호 */
+// 지도와 계절, 막힌 칸이 같으면 결과도 같다. 날마다, 명령마다 부르니 기억해 둔다
+const cache = new WeakMap<WorldMap, Map<string, number[][]>>();
+
+/**
+ * days[a][b]: 마을 a에서 b까지 걸리는 날. 못 가면 Infinity. blocked는 막힌 칸 번호.
+ * 돌려받은 표는 여럿이 같이 쓰므로 고치지 않는다
+ */
 export function townTravelDays(map: WorldMap, season: Season, blocked: ReadonlySet<number> = new Set()): number[][] {
-  return travelDaysBetween(map.tiles, buildNeighbors(map.tiles), map.towns.map((t) => t.tile), season, blocked);
+  let byKey = cache.get(map);
+  if (!byKey) cache.set(map, (byKey = new Map()));
+  const key = `${season}|${[...blocked].sort((a, b) => a - b).join(',')}`;
+  let days = byKey.get(key);
+  if (!days) {
+    days = travelDaysBetween(map.tiles, buildNeighbors(map.tiles), map.towns.map((t) => t.tile), season, blocked);
+    byKey.set(key, days);
+  }
+  return days;
 }
 
 export function travelDaysBetween(
