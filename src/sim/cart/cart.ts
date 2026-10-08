@@ -4,7 +4,7 @@
 //   팔자 신청: 내놓은 물건이 안 팔리면 돌아올 자리를 남겨 둔다
 import { shelfLife, type GoodId } from '../economy/goods';
 import type { Lot } from '../economy/inventory';
-import { cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type CartType, type Cell } from './shapes';
+import { cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type BoardType, type CartType, type Cell } from './shapes';
 
 export interface Piece {
   id: number;
@@ -19,13 +19,20 @@ export interface Piece {
   incoming: { orderId: number; qty: number }[];
 }
 
-export interface Cart {
-  type: CartType;
+/**
+ * 짐 조각을 싣는 판. 수레(CartType)와 창고('warehouse')가 같은 규칙을 쓴다.
+ * 타입 인자를 비우면 수레다
+ */
+export interface Cart<T extends BoardType = CartType> {
+  type: T;
   pieces: Piece[];
   nextPieceId: number;
 }
 
-export function createCart(type: CartType): Cart {
+/** 수레든 창고든 판 하나 */
+export type Board = Cart<BoardType>;
+
+export function createCart<T extends BoardType = CartType>(type: T): Cart<T> {
   return { type, pieces: [], nextPieceId: 1 };
 }
 
@@ -40,7 +47,7 @@ export function pieceCells(p: Pick<Piece, 'good' | 'x' | 'y' | 'rot'>): Cell[] {
 }
 
 /** 그 자리에 놓을 수 있나 (except: 옮기는 중인 자기 자신) */
-export function fits(cart: Cart, good: GoodId, x: number, y: number, rot: number, except?: number): boolean {
+export function fits(cart: Board, good: GoodId, x: number, y: number, rot: number, except?: number): boolean {
   const slots = new Set(cartSlots(cart.type).map(([sx, sy]) => key(sx, sy)));
   const taken = new Set(
     cart.pieces.filter((p) => p.id !== except).flatMap((p) => pieceCells(p).map(([cx, cy]) => key(cx, cy))),
@@ -52,7 +59,7 @@ export function fits(cart: Cart, good: GoodId, x: number, y: number, rot: number
  * 빈자리 찾기: 놓을 수 있는 자리 중 벽이나 다른 짐에 가장 많이 닿는 곳 (구석부터 채워야 빈칸이 덜 생긴다).
  * 같으면 위에서 아래, 왼쪽에서 오른쪽 순서
  */
-export function findSpot(cart: Cart, good: GoodId): { x: number; y: number; rot: number } | null {
+export function findSpot(cart: Board, good: GoodId): { x: number; y: number; rot: number } | null {
   const slots = cartSlots(cart.type);
   const open = new Set(slots.map(([x, y]) => key(x, y)));
   for (const p of cart.pieces) for (const [cx, cy] of pieceCells(p)) open.delete(key(cx, cy));
@@ -76,7 +83,7 @@ export function findSpot(cart: Cart, good: GoodId): { x: number; y: number; rot:
   return best && { x: best.x, y: best.y, rot: best.rot };
 }
 
-function newPiece(cart: Cart, good: GoodId, spot: { x: number; y: number; rot: number }): Piece {
+function newPiece(cart: Board, good: GoodId, spot: { x: number; y: number; rot: number }): Piece {
   const p: Piece = { id: cart.nextPieceId++, good, ...spot, lots: [], incoming: [] };
   cart.pieces.push(p);
   return p;
@@ -89,7 +96,7 @@ function addLotTo(p: Piece, lot: Lot): void {
 }
 
 /** 물건을 싣는다. 같은 물품 조각의 남은 자리를 먼저 채우고, 모자라면 새 조각을 놓는다. 실은 양을 돌려준다 */
-export function loadGoods(cart: Cart, good: GoodId, qty: number, age = 0): number {
+export function loadGoods(cart: Board, good: GoodId, qty: number, age = 0): number {
   let left = qty;
   for (const p of cart.pieces) {
     if (left <= 0) break;
@@ -111,21 +118,21 @@ export function loadGoods(cart: Cart, good: GoodId, qty: number, age = 0): numbe
 }
 
 /** 실린 물건 전부 (묶음 목록으로) */
-export function cartLots(cart: Cart): Lot[] {
+export function cartLots(cart: Board): Lot[] {
   return cart.pieces.flatMap((p) => p.lots);
 }
 
-export function cartCount(cart: Cart, good: GoodId): number {
+export function cartCount(cart: Board, good: GoodId): number {
   return cart.pieces.filter((p) => p.good === good).reduce((s, p) => s + qtyOf(p), 0);
 }
 
-export function cartWeight(cart: Cart): number {
+export function cartWeight(cart: Board): number {
   return cart.pieces.reduce((s, p) => s + qtyOf(p) * unitWeight(p.good), 0);
 }
 
 /** 지금 그 물건을 몇 개 더 실을 수 있나 (잡아 둔 자리 빼고, 지금 배치 그대로) */
-export function roomFor(cart: Cart, good: GoodId, upTo = 99): number {
-  const copy = JSON.parse(JSON.stringify(cart)) as Cart;
+export function roomFor(cart: Board, good: GoodId, upTo = 99): number {
+  const copy = JSON.parse(JSON.stringify(cart)) as Board;
   return loadGoods(copy, good, upTo);
 }
 
@@ -134,7 +141,7 @@ export function roomFor(cart: Cart, good: GoodId, upTo = 99): number {
  * holdFor를 주면 꺼낸 자리를 그 신청 번호로 비워 둔다 (안 팔리면 돌아올 자리)
  */
 export function takeGoods(
-  cart: Cart,
+  cart: Board,
   good: GoodId,
   qty: number,
   canTake: (lot: Lot) => boolean = () => true,
@@ -165,7 +172,7 @@ function addIncoming(p: Piece, orderId: number, qty: number): void {
 }
 
 /** 사게 될 물건 자리를 미리 잡는다. 다 못 잡으면 아무것도 잡지 않고 false */
-export function reserveRoom(cart: Cart, good: GoodId, qty: number, orderId: number): boolean {
+export function reserveRoom(cart: Board, good: GoodId, qty: number, orderId: number): boolean {
   const before = JSON.stringify(cart.pieces);
   const nextId = cart.nextPieceId;
   let left = qty;
@@ -194,7 +201,7 @@ export function reserveRoom(cart: Cart, good: GoodId, qty: number, orderId: numb
 }
 
 /** 장날 뒤: 그 신청으로 받은 물건(산 것, 안 팔려 돌아온 것)을 잡아 둔 자리에 넣고 자리를 푼다 */
-export function settleIncoming(cart: Cart, orderId: number, lots: readonly Lot[]): void {
+export function settleIncoming(cart: Board, orderId: number, lots: readonly Lot[]): void {
   const slots = cart.pieces.filter((p) => p.incoming.some((i) => i.orderId === orderId));
   const queue = lots.map((l) => ({ ...l }));
   for (const p of slots) {
@@ -216,7 +223,7 @@ export function settleIncoming(cart: Cart, orderId: number, lots: readonly Lot[]
 }
 
 /** 하루 지나 상한 정도를 올리고 상한 것을 버린다 */
-export function ageCart(cart: Cart, rate: number): Partial<Record<GoodId, number>> {
+export function ageCart(cart: Board, rate: number): Partial<Record<GoodId, number>> {
   const spoiled: Partial<Record<GoodId, number>> = {};
   for (const p of cart.pieces) {
     for (const l of p.lots) {
@@ -236,7 +243,7 @@ export function ageCart(cart: Cart, rate: number): Partial<Record<GoodId, number
  * 조각을 옮기거나 돌린다. 같은 물품 조각 위에 놓으면 담을 수 있는 만큼 합친다.
  * 성공하면 true
  */
-export function movePiece(cart: Cart, pieceId: number, x: number, y: number, rot: number): boolean {
+export function movePiece(cart: Board, pieceId: number, x: number, y: number, rot: number): boolean {
   const p = cart.pieces.find((q) => q.id === pieceId);
   if (!p) return false;
   // 같은 물품 조각 위에 놓았나: 놓을 자리 왼쪽 위 칸이 그 조각 칸이면 합친다
@@ -258,7 +265,7 @@ export function movePiece(cart: Cart, pieceId: number, x: number, y: number, rot
 }
 
 /** 톡 누르면 돌린다. 그 자리에서 안 맞으면 옆으로 조금씩 비켜 본다 (프로토타입과 같은 순서) */
-export function rotatePiece(cart: Cart, pieceId: number): boolean {
+export function rotatePiece(cart: Board, pieceId: number): boolean {
   const p = cart.pieces.find((q) => q.id === pieceId);
   if (!p) return false;
   const rot = (p.rot + 1) % 4;
@@ -274,7 +281,7 @@ export function rotatePiece(cart: Cart, pieceId: number): boolean {
 }
 
 /** 조각을 통째로 버린다 (신청이 걸린 조각은 안 된다). 버린 묶음을 돌려준다 */
-export function discardPiece(cart: Cart, pieceId: number): Lot[] | null {
+export function discardPiece(cart: Board, pieceId: number): Lot[] | null {
   const p = cart.pieces.find((q) => q.id === pieceId);
   if (!p || p.incoming.length > 0) return null;
   cart.pieces = cart.pieces.filter((q) => q !== p);
@@ -285,7 +292,7 @@ export function discardPiece(cart: Cart, pieceId: number): Lot[] | null {
  * 빈칸 정리: 조각을 큰 것부터 다시 놓는다. 다 들어가지 않으면 원래대로 두고 false.
  * 같은 물품은 먼저 합쳐 조각 수를 줄인다 (신청이 걸린 조각은 그대로 둔다)
  */
-export function packCart(cart: Cart): boolean {
+export function packCart(cart: Board): boolean {
   const before = JSON.stringify(cart);
   // 합치기
   for (const p of cart.pieces) {
@@ -326,7 +333,7 @@ function takeFromPiece(p: Piece, qty: number): Lot[] {
 }
 
 /** 빈 묶음을 지우고, 물건도 잡아 둔 자리도 없는 조각을 치운다 */
-function tidy(cart: Cart): void {
+function tidy(cart: Board): void {
   for (const p of cart.pieces) p.lots = p.lots.filter((l) => l.qty > 0);
   cart.pieces = cart.pieces.filter((p) => p.lots.length > 0 || p.incoming.length > 0);
 }

@@ -68,6 +68,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       newsReadDay: null,
       record: null,
       certificate: createCertificate(),
+      warehouses: [],
     },
     orders: [],
     news: [],

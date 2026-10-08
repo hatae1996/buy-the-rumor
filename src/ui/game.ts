@@ -24,9 +24,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v9';
+const SAVE_KEY = 'buy-the-rumor/save/v10';
 
 interface SaveData {
   version: 1;

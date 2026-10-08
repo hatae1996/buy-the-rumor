@@ -1,7 +1,10 @@
 // 마을 건물 (기획서 "화면 구성 - 마을 탭: 건물 카드", 0.0.5).
 // 마을마다 건물이 달라서 "말을 사려면 목장 마을에 가야 한다"가 자연스럽게 생긴다.
 // 건물 카드에는 지금 할 일이 있으면 도장(!)이 찍힌다. 도장 조건은 플레이어가 아는 것만 본다.
+import { cartLots } from '../cart';
 import { ECONOMY } from '../constants';
+import { shelfLife } from '../economy/goods';
+import { seasonOfDay } from '../season';
 import { hasExpeditions } from '../economy/player';
 import type { EconomyState } from '../economy/state';
 import { stableAt } from '../horses/supply';
@@ -67,6 +70,17 @@ export function buildingAlerts(state: EconomyState, map: WorldMap): Partial<Reco
   if (!p.drankToday && innRumor(state, map)) out.inn = '새 소문';
   if (hasExpeditions(state.towns[town]!) && p.expeditionChances >= ECONOMY.expedition.maxChances) out.outside = '기회 가득';
   if (Object.values(p.gear).some((n) => n === 0)) out.store = '장비 수리';
+  // 창고: 내일이면 상할 음식이 있다
+  const w = p.warehouses.find((x) => x.town === town);
+  if (w) {
+    const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
+    const soon = cartLots(w.board).filter((l) => {
+      const life = shelfLife(l.good);
+      return life !== null && l.age + rate >= life;
+    });
+    if (soon.length) out.warehouse = `곧 상함 ${soon.reduce((s, l) => s + l.qty, 0)}`;
+    else if (w.owed > 0) out.warehouse = '보관료 밀림';
+  }
   // 마구간: 어제나 오늘 말이 들어왔다
   if (state.horses.arrived.some((a) => a.town === town && state.day - a.day <= 1)) out.stable = '말 입고';
   return out;

@@ -46,6 +46,7 @@ import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
+import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -92,7 +93,15 @@ export type Command =
   /** 여관에서 안내인을 고용한다 (다음 원정 한 번) */
   | { type: 'hireGuide' }
   /** 신문을 읽었다 (견습: 첫 신문 장면이 끝난다. 나중에 신문값을 받는 자리) */
-  | { type: 'readNews' };
+  | { type: 'readNews' }
+  /** 지금 마을 창고를 빌린다 / 빈 창고를 돌려준다 */
+  | { type: 'rentWarehouse' }
+  | { type: 'releaseWarehouse'; town: number }
+  /** 수레 짐을 지금 마을 창고에 넣는다 / 창고 짐을 수레로 꺼낸다 */
+  | { type: 'storeGoods'; good: GoodId; qty: number }
+  | { type: 'retrieveGoods'; good: GoodId; qty: number }
+  /** 그 마을 창고 짐으로 팔기 신청 (어디서나 낼 수 있고, 내가 없어도 그 마을 장날에 맞춰진다) */
+  | { type: 'placeStoreSellOrder'; town: number; good: GoodId; qty: number; minPrice: number };
 
 export type CommandError =
   | 'traveling'
@@ -117,7 +126,8 @@ export type CommandError =
   | 'pieceBusy'
   | ExpeditionError
   | RumorError
-  | HorseError;
+  | HorseError
+  | WarehouseError;
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -192,9 +202,9 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
         .filter((o) => o.side === 'sell')
         .reduce((s, o) => s + o.lots.reduce((a, l) => a + l.qty * unitWeight(l.good), 0), 0);
       if (cartWeight(p.cart) + selling > maxWeight(p.cart, p.horses)) return fail('overweight');
-      // 떠나면 이 마을에 낸 신청은 거둔다
-      for (const o of state.orders) accounts.cancel(o);
-      state.orders = [];
+      // 떠나면 이 마을에 수레 짐으로 낸 신청은 거둔다 (창고 짐 신청은 남는다)
+      for (const o of state.orders) if (o.owner.kind === 'player') accounts.cancel(o);
+      state.orders = state.orders.filter((o) => o.owner.kind !== 'player');
       p.gold -= fee;
       // 이동비는 마을 금고로, 통행세는 산적이 가져간다 (경제에서 빠져나간다)
       state.towns[p.town]!.treasury += fee - toll;
@@ -252,6 +262,30 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
     case 'readNews':
       p.newsReadDay = state.day;
       return { ok: true };
+    case 'rentWarehouse':
+      return done(rentWarehouse(state, map));
+    case 'releaseWarehouse':
+      return done(releaseWarehouse(state, cmd.town));
+    case 'storeGoods':
+      if (!GOODS.includes(cmd.good)) return fail('badGood');
+      return done(storeGoods(state, cmd.good, cmd.qty));
+    case 'retrieveGoods':
+      if (!GOODS.includes(cmd.good)) return fail('badGood');
+      return done(retrieveGoods(state, cmd.good, cmd.qty));
+    case 'placeStoreSellOrder': {
+      if (!GOODS.includes(cmd.good)) return fail('badGood');
+      if (!isCount(cmd.qty)) return fail('badQty');
+      if (!isCount(cmd.minPrice)) return fail('badPrice');
+      const w = warehouseAt(p, cmd.town);
+      if (!w) return fail('noWarehouse');
+      if (w.owed > 0) return fail('warehouseOwed');
+      if (cartCount(w.board, cmd.good) < cmd.qty) return fail('notEnoughGoods');
+      const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
+      if (sellableCount(cartLots(w.board), cmd.good, rate) < cmd.qty) return fail('spoiling');
+      const o = accounts.place({ kind: 'store', town: cmd.town }, cmd.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
+      state.orders.push(o);
+      return { ok: true, orderId: o.id };
+    }
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');

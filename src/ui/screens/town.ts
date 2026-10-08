@@ -138,12 +138,15 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
       </section>`;
   }
 
-  const orders = v.orders.length
-    ? v.orders
+  // 이 마을 장날에 낸 신청 (창고 짐 신청도 이 마을 것이면 보인다)
+  const here = v.location.kind === 'town' ? v.location.town : -1;
+  const mine = v.orders.filter((o) => o.town === here);
+  const orders = mine.length
+    ? mine
         .map(
           (o) => `<li class="order-row">
             <span class="order-side ${o.side}">${o.side === 'sell' ? '팔기' : '사기'}</span>
-            <span>${goodName(o.good)} ${o.qty}개 · ${o.side === 'sell' ? `${o.limit} 이상` : `${o.limit} 이하`}</span>
+            <span>${goodName(o.good)} ${o.qty}개${o.from === 'store' ? ' (창고)' : ''} · ${o.side === 'sell' ? `${o.limit} 이상` : `${o.limit} 이하`}</span>
             <button type="button" class="link-btn" data-cancel="${o.id}">취소</button>
           </li>`,
         )

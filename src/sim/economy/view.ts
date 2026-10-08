@@ -1,6 +1,6 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
+import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Board, type Cart, type CartType } from '../cart';
 import {
   buyPrice,
   cartCost,
@@ -19,7 +19,7 @@ import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
-import { CART, ECONOMY, HORSES, RUMORS } from '../constants';
+import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
@@ -59,6 +59,22 @@ export interface PendingOrder {
   side: 'buy' | 'sell';
   qty: number;
   limit: number;
+  /** 어느 마을 장날에 */
+  town: number;
+  /** 수레 짐이면 cart, 그 마을 창고 짐이면 store */
+  from: 'cart' | 'store';
+}
+
+export interface WarehouseView {
+  town: number;
+  name: string;
+  rows: readonly string[];
+  pieces: CartPieceView[];
+  /** 짐 수 */
+  count: number;
+  /** 밀린 보관료 (밀리면 꺼내거나 팔 수 없다) */
+  owed: number;
+  rentPerDay: number;
 }
 
 export interface PlayerView {
@@ -115,6 +131,8 @@ export interface PlayerView {
   stable: StableView | null;
   /** 수레방: 수레마다 바꾸는 값 (쓰던 수레를 쳐 준 뒤). 수레방이 없는 마을이나 길 위면 빈 목록 */
   carts: CartOffer[];
+  /** 빌린 창고 (마을마다 하나) */
+  warehouses: WarehouseView[];
   /** 지금 마을 건물 (화면 차례대로)과 할 일 도장(!). 길 위면 빈 목록 */
   buildings: { id: BuildingId; name: string; alert: string | null }[];
   /** 내 장비와 잡화점 (어느 마을이나). 길 위면 살 수 없다 */
@@ -340,13 +358,10 @@ export interface CartView {
   room: Record<GoodId, number>;
 }
 
-function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]): CartView {
+/** 판(수레, 창고) 위 짐 조각 */
+function piecesView(board: Board, orders: readonly Order[]): CartPieceView[] {
   const sideOf = new Map(orders.map((o) => [o.id, o.side]));
-  return {
-    type: cart.type,
-    name: CART.types[cart.type].name,
-    rows: CART.types[cart.type].rows,
-    pieces: cart.pieces.map((p) => ({
+  return board.pieces.map((p) => ({
       id: p.id,
       good: p.good,
       x: p.x,
@@ -358,7 +373,15 @@ function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]
       incoming: p.incoming.reduce((s, i) => s + i.qty, 0),
       pending: p.incoming.length ? (sideOf.get(p.incoming[0]!.orderId) ?? null) : null,
       oldest: p.lots.length ? p.lots.reduce((a, l) => (l.age > a.age ? l : a)) : null,
-    })),
+  }));
+}
+
+function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]): CartView {
+  return {
+    type: cart.type,
+    name: CART.types[cart.type].name,
+    rows: CART.types[cart.type].rows,
+    pieces: piecesView(cart, orders),
     weight: cartWeight(cart),
     maxWeight: maxWeight(cart, horses),
     horsesNeeded: horsesNeeded(cart),
@@ -385,12 +408,21 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     };
   }
 
-  const orders = state.orders.map((o) => ({ id: o.id, good: o.good, side: o.side, qty: o.qty, limit: o.limit }));
+  const orders: PendingOrder[] = state.orders.map((o) => ({
+    id: o.id,
+    good: o.good,
+    side: o.side,
+    qty: o.qty,
+    limit: o.limit,
+    town: o.town,
+    from: o.owner.kind === 'store' ? 'store' : 'cart',
+  }));
   // 마구간 남은 수는 그 마을에 있을 때만 보인다
   const stable = p.travel ? null : stableAt(state, p.town);
   const alerts = buildingAlerts(state, map);
   const reserved = state.orders.reduce((s, o) => s + o.reserved, 0);
-  const sellingQty = state.orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.qty, 0);
+  // 수레 짐으로 낸 팔기만 (창고 짐 신청은 수레 밖이다)
+  const sellingQty = state.orders.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
 
   return {
     day: state.day,
@@ -453,6 +485,15 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     newsReadDay: p.newsReadDay,
     unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
     guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },
+    warehouses: p.warehouses.map((w) => ({
+      town: w.town,
+      name: GROWTH.warehouse.name,
+      rows: GROWTH.warehouse.rows,
+      pieces: piecesView(w.board, state.orders),
+      count: cartLots(w.board).reduce((s, l) => s + l.qty, 0),
+      owed: w.owed,
+      rentPerDay: GROWTH.warehouse.rentPerDay,
+    })),
     buildings: p.travel
       ? []
       : townBuildings(state, map, p.town).map((id) => ({ id, name: buildingDef(id).name, alert: alerts[id] ?? null })),

@@ -35,7 +35,8 @@ export function worthParts(state: EconomyState): WorthParts {
   const p = state.player;
   const town = pricingTown(state);
   const qty = Object.fromEntries(GOODS.map((g) => [g, 0])) as Record<GoodId, number>;
-  for (const l of cartLots(p.cart)) qty[l.good] += l.qty;
+  // 수레와 창고 짐 (창고 짐도 지금 마을 값으로 친다)
+  for (const board of [p.cart, ...p.warehouses.map((w) => w.board)]) for (const l of cartLots(board)) qty[l.good] += l.qty;
   // 장날을 기다리는 신청: 팔려고 맡긴 짐과 사려고 맡긴 돈
   let reserved = 0;
   for (const o of state.orders) {

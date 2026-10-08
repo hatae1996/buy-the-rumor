@@ -36,7 +36,7 @@ describe('플레이어에게 보이는 것', () => {
     applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 4, maxPrice: 10 });
     const v = playerView(s, map);
     expect(v.reserved).toBe(40);
-    expect(v.orders).toEqual([{ id: expect.any(Number), good: 'ore', side: 'buy', qty: 4, limit: 10 }]);
+    expect(v.orders).toEqual([{ id: expect.any(Number), good: 'ore', side: 'buy', qty: 4, limit: 10, town: s.player.town, from: 'cart' }]);
   });
 
   it('전에 본 시세를 기억해 오르내림을 보여 줄 수 있다', () => {

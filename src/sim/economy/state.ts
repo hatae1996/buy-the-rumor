@@ -5,6 +5,7 @@ import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType } from '../cart';
 import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
+import type { Warehouse } from '../warehouse/warehouse';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -124,7 +125,9 @@ export type LedgerEntry =
   /** 원정에서 일하고 받은 돈 (목장 일손) */
   | { day: number; kind: 'earn'; town: number; gold: number }
   /** 수레방에서 수레를 바꿈 (쓰던 수레를 쳐 준 값을 뺀 값) */
-  | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number };
+  | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number }
+  /** 창고: 빌리기와 보관료, 오래 밀려 짐을 거둬 감 */
+  | { day: number; kind: 'warehouse'; what: 'rent' | 'seized'; town: number; fee: number; lost?: number };
 
 /** 진행 중인 원정 */
 export interface ActiveExpedition {
@@ -216,10 +219,14 @@ export interface PlayerState {
   record: SeasonRecord | null;
   /** 상인 증서: 시즌이 바뀌어도 남는다 */
   certificate: Certificate;
+  /** 빌린 창고 (마을마다 하나) */
+  warehouses: Warehouse[];
 }
 
 export type OrderOwner =
   | { kind: 'player' }
+  /** 플레이어 창고: 그 마을 창고 짐으로 낸 팔기 신청 (내가 없어도 장날에 맞춰진다). 돈은 플레이어에게 */
+  | { kind: 'store'; town: number }
   | { kind: 'worker'; id: number }
   | { kind: 'trader'; id: number }
   | { kind: 'citizens'; town: number }

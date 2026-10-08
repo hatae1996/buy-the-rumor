@@ -67,6 +67,10 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   ordersPending: '장날에 낸 신청이 있으면 수레를 바꿀 수 없어요. 신청을 거두거나 장날이 지나고 바꾸세요.',
   needHorse: '이 수레는 말이 있어야 움직여요. 짐수레는 한 필, 마차는 두 필이 필요해요.',
   noCartShop: '이 마을에는 수레방이 없어요. 목재 마을이나 도시로 가 보세요.',
+  noWarehouse: '이 마을에 빌린 창고가 없어요.',
+  haveWarehouse: '이 마을 창고는 이미 빌렸어요.',
+  warehouseNotEmpty: '창고를 비우고 돌려주세요. 창고 짐으로 낸 신청도 거둬야 해요.',
+  warehouseOwed: '밀린 보관료를 먼저 내야 해요. 돈이 생기면 밤에 저절로 내요.',
   needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
   needGear: '그 장비가 없거나 망가졌어요.',
   haveGear: '이미 쓸 만한 장비가 있어요.',
@@ -122,6 +126,10 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${townName(e.town)} 여관에서 안내인을 고용했어요`, amount: -e.fee };
     case 'earn':
       return { text: `${townName(e.town)} 목장에서 일하고 품삯을 받았어요`, amount: e.gold };
+    case 'warehouse':
+      return e.what === 'rent'
+        ? { text: `${townName(e.town)} 창고 보관료`, amount: -e.fee }
+        : { text: `보관료가 오래 밀려 ${townName(e.town)} 창고지기가 짐 ${e.lost ?? 0}개를 거둬 갔어요`, amount: null };
     case 'cart':
       return { text: `${townName(e.town)} 수레방에서 ${eulReul(CART.types[e.from].name)} ${euro(CART.types[e.to].name)} 바꿨어요`, amount: -e.price };
     case 'info': {

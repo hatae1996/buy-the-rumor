@@ -552,7 +552,7 @@ export const GROWTH = {
   /** 채집꾼: 카드 선택 없이 평균 결과로 매일 원정. 직접 하는 것보다 이만큼만 (맡긴 일은 효율이 낮다) */
   gathererShare: 0.7,
   /** 창고: 마을마다 빌리는 칸 판. 하루 보관료 */
-  warehouse: { name: '창고', rows: ['#####', '#####', '#####'], rentPerDay: 3, deposit: 10 },
+  warehouse: { name: '창고', rows: ['#####', '#####', '#####'], rentPerDay: 3, deposit: 10, maxOwedDays: 10 },
   /** 두 번째 행렬: 마부가 지시서대로 움직인다. 짐은 알아서 싣기(칸의 이 비율까지) */
   caravan: { autoLoadShare: 0.8, maxStops: 5 },
   /** 은행은 도시에만 (구조만, 0.0.5) */

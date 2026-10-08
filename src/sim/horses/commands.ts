@@ -92,7 +92,7 @@ export function buyCart(state: EconomyState, map: WorldMap, type: CartType): Err
   // 수레방은 목재 마을과 도시에만 있다 (0.0.5)
   if (!hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
   if (p.cart.type === type) return 'sameCart';
-  if (state.orders.length) return 'ordersPending';
+  if (state.orders.some((o) => o.owner.kind === 'player')) return 'ordersPending';
   const cost = cartCost(p.cart.type, type);
   if (p.gold < cost) return 'notEnoughGold';
   const next = createCart(type);
