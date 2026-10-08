@@ -1,6 +1,6 @@
 // 수첩 도장, 여관 술 한 잔, 전서구, 정보원 (기획서 "소문 - 듣는 방법", "들은 이야기 수첩").
 import { describe, expect, it } from 'vitest';
-import { RUMORS } from '../constants';
+import { GROWTH, RUMORS } from '../constants';
 import { advanceDay, applyCommand, createEconomy, type EconomyState } from '../economy';
 import { createRng } from '../rng';
 import { generateWorld, REGION_TAGS, townLinks, type WorldMap } from '../worldgen';
@@ -187,7 +187,7 @@ describe('정보원 (구조만, 화면 없음)', () => {
     expect(applyCommand(state, map, { type: 'hireInformant' })).toEqual({ ok: false, error: 'alreadyInformant' });
     const gold = state.player.gold;
     const r = advanceDay(state, map);
-    expect(state.player.gold).toBe(gold - RUMORS.informant.dailyWage);
+    expect(state.player.gold).toBe(gold - GROWTH.hire.informant.wage);
     expect(r.heard.some((h) => h.via === 'informant' && h.text.includes('장날'))).toBe(true);
     state.player.gold = 0;
     advanceDay(state, map);

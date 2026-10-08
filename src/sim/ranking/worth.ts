@@ -2,6 +2,7 @@
 // 짐은 마지막 장날 가격, 말은 구입가로 친다. 막판에 물건을 사 두기만 하는 꼼수를 막는다.
 // 예금과 빚은 은행이 생기면 더한다 (아직 0).
 import { cartLots } from '../cart';
+import { porterBoards } from '../hire/boards';
 import { GOODS, type GoodId } from '../economy/goods';
 import type { EconomyState } from '../economy/state';
 
@@ -36,7 +37,7 @@ export function worthParts(state: EconomyState): WorthParts {
   const town = pricingTown(state);
   const qty = Object.fromEntries(GOODS.map((g) => [g, 0])) as Record<GoodId, number>;
   // 수레와 창고 짐 (창고 짐도 지금 마을 값으로 친다)
-  for (const board of [p.cart, ...p.warehouses.map((w) => w.board)]) for (const l of cartLots(board)) qty[l.good] += l.qty;
+  for (const board of [p.cart, ...porterBoards(p), ...p.warehouses.map((w) => w.board)]) for (const l of cartLots(board)) qty[l.good] += l.qty;
   // 장날을 기다리는 신청: 팔려고 맡긴 짐과 사려고 맡긴 돈
   let reserved = 0;
   for (const o of state.orders) {

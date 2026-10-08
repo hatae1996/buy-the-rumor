@@ -28,6 +28,7 @@ import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } f
 import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
 import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import { warehouseNight } from '../warehouse/warehouse';
+import { hireNight, porterBoards } from '../hire';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -171,6 +172,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   }
   playerNight(state);
   playerHorsesNight(state);
+  hireNight(state);
   warehouseNight(state);
 
   // 하루가 지나 음식이 상한다
@@ -180,7 +182,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const t of state.traders) spoiled += sum(ageAndSpoil(t.inv, rate));
   for (const t of state.towns) if (t.workshop) spoiled += sum(ageAndSpoil(t.workshop, rate));
   // 수레와 창고: 음식은 창고에서도 상한다
-  for (const board of [p.cart, ...p.warehouses.map((w) => w.board)]) {
+  for (const board of [p.cart, ...porterBoards(p), ...p.warehouses.map((w) => w.board)]) {
     for (const [good, qty] of Object.entries(ageCart(board, rate)) as [GoodId, number][]) {
       spoiled += qty;
       p.ledger.push({ day: state.day, kind: 'spoil', good, qty });

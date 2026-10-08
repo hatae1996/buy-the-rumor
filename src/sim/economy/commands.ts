@@ -1,6 +1,6 @@
 // 플레이어 명령. 화면은 명령을 보내고 결과 상태를 그리기만 한다.
 // 나중에 멀티플레이를 붙이면 이 명령을 서버로 보낸다.
-import { ECONOMY, HORSES } from '../constants';
+import { CART, ECONOMY, HORSES } from '../constants';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
 import { tollAt } from '../events';
@@ -46,6 +46,7 @@ import { CART_TYPES, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
 import { checkBadges } from '../ranking';
+import { dismiss, hire, porterBoards, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import type { EconomyState } from './state';
 
@@ -101,7 +102,12 @@ export type Command =
   | { type: 'storeGoods'; good: GoodId; qty: number }
   | { type: 'retrieveGoods'; good: GoodId; qty: number }
   /** 그 마을 창고 짐으로 팔기 신청 (어디서나 낼 수 있고, 내가 없어도 그 마을 장날에 맞춰진다) */
-  | { type: 'placeStoreSellOrder'; town: number; good: GoodId; qty: number; minPrice: number };
+  | { type: 'placeStoreSellOrder'; town: number; good: GoodId; qty: number; minPrice: number }
+  /** 여관 고용 게시판에서 고용한다 / 내보낸다 */
+  | { type: 'hire'; role: HireRole }
+  | { type: 'dismissHire'; hireId: number }
+  /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
+  | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number };
 
 export type CommandError =
   | 'traveling'
@@ -127,7 +133,10 @@ export type CommandError =
   | ExpeditionError
   | RumorError
   | HorseError
-  | WarehouseError;
+  | WarehouseError
+  | HireError
+  | BoardError
+  | 'boardNotEmpty';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -202,6 +211,8 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
         .filter((o) => o.side === 'sell')
         .reduce((s, o) => s + o.lots.reduce((a, l) => a + l.qty * unitWeight(l.good), 0), 0);
       if (cartWeight(p.cart) + selling > maxWeight(p.cart, p.horses)) return fail('overweight');
+      // 짐꾼은 손수레를 사람 힘으로 끈다
+      if (porterBoards(p).some((b) => cartWeight(b) > CART.types.handcart.humanPull)) return fail('overweight');
       // 떠나면 이 마을에 수레 짐으로 낸 신청은 거둔다 (창고 짐 신청은 남는다)
       for (const o of state.orders) if (o.owner.kind === 'player') accounts.cancel(o);
       state.orders = state.orders.filter((o) => o.owner.kind !== 'player');
@@ -272,6 +283,14 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
     case 'retrieveGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       return done(retrieveGoods(state, cmd.good, cmd.qty));
+    case 'hire':
+      if (!['porter', 'gatherer', 'carter'].includes(cmd.role)) return fail('noWorker');
+      return done(hire(state, map, cmd.role));
+    case 'dismissHire':
+      return done(dismiss(state, cmd.hireId));
+    case 'transferGoods':
+      if (!GOODS.includes(cmd.good)) return fail('badGood');
+      return done(transferGoods(state, cmd.from, cmd.to, cmd.good, cmd.qty));
     case 'placeStoreSellOrder': {
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       if (!isCount(cmd.qty)) return fail('badQty');
@@ -321,7 +340,8 @@ function restAtInn(state: EconomyState): CommandResult {
   const p = state.player;
   if (p.travel) return fail('traveling');
   if (p.restedToday) return fail('alreadyRested');
-  if (p.fatigue <= 0) return fail('notTired');
+  // 묵으면 말도 쉰다 (0.0.5 시안): 나나 말이 지쳤으면 묵을 수 있다
+  if (p.fatigue <= 0 && p.horses.every((h) => h.fatigue <= 0)) return fail('notTired');
   const town = state.towns[p.town]!;
   const { fee, recovery } = innOf(town);
   if (p.gold < fee) return fail('notEnoughGold');
@@ -330,6 +350,7 @@ function restAtInn(state: EconomyState): CommandResult {
   const recovered = Math.min(p.fatigue, recovery);
   p.fatigue -= recovered;
   p.restedToday = true;
+  for (const h of p.horses) h.fatigue = Math.max(0, h.fatigue - HORSES.fatigue.rest.recovery);
   p.ledger.push({ day: state.day, kind: 'inn', town: town.id, fee, recovered });
   return { ok: true };
 }

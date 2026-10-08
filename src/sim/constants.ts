@@ -459,8 +459,8 @@ export const RUMORS = {
 
   /** 전서구: 먼 마을 하나의 오늘 시세, 다음 날 도착 */
   pigeonFee: 10,
-  /** 정보원: 매일 그 마을 시세와 장날 신청 현황 (여관 고용 게시판, 0.0.5) */
-  informant: { hireFee: 60, dailyWage: 8 },
+  /** 정보원: 매일 그 마을 시세와 장날 신청 현황 (여관 고용 게시판, 0.0.5). 일당은 GROWTH.hire.informant */
+  informant: { hireFee: 0 },
 } as const;
 
 /**
@@ -548,6 +548,8 @@ export const GROWTH = {
     scarceStep: 0.2,
     /** 고용할 때 하루치 일당을 미리 준다 (먼저 받는 돈) */
     advanceDays: 1,
+    /** 마을 일꾼이 이만큼 이하로 남으면 게시판에 사람이 나오지 않는다 */
+    minLeft: 2,
   },
   /** 채집꾼: 카드 선택 없이 평균 결과로 매일 원정. 직접 하는 것보다 이만큼만 (맡긴 일은 효율이 낮다) */
   gathererShare: 0.7,

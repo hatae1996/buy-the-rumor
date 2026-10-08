@@ -6,6 +6,7 @@ import type { CartType } from '../cart';
 import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Warehouse } from '../warehouse/warehouse';
+import type { Hire, HireRole } from '../hire/hire';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
@@ -126,6 +127,10 @@ export type LedgerEntry =
   | { day: number; kind: 'earn'; town: number; gold: number }
   /** 수레방에서 수레를 바꿈 (쓰던 수레를 쳐 준 값을 뺀 값) */
   | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number }
+  /** 고용: 데려옴, 하루 일당 합, 일당을 못 받아 떠남, 내보냄 */
+  | { day: number; kind: 'hire'; what: 'hire' | 'wage' | 'quit' | 'dismiss'; role: HireRole | null; name: string | null; town: number; fee: number }
+  /** 채집꾼이 그 마을 창고에 넣은 것 (창고가 없거나 차서 버린 양) */
+  | { day: number; kind: 'gathered'; town: number; name: string; goods: { good: GoodId; qty: number }[]; lost: number }
   /** 창고: 빌리기와 보관료, 오래 밀려 짐을 거둬 감 */
   | { day: number; kind: 'warehouse'; what: 'rent' | 'seized'; town: number; fee: number; lost?: number };
 
@@ -221,6 +226,8 @@ export interface PlayerState {
   certificate: Certificate;
   /** 빌린 창고 (마을마다 하나) */
   warehouses: Warehouse[];
+  /** 고용한 일꾼 (짐꾼, 채집꾼, 마부) */
+  hires: Hire[];
 }
 
 export type OrderOwner =

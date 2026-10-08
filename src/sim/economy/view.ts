@@ -18,6 +18,8 @@ import {
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
+import { hireBoard, type HireOffer, type HireRole } from '../hire';
+import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
@@ -63,6 +65,18 @@ export interface PendingOrder {
   town: number;
   /** 수레 짐이면 cart, 그 마을 창고 짐이면 store */
   from: 'cart' | 'store';
+}
+
+export interface HireView {
+  id: number;
+  role: HireRole;
+  roleName: string;
+  name: string;
+  jobName: string;
+  town: number;
+  wage: number;
+  /** 짐꾼 손수레 (아니면 null) */
+  board: { rows: readonly string[]; pieces: CartPieceView[]; weight: number; maxWeight: number } | null;
 }
 
 export interface WarehouseView {
@@ -133,6 +147,12 @@ export interface PlayerView {
   carts: CartOffer[];
   /** 빌린 창고 (마을마다 하나) */
   warehouses: WarehouseView[];
+  /** 고용한 일꾼 (짐꾼은 손수레를 끈다) */
+  hires: HireView[];
+  /** 지금 마을 여관 고용 게시판 (짐꾼, 채집꾼, 마부). 정보원은 informant */
+  hireBoard: HireOffer[];
+  /** 정보원 일당 (여관 게시판), 지금 마을에 이미 있나 */
+  informant: { wage: number; here: boolean } | null;
   /** 지금 마을 건물 (화면 차례대로)과 할 일 도장(!). 길 위면 빈 목록 */
   buildings: { id: BuildingId; name: string; alert: string | null }[];
   /** 내 장비와 잡화점 (어느 마을이나). 길 위면 살 수 없다 */
@@ -494,6 +514,20 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       owed: w.owed,
       rentPerDay: GROWTH.warehouse.rentPerDay,
     })),
+    hires: p.hires.map((h) => ({
+      id: h.id,
+      role: h.role,
+      roleName: GROWTH.hire[h.role].name,
+      name: h.name,
+      jobName: JOB_NAME[h.job],
+      town: h.town,
+      wage: h.wage,
+      board: h.board
+        ? { rows: CART.types.handcart.rows, pieces: piecesView(h.board, state.orders), weight: cartWeight(h.board), maxWeight: CART.types.handcart.humanPull }
+        : null,
+    })),
+    hireBoard: hireBoard(state, map),
+    informant: p.travel ? null : { wage: GROWTH.hire.informant.wage, here: p.informants.includes(p.town) },
     buildings: p.travel
       ? []
       : townBuildings(state, map, p.town).map((id) => ({ id, name: buildingDef(id).name, alert: alerts[id] ?? null })),

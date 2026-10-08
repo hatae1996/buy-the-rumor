@@ -1,7 +1,7 @@
 // 화면 문구. 처음 하는 사람에게 전문 용어를 보이지 않는다 ("동시호가" 대신 "장날").
 import { shelfLife, GOOD_NAME, type CommandError, type GoodId, type LedgerEntry, type Lot } from '../sim/economy';
 import { SEASON_NAME, type Season } from '../sim/season';
-import { CART, ECONOMY, HORSES } from '../sim/constants';
+import { CART, ECONOMY, GROWTH, HORSES } from '../sim/constants';
 import { eulReul, euro, iGa } from '../sim/josa';
 
 export const money = (n: number): string => Math.round(n).toLocaleString('ko-KR');
@@ -71,6 +71,11 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   haveWarehouse: '이 마을 창고는 이미 빌렸어요.',
   warehouseNotEmpty: '창고를 비우고 돌려주세요. 창고 짐으로 낸 신청도 거둬야 해요.',
   warehouseOwed: '밀린 보관료를 먼저 내야 해요. 돈이 생기면 밤에 저절로 내요.',
+  noInn: '이 마을에는 여관이 없어요.',
+  noWorker: '이 마을에는 지금 데려올 일손이 없어요.',
+  noHire: '그 일꾼은 이미 없어요.',
+  boardNotEmpty: '짐꾼 수레의 짐을 먼저 옮기세요.',
+  noBoard: '그 짐칸이 없어요.',
   needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
   needGear: '그 장비가 없거나 망가졌어요.',
   haveGear: '이미 쓸 만한 장비가 있어요.',
@@ -126,6 +131,18 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${townName(e.town)} 여관에서 안내인을 고용했어요`, amount: -e.fee };
     case 'earn':
       return { text: `${townName(e.town)} 목장에서 일하고 품삯을 받았어요`, amount: e.gold };
+    case 'hire': {
+      const role = e.role ? GROWTH.hire[e.role].name : '';
+      if (e.what === 'wage') return { text: '일꾼 일당', amount: -e.fee };
+      const who = `${role} ${e.name ?? ''}`;
+      if (e.what === 'hire') return { text: `${townName(e.town)}에서 ${eulReul(who)} 고용했어요 (하루치 미리)`, amount: -e.fee };
+      if (e.what === 'quit') return { text: `일당을 못 받은 ${iGa(who)} ${euro(townName(e.town))} 돌아갔어요`, amount: null };
+      return { text: `${eulReul(who)} 내보냈어요`, amount: null };
+    }
+    case 'gathered': {
+      const got = e.goods.map((g) => `${GOOD_NAME[g.good]} ${g.qty}`).join(', ');
+      return { text: `채집꾼 ${e.name}: ${townName(e.town)} 창고에 ${got || '넣은 것 없음'}${e.lost ? ` (${e.lost}개는 둘 곳이 없어 버림)` : ''}`, amount: null };
+    }
     case 'warehouse':
       return e.what === 'rent'
         ? { text: `${townName(e.town)} 창고 보관료`, amount: -e.fee }

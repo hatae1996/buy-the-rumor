@@ -16,6 +16,7 @@ import { hasGear, needsMet, useGear, useTool, type GearError } from './gear';
 import { makeRumor } from './rumors';
 import { noteSeen, verifyByExpedition } from '../rumors';
 import { noteExpeditionMoments } from '../ranking/moments';
+import { loadOverflow } from '../hire/boards';
 import type { Chance, Choice, Effect } from './types';
 
 const X = ECONOMY.expedition;
@@ -291,7 +292,9 @@ export function finishExpedition(state: EconomyState): ExpeditionError | null {
     const age = ex.flags.includes('heat') && (h.good === 'fish' || h.good === 'meat') ? X.heatAge : 0;
     const before = cartCount(p.cart, h.good);
     loadGoods(p.cart, h.good, h.qty, age);
-    const n = cartCount(p.cart, h.good) - before;
+    let n = cartCount(p.cart, h.good) - before;
+    // 내 수레에 다 못 실으면 짐꾼 수레에
+    if (n < h.qty) n += loadOverflow(p, h.good, h.qty - n, age);
     if (n > 0) loaded.push({ good: h.good, qty: n });
     if (h.qty - n > 0) leftBehind.push({ good: h.good, qty: h.qty - n });
   }

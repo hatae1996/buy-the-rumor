@@ -1,7 +1,8 @@
 // 창고 (기획서 "성장", 0.0.5): 마을마다 빌리는 칸 판. 짐을 두고 다니고, 내가 없어도 그 마을 장날에 판다.
 // 수레 판과 같은 짐 조각 규칙을 쓰고, 음식은 창고에서도 상한다. 보관료는 날마다 낸다.
 // 보관료가 밀리면 짐을 꺼내거나 팔 수 없고, 너무 오래 밀리면 창고지기가 짐을 거둬 간다(빚이 되지 않는다).
-import { cartCount, cartLots, createCart, loadGoods, takeGoods, type Cart } from '../cart';
+import { cartCount, cartLots, createCart, type Cart } from '../cart';
+import { moveBetween } from '../hire/boards';
 import { GROWTH } from '../constants';
 import type { GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
@@ -61,7 +62,7 @@ export function storeGoods(state: EconomyState, good: GoodId, qty: number): Err 
   if (!w) return 'noWarehouse';
   if (!Number.isInteger(qty) || qty <= 0) return 'badQty';
   if (cartCount(p.cart, good) < qty) return 'notEnoughGoods';
-  return moveGoods(p.cart, w.board, good, qty);
+  return moveBetween(p.cart, w.board, good, qty);
 }
 
 /** 지금 마을 창고 짐을 수레로 꺼낸다 (보관료가 밀리면 못 꺼낸다) */
@@ -73,22 +74,7 @@ export function retrieveGoods(state: EconomyState, good: GoodId, qty: number): E
   if (w.owed > 0) return 'warehouseOwed';
   if (!Number.isInteger(qty) || qty <= 0) return 'badQty';
   if (cartCount(w.board, good) < qty) return 'notEnoughGoods';
-  return moveGoods(w.board, p.cart, good, qty);
-}
-
-/** 한 판에서 다른 판으로 옮긴다. 다 안 들어가면 옮기지 않는다 */
-function moveGoods(from: Cart<'warehouse'> | PlayerState['cart'], to: Cart<'warehouse'> | PlayerState['cart'], good: GoodId, qty: number): Err | null {
-  const backup = JSON.stringify([from, to]);
-  const lots = takeGoods(from, good, qty);
-  for (const l of lots) {
-    if (loadGoods(to, l.good, l.qty, l.age) < l.qty) {
-      const [f, t] = JSON.parse(backup) as [typeof from, typeof to];
-      Object.assign(from, f);
-      Object.assign(to, t);
-      return 'noRoom';
-    }
-  }
-  return null;
+  return moveBetween(w.board, p.cart, good, qty);
 }
 
 /** 밤에: 보관료를 낸다. 못 내면 밀리고, 너무 오래 밀리면 창고지기가 짐을 거둬 가고 창고가 끝난다 */
