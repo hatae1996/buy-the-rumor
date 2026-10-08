@@ -16,6 +16,7 @@ import {
   checkBadges,
   eventGoods,
   HOLDINGS_SHARE,
+  holdingPrice,
   lastMarketPrice,
   netWorth,
   paperGrade,
@@ -42,14 +43,19 @@ const buy = (day: number, good: TradeRecord['good'], qty: number, price: number,
 const sell = (day: number, good: TradeRecord['good'], qty: number, price: number, town = 0) => tradeRecord(day, 'sell', town, good, qty, price);
 
 describe('순자산 (현금 + 예금 − 빚 + (짐과 말) × 절반)', () => {
-  it('짐은 마지막 장날 가격, 말은 구입가로, 절반만 친다', () => {
+  it('짐은 모든 마을 마지막 장날 값의 평균, 말은 구입가로, 절반만 친다 (0.0.6)', () => {
     const p = s.player;
     p.gold = 100;
     p.cart = createCart('wagon');
     loadGoods(p.cart, 'ore', 4);
     p.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
-    const ore = lastMarketPrice(s, p.town, 'ore');
+    const ore = s.towns.reduce((sum, t) => sum + lastMarketPrice(s, t.id, 'ore'), 0) / s.towns.length;
+    expect(holdingPrice(s, 'ore')).toBe(ore);
     expect(netWorth(s)).toBe(Math.round(100 + (4 * ore + 220) * HOLDINGS_SHARE));
+    // 어느 마을에 서 있든 같다
+    const before = netWorth(s);
+    p.town = s.towns.find((t) => t.id !== p.town)!.id;
+    expect(netWorth(s)).toBe(before);
   });
 
   it('장날을 기다리는 신청에 맡긴 돈과 짐도 센다', () => {

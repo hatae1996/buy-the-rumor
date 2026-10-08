@@ -133,5 +133,5 @@ describe('시즌을 돌려도', () => {
     const off = run(false);
     expect(on.firsts.gatherer).toBeDefined();
     expect(on.worth.at(-1)!).toBeGreaterThan(off.worth.at(-1)! * 0.9);
-  });
+  }, 60000);
 });

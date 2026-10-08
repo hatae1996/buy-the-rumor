@@ -1,5 +1,5 @@
 export * from './types';
-export { netWorth, worthParts, lastMarketPrice, HOLDINGS_SHARE, type WorthParts } from './worth';
+export { netWorth, worthParts, lastMarketPrice, holdingPrice, HOLDINGS_SHARE, type WorthParts } from './worth';
 export { seasonScores, bestSingleSale, buyTheRumorProfit, eventGoods, type SeasonScores } from './scores';
 export { standings, type Standing, type StandingEntry } from './standings';
 export { THEMES, themeDef, questDef, pickTheme } from './quests';
