@@ -636,6 +636,17 @@
   color: var(--paper-dim);
 }
 
+/* 장비나 말이 연 선택지: 한 줄을 다 쓴다 */
+.exp-choice.extra {
+  grid-column: 1 / -1;
+  background: var(--teal);
+  box-shadow: 0 3px 0 #1f6c69;
+}
+
+.exp-choice:disabled {
+  opacity: 0.5;
+}
+
 /* ───── 수레 ───── */
 .cart-head {
   display: flex;

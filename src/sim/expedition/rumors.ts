@@ -8,6 +8,8 @@ import type { Rng } from '../rng';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
 import type { RumorTopic } from './types';
+import { HORSES } from '../constants';
+import { daysAhead } from '../rumors/text';
 
 export function makeRumor(topic: RumorTopic, state: EconomyState, map: WorldMap, townId: number, rng: Rng): string {
   const town = state.towns[townId]!;
@@ -17,6 +19,13 @@ export function makeRumor(topic: RumorTopic, state: EconomyState, map: WorldMap,
     return node ? node.amount / node.capacity > 0.6 : false;
   };
   switch (topic) {
+    case 'horse': {
+      // 풀린 망아지를 돌려주면 목장 주인이 다음 입고를 알려 준다
+      const next = [...state.horses.arrivals].sort((a, b) => a.day - b.day)[0];
+      if (!next) return '"이번 철엔 더 들어올 말이 없다네."';
+      const at = map.towns[next.town]!.name;
+      return `"${daysAhead(next.day - state.day)} ${at} 목장에 ${HORSES.kinds[next.kind].name} ${next.count}마리가 들어온다네."`;
+    }
     case 'deer':
       return plenty('forest')
         ? `"${name} 숲에 사냥감이 넉넉하다더군."`

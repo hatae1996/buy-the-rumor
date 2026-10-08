@@ -1,5 +1,6 @@
 // 원정 진행: 시작, 카드 고르기, 끝내기. 결과는 원정마다 따로 둔 시드 난수로 정해서
 // 서버가 같은 선택을 받으면 같은 결과를 다시 낼 수 있다 (기획서 "채집: 원정 카드").
+// 결과는 피로, 얻는 물품, 위험(다침, 짐 일부 잃음, 장비 망가짐) 세 가지뿐이다.
 import { cartCount, loadGoods } from '../cart';
 import { ECONOMY } from '../constants';
 import type { GoodId } from '../economy/goods';
@@ -7,18 +8,30 @@ import { GOOD_NAME } from '../economy/goods';
 import { depletes, findNode } from '../economy/nodes';
 import { hasExpeditions } from '../economy/player';
 import type { ActiveExpedition, EconomyState, ExpeditionLogLine } from '../economy/state';
-import { createRng, mixSeed, shuffle, type Rng } from '../rng';
+import { createRng, mixSeed, type Rng } from '../rng';
 import type { WorldMap } from '../worldgen';
 import { cardById } from './cards';
-import { buildDeck } from './deck';
+import { buildDeck, EVENT_MEMORY_DAYS } from './deck';
+import { hasGear, needsMet, useGear, useTool, type GearError } from './gear';
 import { makeRumor } from './rumors';
 import { noteSeen, verifyByExpedition } from '../rumors';
 import type { Chance, Choice, Effect } from './types';
 
+const X = ECONOMY.expedition;
+
 /** 많이 지쳤을 때 성공 확률이 이만큼 줄고, 얻는 양이 하나 준다 */
 export const TIRED_PENALTY = 0.15;
 
-export type ExpeditionError = 'traveling' | 'noExpedition' | 'noChances' | 'tooTired' | 'inExpedition' | 'notInExpedition' | 'badChoice';
+export type ExpeditionError =
+  | 'traveling'
+  | 'noExpedition'
+  | 'noChances'
+  | 'tooTired'
+  | 'inExpedition'
+  | 'notInExpedition'
+  | 'badChoice'
+  | 'noHorse'
+  | GearError;
 
 export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionError | null {
   const p = state.player;
@@ -29,16 +42,43 @@ export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionE
   if (p.fatigue >= ECONOMY.fatigue.max) return 'tooTired';
 
   const rng = createRng(mixSeed(state.seed, state.day, state.nextId++));
-  const deck = shuffle(buildDeck(state, map, p.town), rng);
+  const { deck, markDays } = buildDeck(state, map, p.town, rng);
   if (deck.length === 0) return 'noExpedition';
   p.expeditionChances -= 1;
   // 자원지를 직접 보니 그 마을 자원지 소문에 도장을 찍는다
   verifyByExpedition(state, p.town);
-  // 한 번의 원정은 카드 3~4장
+  // 한 번의 원정은 카드 3~4장. 안내인은 이번 원정 한 번만 따라간다
   const total = rng.next() < 0.5 ? 3 : 4;
-  const card = deck.shift()!;
-  p.expedition = { town: p.town, rng: rng.state(), deck, card, left: total - 1, haul: [], rumors: [], log: [] };
+  const ex: ActiveExpedition = {
+    town: p.town,
+    rng: 0,
+    deck,
+    card: '',
+    left: total,
+    haul: [],
+    rumors: [],
+    log: [],
+    flags: [],
+    guide: p.guide,
+    markDays,
+  };
+  p.guide = false;
+  p.expedition = ex;
+  drawNext(ex);
+  ex.rng = rng.state();
   return null;
+}
+
+/** 다음 카드를 편다. 안내인이 있으면 위험한 카드 한 장을 건너뛴다 */
+function drawNext(ex: ActiveExpedition): void {
+  let next = ex.deck.shift()!;
+  if (ex.guide && cardById(next).danger && ex.deck.length > 0) {
+    ex.guide = false;
+    ex.log.push({ title: cardById(next).title, choice: '안내인이 다른 길로 이끌었다', outcome: null, text: '위험한 곳을 피해 갔어요.' });
+    next = ex.deck.shift()!;
+  }
+  ex.card = next;
+  ex.left -= 1;
 }
 
 /** 성공 확률 (화면에 대략 보여 줄 때도 같은 식을 쓴다) */
@@ -53,35 +93,49 @@ export function chanceOf(chance: Chance, state: EconomyState, townId: number): n
   return Math.min(0.95, Math.max(0.05, p));
 }
 
+/** 선택지에 쌓이는 피로 (눈 덮인 길이면 모든 카드에 +1) */
+export function choiceFatigue(choice: Choice, ex: ActiveExpedition): number {
+  return choice.fatigue + (ex.flags.includes('snow') && choice.fatigue >= 0 ? 1 : 0);
+}
+
 export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceIndex: number): ExpeditionError | null {
   const p = state.player;
   const ex = p.expedition;
   if (!ex) return 'notInExpedition';
-  if (choiceIndex !== 0 && choiceIndex !== 1) return 'badChoice';
   const card = cardById(ex.card);
-  const choice = card.choices[choiceIndex]!;
+  const choice = card.choices[choiceIndex];
+  if (!Number.isInteger(choiceIndex) || !choice) return 'badChoice';
+  const unmet = needsMet(state, choice.needs);
+  if (unmet) return unmet;
   const rng = createRng(ex.rng);
+
+  // 도구와 장비를 쓴다
+  if (choice.needs?.tool) useTool(p, choice.needs.tool);
+  if (choice.needs?.gear) useGear(p, choice.needs.gear);
 
   // 결과는 이 선택을 하기 전 몸 상태로 판단하고, 피로는 그다음에 쌓인다
   const chance = choice.chance ? chanceOf(choice.chance, state, ex.town) : null;
   const success = chance === null || rng.next() < chance;
   const effects = success ? choice.success : (choice.failure ?? []);
-  let ended = false;
-  const parts: string[] = [];
-  for (const e of effects) {
-    const r = applyEffect(e, state, map, ex, rng);
-    if (r.text) parts.push(r.text);
-    if (r.end) ended = true;
+  const result = { ended: false, risk: !success && chance !== null, parts: [] as string[] };
+  for (const e of effects) applyEffect(e, state, map, ex, rng, result);
+  p.fatigue = Math.min(ECONOMY.fatigue.max, Math.max(0, p.fatigue + choiceFatigue(choice, ex)));
+  ex.log.push(logLine(card.title, choice, chance === null ? null : success ? 'success' : 'failure', result.parts));
+
+  // 말과 함께 갔으면 위험한 일 뒤에 말이 놀랄 수 있다 (목장 화재가 있었던 마을은 더)
+  if (result.risk && !result.ended && p.horses.length && card.id !== 'horseSpooked') {
+    const fire = state.towns[ex.town]!.recentEvents.some((e) => e.kind === 'ranchFire' && state.day - e.day <= EVENT_MEMORY_DAYS);
+    if (rng.next() < (fire ? X.spookChanceAfterFire : X.spookChance)) {
+      ex.deck.unshift('horseSpooked');
+      if (ex.left <= 0) ex.left = 1;
+    }
   }
-  p.fatigue = Math.min(ECONOMY.fatigue.max, Math.max(0, p.fatigue + choice.fatigue));
-  ex.log.push(logLine(card.title, choice, chance === null ? null : success ? 'success' : 'failure', parts));
 
   ex.rng = rng.state();
-  ex.left -= 1;
-  if (ended || ex.left < 0 || p.fatigue >= ECONOMY.fatigue.max || ex.deck.length === 0) {
+  if (result.ended || ex.left <= 0 || p.fatigue >= ECONOMY.fatigue.max || ex.deck.length === 0) {
     finishExpedition(state);
   } else {
-    ex.card = ex.deck.shift()!;
+    drawNext(ex);
   }
   return null;
 }
@@ -91,15 +145,19 @@ function logLine(title: string, choice: Choice, outcome: ExpeditionLogLine['outc
   return { title, choice: choice.label, outcome, text };
 }
 
-function applyEffect(
-  e: Effect,
-  state: EconomyState,
-  map: WorldMap,
-  ex: ActiveExpedition,
-  rng: Rng,
-): { text?: string; end?: boolean } {
+interface EffectResult {
+  ended: boolean;
+  /** 다치거나 짐을 잃는 등 위험한 일이 있었나 (말이 놀란다) */
+  risk: boolean;
+  parts: string[];
+}
+
+function applyEffect(e: Effect, state: EconomyState, map: WorldMap, ex: ActiveExpedition, rng: Rng, out: EffectResult): void {
   const p = state.player;
   const town = state.towns[ex.town]!;
+  const say = (text: string): void => {
+    out.parts.push(text);
+  };
   switch (e.kind) {
     case 'goods': {
       let qty = rng.int(e.min, e.max);
@@ -110,9 +168,17 @@ function applyEffect(
         node.amount -= qty;
       }
       if (p.fatigue >= ECONOMY.fatigue.tiredAt) qty = Math.max(0, qty - 1);
-      if (qty <= 0) return { text: '건진 게 없어요.' };
+      if (qty <= 0) return say('건진 게 없어요.');
+      // 그물, 살찐 사슴, 수확철, 말에 실은 바구니
+      if (e.boost === 'net' && hasGear(p, 'net')) {
+        useGear(p, 'net');
+        qty++;
+      }
+      if (e.boost === 'deer' && ex.flags.includes('fatDeer')) qty++;
+      if (e.boost === 'farm' && ex.flags.includes('harvest')) qty++;
+      if (ex.flags.includes('packHorse')) qty++;
       addHaul(ex, e.good, qty);
-      return { text: `${GOOD_NAME[e.good]} ${qty}개를 얻었어요.` };
+      return say(`${GOOD_NAME[e.good]} ${qty}개를 얻었어요.`);
     }
     case 'loseHaul': {
       let lost = 0;
@@ -123,31 +189,73 @@ function applyEffect(
         lost += n;
       }
       ex.haul = ex.haul.filter((h) => h.qty > 0);
-      return { text: lost ? `짐 ${lost}개를 잃었어요.` : '다행히 잃을 게 없었어요.' };
+      if (lost) out.risk = true;
+      return say(lost ? `짐 ${lost}개를 잃었어요.` : '다행히 잃을 게 없었어요.');
+    }
+    case 'hurt':
+      p.fatigue = Math.min(ECONOMY.fatigue.max, p.fatigue + X.hurtFatigue);
+      out.risk = true;
+      return say(`다쳤어요 (피로 +${X.hurtFatigue}).`);
+    case 'breakGear':
+      if (!hasGear(p, e.gear)) return;
+      useGear(p, e.gear, e.uses);
+      out.risk = true;
+      return say(`${X.gear[e.gear].name}${p.gear[e.gear] === 0 ? '이 망가졌어요' : '이 상했어요'}.`);
+    case 'maybe':
+      if (rng.next() < e.chance) for (const inner of e.effects) applyEffect(inner, state, map, ex, rng, out);
+      return;
+    case 'oneOf': {
+      const pick = e.options[rng.int(0, e.options.length - 1)]!;
+      if (!pick.length) say('쓸 만한 건 없었어요.');
+      for (const inner of pick) applyEffect(inner, state, map, ex, rng, out);
+      return;
     }
     case 'rumor': {
       const text = makeRumor(e.topic, state, map, ex.town, rng);
       ex.rumors.push(text);
-      return { text: `이야기를 들었어요: ${text}` };
+      return say(`이야기를 들었어요: ${text}`);
     }
     case 'link':
       ex.deck.unshift(e.card);
       // 연결 카드는 남은 장 수와 상관없이 이어서 나온다
       if (ex.left <= 0) ex.left = 1;
-      return {};
+      return;
     case 'leave':
-      p.marks.push({ town: ex.town, card: e.card });
-      return { text: '다음에 다시 와 볼 자리를 남겼어요.' };
+      // 다시 남겨 둔 덫은 처음 놓은 날을 그대로 센다
+      p.marks.push({ town: ex.town, card: e.card, day: ex.markDays[e.card] ?? state.day });
+      return say('다음에 다시 와 볼 자리를 남겼어요.');
     case 'end':
-      return { end: true };
+      out.ended = true;
+      return;
     case 'skip':
       ex.left -= e.cards;
-      return {};
+      return;
+    case 'more':
+      ex.left += e.cards;
+      return say(`카드를 ${e.cards}장 더 봐요.`);
+    case 'flag':
+      if (!ex.flags.includes(e.flag)) ex.flags.push(e.flag);
+      return;
     case 'pay': {
       const paid = Math.min(p.gold, e.gold);
       p.gold -= paid;
       p.ledger.push({ day: state.day, kind: 'toll', town: ex.town, gold: paid });
-      return { text: `통행세를 냈어요 (−${paid}).` };
+      return say(`통행세를 냈어요 (−${paid}).`);
+    }
+    case 'earn': {
+      const gold = Math.min(town.treasury, e.gold);
+      town.treasury -= gold;
+      p.gold += gold;
+      p.ledger.push({ day: state.day, kind: 'earn', town: ex.town, gold });
+      return say(gold ? `품삯 ${gold}을 받았어요.` : '목장 주인이 오늘은 줄 돈이 없대요.');
+    }
+    case 'trapCatch': {
+      const age = state.day - (ex.markDays.checkTrap ?? state.day);
+      const caught = age <= X.trapFreshDays || (age <= X.trapGoneDays && rng.next() < 0.5);
+      if (!caught) return say('다른 짐승이 먼저 먹어 치웠어요.');
+      applyEffect({ kind: 'goods', good: 'meat', min: 1, max: 2, from: 'forest' }, state, map, ex, rng, out);
+      applyEffect({ kind: 'goods', good: 'leather', min: 1, max: 1, from: 'forest' }, state, map, ex, rng, out);
+      return;
     }
   }
 }
@@ -166,8 +274,10 @@ export function finishExpedition(state: EconomyState): ExpeditionError | null {
   const loaded: { good: GoodId; qty: number }[] = [];
   const leftBehind: { good: GoodId; qty: number }[] = [];
   for (const h of ex.haul) {
+    // 무더위에 잡은 생선과 고기는 묵은 채로 싣는다
+    const age = ex.flags.includes('heat') && (h.good === 'fish' || h.good === 'meat') ? X.heatAge : 0;
     const before = cartCount(p.cart, h.good);
-    loadGoods(p.cart, h.good, h.qty, 0);
+    loadGoods(p.cart, h.good, h.qty, age);
     const n = cartCount(p.cart, h.good) - before;
     if (n > 0) loaded.push({ good: h.good, qty: n });
     if (h.qty - n > 0) leftBehind.push({ good: h.good, qty: h.qty - n });

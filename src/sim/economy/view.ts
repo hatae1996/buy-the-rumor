@@ -1,6 +1,6 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { CART_TYPES, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
+import { CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
 import {
   buyPrice,
   cartCost,
@@ -22,9 +22,11 @@ import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
-import { cardById, chanceOf } from '../expedition';
+import { iGa } from '../josa';
+import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, guideFee, needsMet, type GearKind } from '../expedition';
 import { blockedTiles, tollAt } from '../events';
 import type {
+  ActiveExpedition,
   EconomyState,
   ExpeditionResult,
   LedgerEntry,
@@ -111,6 +113,12 @@ export interface PlayerView {
   stable: StableView | null;
   /** 수레방: 수레마다 바꾸는 값 (쓰던 수레를 쳐 준 뒤) */
   carts: CartOffer[];
+  /** 내 장비와 잡화점 (어느 마을이나). 길 위면 살 수 없다 */
+  gear: GearView[];
+  /** 수레에 실은 도구 수 (원정에서 나무 베기·광석 캐기에 쓰고, 장비를 고친다) */
+  tools: number;
+  /** 여관 안내인: 고용 값과 고용했는지. 원정을 못 나가는 마을이나 길 위면 null */
+  guide: { fee: number; hired: boolean } | null;
 }
 
 export interface HorseKindInfo {
@@ -170,11 +178,32 @@ function horseView(h: Horse, stable: ReturnType<typeof stableAt>): HorseView {
   };
 }
 
+export interface GearView {
+  kind: GearKind;
+  name: string;
+  price: number;
+  /** 남은 쓰는 횟수. 안 가졌으면 null, 0이면 망가짐 */
+  uses: number | null;
+  maxUses: number;
+}
+
 export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'>;
 
 /** 수첩 한 줄을 화면용으로: 도장 판정용 주장과 세계 소문 번호는 뺀다 */
 export function noteView({ claim: _claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
   return rest;
+}
+
+export interface ExpeditionChoiceView {
+  /** 명령에 보낼 번호 (chooseExpeditionCard) */
+  index: number;
+  label: string;
+  /** 결과는 대략만 보인다: "피로 +3 · 성공 가능성 높음 · 도구 1개" */
+  hint: string;
+  /** 고를 수 없는 까닭 (도구가 없음). 고를 수 있으면 null */
+  disabled: string | null;
+  /** 장비나 말이 연 선택지 */
+  extra: boolean;
 }
 
 export interface ExpeditionView {
@@ -183,13 +212,25 @@ export interface ExpeditionView {
     id: string;
     title: string;
     text: string;
-    /** 결과는 대략만 보인다: "피로 +3 · 성공 가능성 높음" */
-    choices: { label: string; hint: string }[];
+    /** 장비나 말이 없어 열리지 않은 선택지는 빠진다. 앞의 둘이 왼쪽·오른쪽 */
+    choices: ExpeditionChoiceView[];
   };
+  /** 이번 원정에 붙은 상태 (무더위, 눈 덮인 길 등) */
+  flags: string[];
+  /** 안내인이 아직 따라오고 있나 */
+  guide: boolean;
   /** 지금 카드 뒤에 남은 장 수 (연결 카드가 끼면 늘 수 있다) */
   left: number;
   haul: { good: GoodId; qty: number }[];
 }
+
+const FLAG_TEXT: Record<ActiveExpedition['flags'][number], string> = {
+  heat: '무더위: 생선과 고기가 빨리 상해요',
+  snow: '눈 덮인 길: 카드마다 피로 +1',
+  fatDeer: '살찐 사슴: 사슴 고기 +1',
+  harvest: '수확철: 농부를 도우면 곡물 +1',
+  packHorse: '말에 실은 바구니: 얻는 것마다 +1',
+};
 
 function expeditionView(state: EconomyState): ExpeditionView | null {
   const ex = state.player.expedition;
@@ -201,15 +242,32 @@ function expeditionView(state: EconomyState): ExpeditionView | null {
       id: card.id,
       title: card.title,
       text: card.text,
-      choices: card.choices.map((c) => {
-        const parts = [c.fatigue > 0 ? `피로 +${c.fatigue}` : c.fatigue < 0 ? `피로 −${-c.fatigue}` : '피로 그대로'];
+      choices: card.choices.flatMap((c, index): ExpeditionChoiceView[] => {
+        const unmet = needsMet(state, c.needs);
+        // 장비나 말이 여는 덧붙은 선택지(셋째부터)는 없으면 보이지 않는다. 왼쪽·오른쪽은 보이되 고를 수 없다
+        if ((unmet === 'needGear' || unmet === 'noHorse') && index >= 2) return [];
+        const f = choiceFatigue(c, ex);
+        const parts = [f > 0 ? `피로 +${f}` : f < 0 ? `피로 −${-f}` : '피로 그대로'];
         if (c.chance) {
           const p = chanceOf(c.chance, state, ex.town);
           parts.push(p >= 0.7 ? '성공 가능성 높음' : p >= 0.45 ? '성공 가능성 반반' : '성공 가능성 낮음');
         }
-        return { label: c.label, hint: parts.join(' · ') };
+        if (c.needs?.tool) parts.push(`도구 ${c.needs.tool}개`);
+        if (c.needs?.gear) parts.push(ECONOMY.expedition.gear[c.needs.gear].name);
+        if (c.needs?.horse) parts.push('말');
+        return [
+          {
+            index,
+            label: c.label,
+            hint: parts.join(' · '),
+            disabled: unmet === null ? null : unmet === 'needTool' ? '도구가 없어요' : unmet === 'noHorse' ? '말이 없어요' : `${iGa(ECONOMY.expedition.gear[c.needs!.gear!].name)} 없어요`,
+            extra: index >= 2,
+          },
+        ];
       }),
     },
+    flags: ex.flags.map((f) => FLAG_TEXT[f]),
+    guide: ex.guide,
     left: Math.max(0, ex.left),
     haul: ex.haul.map((h) => ({ ...h })),
   };
@@ -346,6 +404,15 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     stable: stable
       ? { town: stable.town, horses: HORSE_KINDS.map((k) => ({ ...kindInfo(k), stock: stable.stock[k], price: buyPrice(stable, k) })) }
       : null,
+    gear: GEAR_KINDS.map((kind) => ({
+      kind,
+      name: ECONOMY.expedition.gear[kind].name,
+      price: ECONOMY.expedition.gear[kind].price,
+      uses: p.gear[kind] ?? null,
+      maxUses: ECONOMY.expedition.gear[kind].durability,
+    })),
+    tools: cartCount(p.cart, 'tools'),
+    guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },
     carts: CART_TYPES.map((type) => ({
       type,
       name: CART.types[type].name,

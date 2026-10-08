@@ -50,7 +50,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 2,
     omen: '산에 비가 열흘째 온다더군.',
     news: ({ town: t }) => `${t} 가는 산길에 산사태가 났습니다. 산길이 막혔습니다.`,
-    deck: null,
+    deck: 'landslide',
   },
   {
     id: 'mineCollapse',
@@ -65,7 +65,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 3,
     omen: '갱도에서 이상한 소리가 난다더라.',
     news: ({ town: t }) => `${t} 광산 갱도 하나가 무너졌습니다.`,
-    deck: null,
+    deck: 'mineCollapse',
   },
   {
     id: 'wolves',
@@ -95,7 +95,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 2,
     omen: null,
     news: ({ town: t }) => `${t} 숲 짐승 사이에 병이 돕니다. 이틀 동안 그 마을 장에서 고기를 팔 수 없습니다.`,
-    deck: null,
+    deck: 'animalSickness',
   },
   {
     id: 'drought',
@@ -108,7 +108,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 'season',
     omen: '비가 통 안 온다더라.',
     news: ({ town: t }) => `${t} 일대에 가뭄이 들었습니다.`,
-    deck: null,
+    deck: 'drought',
   },
   {
     id: 'storm',
@@ -137,7 +137,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 4,
     omen: null,
     news: ({ town: t }) => `${t} 목장에 불이 났습니다.`,
-    deck: null,
+    deck: 'ranchFire',
   },
 
   // ───── 공급 ↑ ─────
@@ -152,7 +152,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 2,
     omen: '갈매기가 엄청 많이 몰려왔다더라.',
     news: ({ town: t }) => `${t} 앞바다에 물고기 떼가 몰려왔습니다.`,
-    deck: null,
+    deck: 'bigCatch',
   },
   {
     id: 'bumperHarvest',
@@ -165,7 +165,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 3,
     omen: '올해 이삭이 무겁다더군.',
     news: ({ town: t }) => `${t} 들판에 풍년이 들었습니다.`,
-    deck: null,
+    deck: 'bumperHarvest',
   },
   {
     id: 'newVein',
@@ -271,7 +271,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 3,
     omen: '길에서 상인이 털렸다더군.',
     news: ({ town: t }) => `${t} 길목에 산적이 나타났습니다. 오가는 수레에 통행세를 뜯습니다.`,
-    deck: null,
+    deck: 'bandits',
   },
   {
     id: 'bridgeCollapse',
@@ -307,7 +307,7 @@ export const EVENT_DEFS: readonly EventDef[] = [
     days: 1,
     omen: '서쪽에서 수레 행렬이 온다더군.',
     news: ({ town: t, good }) => `서쪽 대상단이 ${t}에 와서 ${eulReul(name(good))} 한꺼번에 사들입니다.`,
-    deck: null,
+    deck: 'caravan',
   },
 
   // ───── 반응 사건 (시장 상태에서 생김) ─────

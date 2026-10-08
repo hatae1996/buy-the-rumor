@@ -1,7 +1,7 @@
 // 화면 문구. 처음 하는 사람에게 전문 용어를 보이지 않는다 ("동시호가" 대신 "장날").
 import { shelfLife, GOOD_NAME, type CommandError, type GoodId, type LedgerEntry, type Lot } from '../sim/economy';
 import { SEASON_NAME, type Season } from '../sim/season';
-import { CART, HORSES } from '../sim/constants';
+import { CART, ECONOMY, HORSES } from '../sim/constants';
 import { eulReul, euro, iGa } from '../sim/josa';
 
 export const money = (n: number): string => Math.round(n).toLocaleString('ko-KR');
@@ -66,6 +66,11 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   sameCart: '지금 그 수레를 쓰고 있어요.',
   ordersPending: '장날에 낸 신청이 있으면 수레를 바꿀 수 없어요. 신청을 거두거나 장날이 지나고 바꾸세요.',
   needHorse: '이 수레는 말이 있어야 움직여요. 짐수레는 한 필, 마차는 두 필이 필요해요.',
+  needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
+  needGear: '그 장비가 없거나 망가졌어요.',
+  haveGear: '이미 쓸 만한 장비가 있어요.',
+  gearFine: '닳은 데가 없어요.',
+  alreadyGuide: '안내인을 이미 고용했어요. 다음 원정에 따라가요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -106,6 +111,16 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
         : { text: `수레에 실은 곡물 ${e.qty}개를 말에게 먹였어요`, amount: null };
     case 'horseRest':
       return { text: `${townName(e.town)} 마구간에서 말을 쉬게 했어요`, amount: -e.fee };
+    case 'gear': {
+      const name = ECONOMY.expedition.gear[e.gear].name;
+      return e.what === 'buy'
+        ? { text: `${townName(e.town)} 잡화점에서 ${eulReul(name)} 샀어요`, amount: -e.price }
+        : { text: `도구 하나로 ${eulReul(name)} 고쳤어요`, amount: null };
+    }
+    case 'guide':
+      return { text: `${townName(e.town)} 여관에서 안내인을 고용했어요`, amount: -e.fee };
+    case 'earn':
+      return { text: `${townName(e.town)} 목장에서 일하고 품삯을 받았어요`, amount: e.gold };
     case 'cart':
       return { text: `${townName(e.town)} 수레방에서 ${eulReul(CART.types[e.from].name)} ${euro(CART.types[e.to].name)} 바꿨어요`, amount: -e.price };
     case 'info': {

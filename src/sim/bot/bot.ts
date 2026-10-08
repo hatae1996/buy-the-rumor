@@ -159,21 +159,27 @@ function chooseCard(view: PlayerView): Command {
   const ex = view.expedition!;
   const card = cardById(ex.card.id);
   const prices = view.market?.price ?? view.memory[ex.town]?.prices;
-  let best = 0;
+  let best = ex.card.choices.find((c) => !c.disabled)?.index ?? 0;
   let bestScore = -Infinity;
-  card.choices.forEach((c, i) => {
-    const hint = ex.card.choices[i]?.hint ?? '';
+  // 보이는 선택지 중 고를 수 있는 것만 (장비·말이 없으면 안 보이고, 도구가 없으면 못 고른다)
+  for (const shown of ex.card.choices) {
+    if (shown.disabled) continue;
+    const i = shown.index;
+    const c = card.choices[i]!;
+    const hint = shown.hint;
     const odds = hint.includes('높음') ? 0.8 : hint.includes('반반') ? 0.55 : hint.includes('낮음') ? 0.3 : 1;
     let gain = 0;
     for (const e of c.success) if (e.kind === 'goods') gain += ((e.min + e.max) / 2) * (prices?.[e.good] ?? 5);
     for (const e of c.failure ?? []) if (e.kind === 'loseHaul') gain -= (1 - odds) * 5;
+    // 쓰는 도구 값도 셈에 넣는다 (도구는 소모품)
+    if (c.needs?.tool) gain -= (c.needs.tool * (prices?.tools ?? 60)) / ECONOMY.expedition.usesPerTool;
     const over = view.fatigue + c.fatigue > view.fatigueMax ? -100 : 0;
     const score = gain * odds - c.fatigue * FATIGUE_COST + over;
     if (score > bestScore) {
       bestScore = score;
       best = i;
     }
-  });
+  }
   return { type: 'chooseExpeditionCard', choice: best };
 }
 

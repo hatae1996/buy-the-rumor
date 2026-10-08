@@ -5,7 +5,7 @@ import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType } from '../cart';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
-import type { TownEventKind } from '../expedition/types';
+import type { ExpeditionFlag, GearKind, TownEventKind } from '../expedition/types';
 import type { ResourceKind, TownTier } from '../worldgen';
 import type { GoodId } from './goods';
 import type { Inventory, Lot } from './inventory';
@@ -115,6 +115,12 @@ export type LedgerEntry =
   /** 말 먹이: 마구간에서 먹였으면 fee, 길 위에서 수레 곡물을 먹였으면 fee 0 (town null) */
   | { day: number; kind: 'horseFeed'; town: number | null; qty: number; fee: number }
   | { day: number; kind: 'horseRest'; town: number; fee: number }
+  /** 잡화점에서 장비를 샀거나 도구로 고쳤음 (고치면 price 0) */
+  | { day: number; kind: 'gear'; what: 'buy' | 'repair'; town: number; gear: GearKind; price: number }
+  /** 여관에서 안내인을 고용함 */
+  | { day: number; kind: 'guide'; town: number; fee: number }
+  /** 원정에서 일하고 받은 돈 (목장 일손) */
+  | { day: number; kind: 'earn'; town: number; gold: number }
   /** 수레방에서 수레를 바꿈 (쓰던 수레를 쳐 준 값을 뺀 값) */
   | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number };
 
@@ -132,6 +138,12 @@ export interface ActiveExpedition {
   haul: { good: GoodId; qty: number }[];
   rumors: string[];
   log: ExpeditionLogLine[];
+  /** 이번 원정에만 붙은 상태 (무더위, 눈 덮인 길, 말에 싣는다 등) */
+  flags: ExpeditionFlag[];
+  /** 안내인과 함께 왔고 아직 나쁜 카드를 건너뛰지 않았나 */
+  guide: boolean;
+  /** 덱에 넣은 내 카드가 남겨진 날 (놓아 둔 덫) */
+  markDays: Record<string, number>;
 }
 
 export interface ExpeditionLogLine {
@@ -182,8 +194,14 @@ export interface PlayerState {
   horses: Horse[];
   /** 오늘 마구간에서 말을 쉬게 했는지 */
   horsesRested: boolean;
-  /** 지난 원정에 남긴 카드 (놓아 둔 덫 등). 다음에 그 마을 원정 덱에 들어간다 */
-  marks: { town: number; card: string }[];
+  /** 지난 원정에 남긴 카드 (놓아 둔 덫 등)와 남긴 날. 다음에 그 마을 원정 덱에 들어간다 */
+  marks: { town: number; card: string; day: number }[];
+  /** 장비마다 남은 쓰는 횟수 (0이면 망가짐, 없으면 안 가졌음) */
+  gear: Partial<Record<GearKind, number>>;
+  /** 여관에서 고용한 안내인이 다음 원정에 따라간다 */
+  guide: boolean;
+  /** 원정에서 도구를 쓴 횟수 (usesPerTool번 쓰면 도구 하나가 닳아 없어진다) */
+  toolUses: number;
 }
 
 export type OrderOwner =

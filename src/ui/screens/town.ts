@@ -24,6 +24,8 @@ export interface TownScreenActions {
   restHorses: () => void;
   openStable: () => void;
   openCartShop: () => void;
+  openGear: () => void;
+  hireGuide: () => void;
 }
 
 /** 탈것: 수레와 말, 말 쉬게 하기, 마구간(목장 마을), 수레방 */
@@ -181,6 +183,16 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
                 ? '이 마을에 머무는 동안 하루에 한 번씩 원정 기회가 생겨요. 떠나면 사라져요.'
                 : '이 마을 주변에는 원정을 나갈 자원지가 없어요.'
             }</p>
+            <div class="btn-row">
+              <button type="button" class="secondary-btn" data-gear>잡화점<small>장비 ${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 · 도구 ${v.tools}개</small></button>
+              ${
+                v.guide
+                  ? `<button type="button" class="secondary-btn" data-guide ${v.guide.hired || v.gold < v.guide.fee ? 'disabled' : ''}>
+                      안내인<small>${v.guide.hired ? '다음 원정에 따라가요' : `${money(v.guide.fee)} · 위험한 카드 1장 건너뜀`}</small>
+                    </button>`
+                  : ''
+              }
+            </div>
             ${
               v.expedition
                 ? '<div class="btn-row"><button type="button" class="secondary-btn" data-exp-resume>원정 이어가기<small>펼친 카드가 있어요</small></button></div>'
@@ -214,4 +226,6 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   el.querySelector('[data-rest-horses]')?.addEventListener('click', act.restHorses);
   el.querySelector('[data-stable]')?.addEventListener('click', act.openStable);
   el.querySelector('[data-cart-shop]')?.addEventListener('click', act.openCartShop);
+  el.querySelector('[data-gear]')?.addEventListener('click', act.openGear);
+  el.querySelector('[data-guide]')?.addEventListener('click', act.hireGuide);
 }

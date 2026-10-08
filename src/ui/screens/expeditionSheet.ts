@@ -5,7 +5,7 @@ import forestArt from '../../../assets/ui/forest.png';
 import innArt from '../../../assets/ui/inn.png';
 import mineArt from '../../../assets/ui/mine.png';
 import seaArt from '../../../assets/ui/sea.png';
-import { CARDS } from '../../sim/expedition';
+import { CARDS, type TownEventKind } from '../../sim/expedition';
 import { ERROR_TEXT, goodName } from '../format';
 import type { Game } from '../game';
 import { openSheet } from '../sheet';
@@ -14,6 +14,30 @@ import { openSheet } from '../sheet';
 const SWIPE = 90;
 
 const ART = { forest: forestArt, ore: mineArt, fish: seaArt, salt: seaArt, field: fieldArt, road: innArt };
+
+/** 사건 카드 그림 */
+const EVENT_ART: Partial<Record<TownEventKind, string>> = {
+  storm: ART.fish,
+  bigCatch: ART.fish,
+  newVein: ART.ore,
+  landslide: ART.ore,
+  mineCollapse: ART.ore,
+  drought: ART.field,
+  bumperHarvest: ART.field,
+  ranchFire: ART.field,
+  bandits: ART.road,
+  caravan: ART.road,
+  boost: ART.road,
+};
+
+/** 연결·내 카드처럼 땅이 정해지지 않은 카드 */
+const CARD_ART: Record<string, string> = {
+  markedVein: ART.ore,
+  deerHerd: ART.forest,
+  bear: ART.forest,
+  packHorse: ART.field,
+  horseSpooked: ART.field,
+};
 
 /** 카드 그림: 카드가 들어오는 땅에 맞춘다 */
 function artFor(cardId: string): string {
@@ -24,12 +48,12 @@ function artFor(cardId: string): string {
       if (s.tag === 'bears' || s.tag === 'oldGrowth' || s.tag === 'wolves') return ART.forest;
       if (s.tag === 'exposedVein') return ART.ore;
       if (s.tag === 'reef' || s.tag === 'shoals') return ART.fish;
-      if (s.tag === 'fertile') return ART.field;
+      if (s.tag === 'fertile' || s.tag === 'ranch') return ART.field;
       return ART.road;
     }
-    if (s.kind === 'event') return s.event === 'storm' ? ART.fish : s.event === 'newVein' ? ART.ore : ART.forest;
+    if (s.kind === 'event') return EVENT_ART[s.event] ?? ART.forest;
   }
-  return cardId === 'markedVein' ? ART.ore : ART.forest;
+  return CARD_ART[cardId] ?? ART.forest;
 }
 
 export function openExpeditionSheet(game: Game): void {
@@ -47,6 +71,8 @@ export function openExpeditionSheet(game: Game): void {
     const ex = v.expedition;
     if (!ex) return renderResult();
     const haul = ex.haul.map((h) => `${goodName(h.good)} ${h.qty}`).join(', ') || '아직 없음';
+    // 앞의 둘은 왼쪽·오른쪽으로 넘겨서, 장비·말이 연 선택지는 눌러서 고른다
+    const [left, right] = ex.card.choices;
     sheet.body.innerHTML = `
       <div class="exp-status">
         <span>남은 카드 ${ex.left}</span>
@@ -60,12 +86,13 @@ export function openExpeditionSheet(game: Game): void {
       <div class="exp-choices">
         ${ex.card.choices
           .map(
-            (c, i) => `<button type="button" class="exp-choice" data-choice="${i}">
-              <b>${i === 0 ? '←' : ''} ${c.label} ${i === 1 ? '→' : ''}</b><small>${c.hint}</small>
+            (c, i) => `<button type="button" class="exp-choice${c.extra ? ' extra' : ''}" data-choice="${c.index}" ${c.disabled ? 'disabled' : ''}>
+              <b>${i === 0 ? '←' : ''} ${c.label} ${i === 1 ? '→' : ''}</b><small>${c.disabled ?? c.hint}</small>
             </button>`,
           )
           .join('')}
       </div>
+      ${ex.flags.length || ex.guide ? `<p class="muted">${[...ex.flags, ...(ex.guide ? ['안내인이 함께 가요'] : [])].join(' · ')}</p>` : ''}
       <p class="muted">모은 것: ${haul}</p>
       ${error ? `<p class="error">${error}</p>` : ''}
       <button type="button" class="link-btn" data-end>그만 돌아가기</button>`;
@@ -97,8 +124,8 @@ export function openExpeditionSheet(game: Game): void {
       startX = null;
       cardEl.style.transform = '';
       cardEl.dataset.lean = '';
-      if (dx <= -SWIPE) choose(0);
-      else if (dx >= SWIPE) choose(1);
+      const pick = dx <= -SWIPE ? left : dx >= SWIPE ? right : null;
+      if (pick && !pick.disabled) choose(pick.index);
     };
     cardEl.addEventListener('pointerup', release);
     cardEl.addEventListener('pointercancel', release);

@@ -6,8 +6,10 @@ import { createEconomy } from '../economy/create';
 import { findNode } from '../economy/nodes';
 import type { EconomyState } from '../economy/state';
 import { generateWorld } from '../worldgen';
+import { createRng } from '../rng';
 import { CARDS, cardById } from './cards';
-import { buildDeck, tagsNearTown } from './deck';
+import { buildDeck, deckPools, tagsNearTown } from './deck';
+import { needsMet } from './gear';
 
 const map = generateWorld(20261008);
 const producers = map.towns.filter((t) => t.tier === 'town').map((t) => t.id);
@@ -22,14 +24,23 @@ function setup(town: number): EconomyState {
   return st;
 }
 
-/** 원정을 끝까지: 늘 고른 쪽(0 또는 1)만 고른다 */
+/** 고를 수 있는 선택지 중 want에 가장 가까운 것 (도구·장비·말이 없으면 못 고르는 선택지가 있다) */
+function allowed(st: EconomyState, want: number): number {
+  const card = cardById(st.player.expedition!.card);
+  const ok = card.choices.map((c, i) => (needsMet(st, c.needs) ? -1 : i)).filter((i) => i >= 0);
+  return ok.includes(want) ? want : ok[0]!;
+}
+
+/** 원정을 끝까지: 늘 고른 쪽(0 또는 1)을 고른다 (못 고르면 고를 수 있는 것) */
 function runExpedition(st: EconomyState, pick: (i: number) => number = () => 0): void {
   expect(applyCommand(st, map, { type: 'startExpedition' }).ok).toBe(true);
   for (let i = 0; st.player.expedition && i < 20; i++) {
-    expect(applyCommand(st, map, { type: 'chooseExpeditionCard', choice: pick(i) }).ok).toBe(true);
+    expect(applyCommand(st, map, { type: 'chooseExpeditionCard', choice: allowed(st, pick(i)) }).ok).toBe(true);
   }
   expect(st.player.expedition).toBeNull();
 }
+
+const deckOf = (st: EconomyState, id: number, seed = 1) => buildDeck(st, map, id, createRng(seed)).deck;
 
 beforeEach(() => {
   s = setup(producers[0]!);
@@ -59,7 +70,7 @@ describe('마을마다 다른 덱', () => {
     for (const id of producers) {
       const st = setup(id);
       const kinds = new Set(st.towns[id]!.nodes.map((n) => n.kind));
-      for (const cardId of buildDeck(st, map, id)) {
+      for (const cardId of deckOf(st, id)) {
         const card = cardById(cardId);
         const terrain = card.sources.filter((x) => x.kind === 'terrain').map((x) => (x.kind === 'terrain' ? x.resource : null));
         if (terrain.length && card.sources.every((x) => x.kind === 'terrain')) {
@@ -69,14 +80,33 @@ describe('마을마다 다른 덱', () => {
     }
   });
 
-  it('주변 지역 특색 태그 카드가 섞인다', () => {
+  it('주변 지역 특색 태그 카드만, 2장까지 섞인다', () => {
     for (const id of producers) {
       const st = setup(id);
       const tags = new Set(tagsNearTown(map, id));
-      const deck = buildDeck(st, map, id);
-      for (const card of CARDS) {
-        const byTag = card.sources.find((x) => x.kind === 'tag' && tags.has(x.tag));
-        if (byTag) expect(deck, `${map.towns[id]!.name} ${card.id}`).toContain(card.id);
+      const pool = deckPools(st, map, id).tag;
+      for (const cardId of pool) {
+        expect(cardById(cardId).sources.some((x) => x.kind === 'tag' && tags.has(x.tag)), cardId).toBe(true);
+      }
+      const deck = deckOf(st, id);
+      const inDeck = deck.filter((c) => pool.includes(c)).length;
+      expect(inDeck).toBe(Math.min(ECONOMY.expedition.deck.tag, pool.length));
+    }
+  });
+
+  it('덱은 지형 6 + 특색 2 + 계절 1~2 + 사건 0~2 + 내 카드 0~2 (기획서 비율)', () => {
+    const D = ECONOMY.expedition.deck;
+    for (const id of producers) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const st = setup(id);
+        const pools = deckPools(st, map, id);
+        const deck = deckOf(st, id, seed);
+        const terrain = deck.filter((c) => pools.terrain.includes(c)).length;
+        const season = deck.filter((c) => pools.season.includes(c)).length;
+        expect(terrain).toBeLessThanOrEqual(D.terrain + 2);
+        expect(terrain).toBeGreaterThanOrEqual(Math.min(D.terrain, pools.terrain.length) - 1);
+        if (pools.season.length) expect(season).toBeGreaterThanOrEqual(D.season[0]);
+        expect(deck.length).toBeLessThanOrEqual(D.terrain + D.tag + D.season[1] + D.event[1] + D.mine[1] + 2);
       }
     }
   });
@@ -84,18 +114,35 @@ describe('마을마다 다른 덱', () => {
   it('최근 사건 카드: 늑대가 나왔다는 신문이 있으면 늑대 카드가 섞인다', () => {
     const id = producers[0]!;
     s.towns[id]!.recentEvents = [{ kind: 'wolves', day: s.day }];
-    expect(buildDeck(s, map, id)).toContain('wolfPack');
+    expect(deckOf(s, id)).toContain('wolfPack');
   });
 
-  it('남겨 둔 카드는 다음 원정 덱에 한 번 들어간다', () => {
+  it('사건 카드가 덱을 바꾼다: 막힌 갱도는 광맥 줄기를 빼고 무너진 갱도를 넣는다', () => {
+    const id = producers.find((t) => s.towns[t]!.nodes.some((n) => n.kind === 'ore'));
+    if (id === undefined) return;
+    const st = setup(id);
+    st.towns[id]!.recentEvents = [{ kind: 'mineCollapse', day: st.day }];
+    const deck = deckOf(st, id);
+    expect(deck).toContain('blockedShaft');
+    expect(deck).toContain('collapsed');
+  });
+
+  it('남겨 둔 카드는 다음 원정 덱에 한 번 들어가고, 남긴 날을 기억한다', () => {
     const id = producers[0]!;
-    s.player.marks = [{ town: id, card: 'checkTrap' }];
-    expect(buildDeck(s, map, id)).toContain('checkTrap');
+    s.player.marks = [{ town: id, card: 'checkTrap', day: s.day - 2 }];
+    const built = buildDeck(s, map, id, createRng(1));
+    expect(built.deck).toContain('checkTrap');
+    expect(built.markDays.checkTrap).toBe(s.day - 2);
     expect(s.player.marks).toEqual([]);
   });
 
-  it('연결 카드는 덱에 바로 들어가지 않는다', () => {
-    for (const id of producers) expect(buildDeck(setup(id), map, id)).not.toContain('bear');
+  it('연결 카드와 말 카드는 (말 없이) 덱에 바로 들어가지 않는다', () => {
+    for (const id of producers) {
+      const deck = deckOf(setup(id), id);
+      expect(deck).not.toContain('bear');
+      expect(deck).not.toContain('deerHerd');
+      expect(deck).not.toContain('packHorse');
+    }
   });
 });
 

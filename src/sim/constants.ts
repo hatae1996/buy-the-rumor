@@ -293,6 +293,32 @@ export const ECONOMY = {
   expedition: {
     /** 자원지가 있는 마을에 머무는 동안 하루 1개씩, 최대 이만큼 */
     maxChances: 6,
+    /**
+     * 원정 한 번의 덱 (기획서 "원정 카드 목록"): 지형 6 + 지역 특색 2 + 계절 1~2 + 사건 0~2 + 내 카드 0~2.
+     * 여기서 3~4장을 뽑는다
+     */
+    deck: { terrain: 6, tag: 2, season: [1, 2], event: [0, 2], mine: [0, 2] },
+    /** 도구는 소모품: 나무 베기·광석 캐기 몇 번에 도구 하나를 다 쓰나 (기획서는 1번에 1개) */
+    usesPerTool: 1,
+    /** 다침: 피로가 크게 오른다 */
+    hurtFatigue: 4,
+    /** 놓아 둔 덫: 이 날까지는 잡혀 있고, 그 뒤로는 반반, 이 날이 지나면 다른 짐승이 먹어 버린다 */
+    trapFreshDays: 3,
+    trapGoneDays: 8,
+    /** 무더위: 이번 원정에서 얻은 생선과 고기는 이만큼 묵은 채로 싣는다 */
+    heatAge: 1,
+    /** 말과 함께 갔을 때 위험한 일 뒤에 말이 놀랄 확률 (목장 화재가 있었던 마을은 더) */
+    spookChance: 0.4,
+    spookChanceAfterFire: 0.7,
+    /** 장비 (기획서 "장비"): 잡화점 값, 쓸 수 있는 횟수. 다 쓰면 망가지고, 도구 하나로 고친다 */
+    gear: {
+      bow: { name: '활', price: 45, durability: 8 },
+      torch: { name: '횃불', price: 12, durability: 4 },
+      trap: { name: '덫', price: 20, durability: 5 },
+      net: { name: '그물', price: 30, durability: 6 },
+    },
+    /** 안내인: 여관에서 고용하면 다음 원정 한 번 동안 나쁜 카드 1장을 건너뛴다 */
+    guideFee: { town: 12, city: 18 },
   },
 
   /** 사건 일정 (기획서 "사건"). 사건마다의 효과와 기간은 src/sim/events/defs.ts */

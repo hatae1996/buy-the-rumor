@@ -18,7 +18,17 @@ import {
   unitWeight,
 } from '../cart';
 import { sellableCount } from './inventory';
-import { chooseExpeditionCard, finishExpedition, startExpedition, type ExpeditionError } from '../expedition';
+import {
+  buyGear,
+  chooseExpeditionCard,
+  finishExpedition,
+  GEAR_KINDS,
+  hireGuide,
+  repairGear,
+  startExpedition,
+  type ExpeditionError,
+  type GearKind,
+} from '../expedition';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import { buyDrink, dismissInformant, hireInformant, sendPigeon, type RumorError } from '../rumors';
 import {
@@ -55,7 +65,7 @@ export type Command =
   | { type: 'discardCartPiece'; pieceId: number }
   /** 원정을 나간다 (기회 1개를 쓴다) */
   | { type: 'startExpedition' }
-  /** 펼친 원정 카드의 선택지를 고른다 (0: 왼쪽, 1: 오른쪽) */
+  /** 펼친 원정 카드의 선택지를 고른다 (0: 왼쪽, 1: 오른쪽, 2부터: 장비나 말이 여는 선택지) */
   | { type: 'chooseExpeditionCard'; choice: number }
   /** 원정을 그만두고 돌아온다 */
   | { type: 'endExpedition' }
@@ -72,7 +82,13 @@ export type Command =
   /** 마구간에서 말을 쉬게 한다 (하루 한 번) */
   | { type: 'restHorses' }
   /** 수레방에서 수레를 바꾼다 (쓰던 수레는 쳐 준다) */
-  | { type: 'buyCart'; cart: CartType };
+  | { type: 'buyCart'; cart: CartType }
+  /** 잡화점에서 장비(활, 횃불, 덫, 그물)를 산다 */
+  | { type: 'buyGear'; gear: GearKind }
+  /** 닳은 장비를 수레의 도구 하나로 고친다 */
+  | { type: 'repairGear'; gear: GearKind }
+  /** 여관에서 안내인을 고용한다 (다음 원정 한 번) */
+  | { type: 'hireGuide' };
 
 export type CommandError =
   | 'traveling'
@@ -210,6 +226,14 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return done(sellHorse(state, cmd.horseId));
     case 'restHorses':
       return done(restHorses(state));
+    case 'buyGear':
+      if (!GEAR_KINDS.includes(cmd.gear)) return fail('needGear');
+      return done(buyGear(state, cmd.gear));
+    case 'repairGear':
+      if (!GEAR_KINDS.includes(cmd.gear)) return fail('needGear');
+      return done(repairGear(state, cmd.gear));
+    case 'hireGuide':
+      return done(hireGuide(state));
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');

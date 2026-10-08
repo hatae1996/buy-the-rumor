@@ -19,6 +19,8 @@ export type {
   HorseView,
   StableView,
   CartOffer,
+  GearView,
+  ExpeditionChoiceView,
 } from './view';
 export { playerTravelDays } from './travel';
 export { noteView, playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';
