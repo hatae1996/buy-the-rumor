@@ -8,6 +8,7 @@ import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { cardById } from '../expedition';
 import { caravanPlanStep, createGrowthMind, growthStep, noteDay, noteMissing, type GrowthMind } from './growth';
+import { bigOrderSell, bigPlanStep, bigTarget, holdForBigOrder, updateBigPlan, type BigPlan } from './bigOrder';
 import type { BotProfile } from './profiles';
 
 /** 봇이 날을 넘겨 기억하는 것 (게임 상태가 아니라 봇의 머릿속) */
@@ -21,10 +22,12 @@ export interface BotMind {
   tried: Set<string>;
   /** 살 것 고르기에 쓰는 기억 (수레가 찼던 날, 못 고른 선택지, 원정 값) */
   growth: GrowthMind;
+  /** 징조를 듣고 노리는 큰 주문 (0.0.7): 그 마을에 그 물품을 미리 모아 간다 */
+  bigPlan: BigPlan | null;
 }
 
 export function createMind(): BotMind {
-  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind() };
+  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind(), bigPlan: null };
 }
 
 /** 이 정도 지난 기억은 믿지 않는다 */
@@ -51,6 +54,7 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     mind.expeditionsToday = 0;
     mind.tried.clear();
     noteDay(view, mind.growth);
+    mind.bigPlan = updateBigPlan(view, mind.bigPlan, profile);
   }
   const once = (cmd: Command): Command | null => {
     const key = JSON.stringify(cmd);
@@ -116,14 +120,24 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
 
   // 3. 짐 팔기: 다른 마을에 가져가도 더 남지 않으면 여기서 판다
   const selling = new Set(view.orders.filter((o) => o.side === 'sell').map((o) => o.good));
+  // 큰 주문 (0.0.7): 그 마을에 와 있고 주문이 열렸으면 주문 값으로 판다
+  {
+    const c = bigOrderSell(view, mind.bigPlan, selling, sellableQty, once);
+    if (c) {
+      if (mind.plan && mind.bigPlan?.goods.some((g) => mind.plan!.goods.includes(g))) mind.plan = null;
+      return c;
+    }
+  }
   for (const good of GOODS) {
     const qty = sellableQty(view, good) - (good === 'grain' ? feedKeep(view) : 0);
     if (qty <= 0 || selling.has(good)) continue;
+    // 큰 주문을 노리고 모은 물건은 그 주문에만 판다
+    if (holdForBigOrder(view, mind.bigPlan, good)) continue;
     // 사 온 물건은 가져갈 마을에 닿으면 판다. 원정 물건은 더 비싼 곳이 없으면 여기서
     const mine = mind.plan?.goods.includes(good) ?? false;
     const arrived = mine && mind.plan!.to === here;
     const planned = mine && mind.plan!.to !== here;
-    const best = bestKnownPrice(view, good, here, days, qty);
+    const best = bestKnownPrice(view, good, here, days, qty, null, mind.bigPlan);
     if (planned) continue;
     if (!arrived && best && best.net > price[good] * (1 + profile.minMargin) && profile.trades) {
       // 더 비싸게 팔 마을이 있으면 그리로 가져간다 (계획이 없으면 세운다: 짐을 든 채 멈추지 않게)
@@ -132,6 +146,14 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
     }
     const c = once({ type: 'placeSellOrder', good, qty, minPrice: Math.max(1, Math.round(price[good] * 0.85)) });
     if (c) return c;
+  }
+
+  // 큰 주문 노리기 (0.0.7): 장사보다 먼저. 모으는 동안과 기다리는 동안은 그 마을로 가는 장사 계획으로 둔다
+  if (profile.trades) {
+    const big = bigPlanStep(view, mind.bigPlan, days, once);
+    // 떠날 때(go)가 아니면 사 모으는 날로 둔다 (수레가 차거나 떠날 때가 되면 떠난다)
+    if (big.trip) mind.plan = { goods: big.trip.goods, to: big.trip.to, days: big.trip.go ? BUY_DAYS : 0 };
+    if (big.command) return big.command;
   }
 
   const buying = view.orders.some((o) => o.side === 'buy');
@@ -164,7 +186,7 @@ export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mi
   const fill = view.cart.weight / Math.max(1, view.cart.maxWeight);
   const loading = mind.plan !== null && mind.plan.to !== here && mind.plan.days < BUY_DAYS && fill < LOAD_FULL;
   if (profile.trades && !buying && ((cargo === 0 && !mind.plan) || loading)) {
-    const deal = bestDeal(view, map, here, days, profile, loading ? mind.plan!.to : null);
+    const deal = bestDeal(view, map, here, days, profile, loading ? mind.plan!.to : null, mind.bigPlan);
     if (deal) {
       const c = once({ type: 'placeBuyOrder', good: deal.good, qty: deal.qty, maxPrice: deal.maxPrice });
       if (c) {
@@ -346,6 +368,7 @@ function bestKnownPrice(
   days: number[][],
   qty: number,
   only: number | null = null,
+  big: BigPlan | null = null,
 ): { town: number; net: number } | null {
   let best: { town: number; net: number } | null = null;
   for (const [id, mem] of Object.entries(view.memory)) {
@@ -357,6 +380,12 @@ function bestKnownPrice(
     if (life !== null && life <= d * ECONOMY.spoilRate[view.season] + 1) continue;
     const net = mem.prices[good] - (d * ECONOMY.player.travelFeePerDay) / Math.max(1, qty);
     if (!best || net > best.net) best = { town, net };
+  }
+  // 노리는 큰 주문: 그 마을은 주문 값에 사 준다고 본다 (가 본 적이 없어도)
+  const target = bigTarget(big, good);
+  if (target && target.town !== here && (only === null || only === target.town) && Number.isFinite(days[here]![target.town]!)) {
+    const net = target.price - (days[here]![target.town]! * ECONOMY.player.travelFeePerDay) / Math.max(1, qty);
+    if (!best || net > best.net) best = { town: target.town, net };
   }
   return best;
 }
@@ -398,6 +427,7 @@ function bestDeal(
   days: number[][],
   profile: BotProfile,
   only: number | null = null,
+  big: BigPlan | null = null,
 ): { good: GoodId; qty: number; maxPrice: number; to: number; capped: number } | null {
   const market = view.market!;
   let best: { good: GoodId; qty: number; maxPrice: number; to: number; profit: number; capped: number } | null = null;
@@ -416,7 +446,7 @@ function bestDeal(
     const goldCap = Math.floor((Math.max(0, view.gold - travelFee - TRIP_RESERVE) * 0.9) / maxPrice);
     const qty = Math.min(cartCap, goldCap);
     if (qty <= 0) continue;
-    const target = bestKnownPrice(view, good, here, days, qty, only);
+    const target = bestKnownPrice(view, good, here, days, qty, only, big);
     if (!target || !map.towns[target.town]) continue;
     const unit = target.net * 0.9 - maxPrice;
     if (target.net * 0.9 < maxPrice * (1 + profile.minMargin)) continue;

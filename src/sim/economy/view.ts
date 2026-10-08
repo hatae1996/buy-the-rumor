@@ -32,7 +32,7 @@ import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
 import { euro, iGa } from '../josa';
 import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, guideFee, needsMet, type GearKind } from '../expedition';
-import { bigOrdersToday, blockedTiles, eventDef, tollAt } from '../events';
+import { bigOrdersToday, blockedTiles, eventDef, tollAt, type ScheduledEventId } from '../events';
 import type {
   ActiveExpedition,
   EconomyState,
@@ -296,11 +296,14 @@ export interface GearView {
   maxUses: number;
 }
 
-export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'>;
+export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'> & {
+  /** 징조 소문이면 문장이 말하는 사건과 마을 ("○○ 쪽에서 조선소에 목수가 모인다더군"). 플레이어가 읽는 그대로다 */
+  omen: { event: ScheduledEventId; town: number } | null;
+};
 
 /** 수첩 한 줄을 화면용으로: 도장 판정용 주장과 세계 소문 번호는 뺀다 */
-export function noteView({ claim: _claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
-  return rest;
+export function noteView({ claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
+  return { ...rest, omen: claim?.kind === 'omen' ? { event: claim.event, town: claim.town } : null };
 }
 
 export interface ExpeditionChoiceView {

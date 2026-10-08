@@ -38,8 +38,7 @@ describe('플레이어 봇', () => {
       const w = runs.filter((r) => r.run.profile.id === id).map((r) => r.run.worth.at(-1)!).sort((a, b) => a - b);
       return w[Math.floor(w.length / 2)]!;
     };
-    // 0.0.7 작업 1(큰 주문)에서 원정꾼도 큰 주문에 팔게 되어 잠시 낮춘다. 작업 4에서 봇이 큰 주문을 노리면 다시 올린다
-    expect(median('trader')).toBeGreaterThan(median('gatherer'));
+    expect(median('trader')).toBeGreaterThan(median('gatherer') * 1.5);
   });
 
   it('장사꾼 봇도 실제로 사고팔고 마을을 옮긴다', () => {

@@ -1,7 +1,7 @@
 // 봇 돌리기: 플레이어 봇을 성향별로 한 시즌 돌려 순자산이 어떻게 느는지 본다 (기획서 "숫자를 맞출 기준").
 // 플레이어 자리가 하나라 봇마다 같은 시드의 세계를 따로 돌린다 (서로 경쟁하지 않는다).
 import { CYCLE_DAYS } from '../sim/season';
-import { BOT_PROFILES, dailyIncome, runBot, type BotRun, type GrowthKind } from '../sim/bot';
+import { BOT_PROFILES, bigDays, dailyIncome, runBot, type BotRun, type GrowthKind } from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
@@ -64,10 +64,12 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
         const upkeep = median(runs.map((r) => r.upkeep.at(-1) ?? 0));
         const incomeText = `${income(0, 5)} · ${income(25, 33)} · ${income(60, 74)} · ${endIncome}`;
         const share = endIncome > 0 ? `${Math.round((upkeep / endIncome) * 100)}%` : '-';
-        return `<tr><th>${p.name}</th><td>${spread(mid)}</td><td>${spread(end)}</td><td>${end.filter((v) => v < runs[0]!.worth[0]!).length}</td><td>${incomeText}</td><td>${upkeep} (${share})</td><td>${firstHorse}</td><td>${firstGather}</td><td>${afford}</td></tr>`;
+        // 하루 벌이의 10배 넘게 번 날 (0.0.7 목표: 보통 사람이 시즌에 2~3번)
+        const big = median(runs.map((r) => bigDays(r)));
+        return `<tr><th>${p.name}</th><td>${spread(mid)}</td><td>${spread(end)}</td><td>${end.filter((v) => v < runs[0]!.worth[0]!).length}</td><td>${incomeText}</td><td>${upkeep} (${share})</td><td>${big}</td><td>${firstHorse}</td><td>${firstGather}</td><td>${afford}</td></tr>`;
       });
       $('[data-bot-many-table]').innerHTML =
-        `<tr><th>성향</th><th>중반 (최소 · 가운데 · 최대)</th><th>끝 (최소 · 가운데 · 최대)</th><th>잃은 시드</th><th>하루 벌이 (첫날·29·67·끝)</th><th>끝 유지비 (벌이 대비)</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th><th>살 수 있게 된 날</th></tr>` + rows.join('');
+        `<tr><th>성향</th><th>중반 (최소 · 가운데 · 최대)</th><th>끝 (최소 · 가운데 · 최대)</th><th>잃은 시드</th><th>하루 벌이 (첫날·29·67·끝)</th><th>끝 유지비 (벌이 대비)</th><th>10배 번 날</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th><th>살 수 있게 된 날</th></tr>` + rows.join('');
     });
   });
 

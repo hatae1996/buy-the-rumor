@@ -1,6 +1,6 @@
 // 봇 돌리기: 세계 하나에 봇 하나를 플레이어 자리에 앉혀 여러 날을 돌리고 기록한다.
 // 지금은 플레이어 자리가 하나라, 여러 봇은 같은 시드의 세계를 따로 돌려 비교한다 (서로 경쟁하지 않는다).
-import { applyCommand, createEconomy, advanceDay, playerView, type CommandError, type EconomyState } from '../economy';
+import { applyCommand, createEconomy, advanceDay, playerView, type CommandError, type EconomyState, type GoodId } from '../economy';
 import { createRng, mixSeed } from '../rng';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { botStep, createMind } from './bot';
@@ -17,6 +17,8 @@ export interface BotRun {
   wealth: number[];
   /** 날마다 하루 유지비 (일당, 말 먹이, 보관료) */
   upkeep: number[];
+  /** 날마다 판 것의 이익 (판 값 − 산 값. 원정에서 얻은 것은 산 값 0). "10배 번 날"을 센다 */
+  profit: number[];
   gold: number[];
   trades: number;
   expeditions: number;
@@ -55,13 +57,24 @@ export function dailyIncome(run: BotRun, from: number, to: number, start = 200):
   return (w[b]! - w[a]!) / Math.max(1, b - a);
 }
 
+/**
+ * "하루 벌이의 10배 넘게 번 날" 수 (0.0.7 목표: 보통 사람이 시즌에 2~3번).
+ * 그날 벌이 = 그날 판 것의 이익(판 값 − 산 값), 평소 하루 벌이 = 그 시즌 평균, 적어도 1냥 (questions.md 75번).
+ * 가진 것의 온값으로 재면 싸게 사기만 해도 뛰어서 쓰지 않는다
+ */
+export function bigDays(run: BotRun, times = 10): number {
+  const usual = Math.max(1, run.profit.reduce((a, b) => a + b, 0) / Math.max(1, run.profit.length));
+  return run.profit.filter((d) => d >= usual * times).length;
+}
+
 export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile, opt: BotRunOptions): BotRun {
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
   const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
   const mind = createMind();
-  const run: BotRun = { profile, worth: [], wealth: [], upkeep: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
+  const run: BotRun = { profile, worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   const max = opt.maxCommandsPerDay ?? 40;
   let commands = 0;
+  const cost: Partial<Record<GoodId, { qty: number; value: number }>> = {};
 
   for (let d = 0; d < opt.days; d++) {
     for (let i = 0; i < max; i++) {
@@ -75,6 +88,21 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     }
     const ledgerBefore = state.player.ledger.length;
     advanceDay(state, map);
+    // 판 것의 이익: 물품마다 산 값 평균을 들고 다닌다
+    let profit = 0;
+    for (const e of state.player.ledger.slice(ledgerBefore)) {
+      if (e.kind === 'buy') {
+        const c = cost[e.good] ?? { qty: 0, value: 0 };
+        cost[e.good] = { qty: c.qty + e.qty, value: c.value + e.qty * e.price };
+      } else if (e.kind === 'sell') {
+        const c = cost[e.good] ?? { qty: 0, value: 0 };
+        const unit = c.qty > 0 ? c.value / c.qty : 0;
+        const used = Math.min(c.qty, e.qty);
+        cost[e.good] = { qty: c.qty - used, value: c.value - used * unit };
+        profit += e.qty * e.price - used * unit;
+      }
+    }
+    run.profit.push(Math.round(profit));
     run.trades += state.player.ledger.slice(ledgerBefore).filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
     run.worth.push(netWorth(state));
     const p = worthParts(state);
