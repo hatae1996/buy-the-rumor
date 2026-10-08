@@ -24,6 +24,7 @@ import { limitPrice, runMarket } from './market';
 import { regrow } from './nodes';
 import { playerNight } from './player';
 import { rumorNight, type HeardRumor } from '../rumors';
+import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } from '../horses';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
@@ -58,6 +59,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   // 0. 시즌과 사건: 시즌이 끝났으면 새로 짜고, 오늘 일정의 사건을 시작한다 (신문은 사실만)
   news.push(...startDay(state, map));
+  // 말: 시즌 입고 일정대로 목장 마을 마구간에 풀린다 (신문에는 실리지 않는다)
+  horseMorning(state, map);
   // 막힌 길은 돌아간다
   const days = travelDaysToday(state, map, season);
   const accounts = new Accounts(state);
@@ -69,6 +72,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const w of state.workers) for (const o of workerOrders(w, state, season, accounts)) byTown[o.town]!.push(o);
   for (const t of state.traders) if (!t.travel) byTown[t.town]!.push(...traderOrders(t, state, days, accounts));
   for (const town of state.towns) byTown[town.id]!.push(...citizenOrders(state, town, season, accounts, rng));
+  // 마구간이 먹인 곡물은 오늘 주민 신청에 들어갔다
+  for (const town of state.towns) town.stableGrain = 0;
   for (const town of state.towns) byTown[town.id]!.push(...workshopOrders(town, accounts));
   // 대상단: 그날 장에서 한 물품을 한꺼번에 사거나 판다 (마을 금고를 거쳐 돈이 새지 않는다)
   for (const b of bulkTradesToday(state)) {
@@ -137,12 +142,17 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     tribute += treasuryDay(town);
     town.nodes.forEach(regrow);
   }
-  for (const t of state.traders) traderDay(t, state, days, rng);
+  for (const t of state.traders) {
+    traderHorseDeal(state, t);
+    traderDay(t, state, days, rng);
+    traderHorsesNight(state, t);
+  }
   if (p.travel && --p.travel.daysLeft <= 0) {
     p.town = p.travel.to;
     p.travel = null;
   }
   playerNight(state);
+  playerHorsesNight(state);
 
   // 하루가 지나 음식이 상한다
   let spoiled = 0;

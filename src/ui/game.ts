@@ -24,9 +24,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v5';
+const SAVE_KEY = 'buy-the-rumor/save/v6';
 
 interface SaveData {
   version: 1;
@@ -79,7 +79,7 @@ export class Game {
   }
 
   view(): PlayerView {
-    return playerView(this.state);
+    return playerView(this.state, this.map);
   }
 
   dispatch(cmd: Command): CommandResult {

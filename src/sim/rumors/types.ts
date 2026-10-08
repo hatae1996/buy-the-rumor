@@ -4,8 +4,9 @@
 import type { GoodId } from '../economy/goods';
 import type { ScheduledEventId } from '../events/types';
 import type { RegionTagId } from '../worldgen';
+import type { HorseKind } from '../horses/types';
 
-/** 소문이 어디서 생겼나. 말 입고(horse)는 말(0.0.4 작업 4)이 들어오면 만든다 */
+/** 소문이 어디서 생겼나 */
 export type RumorSource = 'omen' | 'hidden' | 'price' | 'orders' | 'trait' | 'horse' | 'false';
 
 /** 숨은 숫자를 소문으로 내는 자원지 (사냥감, 물고기, 광맥) */
@@ -22,7 +23,9 @@ export type RumorFact =
   /** 장날 신청 현황 ("소금 사려는 사람이 많다더라"). qty는 사려는 양과 팔려는 양의 차이 */
   | { kind: 'orders'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number }
   /** 마을 특색 ("북쪽 숲에 곰이 산다") */
-  | { kind: 'trait'; town: number; tag: RegionTagId };
+  | { kind: 'trait'; town: number; tag: RegionTagId }
+  /** 말 입고 ("사흘 뒤 ○○ 목장에 짐말 3마리") */
+  | { kind: 'horse'; town: number; horse: HorseKind; count: number; arriveDay: number };
 
 export type RumorKind = RumorFact['kind'];
 
@@ -99,7 +102,9 @@ export type Claim =
    */
   | { kind: 'price'; town: number; good: GoodId; dir: 'high' | 'low'; price: number | null; bound: 'about' | 'atLeast' | 'atMost' | null }
   | { kind: 'orders'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number | null }
-  | { kind: 'trait'; town: number; tag: RegionTagId };
+  | { kind: 'trait'; town: number; tag: RegionTagId }
+  /** 말 입고: count가 null이면 "몇 마리", day가 null이면 "곧". 그 마구간에 가서 확인한다 */
+  | { kind: 'horse'; town: number; horse: HorseKind; count: number | null; day: number | null; from: number };
 
 /** 어떻게 들었나: 소문꾼, 여관 손님, 원정에서 직접 봄, 전서구, 정보원 */
 export type HeardVia = 'gossip' | 'inn' | 'seen' | 'pigeon' | 'informant';

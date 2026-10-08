@@ -12,7 +12,7 @@ describe('플레이어에게 보이는 것', () => {
     const s = createEconomy(map, 20261008);
     s.player.town = 0;
     for (let d = 0; d < 5; d++) advanceDay(s, map);
-    const v = playerView(s);
+    const v = playerView(s, map);
     expect(v.market?.town).toBe(0);
     expect(Object.keys(v.memory)).toEqual(['0']);
     // 화면에 넘기는 값 어디에도 다른 마을의 실제 상태가 없다
@@ -25,7 +25,7 @@ describe('플레이어에게 보이는 것', () => {
     const s = createEconomy(map, 20261008);
     s.player.town = 0;
     applyCommand(s, map, { type: 'travel', to: 1 });
-    const v = playerView(s);
+    const v = playerView(s, map);
     expect(v.market).toBeNull();
     expect(v.location.kind).toBe('road');
   });
@@ -34,7 +34,7 @@ describe('플레이어에게 보이는 것', () => {
     const s = createEconomy(map, 20261008);
     s.player.town = 0;
     applyCommand(s, map, { type: 'placeBuyOrder', good: 'ore', qty: 4, maxPrice: 10 });
-    const v = playerView(s);
+    const v = playerView(s, map);
     expect(v.reserved).toBe(40);
     expect(v.orders).toEqual([{ id: expect.any(Number), good: 'ore', side: 'buy', qty: 4, limit: 10 }]);
   });
@@ -43,8 +43,8 @@ describe('플레이어에게 보이는 것', () => {
     const s = createEconomy(map, 20261008);
     s.player.town = 0;
     advanceDay(s, map);
-    expect(playerView(s).market?.previous).toBeNull();
+    expect(playerView(s, map).market?.previous).toBeNull();
     advanceDay(s, map);
-    expect(playerView(s).market?.previous).not.toBeNull();
+    expect(playerView(s, map).market?.previous).not.toBeNull();
   });
 });

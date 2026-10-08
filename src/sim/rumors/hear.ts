@@ -57,7 +57,7 @@ export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): H
     for (const rumor of mill.live) {
       if (heard.has(rumor.id) || seenHere(rumor.fact, here) || !believes(gossip, rumor)) continue;
       const copy = knownCopy(gossip, rumor, day);
-      if (copy) options.push({ gossip, rumor, told: tell(rumor, copy, gossip, map) });
+      if (copy) options.push({ gossip, rumor, told: tell(rumor, copy, gossip, map, day) });
     }
   }
   // 중요한 것부터, 같으면 새 소문부터
@@ -120,5 +120,5 @@ export function innRumor(state: EconomyState, map: WorldMap): { rumor: WorldRumo
     const score = rumor.importance + (!local || local.day > day ? 1 : 0);
     if (!best || score > best.score || (score === best.score && rumor.day > best.rumor.day)) best = { rumor, copy, score };
   }
-  return best ? { rumor: best.rumor, told: tell(best.rumor, best.copy, null, map) } : null;
+  return best ? { rumor: best.rumor, told: tell(best.rumor, best.copy, null, map, day) } : null;
 }

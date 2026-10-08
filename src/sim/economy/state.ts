@@ -1,6 +1,8 @@
 // 경제 상태. 모두 단순한 데이터라 JSON으로 저장하고 서버로 보낼 수 있다.
 import type { ActiveEvent, ReactiveMemo, SeasonState } from '../events/types';
 import type { HeardRumor, RumorMill } from '../rumors/types';
+import type { Horse, HorseKind, HorseMarket } from '../horses/types';
+import type { CartType } from '../cart';
 import type { Season } from '../season';
 import type { Cart } from '../cart';
 import type { TownEventKind } from '../expedition/types';
@@ -44,6 +46,8 @@ export interface TownEconomy {
   workshop: Inventory | null;
   /** 신문에 실린 이 마을 사건 (원정 덱의 사건 카드를 부른다) */
   recentEvents: { kind: TownEventKind; day: number }[];
+  /** 어젯밤 마구간이 말에게 먹인 곡물. 오늘 장날에 주민이 그만큼 사 온다 */
+  stableGrain: number;
 }
 
 export interface Worker {
@@ -83,6 +87,8 @@ export interface Trader {
   plan: { good: GoodId; to: number } | null;
   /** 짐을 못 팔고 머문 날 */
   stuckDays: number;
+  /** 상단 말 (많아야 한 필). 싣는 양과 걸음이 달라진다 */
+  horses: Horse[];
 }
 
 /** 플레이어가 아는 다른 마을 시세: 마지막으로 본 날짜와 함께 */
@@ -103,7 +109,14 @@ export type LedgerEntry =
   | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }
   | { day: number; kind: 'toll'; town: number; gold: number }
   /** 소식을 산 돈: 여관 술 한 잔, 전서구, 정보원 */
-  | { day: number; kind: 'info'; what: 'drink' | 'pigeon' | 'informant'; town: number; fee: number };
+  | { day: number; kind: 'info'; what: 'drink' | 'pigeon' | 'informant'; town: number; fee: number }
+  /** 말 사고팔기, 굶다 도망친 말 */
+  | { day: number; kind: 'horse'; what: 'buy' | 'sell' | 'lost'; town: number; horse: HorseKind; price: number }
+  /** 말 먹이: 마구간에서 먹였으면 fee, 길 위에서 수레 곡물을 먹였으면 fee 0 (town null) */
+  | { day: number; kind: 'horseFeed'; town: number | null; qty: number; fee: number }
+  | { day: number; kind: 'horseRest'; town: number; fee: number }
+  /** 수레방에서 수레를 바꿈 (쓰던 수레를 쳐 준 값을 뺀 값) */
+  | { day: number; kind: 'cart'; town: number; from: CartType; to: CartType; price: number };
 
 /** 진행 중인 원정 */
 export interface ActiveExpedition {
@@ -165,6 +178,10 @@ export interface PlayerState {
   pigeons: { town: number; day: number }[];
   /** 정보원을 심어 둔 마을 */
   informants: number[];
+  /** 내 말 (많아야 2필) */
+  horses: Horse[];
+  /** 오늘 마구간에서 말을 쉬게 했는지 */
+  horsesRested: boolean;
   /** 지난 원정에 남긴 카드 (놓아 둔 덫 등). 다음에 그 마을 원정 덱에 들어간다 */
   marks: { town: number; card: string }[];
 }
@@ -223,4 +240,6 @@ export interface EconomyState {
   reactive: ReactiveMemo;
   /** 세계의 소문과 소문꾼 (플레이어에게 숨김) */
   rumorMill: RumorMill;
+  /** 마구간 재고와 시즌 말 입고 일정 (남은 수는 그 마구간에 가야 보인다) */
+  horses: HorseMarket;
 }

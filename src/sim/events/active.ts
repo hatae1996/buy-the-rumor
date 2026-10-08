@@ -84,6 +84,11 @@ export function tollAt(state: EconomyState, town: number): number {
   return gold;
 }
 
+/** 목장 화재처럼 이 마을 말 입고가 미뤄지고 있나 */
+export function horseDelayAt(state: EconomyState, town: number): boolean {
+  return effectsAt(state, town).some(({ effect }) => effect.kind === 'horseDelay');
+}
+
 /** 지금 막힌 길 칸 */
 export function blockedTiles(state: EconomyState): Set<number> {
   const out = new Set<number>();

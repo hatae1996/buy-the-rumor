@@ -21,7 +21,9 @@ export function citizenDemand(state: EconomyState, town: TownEconomy, good: Good
   if (season === AUTUMN && good === 'grain') d *= C.autumnGrainFactor;
   // 사건: 수요 배율과 더 사는 양 (조선소, 축제, 군대 보급, 역병 소문 등)
   const ev = demandModifier(state, town.id, good);
-  return d * ev.factor + ev.extra;
+  // 마구간이 어젯밤 말에게 먹인 곡물을 사 온다 (말 먹이가 곡물 수요가 된다)
+  const stable = good === 'grain' ? town.stableGrain : 0;
+  return d * ev.factor + ev.extra + stable;
 }
 
 export function citizenOrders(state: EconomyState, town: TownEconomy, season: Season, accounts: Accounts, rng: Rng): Order[] {

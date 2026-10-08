@@ -1,7 +1,23 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { cartLots, cartWeight, maxWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
-import { CART, ECONOMY, RUMORS } from '../constants';
+import { CART_TYPES, cartLots, cartWeight, pieceCells, roomFor, stackLimit, type Cart, type CartType } from '../cart';
+import {
+  buyPrice,
+  cartCost,
+  feedPrice,
+  HORSE_KINDS,
+  horseDays,
+  horsePull,
+  horsesNeeded,
+  maxWeight,
+  sellPrice,
+  stableAt,
+  type Horse,
+  type HorseKind,
+} from '../horses';
+import { townTravelDays, type WorldMap } from '../worldgen';
+import { playerTravelDays } from './travel';
+import { CART, ECONOMY, HORSES, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
@@ -85,6 +101,73 @@ export interface PlayerView {
   seasonInfo: { number: number; day: number; length: number } | null;
   /** 길 사정 (신문에 실린 사실): 막힌 칸, 마을마다 통행세 */
   roads: { blocked: number[]; tolls: Record<number, number> };
+  /** 지금 마을(길 위면 떠난 마을)에서 마을마다 걸리는 날. usual은 막힌 길이 없을 때 (말 걸음 포함) */
+  travel: { days: number[]; usual: number[] };
+  /** 내 말 */
+  horses: HorseView[];
+  /** 지금 마을 마구간에서 하는 일: 먹이 값, 쉬게 하기. 길 위면 null */
+  horseCare: { feedPrice: number; restFee: number; rested: boolean } | null;
+  /** 목장 마을 마구간 (남은 수는 여기 와야만 보인다). 마구간이 없는 마을이나 길 위면 null */
+  stable: StableView | null;
+  /** 수레방: 수레마다 바꾸는 값 (쓰던 수레를 쳐 준 뒤) */
+  carts: CartOffer[];
+}
+
+export interface HorseKindInfo {
+  kind: HorseKind;
+  name: string;
+  pull: number;
+  /** 이동 일수 배율 (1이 사람 걸음) */
+  speed: number;
+  feed: number;
+}
+
+export interface HorseView extends HorseKindInfo {
+  id: number;
+  fatigue: number;
+  fatigueMax: number;
+  /** 많이 지쳐 빨리 달리지 못한다 */
+  tired: boolean;
+  /** 연달아 굶은 날 */
+  hungry: number;
+  /** 지금 끄는 무게 (다 지치면 절반) */
+  pulling: number;
+  /** 이 마을 마구간에 되팔 값. 마구간이 없으면 null */
+  sellPrice: number | null;
+}
+
+export interface StableView {
+  town: number;
+  horses: (HorseKindInfo & { stock: number; price: number | null })[];
+}
+
+export interface CartOffer {
+  type: CartType;
+  name: string;
+  rows: readonly string[];
+  /** 말 없이 끌 수 있는 무게 (짐수레·마차는 0) */
+  humanPull: number;
+  horses: number;
+  /** 지금 수레를 쳐 주고 내는 값. 지금 수레면 null */
+  cost: number | null;
+}
+
+const kindInfo = (kind: HorseKind): HorseKindInfo => {
+  const k = HORSES.kinds[kind];
+  return { kind, name: k.name, pull: k.pull, speed: k.speed, feed: k.feed };
+};
+
+function horseView(h: Horse, stable: ReturnType<typeof stableAt>): HorseView {
+  return {
+    ...kindInfo(h.kind),
+    id: h.id,
+    fatigue: h.fatigue,
+    fatigueMax: HORSES.fatigue.max,
+    tired: h.fatigue >= HORSES.fatigue.tiredAt,
+    hungry: h.hungry,
+    pulling: horsePull(h),
+    sellPrice: stable ? sellPrice(stable, h.kind) : null,
+  };
 }
 
 export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'>;
@@ -155,12 +238,15 @@ export interface CartView {
   rows: readonly string[];
   pieces: CartPieceView[];
   weight: number;
+  /** 지금 말로 끌 수 있는 무게. 말이 모자라면 0 */
   maxWeight: number;
+  /** 움직이려면 있어야 하는 말 수 (짐수레 1, 마차 2) */
+  horsesNeeded: number;
   /** 물건마다 지금 더 실을 수 있는 개수 */
   room: Record<GoodId, number>;
 }
 
-function cartView(cart: Cart, orders: readonly Order[]): CartView {
+function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]): CartView {
   const sideOf = new Map(orders.map((o) => [o.id, o.side]));
   return {
     type: cart.type,
@@ -180,12 +266,13 @@ function cartView(cart: Cart, orders: readonly Order[]): CartView {
       oldest: p.lots.length ? p.lots.reduce((a, l) => (l.age > a.age ? l : a)) : null,
     })),
     weight: cartWeight(cart),
-    maxWeight: maxWeight(cart),
+    maxWeight: maxWeight(cart, horses),
+    horsesNeeded: horsesNeeded(cart),
     room: Object.fromEntries(GOODS.map((g) => [g, roomFor(cart, g)])) as Record<GoodId, number>,
   };
 }
 
-export function playerView(state: EconomyState): PlayerView {
+export function playerView(state: EconomyState, map: WorldMap): PlayerView {
   const p = state.player;
   const location: PlayerLocation = p.travel
     ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
@@ -205,6 +292,8 @@ export function playerView(state: EconomyState): PlayerView {
   }
 
   const orders = state.orders.map((o) => ({ id: o.id, good: o.good, side: o.side, qty: o.qty, limit: o.limit }));
+  // 마구간 남은 수는 그 마을에 있을 때만 보인다
+  const stable = p.travel ? null : stableAt(state, p.town);
   const reserved = state.orders.reduce((s, o) => s + o.reserved, 0);
   const sellingQty = state.orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.qty, 0);
 
@@ -215,7 +304,7 @@ export function playerView(state: EconomyState): PlayerView {
     reserved,
     cargo: cartLots(p.cart),
     cargoCount: totalCount(cartLots(p.cart)) + sellingQty,
-    cart: cartView(p.cart, state.orders),
+    cart: cartView(p.cart, state.orders, p.horses),
     location,
     market,
     orders,
@@ -244,5 +333,26 @@ export function playerView(state: EconomyState): PlayerView {
         state.towns.map((t) => [t.id, tollAt(state, t.id)] as const).filter(([, gold]) => gold > 0),
       ),
     },
+    travel: {
+      days: playerTravelDays(state, map),
+      usual: townTravelDays(map, seasonOfDay(state.day, state.startSeason))[p.travel ? p.travel.from : p.town]!.map((d) =>
+        horseDays(d, p.horses),
+      ),
+    },
+    horses: p.horses.map((h) => horseView(h, stable)),
+    horseCare: p.travel
+      ? null
+      : { feedPrice: feedPrice(state, p.town), restFee: HORSES.fatigue.rest.fee * p.horses.length, rested: p.horsesRested },
+    stable: stable
+      ? { town: stable.town, horses: HORSE_KINDS.map((k) => ({ ...kindInfo(k), stock: stable.stock[k], price: buyPrice(stable, k) })) }
+      : null,
+    carts: CART_TYPES.map((type) => ({
+      type,
+      name: CART.types[type].name,
+      rows: CART.types[type].rows,
+      humanPull: CART.types[type].humanPull,
+      horses: CART.types[type].horses,
+      cost: type === p.cart.type ? null : cartCost(p.cart.type, type),
+    })),
   };
 }

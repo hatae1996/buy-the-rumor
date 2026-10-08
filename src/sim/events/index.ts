@@ -9,6 +9,7 @@ export {
   citizenBidFactor,
   demandModifier,
   eventsAt,
+  horseDelayAt,
   jobIncomeFactor,
   produceFactor,
   salesTax,

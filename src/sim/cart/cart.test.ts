@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CART } from '../constants';
 import {
   ageCart,
   cartCount,
@@ -7,7 +8,6 @@ import {
   discardPiece,
   fits,
   loadGoods,
-  maxWeight,
   movePiece,
   packCart,
   pieceCells,
@@ -63,7 +63,8 @@ describe('싣기와 쌓기', () => {
     loadGoods(c, 'ore', 6);
     expect(cartWeight(c)).toBe(18);
     loadGoods(c, 'ore', 6);
-    expect(cartWeight(c)).toBeGreaterThan(maxWeight(c));
+    // 사람이 지는 등짐은 30까지 (끄는 무게는 src/sim/horses)
+    expect(cartWeight(c)).toBeGreaterThan(CART.types.pack.humanPull);
   });
 });
 

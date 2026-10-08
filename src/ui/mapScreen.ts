@@ -3,7 +3,7 @@
 import './mapScreen.css';
 import { ECONOMY } from '../sim/constants';
 import { euro } from '../sim/josa';
-import { findRoute, townTravelDays } from '../sim/worldgen';
+import { findRoute } from '../sim/worldgen';
 import { MapView, PAWN_COLORS, type PawnSpec } from '../view3d';
 import { agoText, ERROR_TEXT, money } from './format';
 import type { Game } from './game';
@@ -70,9 +70,9 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
       return;
     }
     // 신문에 실린 막힌 길은 돌아가고, 산적 길목에는 통행세를 낸다
-    const blocked = new Set(v.roads.blocked);
-    const days = townTravelDays(game.map, v.season, blocked)[here]![to]!;
-    const usual = townTravelDays(game.map, v.season)[here]![to]!;
+    // 말이 있으면 말 걸음으로 (막힌 길은 돌아간다)
+    const days = v.travel.days[to]!;
+    const usual = v.travel.usual[to]!;
     const toll = (v.roads.tolls[here] ?? 0) + (v.roads.tolls[to] ?? 0);
     const fee = days * ECONOMY.player.travelFeePerDay + toll;
     const mem = v.memory[to];
@@ -81,6 +81,7 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     sheet.body.innerHTML = `
       <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
       ${days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : ''}
+      ${v.horses.length ? `<p class="muted">말이 길에서 지쳐요. 길 위에서는 수레에 실은 곡물을 먹어요 (하루 ${v.horses.reduce((s, h) => s + h.feed, 0)}개).</p>` : ''}
       ${toll > 0 ? `<p class="warn">산적이 있는 길목이라 여비에 통행세 ${money(toll)} 포함이에요.</p>` : ''}
       ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
       <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>

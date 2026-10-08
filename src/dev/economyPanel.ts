@@ -1,5 +1,5 @@
 // 경제 관찰: 날을 돌리며 시세, 통화량, 일꾼 수를 본다. 플레이어에게는 안 보이는 실제 수치다.
-import { ECONOMY } from '../sim/constants';
+import { ECONOMY, HORSES } from '../sim/constants';
 import {
   advanceDay,
   createEconomy,
@@ -60,6 +60,7 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
     <section class="dev-slip"><h2>마을</h2><div class="dev-towns" data-towns></div></section>
     <section class="dev-slip"><h2>소식</h2><ul class="dev-news" data-news></ul></section>
     <section class="dev-slip"><h2>이번 시즌 사건 일정 (플레이어는 모름)</h2><div class="dev-scroll"><table class="dev-table" data-schedule></table></div></section>
+    <section class="dev-slip"><h2>말: 마구간 재고와 입고 일정 (플레이어는 그 마구간에서만 봄)</h2><div class="dev-scroll"><table class="dev-table" data-horses></table></div></section>
     <section class="dev-slip"><h2>소문꾼 성격 (플레이어는 모름)</h2><div class="dev-towns" data-gossips></div></section>
     <section class="dev-slip"><h2>도는 소문 (진짜 여부 포함)</h2><div class="dev-scroll"><table class="dev-table" data-rumors></table></div></section>
   `;
@@ -157,7 +158,29 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
         .join('') || '<li class="dev-mono">아직 소식이 없어요.</li>';
     renderSchedule();
     renderRumors();
+    renderHorses();
     renderCharts();
+  }
+
+  function renderHorses() {
+    const m = state.horses;
+    const name = (id: number) => map.towns[id]!.name;
+    const kind = (k: keyof typeof HORSES.kinds) => HORSES.kinds[k].name;
+    const stock = m.stables
+      .map((s) => `<tr><td>${name(s.town)} 마구간</td><td colspan="2">${(Object.keys(s.stock) as (keyof typeof HORSES.kinds)[]).map((k) => `${kind(k)} ${s.stock[k]}`).join(' · ')}</td></tr>`)
+      .join('');
+    const next = m.arrivals
+      .slice()
+      .sort((a, b) => a.day - b.day)
+      .map((a) => `<tr><td>${a.day}일 입고</td><td>${name(a.town)}</td><td>${kind(a.kind)} ${a.count}마리</td></tr>`)
+      .join('');
+    const traders = state.traders
+      .filter((t) => t.horses.length)
+      .map((t) => `<tr><td>${t.name}</td><td>${kind(t.horses[0]!.kind)}</td><td>돈 ${fmt(t.gold)}</td></tr>`)
+      .join('');
+    $('[data-horses]').innerHTML =
+      (stock || '<tr><td class="dev-mono">시즌 시작 전</td></tr>') + next + traders +
+      `<tr><td colspan="3" class="dev-mono">지금까지 풀린 말 ${m.arrived.reduce((s, a) => s + a.count, 0)}마리 · 플레이어 말 ${state.player.horses.length}필</td></tr>`;
   }
 
   function renderRumors() {

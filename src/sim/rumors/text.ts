@@ -1,5 +1,6 @@
 // 들은 주장을 말로. 숫자는 흐려진 정도에 따라 "48" → "40은 넘는다" → "금값"으로 뭉개진다.
 // 신문과 달리 소문은 말투가 섞인다. 성격은 말투로 드러내지 않는다 (겁쟁이만 나쁜 소식을 크게 말한다).
+import { HORSES } from '../constants';
 import { GOOD_NAME } from '../economy/goods';
 import { eventDef } from '../events/defs';
 import { eulReul, iGa, numEunNeun } from '../josa';
@@ -29,13 +30,20 @@ const NODE_TEXT: Record<NodeRumorKind, Record<'low' | 'high', [string, string]>>
   },
 };
 
-export function claimText(claim: Claim, map: WorldMap, flavor: TellFlavor = { strong: false, scared: false }): string {
+/** 며칠 뒤: 오늘, 내일, 모레, 사흘 뒤 … */
+export function daysAhead(d: number): string {
+  const words = ['오늘', '내일', '모레', '사흘 뒤', '나흘 뒤', '닷새 뒤'];
+  return d <= 0 ? '오늘' : (words[d] ?? `${d}일 뒤`);
+}
+
+/** today: 말하는 날 (말 입고처럼 날을 셀 때) */
+export function claimText(claim: Claim, map: WorldMap, flavor: TellFlavor = { strong: false, scared: false }, today = 0): string {
   const t = map.towns[claim.town]!.name;
-  const body = claimBody(claim, t, flavor);
+  const body = claimBody(claim, t, flavor, today);
   return `"${body}${flavor.scared ? ' 큰일이야.' : ''}"`;
 }
 
-function claimBody(claim: Claim, t: string, flavor: TellFlavor): string {
+function claimBody(claim: Claim, t: string, flavor: TellFlavor, today: number): string {
   switch (claim.kind) {
     case 'omen':
       return `${t} 쪽에서 ${eventDef(claim.event).omen ?? '이상한 일이 생긴다더라.'}`;
@@ -59,5 +67,10 @@ function claimBody(claim: Claim, t: string, flavor: TellFlavor): string {
     }
     case 'trait':
       return `${t} 근처에 ${iGa(regionTag(claim.tag).name)} 있다더라.`;
+    case 'horse': {
+      const when = claim.day === null ? '곧' : daysAhead(claim.day - today);
+      const n = claim.count === null ? '몇' : String(claim.count);
+      return `${when} ${t} 목장에 ${HORSES.kinds[claim.horse].name} ${n}마리가 들어온다더군.`;
+    }
   }
 }

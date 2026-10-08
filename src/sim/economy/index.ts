@@ -10,5 +10,15 @@ export { moneySupply, population, jobCounts, hungryWorkers, townStock } from './
 export { expectedIncome } from './workers';
 export { citizenDemand } from './citizens';
 export { hasExpeditions, innOf, mealRecovery } from './player';
-export type { CartView, CartPieceView, ExpeditionView, NoteView } from './view';
+export type {
+  CartView,
+  CartPieceView,
+  ExpeditionView,
+  NoteView,
+  HorseKindInfo,
+  HorseView,
+  StableView,
+  CartOffer,
+} from './view';
+export { playerTravelDays } from './travel';
 export { noteView, playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';

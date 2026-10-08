@@ -6,6 +6,8 @@ import type { Accounts } from './accounts';
 import { GOODS, shelfLife, type GoodId } from './goods';
 import { count, totalCount } from './inventory';
 import { limitPrice } from './market';
+import { horseDays } from '../horses/pull';
+import { HORSES } from '../constants';
 import type { EconomyState, Order, Trader } from './state';
 
 const T = ECONOMY.traders;
@@ -37,10 +39,22 @@ export function traderOrders(trader: Trader, state: EconomyState, days: number[]
   if (!plan) return out;
   const limit = limitPrice(here, plan.good, T.bidMarkup);
   // 어제 팔린 만큼, 도착할 마을이 받아 줄 만큼만 산다 (한꺼번에 몰아 가면 그 마을 값이 무너진다)
-  const qty = Math.min(T.capacity, Math.floor(trader.gold / limit), here.lastMarket[plan.good].supply, plan.absorb);
+  const qty = Math.min(capacityOf(trader), Math.floor(trader.gold / limit), here.lastMarket[plan.good].supply, plan.absorb);
   const o = accounts.place(owner, here.id, plan.good, 'buy', qty, limit);
   if (o) out.push(o);
   return out;
+}
+
+/** 한 번에 싣는 양: 말이 있으면 는다 */
+export function capacityOf(trader: Trader): number {
+  const h = trader.horses[0];
+  return Math.round(T.capacity * (h ? HORSES.traderCapacity[h.kind] : 1));
+}
+
+/** 길을 나선다. 말이 있으면 말 걸음으로 */
+function setOff(trader: Trader, to: number, d: number): void {
+  const days = horseDays(d, trader.horses);
+  trader.travel = { from: trader.town, to, days, daysLeft: days };
 }
 
 /** from 마을에서 사서 옮길 가장 남는 물건과 마을 */
@@ -94,7 +108,7 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
   const loaded = totalCount(trader.inv) > 0;
   if (loaded && trader.plan && trader.plan.to !== trader.town) {
     const d = days[trader.town]![trader.plan.to]!;
-    trader.travel = { from: trader.town, to: trader.plan.to, days: d, daysLeft: d };
+    setOff(trader, trader.plan.to, d);
     trader.plan = null;
     trader.stuckDays = 0;
     return;
@@ -108,7 +122,7 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
       .sort((a, b) => b.refPrice[good] - a.refPrice[good])[0];
     if (to) {
       const d = days[trader.town]![to.id]!;
-      trader.travel = { from: trader.town, to: to.id, days: d, daysLeft: d };
+      setOff(trader, to.id, d);
       trader.stuckDays = 0;
       return;
     }
@@ -125,7 +139,7 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
     }
     if (go) {
       const d = days[trader.town]![go.to]!;
-      trader.travel = { from: trader.town, to: go.to, days: d, daysLeft: d };
+      setOff(trader, go.to, d);
       return;
     }
   }
@@ -135,7 +149,7 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
     const to = others[rng.int(0, others.length - 1)];
     if (to) {
       const d = days[trader.town]![to.id]!;
-      trader.travel = { from: trader.town, to: to.id, days: d, daysLeft: d };
+      setOff(trader, to.id, d);
     }
   }
   if (trader.gold > T.taxThreshold) {

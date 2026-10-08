@@ -45,7 +45,9 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
     const w = Math.max(...cart.rows.map((r) => r.length));
     const h = cart.rows.length;
     const cell = Math.max(36, Math.min(60, Math.floor((host.clientWidth || 320) / w)));
-    const over = cart.weight > cart.maxWeight;
+    // 짐수레·마차는 말이 모자라면 움직이지 못한다 (끄는 무게 0)
+    const noHorse = v.horses.length < cart.horsesNeeded;
+    const over = !noHorse && cart.weight > cart.maxWeight;
     const sel = cart.pieces.find((p) => p.id === selected) ?? null;
 
     let slots = '';
@@ -90,11 +92,12 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
     host.innerHTML = `
       <div class="cart-head">
         <span>${cart.name}</span>
-        <div class="weight ${over ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
-          <i style="width:${Math.min(100, (cart.weight / cart.maxWeight) * 100)}%"></i>
-          <span>무게 ${cart.weight} / ${cart.maxWeight}</span>
+        <div class="weight ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
+          <i style="width:${noHorse ? 100 : Math.min(100, (cart.weight / Math.max(1, cart.maxWeight)) * 100)}%"></i>
+          <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 ${cart.weight} / ${cart.maxWeight}`}</span>
         </div>
       </div>
+      ${noHorse ? `<p class="warn">${cart.name}는 말이 ${cart.horsesNeeded}필 있어야 움직여요. 목장 마을 마구간에서 말을 사세요.</p>` : ''}
       ${over ? '<p class="warn">너무 무거워 떠날 수 없어요. 팔거나 버려서 무게를 줄이세요.</p>' : ''}
       <div class="cart-grid" style="width:${w * cell}px;height:${h * cell}px">${slots}${pieces}<div class="cart-preview" hidden></div></div>
       ${info}

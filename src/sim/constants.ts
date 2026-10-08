@@ -342,7 +342,7 @@ export const RUMORS = {
   /** 소문이 사라지기까지 날 (생긴 날부터). 징조는 사건 날 다음 날까지 */
   life: { omen: 1, node: 6, price: 5, orders: 3, trait: 12, false: 5 },
   /** 중요한 소문이 먼저 나온다 (높을수록 먼저) */
-  importance: { omen: 5, orders: 3, price: 3, node: 2, trait: 1 },
+  importance: { omen: 5, horse: 4, orders: 3, price: 3, node: 2, trait: 1 },
   /** 한 마을 건널 때마다: 숫자가 뭉개질 확률, 부풀려질 확률과 배율 */
   hop: { blurChance: 0.5, exaggerateChance: 0.25, exaggerate: 1.3 },
 
@@ -401,6 +401,8 @@ export const RUMORS = {
     priceDays: 6,
     ordersDays: 3,
     nodeDays: 10,
+    /** 말 입고: 날을 못 들었으면 소문이 생기고 이 날까지 입고가 있었는지 본다 */
+    horseDays: 5,
     /** 숫자를 들은 시세: 실제 값과 이 비율 안이면 맞았다 */
     priceTolerance: 0.25,
     /** 숫자 없이 "금값"/"헐값"이면 기준 가격의 이 배율 위/아래여야 맞았다 */
@@ -415,18 +417,88 @@ export const RUMORS = {
 } as const;
 
 /**
+ * 말 (기획서 "말"). 숫자는 모두 초안 (questions.md 24·25번).
+ * 수레는 칸을, 말은 끄는 무게와 속도를 정한다. 말은 시즌마다 정해진 수만 목장 마을 마구간에 풀린다.
+ */
+export const HORSES = {
+  /**
+   * pull: 끄는 무게. speed: 이동 일수 배율 (사람 걸음 1). feed: 하루 곡물 (쉬는 날에도).
+   * price: 마구간 기준 값. travelFatigue: 길에서 하루에 쌓이는 피로 (조랑말은 잘 지친다)
+   */
+  kinds: {
+    pony: { name: '늙은 조랑말', pull: 60, speed: 0.85, feed: 1, price: 90, travelFatigue: 3 },
+    draft: { name: '짐말', pull: 150, speed: 1, feed: 2, price: 220, travelFatigue: 2 },
+    swift: { name: '빠른 말', pull: 90, speed: 0.65, feed: 2, price: 260, travelFatigue: 2 },
+  },
+  /** 한 사람이 가질 수 있는 말 (마차용 두 필) */
+  maxPerOwner: 2,
+
+  /** 시즌 공급: 말 총수 (최소, 최대). 로컬에서는 플레이어 + NPC 상단 수보다 적게 */
+  perSeason: [4, 6],
+  /** 한 번에 풀리는 수 (최소, 최대), 다음 입고까지 날 (최소, 최대) */
+  batch: [1, 2],
+  gapDays: [8, 20],
+  /** 첫 입고는 시즌 시작 뒤 며칠 안에 */
+  firstWithin: 3,
+  /** 시즌 마지막 며칠에는 풀지 않는다 */
+  quietLastDays: 5,
+  /** 종류를 뽑는 무게 */
+  kindWeight: { pony: 0.4, draft: 0.35, swift: 0.25 },
+  /** 봄 입고에는 망아지(조랑말)가 이만큼 더 */
+  springExtra: 1,
+  /** 입고 며칠 전에 소문이 난다 */
+  rumorLead: 3,
+
+  /** 마구간 값: 그 마구간 남은 수가 [3+, 2, 1]일 때 기준 값의 배율 */
+  scarcity: [1, 1.15, 1.35],
+  /** 되팔 때 지금 사는 값의 이 비율 */
+  resale: 0.6,
+
+  /** 체력 (플레이어 피로와 같은 규칙) */
+  fatigue: {
+    max: 10,
+    /** 이만큼 지치면 빨리 달리지 못한다 (속도 배율 1) */
+    tiredAt: 7,
+    /** 마을에서 하룻밤 쉬면 줄어드는 양 */
+    nightlyRecovery: 3,
+    /** 마구간에서 쉬게 하기: 하루 한 번, 말 한 필마다 값 */
+    rest: { fee: 5, recovery: 5 },
+    /** 굶은 밤에 쌓이는 피로 */
+    hunger: 2,
+  },
+  /** 마을 마구간에서 먹이면 곡물 시세의 이 배를 받는다 (그만큼 주민이 곡물을 사 온다) */
+  stableFeedMarkup: 1.25,
+  /** 이만큼 연달아 굶으면 말이 마구간으로 돌아가 버린다 */
+  runAwayAfterHungryDays: 3,
+
+  /**
+   * NPC 상단: 이만큼 돈이 있으면 마구간에서 말을 사고, 이보다 적어지면 마구간에 되판다
+   * (먹이값에 밑천이 바닥나 말이 굶다 도망치는 일이 되풀이되지 않게). 말이 있으면 싣는 양이 늘어난다
+   */
+  traderBuyGold: 1000,
+  traderSellGold: 400,
+  traderCapacity: { pony: 1.3, draft: 2, swift: 1.5 },
+} as const;
+
+/**
  * 수레 인벤토리 (기획서 "수레 인벤토리"). 모양과 쌓기 수는 기획서 초안, 무게는 개발 초안.
  * 모양 칸 좌표는 [x, y], 수레 그림은 '#'가 실을 수 있는 칸.
  */
 export const CART = {
   /** 시작은 등짐 하나 (기획서 "시작 조건") */
   start: 'pack',
+  /**
+   * 수레는 칸만 정한다. 끄는 무게는 말이 정한다 (기획서 "말", 0.0.4).
+   * humanPull: 말 없이 사람이 끌 때 무게 (등짐, 손수레만). horses: 움직이려면 있어야 하는 말 수.
+   * price: 수레방 값 (개발 초안). 바꿀 때 쓰던 수레는 tradeIn 비율로 쳐 준다
+   */
   types: {
-    pack: { name: '등짐', rows: ['###', '###', '###'], maxWeight: 30 },
-    handcart: { name: '손수레', rows: ['.####.', '######', '######'], maxWeight: 70 },
-    wagon: { name: '짐수레', rows: ['#######', '#######', '#######', '.#####.'], maxWeight: 150 },
-    carriage: { name: '마차', rows: ['.######.', '########', '########', '########', '########'], maxWeight: 260 },
+    pack: { name: '등짐', rows: ['###', '###', '###'], humanPull: 30, horses: 0, price: 0 },
+    handcart: { name: '손수레', rows: ['.####.', '######', '######'], humanPull: 70, horses: 0, price: 60 },
+    wagon: { name: '짐수레', rows: ['#######', '#######', '#######', '.#####.'], humanPull: 0, horses: 1, price: 180 },
+    carriage: { name: '마차', rows: ['.######.', '########', '########', '########', '########'], humanPull: 0, horses: 2, price: 420 },
   },
+  tradeIn: 0.5,
   goods: {
     // 가죽·생선 2칸 가로, 고기 2칸 세로, 곡물 2×2, 목재 1×3, 광석·소금 1칸, 도구·염장 통 ㄱ자 3칸
     fish: { shape: [[0, 0], [1, 0]], stack: 2, weight: 1 },

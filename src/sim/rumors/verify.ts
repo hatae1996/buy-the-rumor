@@ -58,6 +58,15 @@ function check(state: EconomyState, map: WorldMap, h: HeardRumor, c: Claim, here
     case 'node':
       // 원정을 나가 봐야 안다 (verifyByExpedition)
       return null;
+    case 'horse': {
+      // 그 마구간에 가서 봐야 안다. 들은 날이 지나야 확인할 수 있다
+      const due = c.day ?? c.from + V.horseDays;
+      if (here !== c.town || day < due || day - h.day > V.horseDays * 2) return null;
+      const came = state.horses.arrived
+        .filter((a) => a.town === c.town && a.kind === c.horse && (c.day === null ? a.day >= c.from && a.day <= due : a.day === c.day))
+        .reduce((s, a) => s + a.count, 0);
+      return came > 0 && (c.count === null || came >= c.count);
+    }
   }
 }
 

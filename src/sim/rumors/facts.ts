@@ -1,6 +1,6 @@
 // 소문은 어디서 생기나 (기획서 "소문"): 다가오는 사건, 숨은 숫자, 다른 마을 시세, 장날 신청 현황, 마을 특색, 헛소문.
 // 모든 소문은 시뮬의 진짜 상태에서 만들고, 헛소문만 일부러 틀리게 만든다.
-import { ECONOMY, RUMORS } from '../constants';
+import { ECONOMY, HORSES, RUMORS } from '../constants';
 import { basePrice, GOODS } from '../economy/goods';
 import type { EconomyState } from '../economy/state';
 import { eventDef } from '../events/defs';
@@ -37,6 +37,8 @@ function storyKey(f: RumorFact): string {
       return `orders:${f.town}:${f.good}`;
     case 'trait':
       return `trait:${f.town}:${f.tag}`;
+    case 'horse':
+      return `horse:${f.town}:${f.horse}:${f.arriveDay}`;
   }
 }
 
@@ -81,6 +83,12 @@ export function makeRumorsToday(state: EconomyState, map: WorldMap, rng: Rng): W
       const lead = ECONOMY.events.omenLead[1];
       add('omen', { kind: 'omen', event: f.event, town: f.town, eventDay: null }, false, day + lead + life.omen);
     }
+  }
+
+  // 1-2. 말 입고: 며칠 앞서 목장 마을에서 소문이 난다
+  for (const a of state.horses.arrivals) {
+    if (a.day - day !== HORSES.rumorLead) continue;
+    add('horse', { kind: 'horse', town: a.town, horse: a.kind, count: a.count, arriveDay: a.day }, true, a.day);
   }
 
   for (const town of state.towns) {

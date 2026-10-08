@@ -8,6 +8,8 @@ import { euro } from '../../sim/josa';
 import { goodName, money } from '../format';
 import type { Game } from '../game';
 import { noteItem, topNotes } from './noteItem';
+import { horseFatigue, speedWord } from './horseSheet';
+import { HORSES } from '../../sim/constants';
 
 export interface TownScreenActions {
   openOrder: (good: (typeof GOODS)[number]) => void;
@@ -19,6 +21,36 @@ export interface TownScreenActions {
   resumeExpedition: () => void;
   buyDrink: () => void;
   openPigeon: () => void;
+  restHorses: () => void;
+  openStable: () => void;
+  openCartShop: () => void;
+}
+
+/** 탈것: 수레와 말, 말 쉬게 하기, 마구간(목장 마을), 수레방 */
+function rideCard(v: PlayerView): string {
+  if (!v.horseCare) return '';
+  const care = v.horseCare;
+  const noHorse = v.horses.length < v.cart.horsesNeeded;
+  const horses = v.horses.length
+    ? `<ul class="list">${v.horses.map((h) => `<li><b>${h.name}</b> <small class="muted">끄는 무게 ${h.pulling} · ${speedWord(h.speed)}</small>${horseFatigue(h)}</li>`).join('')}</ul>
+       <p class="muted">밤마다 마구간에서 곡물을 먹여요 (지금 마을 한 개 ${money(care.feedPrice)}). 길 위에서는 수레에 실은 곡물을 먹어요.</p>`
+    : `<p class="muted">말이 없어요. 사람이 끌면 ${v.cart.name} 무게 ${v.cart.maxWeight}까지. 말은 목장 마을 마구간에서 팔아요.</p>`;
+  const tired = v.horses.some((h) => h.fatigue > 0);
+  return `<section class="card">
+      <header class="card-head"><h2>탈것</h2><span class="badge">${v.cart.name}${noHorse ? ' · 말 필요' : ` · 무게 ${v.cart.maxWeight}`}</span></header>
+      ${horses}
+      <div class="btn-row">
+        ${
+          v.horses.length
+            ? `<button type="button" class="secondary-btn" data-rest-horses ${tired && !care.rested && v.gold >= care.restFee ? '' : 'disabled'}>
+                말 쉬게 하기<small>${care.rested ? '오늘은 쉬었어요' : `${money(care.restFee)} · 피로 −${HORSES.fatigue.rest.recovery}`}</small>
+              </button>`
+            : ''
+        }
+        ${v.stable ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
+        <button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>
+      </div>
+    </section>`;
 }
 
 /** 소문: 어젯밤 소문꾼에게 들은 이야기, 술 한 잔, 전서구 */
@@ -136,6 +168,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
         }
       </div>
     </section>
+    ${rideCard(v)}
     ${rumorCard(game, v)}
     ${
       v.location.kind === 'town'
@@ -178,4 +211,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   el.querySelector('[data-exp-resume]')?.addEventListener('click', act.resumeExpedition);
   el.querySelector('[data-drink]')?.addEventListener('click', act.buyDrink);
   el.querySelector('[data-pigeon]')?.addEventListener('click', act.openPigeon);
+  el.querySelector('[data-rest-horses]')?.addEventListener('click', act.restHorses);
+  el.querySelector('[data-stable]')?.addEventListener('click', act.openStable);
+  el.querySelector('[data-cart-shop]')?.addEventListener('click', act.openCartShop);
 }

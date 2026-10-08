@@ -5,7 +5,6 @@
 import { shelfLife, type GoodId } from '../economy/goods';
 import type { Lot } from '../economy/inventory';
 import { cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type CartType, type Cell } from './shapes';
-import { CART } from '../constants';
 
 export interface Piece {
   id: number;
@@ -123,8 +122,6 @@ export function cartCount(cart: Cart, good: GoodId): number {
 export function cartWeight(cart: Cart): number {
   return cart.pieces.reduce((s, p) => s + qtyOf(p) * unitWeight(p.good), 0);
 }
-
-export const maxWeight = (cart: Cart): number => CART.types[cart.type].maxWeight;
 
 /** 지금 그 물건을 몇 개 더 실을 수 있나 (잡아 둔 자리 빼고, 지금 배치 그대로) */
 export function roomFor(cart: Cart, good: GoodId, upTo = 99): number {

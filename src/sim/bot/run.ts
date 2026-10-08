@@ -45,7 +45,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
 
   for (let d = 0; d < opt.days; d++) {
     for (let i = 0; i < max; i++) {
-      const cmd = botStep(playerView(state), map, profile, mind, rng);
+      const cmd = botStep(playerView(state, map), map, profile, mind, rng);
       if (!cmd) break;
       commands++;
       const r = applyCommand(state, map, cmd);
@@ -56,7 +56,7 @@ export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile
     const ledgerBefore = state.player.ledger.length;
     advanceDay(state, map);
     run.trades += state.player.ledger.slice(ledgerBefore).filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
-    run.worth.push(netWorth(playerView(state)));
+    run.worth.push(netWorth(playerView(state, map)));
     run.gold.push(state.player.gold);
   }
   run.commandsPerDay = commands / Math.max(1, opt.days);

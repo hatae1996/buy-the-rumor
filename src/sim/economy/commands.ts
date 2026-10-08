@@ -1,9 +1,9 @@
 // 플레이어 명령. 화면은 명령을 보내고 결과 상태를 그리기만 한다.
 // 나중에 멀티플레이를 붙이면 이 명령을 서버로 보낸다.
-import { ECONOMY } from '../constants';
+import { ECONOMY, HORSES } from '../constants';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
-import { tollAt, travelDaysToday } from '../events';
+import { tollAt } from '../events';
 import { Accounts } from './accounts';
 import { FOODS, GOODS, type GoodId } from './goods';
 import {
@@ -11,7 +11,6 @@ import {
   cartLots,
   cartWeight,
   discardPiece,
-  maxWeight,
   movePiece,
   packCart,
   rotatePiece,
@@ -22,6 +21,19 @@ import { sellableCount } from './inventory';
 import { chooseExpeditionCard, finishExpedition, startExpedition, type ExpeditionError } from '../expedition';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import { buyDrink, dismissInformant, hireInformant, sendPigeon, type RumorError } from '../rumors';
+import {
+  buyCart,
+  buyHorse,
+  HORSE_KINDS,
+  lacksHorses,
+  maxWeight,
+  restHorses,
+  sellHorse,
+  type HorseError,
+  type HorseKind,
+} from '../horses';
+import { CART_TYPES, type CartType } from '../cart';
+import { playerTravelDays } from './travel';
 import type { EconomyState } from './state';
 
 export type Command =
@@ -53,7 +65,14 @@ export type Command =
   | { type: 'sendPigeon'; to: number }
   /** 지금 마을에 정보원을 심는다 (상단 단계부터. 화면에는 아직 없다) */
   | { type: 'hireInformant' }
-  | { type: 'dismissInformant'; town: number };
+  | { type: 'dismissInformant'; town: number }
+  /** 지금 마을 마구간에서 말을 산다 / 되판다 */
+  | { type: 'buyHorse'; kind: HorseKind }
+  | { type: 'sellHorse'; horseId: number }
+  /** 마구간에서 말을 쉬게 한다 (하루 한 번) */
+  | { type: 'restHorses' }
+  /** 수레방에서 수레를 바꾼다 (쓰던 수레는 쳐 준다) */
+  | { type: 'buyCart'; cart: CartType };
 
 export type CommandError =
   | 'traveling'
@@ -77,7 +96,8 @@ export type CommandError =
   | 'cantPlace'
   | 'pieceBusy'
   | ExpeditionError
-  | RumorError;
+  | RumorError
+  | HorseError;
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -127,8 +147,10 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       if (p.expedition) return fail('inExpedition');
       if (!state.towns[cmd.to]) return fail('noTown');
       if (cmd.to === p.town) return fail('sameTown');
-      // 사건으로 막힌 길은 돌아간다
-      const days = travelDaysToday(state, map, seasonOfDay(state.day, state.startSeason))[p.town]![cmd.to]!;
+      // 짐수레는 말 한 필, 마차는 두 필이 있어야 움직인다
+      if (lacksHorses(p.cart, p.horses)) return fail('needHorse');
+      // 사건으로 막힌 길은 돌아가고, 말이 있으면 빨리 간다
+      const days = playerTravelDays(state, map)[cmd.to]!;
       if (!Number.isFinite(days)) return fail('noRoute');
       // 산적 통행세: 떠나는 마을과 가는 마을 길목
       const toll = tollAt(state, p.town) + tollAt(state, cmd.to);
@@ -138,7 +160,7 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       const selling = state.orders
         .filter((o) => o.side === 'sell')
         .reduce((s, o) => s + o.lots.reduce((a, l) => a + l.qty * unitWeight(l.good), 0), 0);
-      if (cartWeight(p.cart) + selling > maxWeight(p.cart)) return fail('overweight');
+      if (cartWeight(p.cart) + selling > maxWeight(p.cart, p.horses)) return fail('overweight');
       // 떠나면 이 마을에 낸 신청은 거둔다
       for (const o of state.orders) accounts.cancel(o);
       state.orders = [];
@@ -150,6 +172,8 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       p.travel = { from: p.town, to: cmd.to, days, daysLeft: days };
       // 원정 기회는 그 마을에 묶여 있다. 떠나면 사라진다
       p.expeditionChances = 0;
+      // 말은 길에서 지친다 (조랑말은 잘 지친다)
+      for (const h of p.horses) h.fatigue = Math.min(HORSES.fatigue.max, h.fatigue + HORSES.kinds[h.kind].travelFatigue * days);
       return { ok: true };
     }
     case 'eat':
@@ -179,6 +203,17 @@ export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): 
       return done(hireInformant(state));
     case 'dismissInformant':
       return done(dismissInformant(state, cmd.town));
+    case 'buyHorse':
+      if (!HORSE_KINDS.includes(cmd.kind)) return fail('noHorseLeft');
+      return done(buyHorse(state, cmd.kind));
+    case 'sellHorse':
+      return done(sellHorse(state, cmd.horseId));
+    case 'restHorses':
+      return done(restHorses(state));
+    case 'buyCart':
+      if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
+      if (p.expedition) return fail('inExpedition');
+      return done(buyCart(state, cmd.cart));
     case 'discardCartPiece': {
       const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
       if (!piece) return fail('noPiece');

@@ -31,7 +31,8 @@ export function isBadNews(f: RumorFact): boolean {
   }
 }
 
-export function tell(r: WorldRumor, copy: RumorCopy, teller: Gossip | null, map: WorldMap): Telling {
+/** today: 말하는 날 ("사흘 뒤"처럼 날을 셀 때). 없으면 그 마을에 소문이 닿은 날 */
+export function tell(r: WorldRumor, copy: RumorCopy, teller: Gossip | null, map: WorldMap, today = copy.day): Telling {
   const p = teller ? RUMORS.personality[teller.personality] : null;
   // 노인은 부푼 만큼을 덜어 내고, 나머지는 자기 버릇대로 부풀린다
   let scale = p ? 1 + (copy.scale - 1) * (1 - p.calm) : copy.scale;
@@ -66,9 +67,20 @@ export function tell(r: WorldRumor, copy: RumorCopy, teller: Gossip | null, map:
       claim = { kind: 'orders', town: f.town, good: f.good, side, qty: copy.blur === 0 ? Math.max(1, Math.round(f.qty * scale)) : null };
       break;
     }
+    case 'horse':
+      // 흐려지면 마릿수가 먼저 뭉개지고("몇 마리"), 더 흐려지면 날도 사라진다("곧")
+      claim = {
+        kind: 'horse',
+        town: f.town,
+        horse: f.horse,
+        count: copy.blur === 0 ? Math.max(f.count, Math.round(f.count * scale)) : null,
+        day: copy.blur <= 1 ? f.arriveDay : null,
+        from: r.day,
+      };
+      break;
   }
   if (pitching) importance += 1;
-  return { claim, text: claimText(claim, map, flavor), importance };
+  return { claim, text: claimText(claim, map, flavor, today), importance };
 }
 
 /** 장사꾼이 할 말이 없을 때: 자기 물품이 다른 마을에서 비싸다고 한다 (근거 없음) */

@@ -1,6 +1,8 @@
 // 화면 문구. 처음 하는 사람에게 전문 용어를 보이지 않는다 ("동시호가" 대신 "장날").
 import { shelfLife, GOOD_NAME, type CommandError, type GoodId, type LedgerEntry, type Lot } from '../sim/economy';
 import { SEASON_NAME, type Season } from '../sim/season';
+import { CART, HORSES } from '../sim/constants';
+import { eulReul, euro, iGa } from '../sim/josa';
 
 export const money = (n: number): string => Math.round(n).toLocaleString('ko-KR');
 
@@ -54,6 +56,16 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   noRumor: '여관 손님들도 오늘은 새로 들려줄 이야기가 없대요.',
   alreadyInformant: '이 마을에는 이미 정보원이 있어요.',
   noInformant: '그 마을에는 정보원이 없어요.',
+  noStable: '이 마을에는 말을 파는 마구간이 없어요. 목장이 있는 마을로 가 보세요.',
+  noHorseLeft: '마구간에 그 말이 남아 있지 않아요.',
+  tooManyHorses: '말은 두 필까지만 가질 수 있어요.',
+  noHorse: '그 말이 없어요.',
+  stableNoGold: '마구간 주인이 지금 말값을 치를 돈이 없대요.',
+  alreadyRestedHorses: '오늘은 이미 말을 쉬게 했어요.',
+  horsesNotTired: '말이 지치지 않았어요.',
+  sameCart: '지금 그 수레를 쓰고 있어요.',
+  ordersPending: '장날에 낸 신청이 있으면 수레를 바꿀 수 없어요. 신청을 거두거나 장날이 지나고 바꾸세요.',
+  needHorse: '이 수레는 말이 있어야 움직여요. 짐수레는 한 필, 마차는 두 필이 필요해요.',
 };
 
 /** 장부 한 줄: 글과 돈 변화 */
@@ -80,6 +92,22 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
     }
     case 'toll':
       return { text: `${townName(e.town)} 근처 길에서 통행세를 냈어요`, amount: -e.gold };
+    case 'horse': {
+      const name = HORSES.kinds[e.horse].name;
+      if (e.what === 'lost') return { text: `굶주린 ${iGa(name)} ${townName(e.town)} 마구간으로 돌아가 버렸어요`, amount: null };
+      return {
+        text: `${townName(e.town)} 마구간에서 ${name} ${e.what === 'buy' ? '샀어요' : '팔았어요'}`,
+        amount: e.what === 'buy' ? -e.price : e.price,
+      };
+    }
+    case 'horseFeed':
+      return e.fee
+        ? { text: `${e.town === null ? '' : `${townName(e.town)} `}마구간에서 말을 먹였어요 (곡물 ${e.qty})`, amount: -e.fee }
+        : { text: `수레에 실은 곡물 ${e.qty}개를 말에게 먹였어요`, amount: null };
+    case 'horseRest':
+      return { text: `${townName(e.town)} 마구간에서 말을 쉬게 했어요`, amount: -e.fee };
+    case 'cart':
+      return { text: `${townName(e.town)} 수레방에서 ${eulReul(CART.types[e.from].name)} ${euro(CART.types[e.to].name)} 바꿨어요`, amount: -e.price };
     case 'info': {
       const what = { drink: `${townName(e.town)} 여관에서 술 한 잔 (소문 하나)`, pigeon: `${townName(e.town)}에 전서구를 보냈어요`, informant: `${townName(e.town)} 정보원 품삯` }[e.what];
       return { text: what, amount: -e.fee };

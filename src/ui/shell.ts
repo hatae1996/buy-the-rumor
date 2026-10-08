@@ -14,6 +14,7 @@ import { openExpeditionSheet } from './screens/expeditionSheet';
 import { openMealSheet } from './screens/mealSheet';
 import { openOrderSheet } from './screens/orderSheet';
 import { buyDrink, openPigeonSheet } from './screens/rumorSheet';
+import { openCartShopSheet, openStableSheet } from './screens/horseSheet';
 import { renderTown } from './screens/town';
 
 export type TabId = 'town' | 'map' | 'ledger' | 'news';
@@ -84,6 +85,9 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
         resumeExpedition: () => openExpeditionSheet(game),
         buyDrink: () => buyDrink(game),
         openPigeon: () => openPigeonSheet(game),
+        restHorses: () => game.dispatch({ type: 'restHorses' }),
+        openStable: () => openStableSheet(game),
+        openCartShop: () => openCartShopSheet(game),
       });
     } else if (current === 'ledger') {
       renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));

@@ -13,6 +13,7 @@ import { TRADER_NAMES } from './traders';
 import { advanceDay } from './day';
 import { createSeason } from '../events/schedule';
 import { emptyRumorMill } from '../rumors/night';
+import { emptyHorseMarket } from '../horses/supply';
 
 export interface CreateOptions {
   /** 플레이어가 오기 전에 세계를 미리 돌리는 날 (기본 0). 다 돌린 뒤 날짜는 1일로 다시 센다 */
@@ -50,6 +51,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       drankToday: false,
       pigeons: [],
       informants: [],
+      horses: [],
+      horsesRested: false,
       marks: [],
     },
     orders: [],
@@ -59,6 +62,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     events: [],
     reactive: { low: {}, high: {}, cooldown: {} },
     rumorMill: emptyRumorMill(),
+    horses: emptyHorseMarket(),
   };
 
   for (const town of state.towns) {
@@ -91,6 +95,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       travel: null,
       plan: null,
       stuckDays: 0,
+      horses: [],
     });
   }
 
@@ -130,6 +135,7 @@ function createTown(map: WorldMap, id: number): TownEconomy {
     treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
     workshop: tier === 'city' ? [] : null,
     recentEvents: [],
+    stableGrain: 0,
   };
 }
 
