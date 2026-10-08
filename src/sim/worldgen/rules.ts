@@ -4,10 +4,11 @@ import { AUTUMN } from '../season';
 import { nearestTownDays, townTravelDays } from './days';
 import { resourceTilesAround } from './generate';
 import { buildNeighbors } from './hex';
+import { townsNearTag } from './regionTags';
 import { RESOURCE_KINDS, type WorldMap } from './types';
 
 export interface RuleCheck {
-  id: 'tiers' | 'allResources' | 'specialties' | 'cityFewResources' | 'cityHub' | 'connected' | 'nearestDays';
+  id: 'tiers' | 'allResources' | 'specialties' | 'cityFewResources' | 'cityHub' | 'connected' | 'nearestDays' | 'ranch';
   label: string;
   ok: boolean;
 }
@@ -59,6 +60,11 @@ export function checkWorldRules(map: WorldMap): RuleCheck[] {
       id: 'nearestDays',
       label: `가장 가까운 마을까지 ${min}~${max}일`,
       ok: nearest.every((d) => d >= min && d <= max),
+    },
+    {
+      id: 'ranch',
+      label: '목장 특색이 생산 마을 근처에 최소 한 곳 (마구간이 생기는 마을)',
+      ok: townsNearTag(map, nbs, 'ranch').some((id) => map.towns[id]!.tier === 'town'),
     },
   ];
 }

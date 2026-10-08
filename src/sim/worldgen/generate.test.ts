@@ -39,7 +39,7 @@ describe('같은 시드면 같은 맵', () => {
       regions: map.regions.map((r) => r.tag),
     }).toMatchInlineSnapshot(`
       {
-        "fingerprint": "cf57897b",
+        "fingerprint": "d7e80cea",
         "regions": [
           "reef",
           "bears",
@@ -47,6 +47,7 @@ describe('같은 시드면 같은 맵', () => {
           "fertile",
           "bandits",
           "bandits",
+          "ranch",
         ],
         "seed": 20261009,
         "towns": [
@@ -153,7 +154,8 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
       const towns = new Set(map.towns.map((t) => t.tile));
       for (const r of map.regions) {
         const kind = regionTag(r.tag).kind;
-        expect(r.tiles.length).toBeGreaterThanOrEqual(kind === 'road' ? 1 : WORLDGEN.regionMinTiles);
+        // 길 구간과, 꼭 생겨야 하는 목장은 작아도 된다
+        expect(r.tiles.length).toBeGreaterThanOrEqual(kind === 'road' || r.tag === 'ranch' ? 1 : WORLDGEN.regionMinTiles);
         for (const i of r.tiles) {
           const t = map.tiles[i]!;
           if (kind === 'road') {

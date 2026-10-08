@@ -10,7 +10,7 @@ import type { EconomyState, Order, Trader } from './state';
 
 const T = ECONOMY.traders;
 
-export const TRADER_NAMES = ['바렌 상단', '미라 상단', '토르 상단', '엘사 상단'];
+export const TRADER_NAMES = ['바렌 상단', '미라 상단', '토르 상단', '엘사 상단', '하늘 상단', '보리 상단'];
 
 /** days[a][b]: 오늘 계절의 마을 사이 이동 일수 */
 export function traderOrders(trader: Trader, state: EconomyState, days: number[][], accounts: Accounts): Order[] {
@@ -32,7 +32,7 @@ export function traderOrders(trader: Trader, state: EconomyState, days: number[]
     return out;
   }
 
-  const plan = bestPlan(trader, state, days);
+  const plan = bestPlan(trader, state, days, trader.town);
   trader.plan = plan ? { good: plan.good, to: plan.to } : null;
   if (!plan) return out;
   const limit = limitPrice(here, plan.good, T.bidMarkup);
@@ -43,12 +43,14 @@ export function traderOrders(trader: Trader, state: EconomyState, days: number[]
   return out;
 }
 
+/** from 마을에서 사서 옮길 가장 남는 물건과 마을 */
 function bestPlan(
   trader: Trader,
   state: EconomyState,
   days: number[][],
+  from: number,
 ): { good: GoodId; to: number; margin: number; absorb: number } | null {
-  const here = state.towns[trader.town]!;
+  const here = state.towns[from]!;
   // 다른 상단이 이미 가져가는 물건과 마을은 피한다 (같은 데 몰려가지 않게)
   const taken = new Set(
     state.traders
@@ -111,7 +113,23 @@ export function traderDay(trader: Trader, state: EconomyState, days: number[][],
       return;
     }
   }
-  // 할 일이 없으면 가끔 다른 마을로 옮겨 본다
+  // 할 일이 없으면 가장 남는 장삿길이 시작하는 마을로 빈 수레로 간다 (빈 길 비용을 빼고도 남을 때)
+  if (!loaded && !trader.plan) {
+    let go: { to: number; margin: number } | null = null;
+    for (const t of state.towns) {
+      const d = days[trader.town]![t.id]!;
+      if (t.id === trader.town || !Number.isFinite(d)) continue;
+      const plan = bestPlan(trader, state, days, t.id);
+      const margin = plan ? plan.margin - (d * T.costPerDay) / T.capacity : -Infinity;
+      if (plan && margin > T.minMargin && (!go || margin > go.margin)) go = { to: t.id, margin };
+    }
+    if (go) {
+      const d = days[trader.town]![go.to]!;
+      trader.travel = { from: trader.town, to: go.to, days: d, daysLeft: d };
+      return;
+    }
+  }
+  // 그래도 할 일이 없으면 가끔 다른 마을로 옮겨 본다
   if (!loaded && !trader.plan && rng.next() < 0.1) {
     const others = state.towns.filter((t) => t.id !== trader.town && Number.isFinite(days[trader.town]![t.id]!));
     const to = others[rng.int(0, others.length - 1)];

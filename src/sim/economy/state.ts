@@ -41,6 +41,8 @@ export interface TownEconomy {
   /** 폭풍으로 고기잡이를 못 하는 남은 날 */
   storm: number;
   boosts: { good: GoodId; factor: number; daysLeft: number }[];
+  /** 도시 공방의 재료와 만든 물건. 공방이 없는 마을은 null */
+  workshop: Inventory | null;
   /** 신문에 실린 이 마을 사건 (원정 덱의 사건 카드를 부른다) */
   recentEvents: { kind: TownEventKind; day: number }[];
 }
@@ -55,6 +57,12 @@ export interface Worker {
   tool: number;
   /** 연달아 굶은 날 */
   hunger: number;
+  /** 최근 실제로 번 하루 값 (만든 물건을 기준 시세로 친 값의 평균). 일을 바꿀지 따질 때 쓴다 */
+  income: number;
+  /** 지금 일을 한 날 수 */
+  jobDays: number;
+  /** 겨울 일을 하는 동안 봄에 돌아갈 원래 일. 아니면 null */
+  homeJob: JobId | null;
 }
 
 export interface Travel {
@@ -165,7 +173,9 @@ export type OrderOwner =
   | { kind: 'player' }
   | { kind: 'worker'; id: number }
   | { kind: 'trader'; id: number }
-  | { kind: 'citizens'; town: number };
+  | { kind: 'citizens'; town: number }
+  /** 도시 공방. 돈은 마을 금고를 쓴다 */
+  | { kind: 'workshop'; town: number };
 
 /** 장날 신청. 낼 때 돈(사자)이나 물건(팔자)을 맡겨 두고, 정산 뒤 남은 것을 돌려준다 */
 export interface Order {
@@ -203,4 +213,6 @@ export interface EconomyState {
   /** 오늘 장날을 기다리는 플레이어 신청 */
   orders: Order[];
   news: NewsItem[];
+  /** 이번 겨울 첫날의 일꾼 수 (겨울에 줄어드는 한도를 잰다). 겨울이 아니면 null */
+  winterStartWorkers: number | null;
 }

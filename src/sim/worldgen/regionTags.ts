@@ -2,7 +2,8 @@
 // 원정 덱이 이 태그를 읽어 그 지역 카드를 섞는다. 태그 목록은 데이터로 둔다.
 import { WORLDGEN } from '../constants';
 import type { Rng } from '../rng';
-import type { RegionTagId, TaggedRegion, Terrain, Tile } from './types';
+import { cellsAround } from './hex';
+import type { RegionTagId, TaggedRegion, Terrain, Tile, WorldMap } from './types';
 
 /** 태그가 붙는 땅의 종류 */
 export type RegionKind = 'forest' | 'highland' | 'coast' | 'plain' | 'road';
@@ -21,6 +22,8 @@ export const REGION_TAGS: readonly RegionTagDef[] = [
   { id: 'reef', name: '암초가 많은 바닷가', kind: 'coast' },
   { id: 'shoals', name: '물고기 떼가 드나드는 바닷가', kind: 'coast' },
   { id: 'fertile', name: '기름진 들판', kind: 'plain' },
+  // 말을 기르는 곳. 근처 생산 마을에 마구간이 생긴다 (기획서 "말"). 맵마다 최소 한 곳
+  { id: 'ranch', name: '말을 기르는 목장', kind: 'plain' },
   { id: 'bandits', name: '산적이 나오는 길', kind: 'road' },
 ];
 
@@ -42,15 +45,18 @@ export function terrainRegionKind(t: Terrain): RegionKind | null {
 /**
  * 같은 종류 땅이 이어진 덩어리와 마을 사이 길마다, 정해진 확률로 그 종류의 태그 하나를 붙인다.
  * roadLinks는 마을 사이 길 칸들 (마을 칸은 빼고 넘긴다).
+ * 목장은 생산 마을(producerTiles) 근처에 최소 한 곳 생기도록 맞춘다.
  */
 export function tagRegions(
   tiles: readonly Tile[],
   neighbors: readonly number[][],
   roadLinks: readonly number[][],
+  producerTiles: readonly number[],
   rng: Rng,
 ): TaggedRegion[] {
   const { regionTagChance, regionMinTiles } = WORLDGEN;
   const out: TaggedRegion[] = [];
+  const plainRegions: number[][] = [];
   const pick = (kind: RegionKind, regionTiles: number[]) => {
     const options = REGION_TAGS.filter((t) => t.kind === kind);
     if (regionTiles.length < regionMinTiles || options.length === 0) return;
@@ -76,9 +82,48 @@ export function tagRegions(
         }
       }
     }
-    pick(kind, region.sort((a, b) => a - b));
+    region.sort((a, b) => a - b);
+    if (kind === 'plain') plainRegions.push(region);
+    pick(kind, region);
   });
 
   for (const link of roadLinks) pick('road', [...link]);
+  ensureRanch(tiles, neighbors, producerTiles, out, plainRegions);
   return out;
+}
+
+/** 생산 마을 근처(특색 범위 안)에 목장이 없으면, 가장 가까운 들판 덩어리를 목장으로 만든다 */
+function ensureRanch(
+  tiles: readonly Tile[],
+  neighbors: readonly number[][],
+  producerTiles: readonly number[],
+  out: TaggedRegion[],
+  plains: readonly number[][],
+): void {
+  const near = new Set(producerTiles.flatMap((t) => [t, ...cellsAround(neighbors, t, WORLDGEN.specialtyRange)]));
+  if (out.some((r) => r.tag === 'ranch' && r.tiles.some((i) => near.has(i)))) return;
+  // 마을 근처에 걸친 들판 덩어리 중 태그가 없는 것 먼저, 그다음 큰 것
+  const tagged = (region: readonly number[]) => out.findIndex((r) => r.tiles[0] === region[0] && r.tiles.length === region.length);
+  const candidates = plains
+    .filter((r) => r.some((i) => near.has(i)))
+    .sort((a, b) => Number(tagged(a) >= 0) - Number(tagged(b) >= 0) || b.length - a.length || a[0]! - b[0]!);
+  const region = candidates[0];
+  if (region) {
+    const at = tagged(region);
+    if (at >= 0) out[at] = { tag: 'ranch', tiles: [...region] };
+    else out.push({ tag: 'ranch', tiles: [...region] });
+    return;
+  }
+  // 근처에 들판이 없으면 첫 생산 마을 바로 옆 땅을 목장으로
+  const first = producerTiles[0]!;
+  const land = [first, ...neighbors[first]!].filter((i) => tiles[i]!.terrain !== 'sea').sort((a, b) => a - b);
+  out.push({ tag: 'ranch', tiles: land });
+}
+
+/** 이 태그가 특색 범위 안에 있는 마을들 (목장이면 마구간이 있는 마을) */
+export function townsNearTag(map: WorldMap, neighbors: readonly number[][], tag: RegionTagId): number[] {
+  const tagTiles = new Set(map.regions.filter((r) => r.tag === tag).flatMap((r) => r.tiles));
+  return map.towns
+    .filter((t) => [t.tile, ...cellsAround(neighbors, t.tile, WORLDGEN.specialtyRange)].some((i) => tagTiles.has(i)))
+    .map((t) => t.id);
 }

@@ -49,6 +49,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     },
     orders: [],
     news: [],
+    winterStartWorkers: null,
   };
 
   for (const town of state.towns) {
@@ -59,6 +60,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       const n = Math.max(1, Math.round(node.tiles * ECONOMY.startWorkers.perResourceTile * share));
       for (let i = 0; i < n; i++) state.workers.push(newWorker(state, town.id, job, rng));
     }
+    // 도시는 일꾼 대신 공방이 가공한다 (workshop.ts)
     if (town.tier === 'city') continue;
     for (const job of CRAFT_JOBS) {
       for (let i = 0; i < ECONOMY.startWorkers.crafter; i++) state.workers.push(newWorker(state, town.id, job, rng));
@@ -117,6 +119,7 @@ function createTown(map: WorldMap, id: number): TownEconomy {
     treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
     storm: 0,
     boosts: [],
+    workshop: tier === 'city' ? [] : null,
     recentEvents: [],
   };
 }
@@ -132,6 +135,10 @@ export function newWorker(state: EconomyState, town: number, job: JobId, rng: Rn
     inv: [],
     tool: rng.int(5, ECONOMY.worker.toolLife),
     hunger: 0,
+    // 처음엔 그 일로 벌 만하다고 보고 온다
+    income: ECONOMY.worker.arriveMinIncome,
+    jobDays: 0,
+    homeJob: null,
   };
   addGoods(w.inv, 'salted', ECONOMY.worker.foodReserveDays * ECONOMY.worker.foodPerDay);
   return w;

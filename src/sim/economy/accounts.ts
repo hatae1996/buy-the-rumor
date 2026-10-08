@@ -29,6 +29,7 @@ export class Accounts {
       case 'trader':
         return this.traders.get(owner.id)!.gold;
       case 'citizens':
+      case 'workshop':
         return this.state.towns[owner.town]!.treasury;
     }
   }
@@ -45,6 +46,7 @@ export class Accounts {
         this.traders.get(owner.id)!.gold += amount;
         break;
       case 'citizens':
+      case 'workshop':
         this.state.towns[owner.town]!.treasury += amount;
         break;
     }
@@ -62,6 +64,8 @@ export class Accounts {
         return this.traders.get(owner.id)!.inv;
       case 'citizens':
         return null;
+      case 'workshop':
+        return this.state.towns[owner.town]!.workshop;
     }
   }
 

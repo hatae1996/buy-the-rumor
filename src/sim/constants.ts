@@ -98,6 +98,8 @@ export const ECONOMY = {
   priceSmoothing: 0.5,
   /** 거래가 없을 때 시세를 신청 값 쪽으로 하루에 최대 몇 % 미나 */
   idleDrift: 0.05,
+  /** 사자도 팔자도 없는 장에서는 시세가 하루에 이만큼씩 기준 가격 쪽으로 돌아간다 (빈 장의 시세가 바닥에 묶이지 않게) */
+  emptyReversion: 0.02,
 
   /** 채집: 하루 기본 생산량. 자원지 남은 양과 계절에 따라 줄어든다 */
   gather: {
@@ -111,7 +113,7 @@ export const ECONOMY = {
   /** 가공: 재료 → 결과 (하루 최대 몇 번) */
   craft: {
     curer: { inputs: { salt: 1 }, rawFood: 2, output: { salted: 2 }, batches: 2 },
-    smith: { inputs: { ore: 2, wood: 1 }, rawFood: 0, output: { tools: 1 }, batches: 1 },
+    smith: { inputs: { ore: 2, wood: 1 }, rawFood: 0, output: { tools: 1 }, batches: 2 },
   },
   /** 계절별 생산 배율 (봄, 여름, 가을, 겨울) */
   seasonYield: {
@@ -142,9 +144,13 @@ export const ECONOMY = {
     foodReserveDays: 2,
     /** 가을엔 겨울을 나려고 이만큼 쌓아 둔다 (곡물, 염장 식품처럼 오래가는 음식으로) */
     winterReserveDays: 40,
-    toolLife: 20,
+    toolLife: 32,
     /** 도구가 이만큼 남으면 새로 산다 */
-    toolReplaceAt: 3,
+    toolReplaceAt: 10,
+    /** 도구가 이만큼 남으면 도구 값은 남겨 두고 음식을 쌓는다 (굶을 땐 예외) */
+    toolSaveAt: 20,
+    /** 가공 일꾼은 결과물 값을 기준 가격의 이 배율 아래로는 보지 않는다 (값이 잠깐 무너져도 만들기를 멈추지 않는다) */
+    crafterValueFloor: 0.5,
     noToolEfficiency: 0.5,
     hungryEfficiency: 0.65,
     /** 살 때 기준 시세의 몇 배까지 내나 (굶으면 더 낸다) */
@@ -152,6 +158,12 @@ export const ECONOMY = {
     hungryBidMarkup: 1.8,
     /** 팔 때 기준 시세의 몇 배 아래로는 안 파나 */
     askMarkdown: 0.8,
+    /**
+     * 안 팔리고 쌓인 물건은 더 싸게 내놓는다: 남는 양을 기준 가격으로 친 값이 이만큼이면 부르는 값이 최대로 내려간다.
+     * (도구가 쌓였는데 시세만 높아 아무도 못 사는 일을 막는다)
+     */
+    glutValue: 400,
+    glutMaxDiscount: 0.4,
     /** 물품 하나당 쌓아 둘 수 있는 양. 넘치면 버린다 */
     storagePerGood: 60,
     taxThreshold: 80,
@@ -159,7 +171,11 @@ export const ECONOMY = {
     /** 전직: 굶고 가난하면 바꿀 확률, 남이 훨씬 잘 벌면 바꿀 확률 */
     switchWhenPoorChance: 0.3,
     switchEnvyChance: 0.1,
+    /** 일을 바꾸면 이만큼은 그 일을 한다 (모두가 한꺼번에 같은 일로 몰렸다 빠지는 것을 막는다). 굶을 땐 예외 */
+    switchCooldownDays: 15,
     switchEnvyFactor: 1.3,
+    /** 지금 일의 벌이는 실제로 번 값의 평균으로 본다. 하루 벌이를 이만큼 반영한다 (0~1) */
+    incomeMemory: 0.2,
     /** 이만큼 굶으면 다른 마을로 떠나고, 더 굶으면 세상을 떠난다 */
     migrateHunger: 3,
     leaveHunger: 6,
@@ -170,14 +186,25 @@ export const ECONOMY = {
     refillBelow: 4,
     refillChance: 0.3,
   },
-  /** 마을 직업별 인원 상한: 채집은 자원지 칸 수 × 이 값, 가공은 고정 */
+  /** 마을 직업별 인원 상한: 채집은 자원지 칸 수 × 이 값, 가공은 고정. 도시는 일꾼 대신 공방이 있다 */
   jobCap: { perResourceTile: 2, crafter: 3 },
   /** 처음 일꾼 수: 자원지 칸 하나당, 가공 직업마다 */
   startWorkers: { perResourceTile: 1, crafter: 1 },
+  /**
+   * 겨울 일 (handoff 0.0.4): 겨울에 일이 멈추는 직업(그 계절 생산 배율이 idleBelow보다 낮음)은
+   * 겨울 동안 이 일들로 옮겼다가 봄에 원래 일로 돌아온다. 겨울엔 이 일들의 인원 상한이 capFactor배.
+   */
+  winterWork: {
+    idleBelow: 0.3,
+    jobs: ['woodcutter', 'hunter', 'curer', 'smith'],
+    capFactor: 2,
+    /** 겨울 동안 일꾼은 굶어서만 줄고, 겨울 첫날보다 이 비율 넘게는 줄지 않는다. 넘으면 굶은 채로 버틴다 */
+    maxDecline: 0.2,
+  },
 
   /** 마을 주민(일꾼 아닌 사람들)이 하루에 사는 양. 돈이 경제로 들어오는 곳 */
   citizens: {
-    demand: { fish: 1, meat: 1, grain: 2, wood: 3, leather: 1, ore: 0, salt: 1, salted: 1, tools: 0.5 },
+    demand: { fish: 1, meat: 1, grain: 2, wood: 3, leather: 1, ore: 0, salt: 1, salted: 1, tools: 0.15 },
     /** 겨울엔 땔감이 더 든다 */
     winterWoodFactor: 2,
     /** 겨울엔 털가죽과 음식이 더 든다, 가을엔 겨울 대비로 곡물을 더 산다 */
@@ -210,11 +237,16 @@ export const ECONOMY = {
     /** 이 물건들은 더 비싸게 산다 (가공품, 가죽) */
     premiumGoods: ['tools', 'salted', 'leather'],
     premiumFactor: 1.3,
+    /**
+     * 도시 공방 (대장간, 염장 공방): 도시 금고로 재료를 사들여 하루 batches번까지 만든다.
+     * 재료 사는 데는 금고의 treasuryShare까지만 쓴다
+     */
+    workshop: { batches: { smith: 3, curer: 3 }, treasuryShare: 0.3 },
   },
 
   /** NPC 상단 */
   traders: {
-    count: 3,
+    count: 5,
     startGold: 300,
     capacity: 40,
     /** 하루 이동에 드는 비용 (차익 계산에 넣는다) */

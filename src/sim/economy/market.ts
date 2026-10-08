@@ -3,7 +3,7 @@ import { ECONOMY } from '../constants';
 import type { Rng } from '../rng';
 import type { Accounts } from './accounts';
 import { clearAuction } from './auction';
-import { GOODS, priceBounds, type GoodId } from './goods';
+import { basePrice, GOODS, priceBounds, type GoodId } from './goods';
 import { takeOldest, type Lot } from './inventory';
 import type { MarketResult, Order, OrderOwner, TownEconomy } from './state';
 
@@ -83,6 +83,8 @@ export function updateRefPrice(town: TownEconomy, good: GoodId, r: MarketResult)
     const target =
       r.bestBid !== null && r.bestAsk !== null ? (r.bestBid + r.bestAsk) / 2 : (r.bestBid ?? r.bestAsk);
     if (target !== null) ref += Math.max(-ref * idleDrift, Math.min(ref * idleDrift, target - ref));
+    // 아무도 사고팔려 하지 않으면 보통 값으로 천천히 돌아간다
+    else ref += (basePrice(good) - ref) * ECONOMY.emptyReversion;
   }
   const { min, max } = priceBounds(good);
   town.refPrice[good] = Math.min(max, Math.max(min, ref));

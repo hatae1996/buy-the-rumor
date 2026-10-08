@@ -3,7 +3,7 @@
 import { ECONOMY } from '../constants';
 import { eulReul } from '../josa';
 import { createRng, shuffle } from '../rng';
-import { seasonOfDay, type Season } from '../season';
+import { seasonOfDay, WINTER, type Season } from '../season';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { Accounts } from './accounts';
 import { citizenOrders, stipendOf, treasuryDay } from './citizens';
@@ -19,6 +19,7 @@ import { playerNight } from './player';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
+import { workshopDay, workshopOrders } from './workshop';
 
 export interface DayReport {
   day: number;
@@ -48,9 +49,11 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
   for (const o of state.orders) byTown[o.town]!.push(o);
-  for (const w of state.workers) byTown[w.town]!.push(...workerOrders(w, state.towns[w.town]!, season, accounts));
+  // 일꾼 신청은 다른 마을 장에 낼 수도 있다 (가공 재료를 사 온다)
+  for (const w of state.workers) for (const o of workerOrders(w, state, season, accounts)) byTown[o.town]!.push(o);
   for (const t of state.traders) if (!t.travel) byTown[t.town]!.push(...traderOrders(t, state, days, accounts));
   for (const town of state.towns) byTown[town.id]!.push(...citizenOrders(town, season, accounts, rng));
+  for (const town of state.towns) byTown[town.id]!.push(...workshopOrders(town, accounts));
 
   // 2. 장날 정산
   const markets = state.towns.map((town) => {
@@ -77,7 +80,15 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   // 3. 생산과 소비. 순서가 유리하지 않도록 매일 섞는다
   const workerEvents: WorkerEvent[] = [];
-  const ctx = { state, season, rng, log: (e: WorkerEvent) => workerEvents.push(e) };
+  // 겨울엔 일꾼이 겨울 첫날보다 정해진 비율 넘게 줄지 않는다 (handoff 0.0.4)
+  if (season === WINTER) state.winterStartWorkers ??= state.workers.length;
+  else state.winterStartWorkers = null;
+  let leaveBudget =
+    state.winterStartWorkers === null
+      ? Infinity
+      : state.workers.length - Math.ceil(state.winterStartWorkers * (1 - ECONOMY.winterWork.maxDecline));
+  const mayLeave = () => leaveBudget-- > 0;
+  const ctx = { state, season, rng, mayLeave, log: (e: WorkerEvent) => workerEvents.push(e) };
   const gone = new Set<number>();
   let leftGold = 0;
   for (const w of shuffle([...state.workers], rng)) {
@@ -96,6 +107,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
 
   let tribute = 0;
   for (const town of state.towns) {
+    workshopDay(town);
     tribute += treasuryDay(town);
     town.nodes.forEach(regrow);
   }
@@ -111,6 +123,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const rate = ECONOMY.spoilRate[season];
   for (const w of state.workers) spoiled += sum(ageAndSpoil(w.inv, rate));
   for (const t of state.traders) spoiled += sum(ageAndSpoil(t.inv, rate));
+  for (const t of state.towns) if (t.workshop) spoiled += sum(ageAndSpoil(t.workshop, rate));
   for (const [good, qty] of Object.entries(ageCart(p.cart, rate)) as [GoodId, number][]) {
     spoiled += qty;
     p.ledger.push({ day: state.day, kind: 'spoil', good, qty });

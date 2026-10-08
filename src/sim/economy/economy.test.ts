@@ -1,6 +1,7 @@
 // 경제 전체: 같은 시드면 같은 결과, 돈이 새거나 생기지 않음, 300일 넘게 돌려도 무너지거나 폭주하지 않음.
 import { describe, expect, it } from 'vitest';
 import { generateWorld } from '../worldgen';
+import { measureBalance, type BalanceStats } from './balance';
 import { advanceDay, type DayReport } from './day';
 import { createEconomy } from './create';
 import { GOODS, priceBounds } from './goods';
@@ -10,18 +11,21 @@ import type { EconomyState } from './state';
 const SEEDS = [20261008, 777, 4242, 1, 99999];
 const DAYS = 360;
 
-function run(seed: number, days: number): { state: EconomyState; reports: DayReport[]; money: number[]; hungry: number[] } {
+function run(
+  seed: number,
+  days: number,
+): { state: EconomyState; reports: DayReport[]; money: number[]; hungry: number[]; balance: BalanceStats } {
   const map = generateWorld(seed);
   const state = createEconomy(map, seed);
   const reports: DayReport[] = [];
   const money: number[] = [moneySupply(state)];
   const hungry: number[] = [];
-  for (let d = 0; d < days; d++) {
-    reports.push(advanceDay(state, map));
-    money.push(moneySupply(state));
-    hungry.push(hungryWorkers(state) / Math.max(1, population(state)));
-  }
-  return { state, reports, money, hungry };
+  const balance = measureBalance(state, map, days, (s, report) => {
+    reports.push(report);
+    money.push(moneySupply(s));
+    hungry.push(hungryWorkers(s) / Math.max(1, population(s)));
+  });
+  return { state, reports, money, hungry, balance };
 }
 
 describe('같은 시드면 같은 경제', () => {
@@ -60,7 +64,7 @@ describe(`${DAYS}일 안정성 (시드 ${SEEDS.length}개)`, () => {
       const start = createEconomy(generateWorld(seed), seed).workers.length;
       expect(population(state), `시드 ${seed}`).toBeGreaterThanOrEqual(start * 0.4);
       expect(population(state), `시드 ${seed}`).toBeLessThanOrEqual(start * 2);
-      // 생산 마을마다 일꾼이 남아 있다 (도시는 일꾼 없이 주민 수요만 있다)
+      // 생산 마을마다 일꾼이 남아 있다. 도시는 일꾼 대신 공방이 가공한다
       for (const t of state.towns.filter((t) => t.tier === 'town')) {
         expect(population(state, t.id), `시드 ${seed}, 마을 ${t.id}`).toBeGreaterThan(0);
       }
@@ -84,6 +88,17 @@ describe(`${DAYS}일 안정성 (시드 ${SEEDS.length}개)`, () => {
       const avg = hungry.reduce((a, b) => a + b, 0) / hungry.length;
       expect(avg, `시드 ${seed}`).toBeLessThan(0.15);
     }
+  });
+
+  it('겨울에 일꾼이 20% 넘게 줄지 않는다 (겨울 일로 옮긴다, handoff 0.0.4)', () => {
+    for (const { seed, balance } of runs) {
+      expect(balance.winterDrops.length, `시드 ${seed}`).toBeGreaterThan(0);
+      for (const drop of balance.winterDrops) expect(drop, `시드 ${seed}`).toBeLessThanOrEqual(0.2);
+    }
+  });
+
+  it('도구 없이 일하는 일꾼은 20% 이하다 (handoff 0.0.4)', () => {
+    for (const { seed, balance } of runs) expect(balance.toollessShare, `시드 ${seed}`).toBeLessThanOrEqual(0.2);
   });
 
   it('장이 계속 선다: 마을마다 한 달에 거래가 있다', () => {

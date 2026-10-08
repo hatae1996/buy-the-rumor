@@ -106,7 +106,13 @@ function placeTownsAndRoads(
       }
       return out.filter((seg) => seg.length > 0);
     });
-    const regions = tagRegions(tiles, neighbors, segments, rng);
+    const regions = tagRegions(
+      tiles,
+      neighbors,
+      segments,
+      picked.map((p) => p.i),
+      rng,
+    );
 
     const names = shuffle([...TOWN_NAMES], rng);
     const towns: Town[] = picked.map((p, id) => ({ id, name: names[id]!, tier: 'town', tile: p.i, specialties: p.sp }));

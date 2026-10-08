@@ -54,7 +54,16 @@ export interface TaggedRegion {
   tiles: number[];
 }
 
-export type RegionTagId = 'bears' | 'oldGrowth' | 'wolves' | 'exposedVein' | 'reef' | 'shoals' | 'fertile' | 'bandits';
+export type RegionTagId =
+  | 'bears'
+  | 'oldGrowth'
+  | 'wolves'
+  | 'exposedVein'
+  | 'reef'
+  | 'shoals'
+  | 'fertile'
+  | 'ranch'
+  | 'bandits';
 
 export interface WorldMap {
   /** 요청한 시드 */
