@@ -66,6 +66,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   sameCart: '지금 그 수레를 쓰고 있어요.',
   ordersPending: '장날에 낸 신청이 있으면 수레를 바꿀 수 없어요. 신청을 거두거나 장날이 지나고 바꾸세요.',
   needHorse: '이 수레는 말이 있어야 움직여요. 짐수레는 한 필, 마차는 두 필이 필요해요.',
+  noCartShop: '이 마을에는 수레방이 없어요. 목재 마을이나 도시로 가 보세요.',
   needTool: '도구가 있어야 해요. 수레에 도구를 실어 오세요.',
   needGear: '그 장비가 없거나 망가졌어요.',
   haveGear: '이미 쓸 만한 장비가 있어요.',

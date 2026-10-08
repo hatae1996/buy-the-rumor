@@ -147,16 +147,13 @@ describe('견습 뒤에도 하나씩 열린다', () => {
     expect(state.player.unlocks.editPrice).toBeDefined();
   });
 
-  it('금화 300이면 예약 주문, 도시에 가면 은행, 손수레가 자주 꽉 차면 말과 큰 수레가 열린다', () => {
+  it('금화 300이면 예약 주문, 도시에 가면 은행이 열린다 (말과 큰 수레는 막지 않는다)', () => {
     const { map, state } = world(SEEDS[5]!);
     graduate(state, map);
     while (state.player.travel) advanceDay(state, map);
     state.player.gold = ECONOMY.apprentice.reservationGold;
     applyCommand(state, map, { type: 'readNews' });
     expect(state.player.unlocks.reservation).toBeDefined();
-    state.player.fullDays = ECONOMY.apprentice.fullDaysForHorses;
-    applyCommand(state, map, { type: 'readNews' });
-    expect(state.player.unlocks.horses).toBeDefined();
     const city = map.towns.find((t) => t.tier === 'city')!;
     state.player.town = city.id;
     applyCommand(state, map, { type: 'readNews' });

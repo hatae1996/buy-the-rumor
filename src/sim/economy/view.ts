@@ -17,6 +17,7 @@ import {
 } from '../horses';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
+import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, HORSES, RUMORS } from '../constants';
 import { seasonOfDay, type Season } from '../season';
@@ -112,8 +113,10 @@ export interface PlayerView {
   horseCare: { feedPrice: number; restFee: number; rested: boolean } | null;
   /** 목장 마을 마구간 (남은 수는 여기 와야만 보인다). 마구간이 없는 마을이나 길 위면 null */
   stable: StableView | null;
-  /** 수레방: 수레마다 바꾸는 값 (쓰던 수레를 쳐 준 뒤) */
+  /** 수레방: 수레마다 바꾸는 값 (쓰던 수레를 쳐 준 뒤). 수레방이 없는 마을이나 길 위면 빈 목록 */
   carts: CartOffer[];
+  /** 지금 마을 건물 (화면 차례대로)과 할 일 도장(!). 길 위면 빈 목록 */
+  buildings: { id: BuildingId; name: string; alert: string | null }[];
   /** 내 장비와 잡화점 (어느 마을이나). 길 위면 살 수 없다 */
   gear: GearView[];
   /** 수레에 실은 도구 수 (원정에서 나무 베기·광석 캐기에 쓰고, 장비를 고친다) */
@@ -385,6 +388,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
   const orders = state.orders.map((o) => ({ id: o.id, good: o.good, side: o.side, qty: o.qty, limit: o.limit }));
   // 마구간 남은 수는 그 마을에 있을 때만 보인다
   const stable = p.travel ? null : stableAt(state, p.town);
+  const alerts = buildingAlerts(state, map);
   const reserved = state.orders.reduce((s, o) => s + o.reserved, 0);
   const sellingQty = state.orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.qty, 0);
 
@@ -449,7 +453,10 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     newsReadDay: p.newsReadDay,
     unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
     guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },
-    carts: CART_TYPES.map((type) => ({
+    buildings: p.travel
+      ? []
+      : townBuildings(state, map, p.town).map((id) => ({ id, name: buildingDef(id).name, alert: alerts[id] ?? null })),
+    carts: (p.travel || !hasBuilding(state, map, p.town, 'cartShop') ? [] : CART_TYPES).map((type) => ({
       type,
       name: CART.types[type].name,
       rows: CART.types[type].rows,

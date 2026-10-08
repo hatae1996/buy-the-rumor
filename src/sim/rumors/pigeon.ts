@@ -1,6 +1,6 @@
 // 돈을 내고 아는 소식 (기획서 "소문 - 듣는 방법"): 전서구와 정보원. 둘 다 정확하다.
 // 전서구는 먼 마을 하나의 오늘 시세를 한 번, 다음 날 받는다.
-// 정보원은 한 마을에 심어 두면 매일 그 마을 시세와 장날 신청 현황을 보내 준다 (상단 단계부터, 열리는 조건은 아직 없다).
+// 정보원은 한 마을에 심어 두면 매일 그 마을 시세와 장날 신청 현황을 보내 준다 (여관 고용 게시판에서 고용).
 import { RUMORS } from '../constants';
 import { GOOD_NAME, GOODS, type GoodId } from '../economy/goods';
 import type { EconomyState } from '../economy/state';

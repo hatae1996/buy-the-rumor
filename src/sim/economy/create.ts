@@ -65,7 +65,6 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
       apprentice: null,
       unlocks: {},
       homeTown: 0,
-      fullDays: 0,
       newsReadDay: null,
       record: null,
       certificate: createCertificate(),

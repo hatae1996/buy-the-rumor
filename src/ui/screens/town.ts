@@ -40,8 +40,6 @@ function rideCard(v: PlayerView): string {
        <p class="muted">밤마다 마구간에서 곡물을 먹여요 (지금 마을 한 개 ${money(care.feedPrice)}). 길 위에서는 수레에 실은 곡물을 먹어요.</p>`
     : `<p class="muted">말이 없어요. 사람이 끌면 ${v.cart.name} 무게 ${v.cart.maxWeight}까지. 말은 목장 마을 마구간에서 팔아요.</p>`;
   const tired = v.horses.some((h) => h.fatigue > 0);
-  // 말과 큰 수레는 손수레가 자주 꽉 차면 열린다
-  const horsesOpen = v.unlocks.includes('horses');
   return `<section class="card">
       <header class="card-head"><h2>탈것</h2><span class="badge">${v.cart.name}${noHorse ? ' · 말 필요' : ` · 무게 ${v.cart.maxWeight}`}</span></header>
       ${horses}
@@ -53,8 +51,8 @@ function rideCard(v: PlayerView): string {
               </button>`
             : ''
         }
-        ${v.stable && horsesOpen ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
-        ${horsesOpen ? '<button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>' : ''}
+        ${v.stable ? '<button type="button" class="secondary-btn" data-stable>마구간<small>말 사고팔기</small></button>' : ''}
+        ${v.carts.length ? '<button type="button" class="secondary-btn" data-cart-shop>수레방<small>수레 바꾸기</small></button>' : ''}
       </div>
     </section>`;
 }

@@ -210,8 +210,6 @@ export interface PlayerState {
   unlocks: Partial<Record<UnlockId, number>>;
   /** 처음 시작한 마을 (견습 마을). 다른 마을에 처음 닿으면 시세 기억과 소문이 열린다 */
   homeTown: number;
-  /** 손수레 이상이 거의 꽉 찬 날 수 (말과 큰 수레가 열린다) */
-  fullDays: number;
   /** 마지막으로 신문을 읽은 날 */
   newsReadDay: number | null;
   /** 이번 시즌 기록 (랭킹 부문 점수, 길드 의뢰, 업적). 시즌이 시작되기 전이면 null */

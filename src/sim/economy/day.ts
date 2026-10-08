@@ -25,7 +25,7 @@ import { regrow } from './nodes';
 import { playerNight } from './player';
 import { rumorNight, type HeardRumor } from '../rumors';
 import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } from '../horses';
-import { apprenticeAfterDay, countFullDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
+import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
 import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import type { EconomyState, MarketResult, Order } from './state';
 import { traderDay, traderOrders } from './traders';
@@ -169,7 +169,6 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   }
   playerNight(state);
   playerHorsesNight(state);
-  countFullDay(state);
 
   // 하루가 지나 음식이 상한다
   let spoiled = 0;

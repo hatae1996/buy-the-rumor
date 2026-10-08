@@ -283,10 +283,8 @@ export const ECONOMY = {
     /** 견습 마을 손님: 플레이어가 팔면 시세의 이 배로 사 주고, 사면 이 배로 팔아 준다 */
     buyMarkup: 1.1,
     sellMarkdown: 0.95,
-    /** 견습 뒤 열리는 조건: 예약 주문은 금화 이만큼, 말과 큰 수레는 손수레가 이 비율 넘게 찬 날이 이만큼 */
+    /** 견습 뒤 열리는 조건: 예약 주문은 금화 이만큼 */
     reservationGold: 300,
-    fullShare: 0.9,
-    fullDaysForHorses: 3,
   },
 
   player: {
@@ -461,7 +459,7 @@ export const RUMORS = {
 
   /** 전서구: 먼 마을 하나의 오늘 시세, 다음 날 도착 */
   pigeonFee: 10,
-  /** 정보원: 매일 그 마을 시세와 장날 신청 현황 (상단 단계부터, 아직 열리는 조건 없음) */
+  /** 정보원: 매일 그 마을 시세와 장날 신청 현황 (여관 고용 게시판, 0.0.5) */
   informant: { hireFee: 60, dailyWage: 8 },
 } as const;
 
@@ -527,6 +525,38 @@ export const HORSES = {
   traderBuyGold: 1000,
   traderSellGold: 400,
   traderCapacity: { pony: 1.3, draft: 2, swift: 1.5 },
+} as const;
+
+/**
+ * 성장은 단계가 아니라 가진 것이다 (기획서 "성장", 0.0.5). 숫자는 모두 초안이며 플레이어 봇으로 맞춘다.
+ * 수레(CART), 말(HORSES), 장비(ECONOMY.expedition.gear)는 각자의 자리에 있고, 새로 사는 것은 여기에 둔다.
+ */
+export const GROWTH = {
+  /**
+   * 여관 고용 게시판 (시안 prototypes/screens-0.0.5.html). wage는 일당 기준값.
+   * 일꾼은 그 마을 NPC 일꾼 중에서 데려오고, 일손이 모자랄수록 일당이 오른다
+   */
+  hire: {
+    porter: { name: '짐꾼', wage: 6 },
+    gatherer: { name: '채집꾼', wage: 9 },
+    carter: { name: '마부', wage: 12 },
+    informant: { name: '정보원', wage: 20 },
+    /** 일당 배율의 아래·위 한도 (일손 사정) */
+    wageFactor: [0.7, 2],
+    /** 그 일을 하는 마을 일꾼이 이만큼보다 적으면 일당이 오른다 (한 명 모자랄 때마다 이만큼) */
+    scarceBelow: 3,
+    scarceStep: 0.2,
+    /** 고용할 때 하루치 일당을 미리 준다 (먼저 받는 돈) */
+    advanceDays: 1,
+  },
+  /** 채집꾼: 카드 선택 없이 평균 결과로 매일 원정. 직접 하는 것보다 이만큼만 (맡긴 일은 효율이 낮다) */
+  gathererShare: 0.7,
+  /** 창고: 마을마다 빌리는 칸 판. 하루 보관료 */
+  warehouse: { name: '창고', rows: ['#####', '#####', '#####'], rentPerDay: 3, deposit: 10 },
+  /** 두 번째 행렬: 마부가 지시서대로 움직인다. 짐은 알아서 싣기(칸의 이 비율까지) */
+  caravan: { autoLoadShare: 0.8, maxStops: 5 },
+  /** 은행은 도시에만 (구조만, 0.0.5) */
+  bank: { depositRate: 0.04, loanRate: 0.1 },
 } as const;
 
 /**

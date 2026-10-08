@@ -75,7 +75,7 @@ export type Command =
   | { type: 'buyDrink' }
   /** 먼 마을로 전서구를 보낸다 (그 마을 오늘 시세가 다음 날 온다) */
   | { type: 'sendPigeon'; to: number }
-  /** 지금 마을에 정보원을 심는다 (상단 단계부터. 화면에는 아직 없다) */
+  /** 지금 마을에 정보원을 심는다 (여관 고용 게시판) */
   | { type: 'hireInformant' }
   | { type: 'dismissInformant'; town: number }
   /** 지금 마을 마구간에서 말을 산다 / 되판다 */
@@ -255,7 +255,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');
-      return done(buyCart(state, cmd.cart));
+      return done(buyCart(state, map, cmd.cart));
     case 'discardCartPiece': {
       const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
       if (!piece) return fail('noPiece');

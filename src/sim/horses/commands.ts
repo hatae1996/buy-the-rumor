@@ -5,6 +5,8 @@ import type { EconomyState } from '../economy/state';
 import { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
 import { stableAt } from './supply';
 import type { HorseKind } from './types';
+import type { WorldMap } from '../worldgen';
+import { hasBuilding } from '../growth/buildings';
 import { noteMoment } from '../ranking/record';
 
 export type HorseError =
@@ -17,7 +19,8 @@ export type HorseError =
   | 'horsesNotTired'
   | 'sameCart'
   | 'ordersPending'
-  | 'needHorse';
+  | 'needHorse'
+  | 'noCartShop';
 type Err = HorseError | 'traveling' | 'notEnoughGold' | 'noRoom';
 
 /** 지금 마을 마구간에서 말을 산다 */
@@ -83,9 +86,11 @@ export function cartCost(from: CartType, to: CartType): number {
  * 수레를 바꾼다. 짐은 새 수레에 옮겨 싣고, 다 못 실으면 바꾸지 않는다.
  * 장날 신청이 걸려 있으면 잡아 둔 자리 때문에 바꿀 수 없다
  */
-export function buyCart(state: EconomyState, type: CartType): Err | null {
+export function buyCart(state: EconomyState, map: WorldMap, type: CartType): Err | null {
   const p = state.player;
   if (p.travel) return 'traveling';
+  // 수레방은 목재 마을과 도시에만 있다 (0.0.5)
+  if (!hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
   if (p.cart.type === type) return 'sameCart';
   if (state.orders.length) return 'ordersPending';
   const cost = cartCost(p.cart.type, type);
