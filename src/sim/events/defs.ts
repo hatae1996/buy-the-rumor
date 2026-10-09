@@ -36,14 +36,17 @@ const RUSH_PLACE: Record<JobId, string> = {
 
 /**
  * 큰 주문 사건이 일정에 뽑히는 무게 (다른 사건은 1). 계절별 [봄, 여름, 가을, 겨울].
- * 겨울은 장이 얇아 노릴 거리가 적으니 큰 주문이 더 잘 뽑힌다 (0.0.8). 시즌 전체로는 2~4번
+ * 겨울은 장이 얇아 노릴 거리가 적으니 큰 주문이 더 잘 뽑힌다 (0.0.8). 시즌 전체로는 2~4번.
+ * 봄에는 봄 구휼이 큰 주문 몫을 나눠 가지므로 다른 큰 주문은 덜 뽑힌다 (0.0.9: 겨울이 여전히 가장 많게)
  */
-const BIG_ORDER_WEIGHT = [1, 1, 1, 2.6] as const;
+const BIG_ORDER_WEIGHT = [0.6, 1, 1, 2.6] as const;
 /** 군대 보급은 겨울에 몰린다 */
-const ARMY_WEIGHT = [0.8, 0.8, 0.8, 4] as const;
+const ARMY_WEIGHT = [0.5, 0.8, 0.8, 4] as const;
 /** 도시 하나에서만 나는 축제는 마을 넷에서 나는 사건과 비슷하게 뽑히도록 무게를 키운다 */
 const CITY_FESTIVAL_WEIGHT = 2.5;
 const WINTER_FESTIVAL_WEIGHT = 8;
+/** 봄 구휼 (0.0.9): 마을 하나 몫의 무게. 시즌 절반쯤에 한 번 (시드 40개 × 시작 계절 4개에서 시즌 0.53번) */
+const RELIEF_WEIGHT = 3;
 
 export const EVENT_DEFS: readonly EventDef[] = [
   // ───── 공급 ↓ ─────
@@ -292,6 +295,23 @@ export const EVENT_DEFS: readonly EventDef[] = [
     omenLead: [8, 12],
     weight: WINTER_FESTIVAL_WEIGHT,
     news: ({ town: t }) => `${t}에서 겨울 축제가 열립니다. 모닥불 장작과 염장 식품을 비싸게 사들입니다.`,
+    deck: 'boost',
+  },
+  {
+    // 봄 구휼 (0.0.9): 보릿고개(봄)에 영주가 곡물을 사들여 나눠 준다. 가을에 곡물을 쌓아 둔 사람의 보람이고,
+    // 여름에 시작한 시즌의 후반(겨울·봄)에도 노릴 거리가 된다 (questions.md 78번)
+    id: 'relief',
+    name: '봄 구휼',
+    category: 'demandUp',
+    scope: 'town',
+    effects: [{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5 }],
+    days: 8,
+    seasons: [SPRING],
+    omen: '영주가 보릿고개를 앞두고 곡식을 모은다더군.',
+    omenShare: 1,
+    omenLead: [8, 12],
+    weight: RELIEF_WEIGHT,
+    news: ({ town: t }) => `영주가 보릿고개를 넘기려 ${t}에서 곡물을 사들여 나눠 줍니다. 곡물 200개를 비싸게 사들입니다.`,
     deck: 'boost',
   },
 

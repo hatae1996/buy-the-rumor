@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '../constants';
 import { advanceDay, applyCommand, createEconomy, moneySupply, type EconomyState } from '../economy';
-import { CYCLE_DAYS, seasonOfDay, WINTER, type Season } from '../season';
+import { CYCLE_DAYS, seasonOfDay, SPRING, WINTER, type Season } from '../season';
 import { buildNeighbors, generateWorld, townTravelDays, type WorldMap } from '../worldgen';
 import {
   activate,
@@ -278,6 +278,19 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
       const total = bySeason.reduce((a, b) => a + b, 0);
       for (const s of [0, 1, 2]) expect(bySeason[WINTER]).toBeGreaterThan(bySeason[s]! * 1.3);
       expect(bySeason[WINTER]! / total).toBeGreaterThan(0.3);
+    });
+
+    it('봄 구휼은 봄에만, 곡물을 기준가 1.5배에 200개 사들이고 징조가 8~12일 전에 돈다 (0.0.9)', () => {
+      const relief = runs.flatMap((r) => r.big).filter((b) => b.event === 'relief');
+      // 시즌 절반쯤에 한 번
+      expect(relief.length / runs.length).toBeGreaterThan(0.3);
+      for (const b of relief) {
+        expect(b.season).toBe(SPRING);
+        expect(b.omenDay).not.toBeNull();
+        expect(b.day - b.omenDay!).toBeGreaterThanOrEqual(Math.min(8, b.day - 1));
+        expect(b.day - b.omenDay!).toBeLessThanOrEqual(12);
+      }
+      expect(eventDef('relief').effects).toEqual([{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5 }]);
     });
 
     it('겨울 축제는 겨울에 도시에서만, 혼례 잔치는 겨울에 없다', () => {

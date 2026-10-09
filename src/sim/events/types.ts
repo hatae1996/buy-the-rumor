@@ -21,6 +21,7 @@ export type ScheduledEventId =
   | 'festival'
   | 'army'
   | 'winterFestival'
+  | 'relief'
   | 'plagueRumor'
   | 'bandits'
   | 'bridgeCollapse'
