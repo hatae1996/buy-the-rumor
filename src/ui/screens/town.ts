@@ -10,6 +10,17 @@ import { buildingCards, openBuilding } from './buildings';
 export interface TownScreenActions {
   passDay: () => void;
   passApprenticeDay: () => void;
+  openSettlement: () => void;
+}
+
+/** 시즌이 끝났으면 결산 카드 (다음 시즌을 시작할 때까지 날이 가지 않는다) */
+function settlementCard(v: PlayerView): string {
+  if (!v.settlement) return '';
+  return `<section class="card pinned">
+      <header class="card-head"><h2>${v.settlement.season}시즌이 끝났어요</h2></header>
+      <p>마지막 장날 뒤 순위를 매겼어요. 결산을 보고 다음 시즌을 시작하세요.</p>
+      <div class="btn-row"><button type="button" class="primary-btn" data-settlement>결산 보기</button></div>
+    </section>`;
 }
 
 /** 견습: 지금 장면과 노상인 한마디, 하루 보내기 (대사와 연출은 나중 버전) */
@@ -43,6 +54,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   }
 
   el.innerHTML = `
+    ${settlementCard(v)}
     ${apprenticeCard(v)}
     <div class="town-banner">
       <img src="${village}" alt="" />
@@ -50,12 +62,13 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
       ${city ? '<span class="tier-badge">도시</span>' : ''}
     </div>
     ${body}
-    <button type="button" class="test-btn" data-pass-day>시험용: 장날 바로 열기</button>
+    ${v.settlement ? '' : '<button type="button" class="test-btn" data-pass-day>시험용: 장날 바로 열기</button>'}
   `;
 
   el.querySelectorAll<HTMLButtonElement>('[data-building]').forEach((b) =>
     b.addEventListener('click', () => openBuilding(game, b.dataset.building as BuildingId)),
   );
-  el.querySelector('[data-pass-day]')!.addEventListener('click', act.passDay);
+  el.querySelector('[data-pass-day]')?.addEventListener('click', act.passDay);
+  el.querySelector('[data-settlement]')?.addEventListener('click', act.openSettlement);
   el.querySelector('[data-apprentice-day]')?.addEventListener('click', act.passApprenticeDay);
 }

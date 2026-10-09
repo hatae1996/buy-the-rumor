@@ -1,6 +1,7 @@
 // 소식 탭 (기획서 "화면 구성 - 소식 탭: 들어오는 것 전부", 0.0.5): 신문, 소문 수첩, 보고, 길드.
 import sealSmall from '../../../assets/ui/seal_small.png';
-import type { LedgerEntry, NoteView, PlayerView } from '../../sim/economy';
+import type { LedgerEntry, NoteView, PlayerView, RankingCategoryView } from '../../sim/economy';
+import { openCertificate } from './certificate';
 import { agoText, ERROR_TEXT, ledgerLine, money } from '../format';
 import type { Game } from '../game';
 import { noteItem } from './noteItem';
@@ -77,11 +78,17 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
       <ul class="list">${results}</ul>
     </section>
     <section class="card">
+      <h2>랭킹</h2>
+      ${rankingHtml(v)}
+    </section>
+    <section class="card">
       <h2>길드</h2>
       ${guildHtml(v)}
-      <p class="muted">랭킹은 여럿이 함께하는 버전에서 열려요.</p>
     </section>`;
 
+  el.querySelectorAll<HTMLButtonElement>('[data-cert-id]').forEach((b) =>
+    b.addEventListener('click', () => openCertificate(game, b.dataset.certId)),
+  );
   el.querySelectorAll<HTMLButtonElement>('[data-paper]').forEach((b) =>
     b.addEventListener('click', () => {
       const r = game.dispatch({ type: 'buyNewspaper', day: Number(b.dataset.paper) });
@@ -94,6 +101,27 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
 
 /** 신문을 못 산 까닭 (다시 그릴 때까지 남긴다) */
 let paperError = '';
+
+/** 대표 부문은 1~3위를, 물품왕은 1위만. 이름을 누르면 상인 증서. 남의 순자산 숫자는 보이지 않는다 */
+function rankingHtml(v: PlayerView): string {
+  const r = v.ranking;
+  if (r.day === null) return '<p class="muted">첫 장날이 지나면 순위가 매겨져요.</p>';
+  const who = (t: { id: string; name: string; rank: number }) =>
+    `<button type="button" class="link-btn" data-cert-id="${t.id}">${t.rank}위 ${t.name}</button>`;
+  const mine = (c: RankingCategoryView) =>
+    c.mine ? `<small class="muted">나 ${c.mine.rank}위 · 상위 ${Math.max(1, Math.round(c.mine.topShare * 100))}%</small>` : '<small class="muted">나는 아직 기록 없음</small>';
+  const main = r.categories
+    .filter((c) => !c.id.startsWith('goodsKing:'))
+    .map((c) => `<li><b>${c.name}</b> ${mine(c)}<br />${c.top.map(who).join(' ') || '<span class="muted">아직 없음</span>'}</li>`)
+    .join('');
+  const kings = r.categories
+    .filter((c) => c.id.startsWith('goodsKing:') && c.top.length)
+    .map((c) => `<li class="row"><span>${c.name}</span><span>${who(c.top[0]!)} ${c.mine ? `<small class="muted">나 ${c.mine.rank}위</small>` : ''}</span></li>`)
+    .join('');
+  return `<p class="muted">${r.day}일째 장날 기준 · 장날마다 바뀌어요. 순자산 숫자는 남에게 보이지 않아요.</p>
+    <ul class="list">${main}</ul>
+    ${kings ? `<h3>물품왕</h3><ul class="list">${kings}</ul>` : ''}`;
+}
 
 /** 소문꾼마다 받은 도장 수. 비율은 보여 주지 않고 도장만 센다 (기획서 "들은 이야기 수첩") */
 function tellerStamps(notes: readonly NoteView[]): string {

@@ -6,6 +6,7 @@ import {
   applyCommand,
   createEconomy,
   getPlayer,
+  nextSeasonEconomy,
   LOCAL_PLAYER,
   noteView,
   playerView,
@@ -21,6 +22,7 @@ import {
 import { ECONOMY } from '../sim/constants';
 import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
+import { mixSeed } from '../sim/rng';
 import { createCart } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
 
@@ -127,8 +129,33 @@ export class Game {
     return getPlayer(this.state, this.playerId);
   }
 
-  /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null. 견습 중에는 시간이 멈춰 있다 */
+  /** 시즌이 끝나 결산을 보는 중인가 (다음 시즌을 시작할 때까지 날이 가지 않는다) */
+  get seasonOver(): boolean {
+    return this.state.settlement !== null;
+  }
+
+  /**
+   * 다음 시즌 (질문 89 답): 새 시드로 새 세계를 열고 상인 증서·인장·칭호·연차만 들고 간다.
+   * 봇 상인도 같은 이름과 증서로 다시 앉는다. 새 판을 저장하고 돌려준다 (지도가 바뀌므로 부른 쪽이 화면을 새로 연다)
+   */
+  startNextSeason(now: number): Game | null {
+    if (!this.seasonOver) return null;
+    const seed = mixSeed(this.state.seed, 0x5ea5, this.state.settlement!.season) % 1_000_000_007;
+    const map = generateWorld(seed);
+    const state = nextSeasonEconomy(this.state, map, map.seed, { warmupDays: ECONOMY.warmupDays });
+    const bots = this.crew.map((b) => b.pid);
+    for (const id of bots) getPlayer(state, id).cart = createCart('handcart');
+    const next = new Game(map, state, createCrew(state, bots), now);
+    next.save();
+    return next;
+  }
+
+  /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null. 견습 중에는 시간이 멈춰 있다. 시즌이 끝났으면 결산에서 멈춘다 */
   catchUp(now: number): AwaySummary | null {
+    if (this.seasonOver) {
+      this.dayStartedAt = now;
+      return null;
+    }
     if (this.inApprentice) {
       this.dayStartedAt = now;
       return null;
@@ -149,8 +176,9 @@ export class Game {
     return this.passDay(now);
   }
 
-  /** 시험용: 기다리지 않고 장날을 연다 */
-  passDay(now: number): AwaySummary {
+  /** 시험용: 기다리지 않고 장날을 연다. 시즌이 끝났으면 null */
+  passDay(now: number): AwaySummary | null {
+    if (this.seasonOver) return null;
     const summary = this.advance(1);
     this.dayStartedAt = now;
     this.changed();
@@ -170,7 +198,8 @@ export class Game {
     const heard: NoteView[] = [];
     const notices: NotifyEvent[] = [];
     let stamped = 0;
-    for (let i = 0; i < days; i++) {
+    let done = 0;
+    for (let i = 0; i < days && !this.seasonOver; i++, done++) {
       // 봇 상인은 장날 전에 오늘 할 일을 한다
       crewDay(this.state, this.map, this.crew);
       const r = advanceDay(this.state, this.map).players[this.playerId];
@@ -181,7 +210,7 @@ export class Game {
     }
     const arrived = wasOnRoad && me.travel === null;
     return {
-      days,
+      days: done,
       fromDay,
       toDay: this.state.day,
       ledger: me.ledger.slice(ledgerFrom),
@@ -200,12 +229,15 @@ export class Game {
   }
 
   private save(): void {
-    const data: SaveData = { version: 1, seed: this.state.seed, state: this.state, crew: this.crew, dayStartedAt: this.dayStartedAt };
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    } catch {
-      // 사생활 보호 모드 등에서는 저장하지 못한다. 그래도 이번 판은 계속할 수 있다
-    }
+    store({ version: 1, seed: this.state.seed, state: this.state, crew: this.crew, dayStartedAt: this.dayStartedAt });
+  }
+}
+
+function store(data: SaveData): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch {
+    // 사생활 보호 모드 등에서는 저장하지 못한다. 그래도 이번 판은 계속할 수 있다
   }
 }
 

@@ -22,7 +22,7 @@ import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingI
 import { hireBoard, porterBuyRoom, porters, restWage, wageToday, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
-import { badgeDef, CATEGORIES, categoryName, certificateView, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport } from '../ranking';
+import { badgeDef, CATEGORIES, categoryName, certificateView, CRESTS, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport } from '../ranking';
 import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
@@ -273,6 +273,10 @@ export interface PlayerView {
   guild: { theme: string | null; quests: { name: string; scope: 'personal' | 'communal'; text: string; value: number; tiers: readonly number[]; tier: string | null }[] };
   /** 상인 증서 (순자산은 없다) */
   certificate: CertificateView;
+  /** 내가 얻은 칭호 (대표 칭호로 고를 수 있다) */
+  titles: string[];
+  /** 고를 수 있는 상단 문장 */
+  crests: Record<string, string>;
   /** 내 인장첩: 모은 인장 전부 (숨김 업적은 얻은 것만 보인다) */
   badgeBook: { name: string; kind: string; tier: 'bronze' | 'silver' | 'gold' | null; season: number; day: number }[];
   /** 알림 설정. askNow: 견습 졸업이라 알림 허락을 물을 때 */
@@ -639,7 +643,8 @@ function rankingView(state: EconomyState, p: PlayerState, table: RankTable): Ran
     return {
       id,
       name: categoryName(id),
-      top: rows.filter((r) => r.rank <= 3).map((r) => ({ id: r.id, name: nameOf(r.id), rank: r.rank })),
+      // 1~3위 (같은 점수가 많으면 앞의 세 상단만)
+      top: rows.filter((r) => r.rank <= 3).slice(0, 3).map((r) => ({ id: r.id, name: nameOf(r.id), rank: r.rank })),
       mine: mine ? { rank: mine.rank, topShare: mine.topShare, score: mine.score } : null,
       count: rows.length,
     };
@@ -823,6 +828,8 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     upkeep: upkeepView(state, p),
     guild: guildView(state, p),
     certificate: certificateView(p.certificate),
+    titles: [...p.certificate.titles],
+    crests: CRESTS,
     badgeBook: p.certificate.badges.map((b) => {
       const def = badgeDef(b.badge);
       return { name: def?.name ?? b.badge, kind: def?.kind ?? 'achievement', tier: b.tier, season: b.season, day: b.day };

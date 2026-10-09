@@ -932,3 +932,37 @@
   gap: 8px;
   margin-top: 6px;
 }
+
+/* 상인 증서 고치기 (0.1.0): 상단 이름·문장 한 줄, 인장 앞면 고르기 */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-row input,
+.field-row select,
+.card select,
+.sheet-body > select {
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 1px solid var(--ink-soft);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.field-row input {
+  flex: 1 1 10em;
+  min-width: 0;
+}
+
+.pin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  white-space: nowrap;
+}

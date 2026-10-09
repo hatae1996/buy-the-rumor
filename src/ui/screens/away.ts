@@ -11,9 +11,10 @@ import { noteItem, topNotes } from './noteItem';
 /** 많아야 이만큼 */
 const MAX_CARDS = 5;
 
-export function showAwaySummary(game: Game, s: AwaySummary): void {
+/** onClose: 닫은 뒤 (시즌이 끝났으면 결산을 이어서 연다) */
+export function showAwaySummary(game: Game, s: AwaySummary, onClose?: () => void): void {
   const townName = (id: number) => game.map.towns[id]!.name;
-  const sheet = openSheet('자리를 비운 사이');
+  const sheet = openSheet('자리를 비운 사이', onClose);
   const cards: { title: string; html: string }[] = [];
 
   // 1. 장날 결과 (내가, 창고 짐이, 두 번째 행렬이)

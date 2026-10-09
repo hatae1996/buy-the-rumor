@@ -78,3 +78,30 @@ describe('봇 상인 (0.1.0)', () => {
     expect(Game.fresh(0, SEED, { apprentice: false, bots: 99 }).view().rivals).toHaveLength(20);
   });
 });
+
+describe('시즌 끝과 다음 시즌 (0.1.0)', () => {
+  it('시즌 마지막 장날에서 멈추고 결산을 보여 주며, 다음 시즌은 새 세계에서 증서만 들고 시작한다', () => {
+    const g = Game.fresh(0, SEED, { apprentice: false, bots: 2 });
+    let t = 0;
+    for (let i = 0; i < 10 && !g.seasonOver; i++) g.catchUp((t += DAY_MS * 45));
+    expect(g.seasonOver).toBe(true);
+    const v = g.view();
+    expect(v.settlement?.season).toBe(1);
+    expect(v.day).toBe(126);
+    // 결산 뒤에는 날이 가지 않고 장사도 안 된다
+    expect(g.catchUp(t + DAY_MS * 10)).toBeNull();
+    expect(g.passDay(t)).toBeNull();
+    expect(g.dispatch({ type: 'restAtInn' })).toEqual({ ok: false, error: 'seasonOver' });
+    expect(g.dispatch({ type: 'setCompany', name: '시험 상단', crest: 'owl' }).ok).toBe(true);
+    const cert = g.view().certificate;
+    const next = g.startNextSeason(t)!;
+    expect(next.seed).not.toBe(g.seed);
+    expect(next.seasonOver).toBe(false);
+    const nv = next.view();
+    expect(nv.day).toBe(1);
+    expect(nv.seasonInfo?.number).toBe(2);
+    expect(nv.certificate).toEqual(cert);
+    expect(nv.apprentice).toBeNull();
+    expect(nv.rivals).toHaveLength(2);
+  }, 120000);
+});

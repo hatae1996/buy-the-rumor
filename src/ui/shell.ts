@@ -14,6 +14,7 @@ import { renderLedger } from './screens/ledger';
 import { renderNews } from './screens/news';
 import { openCertificate } from './screens/certificate';
 import { renderTown } from './screens/town';
+import { openSettlement } from './screens/settlement';
 
 export type TabId = 'town' | 'map' | 'ledger' | 'news';
 
@@ -61,8 +62,16 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   // 지도는 처음 열 때 불러오고, 다른 탭에 있는 동안은 그리기를 멈춘다
   let map: Promise<MapScreen> | null = null;
 
+  // 시즌이 끝났으면 결산 화면. 다음 시즌을 시작하면 새 지도라 화면을 새로 연다
+  const settle = () => {
+    if (game.seasonOver) openSettlement(game, () => {
+      game.startNextSeason(now());
+      location.reload();
+    });
+  };
   const away = (s: AwaySummary | null) => {
-    if (s) showAwaySummary(game, s);
+    if (s) showAwaySummary(game, s, settle);
+    else settle();
   };
 
   const render = () => {
@@ -70,7 +79,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
-    $('[data-market]').textContent = v.apprentice ? '견습 중' : `장날까지 ${clockText(game.msUntilMarket(now()))}`;
+    $('[data-market]').textContent = v.settlement ? '시즌 결산' : v.apprentice ? '견습 중' : `장날까지 ${clockText(game.msUntilMarket(now()))}`;
     $('[data-fatigue]').textContent = `피로 ${v.fatigue}/${v.fatigueMax}`;
     // 탭은 하나씩 열린다 (견습: 마을 → 장부 → 소식 → 지도)
     buttons.forEach((b) => {
@@ -83,6 +92,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
       renderTown(el, game, v, {
         passDay: () => away(game.passDay(now())),
         passApprenticeDay: () => away(game.passApprenticeDay(now())),
+        openSettlement: settle,
       });
     } else if (current === 'ledger') {
       renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));
@@ -109,14 +119,15 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   game.subscribe(render);
   select('town');
 
-  // 앱을 다시 열었을 때와 열어 둔 동안 장날이 지나면 그 사이 일을 보여 준다
+  // 앱을 다시 열었을 때와 열어 둔 동안 장날이 지나면 그 사이 일을 보여 준다 (시즌이 끝났으면 결산)
   away(game.catchUp(now()));
   setInterval(() => {
+    if (game.seasonOver) return render();
     const s = game.catchUp(now());
     if (s) away(s);
     else render();
   }, CLOCK_MS);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) away(game.catchUp(now()));
+    if (!document.hidden && !game.seasonOver) away(game.catchUp(now()));
   });
 }
