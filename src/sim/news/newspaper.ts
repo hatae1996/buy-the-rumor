@@ -37,15 +37,16 @@ export function paperDelay(map: WorldMap, town: number): number {
  * 이 마을 신문팔이가 오늘 파는 신문의 날짜 (그날 장날까지의 소식). 오늘 밤 장날 소식은 아직 없으니 어제 신문이 가장 새것이다.
  * 소식이 하나도 없는 날이면 null
  */
-export function paperOnSale(state: EconomyState, map: WorldMap, town: number): number | null {
-  const day = state.day - 1 - paperDelay(map, town);
+export function paperOnSale(state: EconomyState, map: WorldMap, town: number, p?: PlayerState): number | null {
+  // 견습 마을은 혼자 쓰는 마을이라 신문이 늦게 오지 않는다 (첫 신문 장면의 소식을 바로 받는다)
+  const day = state.day - 1 - (p && paperFree(p) ? 0 : paperDelay(map, town));
   return state.news.some((n) => n.day === day) ? day : null;
 }
 
 /** 신문팔이에게서 오늘 신문을 산다. 마을에 있을 때만 */
 export function buyNewspaper(state: EconomyState, map: WorldMap, p: PlayerState): Err | null {
   if (p.travel) return 'traveling';
-  const day = paperOnSale(state, map, p.town);
+  const day = paperOnSale(state, map, p.town, p);
   if (day === null) return 'noPaper';
   if (p.newspapers.includes(day)) return 'alreadyBought';
   const fee = paperFree(p) ? 0 : N.fee;

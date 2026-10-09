@@ -36,7 +36,7 @@ export const SCENES: readonly SceneDef[] = [
     title: '첫 신문',
     learn: '사건을 읽고 짐작하기',
     unlocks: ['news'],
-    hint: '"오늘 신문 보았나? {dest}에서 큰 배를 짓는다더군. 목재가 많이 들겠어."',
+    hint: '"신문팔이에게서 오늘 신문을 받아 읽어 보게. 견습 동안은 공짜라네. {dest}에서 큰 배를 짓는다는 소식이 있을 걸세."',
   },
   {
     id: 'firstBuy',
@@ -50,7 +50,7 @@ export const SCENES: readonly SceneDef[] = [
     title: '졸업',
     learn: '이동',
     unlocks: ['map'],
-    hint: '"손수레를 주겠네. 이제 {destTo} 떠나 보게. 지도에서 마을을 누르면 된다네."',
+    hint: '"손수레와 길에서 먹을 식량을 주겠네. 길을 나서면 하루에 한 사람이 식량 하나를 먹는다네. 이제 {destTo} 떠나 보게. 지도에서 마을을 누르면 된다네."',
   },
 ];
 

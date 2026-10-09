@@ -83,7 +83,9 @@ function status(id: BuildingId, v: PlayerView): string {
 
 export function buildingCards(game: Game, v: PlayerView): string {
   // 견습 동안은 장면 하나에 새것 하나만: 시장, 여관, 잡화점, 바깥만
-  const shown = v.apprentice ? v.buildings.filter((b) => ['market', 'inn', 'store', 'outside'].includes(b.id)) : v.buildings;
+  // 신문팔이는 첫 신문 장면부터 (소식 탭이 열릴 때, 0.1.2)
+  const apprenticeShown = ['market', 'inn', 'store', 'outside', ...(v.unlocks.includes('news') ? ['newsboy'] : [])];
+  const shown = v.apprentice ? v.buildings.filter((b) => apprenticeShown.includes(b.id)) : v.buildings;
   return `<div class="building-grid">${shown
     .map(
       (b) => `<button type="button" class="building-card" data-building="${b.id}">

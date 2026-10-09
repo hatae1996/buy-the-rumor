@@ -759,7 +759,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
         .map((day) => ({ day, headline: state.news.find((n) => n.day === day)?.text ?? '', read: p.papersRead.includes(day) })),
       onSale: (() => {
         if (p.travel) return null;
-        const day = paperOnSale(state, map, p.town);
+        const day = paperOnSale(state, map, p.town, p);
         return day === null ? null : { day, bought: p.newspapers.includes(day) };
       })(),
       late: !p.travel && paperDelay(map, p.town) > 0,

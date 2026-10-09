@@ -43,9 +43,16 @@ function graduate(state: EconomyState, map: WorldMap, picks = [1, 1, 0]): { firs
   const firstProfit = state.players.me!.gold - goldBefore;
   // 낸 것은 모두 팔렸다 (견습 마을 손님)
   expect(cartLots(state.players.me!.cart).filter((l) => l.good !== 'meat')).toEqual([]);
-  // 5. 첫 신문: 소식 탭을 연다
+  // 5. 첫 신문: 소식 탭을 여는 것만으로는 넘어가지 않고, 신문팔이에게서 받아(무료) 읽는다 (0.1.2)
   expect(scene()).toBe('firstNews');
   ok(state, map, { type: 'readNews' });
+  expect(scene()).toBe('firstNews');
+  const gold = state.players.me!.gold;
+  ok(state, map, { type: 'buyNewspaper' });
+  expect(state.players.me!.gold).toBe(gold);
+  const paper = playerView(state, map, 'me').newspaper.papers[0]!;
+  expect(paper.headline).toContain('조선소');
+  ok(state, map, { type: 'readPaper', day: paper.day });
   // 6. 첫 구매: 목재를 산다
   expect(scene()).toBe('firstBuy');
   const price = playerView(state, map, 'me').market!.price.wood;
@@ -103,11 +110,12 @@ describe('7장면 (시드 15개)', () => {
     }
   });
 
-  it('탭이 장부 → 소식 → 지도 순서로 열린다', () => {
+  it('탭이 짐칸 → 장부 → 소식 → 지도 순서로 열린다 (0.1.2: 짐칸은 첫 짐 싣기, 장부는 첫 판매 때)', () => {
     const { map, state } = world(SEEDS[1]!);
     expect(playerView(state, map, 'me').unlocks).toEqual([]);
     graduate(state, map);
-    expect(playerView(state, map, 'me').unlocks).toEqual(expect.arrayContaining(['ledger', 'news', 'map']));
+    expect(playerView(state, map, 'me').unlocks).toEqual(expect.arrayContaining(['cart', 'ledger', 'news', 'map']));
+    expect(state.players.me!.unlocks.cart! <= state.players.me!.unlocks.ledger!).toBe(true);
     expect(state.players.me!.unlocks.ledger! <= state.players.me!.unlocks.news!).toBe(true);
     expect(state.players.me!.unlocks.news! <= state.players.me!.unlocks.map!).toBe(true);
   });

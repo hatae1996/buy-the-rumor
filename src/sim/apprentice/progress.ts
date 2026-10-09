@@ -70,7 +70,11 @@ function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
   // 졸업하고 도착할 때까지 이어지도록 길 위의 날만큼 더 둔다
   const travel = townTravelDays(map, AUTUMN)[ap.town]![ap.destination]!;
   activate(state, map, 'shipyard', ap.destination, state.day + days + travel);
-  state.news.push({ day: state.day, text: def.news({ town: map.towns[ap.destination]!.name, good: null, job: null }) });
+  // 첫 신문 장면의 기사이니 그날 신문의 머리기사로 (0.1.2: 신문팔이에게서 받아 읽는다)
+  const item = { day: state.day, text: def.news({ town: map.towns[ap.destination]!.name, good: null, job: null }) };
+  const at = state.news.findIndex((n) => n.day === state.day);
+  if (at < 0) state.news.push(item);
+  else state.news.splice(at, 0, item);
 }
 
 /** 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 첫 길에 먹을 여행 식량 (0.1.2 길의 식량) */
@@ -98,8 +102,8 @@ export function apprenticeAfterCommand(state: EconomyState, p: PlayerState, map:
   ) {
     advance(state, p, map);
   }
-  // 첫 신문: 신문팔이에게서 사서(견습 동안 무료) 읽으면 (0.1.2)
-  else if (is('firstNews') && (cmd.type === 'readNews' || cmd.type === 'readPaper')) advance(state, p, map);
+  // 첫 신문: 신문팔이에게서 받아(견습 동안 무료) 읽으면 (0.1.2. 소식 탭을 여는 것만으로는 넘어가지 않는다)
+  else if (is('firstNews') && cmd.type === 'readPaper') advance(state, p, map);
   else if (is('graduation') && cmd.type === 'travel') {
     // 첫 출발: 견습을 마치고 공유 시장으로 들어간다
     p.apprentice = null;
