@@ -1,7 +1,7 @@
 // 원정 0.0.4 규칙: 카드 60장 데이터, 도구 소모, 장비, 위험, 안내인, 놓아 둔 덫, 이번 원정 상태, 말 카드.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { cartCount, createCart, loadGoods } from '../cart';
-import { ECONOMY } from '../constants';
+import { cartCount, cartWeight, createCart, loadGear, loadGoods, moveAll } from '../cart';
+import { CART, ECONOMY } from '../constants';
 import { applyCommand } from '../economy/commands';
 import { createEconomy } from '../economy/create';
 import type { ActiveExpedition, EconomyState } from '../economy/state';
@@ -10,7 +10,7 @@ import { createRng } from '../rng';
 import { generateWorld } from '../worldgen';
 import { CARDS, cardById } from './cards';
 import { chooseExpeditionCard } from './expedition';
-import { useTool } from './gear';
+import { gearUses, useTool } from './gear';
 import type { Effect } from './types';
 
 const X = ECONOMY.expedition;
@@ -114,7 +114,29 @@ describe('장비', () => {
     const torch = playerView(s, map, 'me').expedition!.card.choices.find((c) => c.label === '횃불로 쫓는다')!;
     expect(torch.extra).toBe(true);
     expect(choose(torch.index).ok).toBe(true);
-    expect(s.players.me!.gear.torch).toBe(X.gear.torch.durability - 1);
+    expect(gearUses(s.players.me!, 'torch')).toBe(X.gear.torch.durability - 1);
+  });
+
+  it('장비도 짐칸 자리를 차지하고, 실은 장비만 쓴다 (0.1.2)', () => {
+    const me = s.players.me!;
+    me.expedition = null;
+    me.cart = createCart('pack');
+    // 등짐(3×3)을 소금으로 가득 채우면 활(1×2)을 실을 자리가 없다
+    loadGoods(me.cart, 'salt', 27);
+    expect(applyCommand(s, map, 'me', { type: 'buyGear', gear: 'bow' })).toEqual({ ok: false, error: 'noRoom' });
+    expect(me.gold).toBe(500);
+    me.cart = createCart('pack');
+    expect(applyCommand(s, map, 'me', { type: 'buyGear', gear: 'bow' }).ok).toBe(true);
+    const piece = me.cart.pieces.find((q) => q.good === 'bow')!;
+    expect(piece.uses).toBe(X.gear.bow.durability);
+    expect(cartWeight(me.cart)).toBe(CART.items.bow.weight);
+    // 수레를 바꿔도 장비는 남은 횟수 그대로 따라온다
+    const next = createCart('handcart');
+    expect(moveAll(me.cart, next)).toBe(0);
+    expect(next.pieces.find((q) => q.good === 'bow')!.uses).toBe(X.gear.bow.durability);
+    // 짐칸에서 버리면 쓸 수 없다
+    me.cart = createCart('pack');
+    expect(gearUses(me, 'bow')).toBeNull();
   });
 
   it('그물이 있으면 물고기 카드의 생선이 1 더, 망가지면 도구로 고친다', () => {
@@ -122,8 +144,8 @@ describe('장비', () => {
     if (fishTown < 0) return;
     s.players.me!.town = fishTown;
     const run = (withNet: boolean) => {
-      s.players.me!.gear = withNet ? { net: X.gear.net.durability } : {};
       s.players.me!.cart = createCart('wagon');
+      if (withNet) loadGear(s.players.me!.cart, 'net', X.gear.net.durability);
       s.towns[fishTown]!.nodes.find((n) => n.kind === 'fish')!.amount = 1e6;
       const ex = onCard('school');
       ex.town = fishTown;
@@ -132,11 +154,11 @@ describe('장비', () => {
     };
     expect(run(true)).toBe(run(false) + 1);
     s.players.me!.expedition = null;
-    s.players.me!.gear.net = 0;
+    loadGear(s.players.me!.cart, 'net', 0);
     expect(applyCommand(s, map, 'me', { type: 'repairGear', gear: 'net' })).toEqual({ ok: false, error: 'needTool' });
     loadGoods(s.players.me!.cart, 'tools', 1);
     expect(applyCommand(s, map, 'me', { type: 'repairGear', gear: 'net' }).ok).toBe(true);
-    expect(s.players.me!.gear.net).toBe(X.gear.net.durability);
+    expect(gearUses(s.players.me!, 'net')).toBe(X.gear.net.durability);
     expect(cartCount(s.players.me!.cart, 'tools')).toBe(0);
   });
 
@@ -144,7 +166,7 @@ describe('장비', () => {
     onCard('foxDen');
     expect(playerView(s, map, 'me').expedition!.card.choices[0]!.disabled).toBe('덫이 없어요');
     expect(choose(0)).toEqual({ ok: false, error: 'needGear' });
-    s.players.me!.gear.trap = X.gear.trap.durability;
+    loadGear(s.players.me!.cart, 'trap', X.gear.trap.durability);
     expect(playerView(s, map, 'me').expedition!.card.choices[0]!.disabled).toBeNull();
     expect(choose(0).ok).toBe(true);
     expect(s.players.me!.marks).toEqual([{ town, card: 'checkTrap', day: s.day }]);

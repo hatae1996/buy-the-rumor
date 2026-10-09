@@ -125,7 +125,7 @@ export function loadOverflow(p: PlayerState, good: GoodId, qty: number, age: num
   for (const board of porterBoards(p)) {
     if (left <= 0) break;
     // 짐꾼은 사람이 끌어 무게 70까지만 싣는다 (넘치면 떠날 수 없다)
-    left -= loadGoods(board, good, Math.min(left, porterBuyRoom(board, good)), age);
+    left -= loadGoods(board, good, Math.min(left, porterBuyRoom(board, good)), age, 0);
   }
   return qty - left;
 }

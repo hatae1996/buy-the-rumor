@@ -2,7 +2,8 @@
 import type { ActiveEvent, ReactiveMemo, SeasonState } from '../events/types';
 import type { HeardRumor, RumorMill } from '../rumors/types';
 import type { Horse, HorseKind, HorseMarket } from '../horses/types';
-import type { CartType } from '../cart';
+import type { CartType, ItemId } from '../cart';
+import type { IncidentCause, RoadRisk } from './incidents';
 import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Rankings } from '../ranking/table';
@@ -86,6 +87,8 @@ export interface Travel {
   /** 전체 걸리는 날과 남은 날 */
   days: number;
   daysLeft: number;
+  /** 떠날 때 잰 길의 위험 (짐칸 손상, 0.1.2). NPC 상단과 예전 저장에는 없다 */
+  risk?: RoadRisk;
 }
 
 export interface Trader {
@@ -118,7 +121,11 @@ export type LedgerEntry =
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
   | { day: number; kind: 'inn'; town: number; fee: number; recovered: number }
-  | { day: number; kind: 'discard'; good: GoodId; qty: number }
+  | { day: number; kind: 'discard'; good: ItemId; qty: number }
+  /** 길 위 사건으로 짐칸 한 칸이 망가졌다 (0.1.2). 그 칸의 짐 조각은 잃었다 */
+  | { day: number; kind: 'cartDamage'; cause: IncidentCause; lost: { good: ItemId; qty: number } | null; caravan: boolean }
+  /** 수레방에서 망가진 칸을 고쳤다 */
+  | { day: number; kind: 'cartRepair'; town: number; cells: number; price: number }
   | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }
   | { day: number; kind: 'toll'; town: number; gold: number }
   /** 소식을 산 돈: 여관 술 한 잔, 전서구, 정보원 */
@@ -226,8 +233,6 @@ export interface PlayerState {
   horsesRested: boolean;
   /** 지난 원정에 남긴 카드 (놓아 둔 덫 등)와 남긴 날. 다음에 그 마을 원정 덱에 들어간다 */
   marks: { town: number; card: string; day: number }[];
-  /** 장비마다 남은 쓰는 횟수 (0이면 망가짐, 없으면 안 가졌음) */
-  gear: Partial<Record<GearKind, number>>;
   /** 여관에서 고용한 안내인이 다음 원정에 따라간다 */
   guide: boolean;
   /** 원정에서 도구를 쓴 횟수 (usesPerTool번 쓰면 도구 하나가 닳아 없어진다) */

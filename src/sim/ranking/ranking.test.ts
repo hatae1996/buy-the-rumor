@@ -1,6 +1,6 @@
 // 랭킹과 보상 데이터 (기획서 "랭킹과 보상"): 순자산, 부문 점수(특히 Buy the Rumor), 순위, 길드 의뢰, 인장, 상인 증서.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCart, loadGoods } from '../cart';
+import { createCart, loadGear, loadGoods } from '../cart';
 import { ECONOMY } from '../constants';
 import { advanceDay, applyCommand, createEconomy, type EconomyState } from '../economy';
 import { createSeason } from '../events';
@@ -195,7 +195,7 @@ describe('인장', () => {
   });
 
   it('업적 인장: 원정에서 횃불로 곰을 쫓으면 "곰 쫓는 상인"', () => {
-    s.players.me!.gear.torch = 4;
+    loadGear(s.players.me!.cart, 'torch', 4);
     s.players.me!.expedition = {
       town: s.players.me!.town,
       rng: 1,

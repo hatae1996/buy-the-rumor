@@ -12,7 +12,7 @@ import { createRng, mixSeed, type Rng } from '../rng';
 import type { WorldMap } from '../worldgen';
 import { APPRENTICE_DECK, cardById } from './cards';
 import { buildDeck, EVENT_MEMORY_DAYS } from './deck';
-import { hasGear, needsMet, useGear, useTool, type GearError } from './gear';
+import { gearUses, hasGear, needsMet, useGear, useTool, type GearError } from './gear';
 import { makeRumor } from './rumors';
 import { noteSeen, verifyByExpedition } from '../rumors';
 import { noteExpeditionMoments } from '../ranking/moments';
@@ -211,7 +211,7 @@ function applyEffect(e: Effect, state: EconomyState, p: PlayerState, map: WorldM
       if (!hasGear(p, e.gear)) return;
       useGear(p, e.gear, e.uses);
       out.risk = true;
-      return say(`${X.gear[e.gear].name}${p.gear[e.gear] === 0 ? '이 망가졌어요' : '이 상했어요'}.`);
+      return say(`${X.gear[e.gear].name}${gearUses(p, e.gear) === 0 ? '이 망가졌어요' : '이 상했어요'}.`);
     case 'maybe':
       if (rng.next() < e.chance) for (const inner of e.effects) applyEffect(inner, state, p, map, ex, rng, out);
       return;
@@ -287,7 +287,8 @@ export function finishExpedition(state: EconomyState, p: PlayerState): Expeditio
     // 무더위에 잡은 생선과 고기는 묵은 채로 싣는다
     const age = ex.flags.includes('heat') && (h.good === 'fish' || h.good === 'meat') ? X.heatAge : 0;
     const before = cartCount(p.cart, h.good);
-    loadGoods(p.cart, h.good, h.qty, age);
+    // 원정으로 얻은 것은 산 값 0 (짐칸 정보판, 0.1.2)
+    loadGoods(p.cart, h.good, h.qty, age, 0);
     let n = cartCount(p.cart, h.good) - before;
     // 내 수레에 다 못 실으면 짐꾼 수레에
     if (n < h.qty) n += loadOverflow(p, h.good, h.qty - n, age);

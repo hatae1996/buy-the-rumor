@@ -6,6 +6,7 @@ import { clearAuction } from './auction';
 import { basePrice, GOODS, priceBounds, type GoodId } from './goods';
 import { takeOldest, type Lot } from './inventory';
 import type { MarketResult, Order, OrderOwner, TownEconomy } from './state';
+import { isPlayerOwner } from './players';
 
 export interface Fill {
   /** 신청 번호 (견습 손님처럼 장 밖에서 맞춘 것은 없다) */
@@ -61,7 +62,9 @@ export function runMarket(
     for (const o of buys) {
       const n = res.buyFills.get(o.id) ?? 0;
       // 못 산 경우에도 넘겨야 잡아 둔 수레 자리가 풀린다
-      accounts.receive(o.owner, n > 0 ? takeOldest(pool, good, n) : [], o.id);
+      // 산 쪽 묶음에는 그날 값을 산 값으로 단다 (짐칸 정보판, 0.1.2. NPC 짐에서는 쓰지 않는다)
+      const got = n > 0 ? takeOldest(pool, good, n).map((l) => ({ ...l, cost: price })) : [];
+      accounts.receive(o.owner, isPlayerOwner(o.owner) ? got : got.map(({ cost: _, ...l }) => l), o.id);
       if (n > 0) fills.push({ orderId: o.id, owner: o.owner, good, side: 'buy', qty: n, price });
       accounts.addGold(o.owner, o.reserved - n * price);
       o.reserved = 0;

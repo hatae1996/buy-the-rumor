@@ -11,6 +11,7 @@ import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
 import { autoLoadRoom, caravanRentNight } from './caravan';
 import type { Caravan } from './types';
+import { roadNight, roadRisk } from '../economy/incidents';
 
 /** 아침에: 지시서 마을에 와 있으면 오늘 장날 신청을 낸다 (팔기 먼저, 사기는 알아서 싣기만큼) */
 export function caravanOrders(state: EconomyState, p: PlayerState, accounts: Accounts): Order[] {
@@ -51,7 +52,7 @@ function setOff(state: EconomyState, p: PlayerState, map: WorldMap, c: Caravan, 
   p.gold -= fee;
   state.towns[c.town]!.treasury += fee;
   for (const h of c.horses) h.fatigue = Math.min(HORSES.fatigue.max, h.fatigue + HORSES.kinds[h.kind].travelFatigue * days);
-  c.travel = { from: c.town, to, days, daysLeft: days };
+  c.travel = { from: c.town, to, days, daysLeft: days, risk: roadRisk(state, map, c.town, to) };
   p.ledger.push({ day: state.day, kind: 'caravan', what: 'travel', town: c.town, to, fee });
   return true;
 }
@@ -67,6 +68,7 @@ export function caravanNight(state: EconomyState, p: PlayerState, map: WorldMap)
   // 마부는 길 위에서도 가는 마을 마구간 값으로 먹이를 사 먹인다 (NPC 상단과 같다). 돈이 모자라면 수레 곡물을 먹는다
   c.horses = feedHorses(state, p, c.horses, c.travel ? c.travel.to : c.town, c.cart as Board, !c.travel);
   if (c.travel) {
+    roadNight(state, p, c.travel, c.cart, true);
     if (--c.travel.daysLeft <= 0) {
       c.town = c.travel.to;
       c.travel = null;

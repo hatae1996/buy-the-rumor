@@ -41,6 +41,7 @@ import type { EconomyState, MarketResult, Order, PlayerId } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
 import { workshopDay, workshopOrders } from './workshop';
+import { roadNight } from './incidents';
 
 /** 플레이어 한 사람의 하루 */
 export interface PlayerDayReport {
@@ -217,6 +218,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 플레이어 밤: 오늘 차례대로 (마구간 먹이, 채집꾼이 거두는 자원지처럼 나눠 쓰는 것이 있다)
   const arrived = new Map<PlayerId, number>();
   for (const p of turn) {
+    // 길 위 사건: 짐칸 한 칸이 망가질 수 있다 (0.1.2)
+    if (p.travel) roadNight(state, p, p.travel, p.cart, false);
     if (p.travel && --p.travel.daysLeft <= 0) {
       p.town = p.travel.to;
       p.travel = null;

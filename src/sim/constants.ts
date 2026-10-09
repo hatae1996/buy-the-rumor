@@ -648,6 +648,32 @@ export const GROWTH = {
  * 수레 인벤토리 (기획서 "수레 인벤토리"). 모양과 쌓기 수는 기획서 초안, 무게는 개발 초안.
  * 모양 칸 좌표는 [x, y], 수레 그림은 '#'가 실을 수 있는 칸.
  */
+/** 길의 식량 (0.1.2, 기획서 "식량"). 숫자는 초안 */
+export const FOOD = {
+  /** 이동하는 날마다 사람 한 명이 먹는 식량 (나, 짐꾼, 마부). 음식 물품 하나나 여행 식량 하나가 식량 1 */
+  perPersonPerDay: 1,
+  /** 잡화점 여행 식량: 보관 기간, 값은 그 마을 곡물·염장 식품 시세 평균의 이 배 (돈은 마을 금고로) */
+  rations: { shelfLife: 30, priceFactor: 1.2 },
+  /** 식량이 떨어진 날: 피로가 이만큼 오르고, 남은 길이 이만큼(날) 늘어난다. 죽거나 짐을 잃지는 않는다 */
+  hungryFatigue: 4,
+  hungrySlowDays: 0.25,
+} as const;
+
+/**
+ * 짐칸 손상 (0.1.2, 기획서 "칸이 망가진다"): 이동하는 날마다 길 위 사건을 굴린다. 망가진 칸에는 실을 수 없고 그 칸의 짐 조각은 잃는다.
+ * 수레방에서 칸마다 고친다. 등짐(사람이 지는 짐)은 망가지지 않는다. 숫자는 초안
+ */
+export const CART_DAMAGE = {
+  /** 험한 길: 언덕·산 칸을 지나는 날 */
+  rough: 0.03,
+  /** 낙석: 산사태 사건이 길을 막은 지방 근처를 지나는 날 */
+  rockfall: 0.15,
+  /** 산적: 산적 사건이 있는 마을을 떠나거나 그 마을로 가는 날 */
+  bandits: 0.2,
+  /** 수레방에서 칸 하나 고치는 값 */
+  repairPerCell: { pack: 0, handcart: 6, wagon: 8, carriage: 10 },
+} as const;
+
 export const CART = {
   /** 시작은 등짐 하나 (기획서 "시작 조건") */
   start: 'pack',
@@ -679,5 +705,16 @@ export const CART = {
     salt: { shape: [[0, 0]], stack: 3, weight: 2 },
     salted: { shape: [[0, 0], [0, 1], [1, 1]], stack: 1, weight: 3 },
     tools: { shape: [[0, 0], [0, 1], [1, 1]], stack: 1, weight: 2 },
+  },
+  /**
+   * 물품이 아닌 짐 (0.1.2, 기획서 "장비도 짐칸에 싣는다"): 장비와 여행 식량도 짐칸 자리를 차지한다. 장날에서는 사고팔지 않는다.
+   * 장비는 한 조각에 하나(남은 횟수는 조각이 기억한다). 활 1×2, 그물 2×2, 덫·횃불 1칸. 여행 식량은 한 칸에 4개. 초안
+   */
+  items: {
+    bow: { shape: [[0, 0], [0, 1]], stack: 1, weight: 1 },
+    net: { shape: [[0, 0], [1, 0], [0, 1], [1, 1]], stack: 1, weight: 2 },
+    trap: { shape: [[0, 0]], stack: 1, weight: 2 },
+    torch: { shape: [[0, 0]], stack: 1, weight: 1 },
+    rations: { shape: [[0, 0]], stack: 4, weight: 1 },
   },
 } as const;

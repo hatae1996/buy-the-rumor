@@ -4,6 +4,7 @@
 // 내가 노리는 큰 주문과 다른 것이 있으면 행렬은 그쪽을 맡는다 (다른 곳의 다른 기회).
 // 마부 일당이 크므로 노릴 것이 없으면 행렬을 불러들여 풀고 마부를 내보낸다.
 // 0.0.9: 수레는 사지 않고 수레방에서 빌린다 (풀면 돌려준다). 마부는 쉬는 날 일당이 적다 (questions.md 77번).
+import { isGood } from '../cart';
 import { CART, GROWTH, HORSES } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { omenPlans, type BigPlan } from './bigOrder';
@@ -52,7 +53,7 @@ const planKey = (p: BigPlan) => `${p.event}:${p.town}`;
 
 const cargoOf = (view: PlayerView): Partial<Record<GoodId, number>> => {
   const out: Partial<Record<GoodId, number>> = {};
-  for (const p of view.caravan?.cart.pieces ?? []) out[p.good] = (out[p.good] ?? 0) + p.qty;
+  for (const p of view.caravan?.cart.pieces ?? []) if (isGood(p.good)) out[p.good] = (out[p.good] ?? 0) + p.qty;
   return out;
 };
 

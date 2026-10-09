@@ -1,15 +1,15 @@
 // 수레 판: 짐 조각을 끌어다 놓고, 톡 눌러 돌린다 (기획서 "수레 인벤토리").
 // 놓을 자리에 미리보기(흰색은 들어감, 빨간색은 안 들어감)를 띄우고, 놓으면 명령을 보낸다.
 // 판은 화면 쪽이라 픽셀을 다루지만, 놓을 수 있는지는 시뮬레이션과 같은 모양 함수로 계산한다.
-import { shapeOf } from '../sim/cart';
+import { shapeOf, type ItemId } from '../sim/cart';
 import { ECONOMY } from '../sim/constants';
-import type { CartPieceView, CartView, GoodId } from '../sim/economy';
+import type { CartPieceView, CartView } from '../sim/economy';
 import { eulReul } from '../sim/josa';
 import { ERROR_TEXT, freshness, goodName } from './format';
 import type { Game } from './game';
 
 /** 물품 색 (화면 팔레트) */
-const GOOD_COLOR: Record<GoodId, string> = {
+const GOOD_COLOR: Record<ItemId, string> = {
   fish: '#2E9C98',
   meat: '#D2594B',
   grain: '#E6B43C',
@@ -19,6 +19,12 @@ const GOOD_COLOR: Record<GoodId, string> = {
   salt: '#C9CFD3',
   salted: '#B8402F',
   tools: '#6B4A32',
+  // 장비와 여행 식량 (0.1.2)
+  bow: '#7A8B3C',
+  net: '#4E7F9A',
+  trap: '#7C6F64',
+  torch: '#E08A3C',
+  rations: '#C9A26B',
 };
 
 const TAP_SLOP = 6;

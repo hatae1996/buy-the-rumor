@@ -1,5 +1,5 @@
 // 말과 수레 명령: 마구간에서 말 사고팔기, 말 쉬게 하기, 수레방에서 수레 바꾸기.
-import { cartLots, createCart, loadGoods, type CartType } from '../cart';
+import { createCart, moveAll, type CartType } from '../cart';
 import { CART, HORSES } from '../constants';
 import type { EconomyState, PlayerState } from '../economy/state';
 import { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
@@ -96,9 +96,8 @@ export function buyCart(state: EconomyState, p: PlayerState, map: WorldMap, type
   const cost = cartCost(p.cart.type, type);
   if (p.gold < cost) return 'notEnoughGold';
   const next = createCart(type);
-  for (const lot of cartLots(p.cart)) {
-    if (loadGoods(next, lot.good, lot.qty, lot.age) < lot.qty) return 'noRoom';
-  }
+  // 장비·여행 식량까지 옮긴다. 다 못 실으면 바꾸지 않는다 (새 수레는 멀쩡하다: 망가진 칸은 따라오지 않는다)
+  if (moveAll(p.cart, next) > 0) return 'noRoom';
   p.gold -= cost;
   // 수레방은 그 마을 사람이니 값은 마을 금고로
   state.towns[p.town]!.treasury += cost;

@@ -2,7 +2,7 @@
 // 마부는 지시서(마을 순서, 마을마다 사기/팔기와 가격 한도, 반복)대로 장날에 신청하고 다음 마을로 간다.
 // 마부는 소문을 보고 지시를 바꾸지 않는다. 짐은 알아서 싣기라 칸의 80%까지만 쓴다.
 // 말 2필 제한은 그대로라, 마차(2필)를 쓰면 두 번째 행렬을 못 만든다.
-import { CART_TYPES, cartLots, createCart, loadGoods, type Cart, type CartType } from '../cart';
+import { CART_TYPES, cartWeight, createCart, loadGoods, shapeOf, type Cart, type CartType } from '../cart';
 import { CART, GROWTH, HORSES } from '../constants';
 import { GOODS, type GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
@@ -138,9 +138,9 @@ export function autoLoadRoom(c: Caravan, good: GoodId): number {
   const slots = CART.types[c.cart.type].rows.join('').split('').filter((x) => x === '#').length;
   const limit = Math.floor(slots * GROWTH.caravan.autoLoadShare);
   const copy = JSON.parse(JSON.stringify(c.cart)) as Cart;
-  const used = (cart: Cart) => cart.pieces.reduce((s, p) => s + CART.goods[p.good].shape.length, 0);
+  const used = (cart: Cart) => cart.pieces.reduce((s, p) => s + shapeOf(p.good, 0).length, 0);
   const pull = c.horses.reduce((s, h) => s + (h.fatigue >= HORSES.fatigue.max ? HORSES.kinds[h.kind].pull / 2 : HORSES.kinds[h.kind].pull), 0);
-  let weight = cartLots(copy).reduce((s, l) => s + l.qty * CART.goods[l.good].weight, 0);
+  let weight = cartWeight(copy);
   let n = 0;
   for (;;) {
     if (weight + CART.goods[good].weight > pull) break;

@@ -1,6 +1,7 @@
 // 창고: 빌리기, 짐 넣고 빼기, 창고 짐으로 이 마을 장날에 팔기 (내가 없어도 맞춰진다).
 // 기획서는 수레 판 두 개를 나란히 놓고 끌어 옮기는 화면이다. 지금은 물품마다 넣기·꺼내기 버튼으로 둔다.
 import { GROWTH } from '../../../sim/constants';
+import { isGood } from '../../../sim/cart';
 import { count, GOODS, type GoodId, type PlayerView } from '../../../sim/economy';
 import { goodName, money } from '../../format';
 import type { Game } from '../../game';
@@ -9,7 +10,7 @@ import { openLiveSheet } from '../../liveSheet';
 function stock(v: PlayerView, town: number): Record<GoodId, number> {
   const w = v.warehouses.find((x) => x.town === town);
   const out = Object.fromEntries(GOODS.map((g) => [g, 0])) as Record<GoodId, number>;
-  for (const p of w?.pieces ?? []) out[p.good] += p.qty;
+  for (const p of w?.pieces ?? []) if (isGood(p.good)) out[p.good] += p.qty;
   return out;
 }
 

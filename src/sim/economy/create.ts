@@ -157,7 +157,6 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     horses: [],
     horsesRested: false,
     marks: [],
-    gear: {},
     guide: false,
     toolUses: 0,
     apprentice: null,

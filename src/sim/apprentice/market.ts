@@ -30,7 +30,7 @@ export function settleApprenticeOrders(state: EconomyState, p: PlayerState, acco
       fills.push({ owner, good: o.good, side: 'sell', qty: o.qty, price });
     } else {
       const price = Math.max(1, Math.min(o.limit, Math.round(ref * A.sellMarkdown)));
-      accounts.receive(owner, [{ good: o.good, qty: o.qty, age: 0 }], o.id);
+      accounts.receive(owner, [{ good: o.good, qty: o.qty, age: 0, cost: price }], o.id);
       accounts.addGold(owner, o.reserved - o.qty * price);
       town.treasury += o.qty * price;
       o.reserved = 0;

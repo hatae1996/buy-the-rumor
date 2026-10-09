@@ -69,7 +69,8 @@ export function buildingAlerts(state: EconomyState, p: PlayerState, map: WorldMa
   const out: Partial<Record<BuildingId, string>> = {};
   if (!p.drankToday && innRumor(state, p, map)) out.inn = '새 소문';
   if (hasExpeditions(state.towns[town]!) && p.expeditionChances >= ECONOMY.expedition.maxChances) out.outside = '기회 가득';
-  if (Object.values(p.gear).some((n) => n === 0)) out.store = '장비 수리';
+  if (p.cart.pieces.some((q) => q.uses === 0)) out.store = '장비 수리';
+  if (p.cart.broken?.length && hasBuilding(state, map, town, 'cartShop')) out.cartShop = `망가진 칸 ${p.cart.broken.length}`;
   // 창고: 내일이면 상할 음식이 있다
   const w = p.warehouses.find((x) => x.town === town);
   if (w) {

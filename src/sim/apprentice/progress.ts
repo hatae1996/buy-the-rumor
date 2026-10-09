@@ -1,7 +1,7 @@
 // 견습 진행: 플레이어가 한 일(명령)과 지나간 장날을 보고 다음 장면으로 넘긴다.
 // 견습 마을은 혼자 쓰는 마을이라 실제 시간이 흐르지 않고, "하루 보내기"로만 날이 간다.
 // 견습 동안은 손해를 보지 않고, 첫 판매는 반드시 이익이 난다 (market.ts).
-import { cartLots, createCart, loadGoods } from '../cart';
+import { createCart, moveAll } from '../cart';
 import { ECONOMY } from '../constants';
 import type { Command } from '../economy/commands';
 import { hasExpeditions } from '../economy/player';
@@ -77,7 +77,7 @@ function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
 function graduationGift(p: PlayerState): void {
   if (p.cart.type !== 'pack') return;
   const next = createCart('handcart');
-  for (const lot of cartLots(p.cart)) loadGoods(next, lot.good, lot.qty, lot.age);
+  moveAll(p.cart, next);
   p.cart = next;
 }
 

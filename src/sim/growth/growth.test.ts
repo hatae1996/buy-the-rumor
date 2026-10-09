@@ -1,5 +1,6 @@
 // 살 수 있는 것과 마을 건물 (기획서 "성장", "화면 구성 - 마을 탭", 0.0.5).
 import { describe, expect, it } from 'vitest';
+import { loadGear } from '../cart';
 import { ECONOMY } from '../constants';
 import { applyCommand, createEconomy, playerView } from '../economy';
 import { hasExpeditions } from '../economy/player';
@@ -50,7 +51,7 @@ describe('마을 건물', () => {
     const town = map.towns.find((t) => hasExpeditions(s.towns[t.id]!))!.id;
     s.players.me!.town = town;
     s.players.me!.expeditionChances = ECONOMY.expedition.maxChances;
-    s.players.me!.gear.torch = 0;
+    loadGear(s.players.me!.cart, 'torch', 0);
     const a = buildingAlerts(s, s.players.me!, map);
     expect(a.outside).toBeDefined();
     expect(a.store).toBeDefined();

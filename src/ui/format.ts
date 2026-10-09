@@ -1,5 +1,7 @@
 // 화면 문구. 처음 하는 사람에게 전문 용어를 보이지 않는다 ("동시호가" 대신 "장날").
-import { shelfLife, GOOD_NAME, type CommandError, type GoodId, type LedgerEntry, type Lot } from '../sim/economy';
+import { GOOD_NAME, type CommandError, type LedgerEntry, type Lot } from '../sim/economy';
+import { itemName, itemShelfLife, type ItemId, type ItemLot } from '../sim/cart';
+import { INCIDENT_NAME } from '../sim/economy/incidents';
 import { SEASON_NAME, type Season } from '../sim/season';
 import { CART, ECONOMY, GROWTH, HORSES } from '../sim/constants';
 import { eulReul, euro, iGa } from '../sim/josa';
@@ -66,6 +68,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   notEnoughGoods: '짐에 그만큼 없어요.',
   spoiling: '곧 상할 물건은 장에 낼 수 없어요.',
   noRoom: '수레에 자리가 모자라요. 짐을 정리하거나 팔아서 자리를 만드세요.',
+  cartFine: '망가진 칸이 없어요.',
   noOrder: '이미 없는 신청이에요.',
   sameTown: '이미 이 마을에 있어요.',
   noTown: '없는 마을이에요.',
@@ -154,7 +157,14 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
     case 'inn':
       return { text: `${townName(e.town)} 여관에서 쉬었어요 (피로 −${e.recovered})`, amount: -e.fee };
     case 'discard':
-      return { text: `${GOOD_NAME[e.good]} ${e.qty}개를 버렸어요`, amount: null };
+      return { text: `${itemName(e.good)} ${e.qty}개를 버렸어요`, amount: null };
+    case 'cartDamage':
+      return {
+        text: `${e.caravan ? '두 번째 행렬 ' : ''}${INCIDENT_NAME[e.cause]}에 짐칸 한 칸이 망가졌어요${e.lost ? ` (${itemName(e.lost.good)} ${e.lost.qty}개를 잃음)` : ''}`,
+        amount: null,
+      };
+    case 'cartRepair':
+      return { text: `${townName(e.town)} 수레방에서 짐칸 ${e.cells}칸을 고쳤어요`, amount: -e.price };
     case 'expedition': {
       const got = e.goods.map((g) => `${GOOD_NAME[g.good]} ${g.qty}`).join(', ');
       const left = e.leftBehind ? ` (${e.leftBehind}개는 두고 옴)` : '';
@@ -225,8 +235,8 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
  * 짐 한 묶음의 신선도. 숫자 대신 상태로 보여 준다 (기획서 "물품").
  * rate는 오늘 계절의 상하는 배율 (여름 1.5, 겨울 0.5)
  */
-export function freshness(lot: Lot, rate = 1): { text: string; level: 'fresh' | 'days' | 'soon' | 'keeps' } {
-  const life = shelfLife(lot.good);
+export function freshness(lot: Lot | ItemLot, rate = 1): { text: string; level: 'fresh' | 'days' | 'soon' | 'keeps' } {
+  const life = itemShelfLife(lot.good);
   if (life === null) return { text: '안 상해요', level: 'keeps' };
   if (lot.age + rate >= life) return { text: '곧 상함', level: 'soon' };
   if (lot.age < life * 0.4) return { text: '신선함', level: 'fresh' };
@@ -248,6 +258,7 @@ export function marketMood(demand: number, supply: number): string {
   return '어제는 사려는 사람과 팔려는 사람이 비슷했어요.';
 }
 
-export function goodName(g: GoodId): string {
-  return GOOD_NAME[g];
+/** 물품, 장비, 여행 식량의 이름 */
+export function goodName(g: ItemId): string {
+  return itemName(g);
 }

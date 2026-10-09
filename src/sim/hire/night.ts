@@ -1,7 +1,7 @@
 // 밤마다 일꾼: 일당을 받고(못 받으면 떠난다. 마부는 쉬는 날 적게, 0.0.9), 채집꾼은 그 마을에서 원정한 것을 창고에 넣는다.
 // 채집꾼은 카드를 고르지 않고 평균 결과로 일한다: 마을 일꾼이 하루 거두는 양 × 맡긴 일 효율.
 // 창고가 없거나 차면 거둔 것은 버려진다 (기획서: 결과는 그 마을 창고로).
-import { cartLots, loadGoods } from '../cart';
+import { loadGoods, moveAll } from '../cart';
 import { ECONOMY, GROWTH } from '../constants';
 import type { GoodId } from '../economy/goods';
 import { JOB_RESOURCE, type GatherJob } from '../economy/jobs';
@@ -43,7 +43,7 @@ export function hireNight(state: EconomyState, p: PlayerState): void {
     // 일당을 못 받으면 떠난다 (빚이 되지 않는다). 짐꾼 수레의 짐은 내 수레로 옮기고, 못 실으면 길에 두고 간다
     const wage = wageToday(state, p, h);
     if (p.gold < wage) {
-      if (h.board) for (const l of cartLots(h.board)) loadGoods(p.cart, l.good, l.qty, l.age);
+      if (h.board) moveAll(h.board, p.cart);
       release(state, p, h);
       p.ledger.push({ day: state.day, kind: 'hire', what: 'quit', role: h.role, name: h.name, town: h.town, fee: 0 });
       continue;
@@ -57,7 +57,7 @@ export function hireNight(state: EconomyState, p: PlayerState): void {
       const stored: { good: GoodId; qty: number }[] = [];
       let lost = 0;
       for (const g of got) {
-        const n = w ? loadGoods(w.board, g.good, g.qty, 0) : 0;
+        const n = w ? loadGoods(w.board, g.good, g.qty, 0, 0) : 0;
         if (n > 0) stored.push({ good: g.good, qty: n });
         lost += g.qty - n;
       }

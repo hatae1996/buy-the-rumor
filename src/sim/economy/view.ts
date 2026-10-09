@@ -1,6 +1,7 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
-import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, pieceCells, roomFor, unitWeight, usedCells, type Board, type Cart, type CartType } from '../cart';
+import { repairCost } from './incidents';
+import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, isGear, pieceCells, roomFor, unitWeight, usedCells, type Board, type Cart, type CartType, type ItemId, type ItemLot } from '../cart';
 import { boardFee, WAREHOUSE_CELLS } from '../warehouse/fee';
 import {
   buyPrice,
@@ -32,7 +33,7 @@ import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
 import { totalCount, type Lot } from './inventory';
 import { euro, iGa } from '../josa';
-import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, guideFee, needsMet, type GearKind } from '../expedition';
+import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, gearUses, guideFee, needsMet, type GearKind } from '../expedition';
 import { bigOrdersToday, blockedTiles, eventDef, tollAt, type ScheduledEventId } from '../events';
 import type {
   ActiveExpedition,
@@ -555,7 +556,8 @@ function expeditionView(state: EconomyState, p: PlayerState): ExpeditionView | n
 
 export interface CartPieceView {
   id: number;
-  good: GoodId;
+  /** 물품, 장비, 여행 식량 (0.1.2) */
+  good: ItemId;
   x: number;
   y: number;
   rot: number;
@@ -567,7 +569,11 @@ export interface CartPieceView {
   /** 사자 신청 자리면 'buy', 팔자 신청에서 돌아올 자리면 'sell' */
   pending: 'buy' | 'sell' | null;
   /** 가장 먼저 상할 묶음 */
-  oldest: Lot | null;
+  oldest: ItemLot | null;
+  /** 장비면 남은 쓰는 횟수와 처음 횟수 */
+  uses: { left: number; max: number } | null;
+  /** 장날에 산 값 (하나당 평균). 원정·채집으로 얻은 것만 있으면 0, 모르면 null */
+  cost: number | null;
 }
 
 export interface CartView {
@@ -582,6 +588,9 @@ export interface CartView {
   horsesNeeded: number;
   /** 물건마다 지금 더 실을 수 있는 개수 */
   room: Record<GoodId, number>;
+  /** 길 위 사건으로 망가진 칸 ([x, y], 0.1.2)과 모두 고치는 값 */
+  broken: (readonly [number, number])[];
+  repairCost: number;
 }
 
 /** 판(수레, 창고) 위 짐 조각 */
@@ -599,7 +608,16 @@ function piecesView(board: Board, orders: readonly Order[]): CartPieceView[] {
       incoming: p.incoming.reduce((s, i) => s + i.qty, 0),
       pending: p.incoming.length ? (sideOf.get(p.incoming[0]!.orderId) ?? null) : null,
       oldest: p.lots.length ? p.lots.reduce((a, l) => (l.age > a.age ? l : a)) : null,
+      uses: p.uses !== undefined && isGear(p.good) ? { left: p.uses, max: ECONOMY.expedition.gear[p.good].durability } : null,
+      cost: costOf(p.lots),
   }));
+}
+
+/** 묶음들의 산 값 평균 (하나당). 산 값을 아는 묶음이 없으면 null */
+function costOf(lots: readonly ItemLot[]): number | null {
+  const known = lots.filter((l) => l.cost !== undefined);
+  const qty = known.reduce((s, l) => s + l.qty, 0);
+  return qty ? Math.round(known.reduce((s, l) => s + l.qty * l.cost!, 0) / qty) : null;
 }
 
 function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[], room: Record<GoodId, number>): CartView {
@@ -612,6 +630,8 @@ function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]
     maxWeight: maxWeight(cart, horses),
     horsesNeeded: horsesNeeded(cart),
     room,
+    broken: (cart.broken ?? []).map((k) => k.split(',').map(Number) as [number, number]),
+    repairCost: repairCost(cart),
   };
 }
 
@@ -759,7 +779,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
       kind,
       name: ECONOMY.expedition.gear[kind].name,
       price: ECONOMY.expedition.gear[kind].price,
-      uses: p.gear[kind] ?? null,
+      uses: gearUses(p, kind),
       maxUses: ECONOMY.expedition.gear[kind].durability,
     })),
     tools: cartCount(p.cart, 'tools'),

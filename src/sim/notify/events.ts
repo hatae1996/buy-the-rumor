@@ -1,6 +1,7 @@
 // 하루가 끝나면 "알림을 보낼 사건"을 만든다. 그날 장부와 상태를 보고 사실만 적는다.
 // 플레이어가 알 수 있는 것만 쓴다 (내 거래, 내 행렬, 내 짐, 신문).
-import { cartLots, type Board } from '../cart';
+import { cartLots, itemName, type Board } from '../cart';
+import { INCIDENT_NAME } from '../economy/incidents';
 import { ECONOMY, GROWTH, HORSES } from '../constants';
 import { GOOD_NAME, shelfLife, type GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
@@ -38,6 +39,11 @@ export function dayNotices(state: EconomyState, p: PlayerState, map: WorldMap, d
   // 도착: 내 행렬, 두 번째 행렬
   if (arrived !== null) out.push({ kind: 'arrival', day, text: `${name(arrived)}에 도착했어요.`, target: { tab: 'town' } });
   for (const e of today) {
+    // 길 위 사건으로 짐칸이 망가졌다 (0.1.2)
+    if (e.kind === 'cartDamage') {
+      const lost = e.lost ? ` ${itemName(e.lost.good)} ${e.lost.qty}개를 잃었어요.` : '';
+      out.push({ kind: 'arrival', day, text: `${e.caravan ? '두 번째 행렬이 ' : ''}길에서 ${INCIDENT_NAME[e.cause]}을 만나 짐칸 한 칸이 망가졌어요.${lost}`, target: { tab: 'cart' } });
+    }
     if (e.kind === 'caravan' && e.what === 'arrive') out.push({ kind: 'arrival', day, text: `두 번째 행렬이 ${name(e.town)}에 도착했어요.`, target: { tab: 'map' } });
   }
 

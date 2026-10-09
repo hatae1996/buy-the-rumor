@@ -1,6 +1,6 @@
 // 두 번째 행렬 (기획서 "성장", 0.0.5): 마부 + 말 + 수레, 지시서대로 장날에 신청하고 다음 마을로, 알아서 싣기 80%.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { cartCount, createCart, loadGoods } from '../cart';
+import { cartCount, createCart, loadGoods, shapeOf } from '../cart';
 import { CART, GROWTH } from '../constants';
 import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
 import { hasBuilding } from '../growth/buildings';
@@ -108,7 +108,7 @@ describe('지시서', () => {
     const slots = CART.types.wagon.rows.join('').split('').filter((x) => x === '#').length;
     const room = autoLoadRoom(c, 'salt');
     loadGoods(c.cart, 'salt', room);
-    const used = c.cart.pieces.reduce((a, p) => a + CART.goods[p.good].shape.length, 0);
+    const used = c.cart.pieces.reduce((a, p) => a + shapeOf(p.good, 0).length, 0);
     expect(used).toBeLessThanOrEqual(Math.floor(slots * GROWTH.caravan.autoLoadShare));
     expect(autoLoadRoom(c, 'salt')).toBe(0);
   });

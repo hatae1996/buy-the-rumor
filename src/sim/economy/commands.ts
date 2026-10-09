@@ -55,6 +55,7 @@ import type { EconomyState, PlayerId, PlayerState } from './state';
 import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawError } from '../draws';
 import { buyNewspaper, type NewspaperError } from '../news';
 import { cancelReservation, reserveOnArrival, reserveStanding, type ReservationError } from '../reservations';
+import { repairCart, roadRisk } from './incidents';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
@@ -95,6 +96,8 @@ export type Command =
   | { type: 'restHorses' }
   /** 수레방에서 수레를 바꾼다 (쓰던 수레는 쳐 준다) */
   | { type: 'buyCart'; cart: CartType }
+  /** 수레방에서 망가진 짐칸을 고친다 (돈이 되는 만큼, 0.1.2) */
+  | { type: 'repairCart' }
   /** 잡화점에서 장비(활, 횃불, 덫, 그물)를 산다 */
   | { type: 'buyGear'; gear: GearKind }
   /** 닳은 장비를 수레의 도구 하나로 고친다 */
@@ -165,6 +168,7 @@ export type CommandError =
   | HireError
   | BoardError
   | CaravanError
+  | 'cartFine'
   | DrawError
   | ReservationError
   | NewspaperError
@@ -279,7 +283,7 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       state.towns[p.town]!.treasury += fee - toll;
       p.ledger.push({ day: state.day, kind: 'travel', from: p.town, to: cmd.to, days, fee: fee - toll });
       if (toll > 0) p.ledger.push({ day: state.day, kind: 'toll', town: tollAt(state, p.town) > 0 ? p.town : cmd.to, gold: toll });
-      p.travel = { from: p.town, to: cmd.to, days, daysLeft: days };
+      p.travel = { from: p.town, to: cmd.to, days, daysLeft: days, risk: roadRisk(state, map, p.town, cmd.to) };
       // 원정 기회는 그 마을에 묶여 있다. 떠나면 사라진다
       p.expeditionChances = 0;
       // 말은 길에서 지친다 (조랑말은 잘 지친다)
@@ -407,6 +411,8 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       state.orders.push(o);
       return { ok: true, orderId: o.id };
     }
+    case 'repairCart':
+      return done(repairCart(state, p, map));
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');

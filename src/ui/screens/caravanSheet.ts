@@ -4,7 +4,7 @@
 import { CART } from '../../sim/constants';
 import { GOODS, type GoodId, type PlayerView } from '../../sim/economy';
 import type { CaravanPlan, CaravanStop } from '../../sim/caravan';
-import type { CartType } from '../../sim/cart';
+import { isGood, type CartType } from '../../sim/cart';
 import { euro } from '../../sim/josa';
 import { goodName, money } from '../format';
 import type { Game } from '../game';
@@ -104,7 +104,7 @@ export function openCaravanSheet(game: Game, preset?: QuickSell): void {
     if (draft) return drawEditor(body, sheet);
     // 한 번 가서 팔기: 정하지 않았으면 행렬 짐 중 가장 많은 것을 행렬이 있는 마을에서, 기억하는 값으로
     const cargo = new Map<GoodId, number>();
-    for (const p of c.cart.pieces) cargo.set(p.good, (cargo.get(p.good) ?? 0) + p.qty);
+    for (const p of c.cart.pieces) if (isGood(p.good)) cargo.set(p.good, (cargo.get(p.good) ?? 0) + p.qty);
     const knownPrice = (town: number, good: GoodId) => v.memory[town]?.prices[good] ?? (v.market?.town === town ? v.market.price[good] : 1);
     if (!quick) {
       const good = [...cargo.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'salt';

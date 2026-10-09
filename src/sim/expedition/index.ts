@@ -10,5 +10,5 @@ export {
   TIRED_PENALTY,
   type ExpeditionError,
 } from './expedition';
-export { GEAR_KINDS, buyGear, guideFee, hasGear, hireGuide, needsMet, repairGear, useGear, useTool, type GearError } from './gear';
+export { GEAR_KINDS, buyGear, gearUses, guideFee, hasGear, hireGuide, needsMet, repairGear, useGear, useTool, type GearError } from './gear';
 export { makeRumor } from './rumors';

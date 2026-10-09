@@ -10,6 +10,8 @@ export interface Lot {
    * 보관 기간에 닿으면 상한다. 0이면 갓 생긴 것
    */
   age: number;
+  /** 플레이어가 장날에 산 값 (하나당, 0.1.2 짐칸 정보판). 원정·채집으로 얻은 것은 0, NPC 짐에는 없다 */
+  cost?: number;
 }
 
 export type Inventory = Lot[];
@@ -24,10 +26,10 @@ export function totalCount(inv: readonly Lot[]): number {
   return inv.reduce((s, l) => s + l.qty, 0);
 }
 
-/** 같은 물품, 같은 나이면 합친다 */
+/** 같은 물품, 같은 나이, 같은 산 값이면 합친다 */
 export function addLot(inv: Inventory, lot: Lot): void {
   if (lot.qty <= 0) return;
-  const same = inv.find((l) => l.good === lot.good && l.age === lot.age);
+  const same = inv.find((l) => l.good === lot.good && l.age === lot.age && l.cost === lot.cost);
   if (same) same.qty += lot.qty;
   else inv.push({ ...lot });
 }
@@ -46,7 +48,7 @@ export function takeOldest(inv: Inventory, good: GoodId, qty: number): Lot[] {
     const n = Math.min(l.qty, left);
     l.qty -= n;
     left -= n;
-    out.push({ good, qty: n, age: l.age });
+    out.push(withCost<Lot>({ good, qty: n, age: l.age }, l.cost));
   }
   removeEmpty(inv);
   return out;
@@ -91,7 +93,7 @@ export function takeSellable(inv: Inventory, good: GoodId, qty: number, rate = 1
     const n = Math.min(l.qty, left);
     l.qty -= n;
     left -= n;
-    out.push({ good, qty: n, age: l.age });
+    out.push(withCost<Lot>({ good, qty: n, age: l.age }, l.cost));
   }
   removeEmpty(inv);
   return out;
@@ -118,4 +120,10 @@ export function capStorage(inv: Inventory, perGood: number): number {
 
 function removeEmpty(inv: Inventory): void {
   for (let i = inv.length - 1; i >= 0; i--) if (inv[i]!.qty <= 0) inv.splice(i, 1);
+}
+
+/** 산 값이 있으면 붙인다 (없는 묶음에는 cost 칸을 만들지 않는다: 저장과 비교가 예전과 같게) */
+export function withCost<T extends { cost?: number }>(lot: T, cost: number | undefined): T {
+  if (cost !== undefined) lot.cost = cost;
+  return lot;
 }
