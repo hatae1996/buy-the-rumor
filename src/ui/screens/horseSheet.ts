@@ -1,5 +1,6 @@
 // 마구간(말 사고팔기)과 수레방(수레 바꾸기) 쪽지 (기획서 "말").
-// 말은 장날이 아니라 그 자리에서 사고판다. 마구간 남은 수는 그 마을에 와야만 보인다.
+// 말은 장날이 아니라 마구간에서 사고판다. 사기는 신청해 두면 그날 밤 신청한 사람 중에서 뽑고(0.1.0), 되팔기는 바로.
+// 마구간 남은 수는 그 마을에 와야만 보인다.
 import type { HorseKindInfo, HorseView, PlayerView } from '../../sim/economy';
 import { HORSES } from '../../sim/constants';
 import { eulReul } from '../../sim/josa';
@@ -37,16 +38,22 @@ export function openStableSheet(game: Game): void {
       sheet.close();
       return;
     }
-    const full = v.horses.length >= HORSES.maxPerOwner;
+    const waiting = v.draws.filter((d) => d.kind === 'horse' && d.town === stable.town);
+    const full = v.horses.length + v.draws.filter((d) => d.kind === 'horse').length >= HORSES.maxPerOwner;
     const buy = stable.horses
-      .map(
-        (k) => `<li class="row">
+      .map((k) => {
+        const asked = waiting.find((d) => d.horse === k.kind);
+        return `<li class="row">
           <span><b>${k.name}</b> <span class="muted">${k.stock ? `${k.stock}마리 남음` : '없음'}</span><br /><small class="muted">${kindLine(k)}</small></span>
-          <button type="button" class="secondary-btn" data-buy="${k.kind}" ${k.price === null || full || v.gold < k.price ? 'disabled' : ''}>
-            사기<small>${k.price === null ? '남은 말 없음' : money(k.price)}</small>
-          </button>
-        </li>`,
-      )
+          ${
+            asked
+              ? `<button type="button" class="secondary-btn" data-cancel="${asked.id}">신청 거두기<small>오늘 밤 추첨 · ${money(asked.reserved)} 맡김</small></button>`
+              : `<button type="button" class="secondary-btn" data-buy="${k.kind}" ${k.price === null || full || v.gold < k.price ? 'disabled' : ''}>
+            사기 신청<small>${k.price === null ? '남은 말 없음' : money(k.price)}</small>
+          </button>`
+          }
+        </li>`;
+      })
       .join('');
     const mine = v.horses
       .map(
@@ -60,6 +67,7 @@ export function openStableSheet(game: Game): void {
       .join('');
     sheet.body.innerHTML = `
       <p class="muted">말은 시즌마다 정해진 수만 목장에서 나와요. 남은 수가 적을수록 비싸요. 한 사람 두 필까지.</p>
+      <p class="muted">사겠다고 신청하면 오늘 밤 신청한 사람 중에서 뽑아요. 먼저 신청한다고 유리하지 않아요. 뽑히지 않으면 맡긴 돈은 그대로 돌아와요.</p>
       <ul class="list">${buy}</ul>
       ${mine ? `<h3>내 말</h3><ul class="list">${mine}</ul>` : ''}
       ${done ? `<p>${done}</p>` : ''}
@@ -69,7 +77,15 @@ export function openStableSheet(game: Game): void {
         const kind = b.dataset.buy as HorseKindInfo['kind'];
         const r = game.dispatch({ type: 'buyHorse', kind });
         error = r.ok ? '' : ERROR_TEXT[r.error];
-        done = r.ok ? `${eulReul(stable.horses.find((k) => k.kind === kind)!.name)} 샀어요. 밤마다 마구간에서 먹여요.` : '';
+        done = r.ok ? `${eulReul(stable.horses.find((k) => k.kind === kind)!.name)} 사겠다고 신청했어요. 오늘 밤 뽑아요.` : '';
+        render();
+      }),
+    );
+    sheet.body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const r = game.dispatch({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) });
+        error = r.ok ? '' : ERROR_TEXT[r.error];
+        done = r.ok ? '신청을 거두고 맡긴 돈을 돌려받았어요.' : '';
         render();
       }),
     );

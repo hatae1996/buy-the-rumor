@@ -52,6 +52,13 @@ const TRIP_RESERVE = 20;
 
 /** 오늘 할 다음 명령. 할 게 없으면 null */
 export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: BotMind, rng: Rng): Command | null {
+  const cmd = chooseStep(view, map, profile, mind, rng);
+  // 말·일꾼 추첨을 기다리는 날은 떠나지 않는다 (떠나면 신청이 거둬진다, 0.1.0)
+  if (cmd?.type === 'travel' && view.draws.length) return null;
+  return cmd;
+}
+
+function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: BotMind, rng: Rng): Command | null {
   if (mind.day !== view.day) {
     mind.day = view.day;
     mind.expeditionsToday = 0;

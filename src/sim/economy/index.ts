@@ -26,6 +26,7 @@ export type {
   WarehouseView,
   HireView,
   CaravanView,
+  DrawView,
 } from './view';
 export { playerTravelDays } from './travel';
 export { noteView, playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';

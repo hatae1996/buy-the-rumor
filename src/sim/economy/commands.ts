@@ -33,7 +33,6 @@ import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
 import { buyDrink, dismissInformant, hireInformant, sendPigeon, type RumorError } from '../rumors';
 import {
   buyCart,
-  buyHorse,
   HORSE_KINDS,
   lacksHorses,
   maxWeight,
@@ -49,10 +48,11 @@ import { checkBadges } from '../ranking';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
-import { dismiss, hire, porterBoards, resolveBoard, splitBuy, splitSell, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
+import { dismiss, porterBoards, resolveBoard, splitBuy, splitSell, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
 import { getPlayer, ownedBy } from './players';
 import type { EconomyState, PlayerId, PlayerState } from './state';
+import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawError } from '../draws';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
@@ -86,7 +86,7 @@ export type Command =
   /** 지금 마을에 정보원을 심는다 (여관 고용 게시판) */
   | { type: 'hireInformant' }
   | { type: 'dismissInformant'; town: number }
-  /** 지금 마을 마구간에서 말을 산다 / 되판다 */
+  /** 지금 마을 마구간에서 말을 사겠다고 신청한다 (그날 밤 추첨, 0.1.0) / 되판다 (바로) */
   | { type: 'buyHorse'; kind: HorseKind }
   | { type: 'sellHorse'; horseId: number }
   /** 마구간에서 말을 쉬게 한다 (하루 한 번) */
@@ -109,9 +109,11 @@ export type Command =
   | { type: 'retrieveGoods'; good: GoodId; qty: number }
   /** 그 마을 창고 짐으로 팔기 신청 (어디서나 낼 수 있고, 내가 없어도 그 마을 장날에 맞춰진다) */
   | { type: 'placeStoreSellOrder'; town: number; good: GoodId; qty: number; minPrice: number }
-  /** 여관 고용 게시판에서 고용한다 / 내보낸다 */
+  /** 여관 고용 게시판에서 고용 신청한다 (그날 밤 추첨, 0.1.0) / 내보낸다 (바로) */
   | { type: 'hire'; role: HireRole }
   | { type: 'dismissHire'; hireId: number }
+  /** 말·일꾼 추첨 신청을 거둔다 (맡긴 돈을 돌려받는다) */
+  | { type: 'cancelDraw'; drawId: number }
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
   | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number }
   /** 두 번째 행렬: 꾸리기(마부, 내 말 중 일부, 이 마을 수레방에서 산 수레), 지시서 보내기, 불러들이기, 풀기 */
@@ -151,6 +153,7 @@ export type CommandError =
   | HireError
   | BoardError
   | CaravanError
+  | DrawError
   | ArrangeError
   | 'boardNotEmpty';
 
@@ -248,6 +251,8 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       const mine = (o: (typeof state.orders)[number]) => o.owner.kind === 'player' && o.owner.pid === p.id;
       for (const o of state.orders) if (mine(o)) accounts.cancel(o);
       state.orders = state.orders.filter((o) => !mine(o));
+      // 말·일꾼 추첨 신청도 거둔다 (그 마을에서 받아 가야 한다)
+      cancelDrawsOnLeave(state, p);
       p.gold -= fee;
       // 이동비는 마을 금고로, 통행세는 산적이 가져간다 (경제에서 빠져나간다)
       state.towns[p.town]!.treasury += fee - toll;
@@ -294,7 +299,7 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       return done(dismissInformant(p, cmd.town));
     case 'buyHorse':
       if (!HORSE_KINDS.includes(cmd.kind)) return fail('noHorseLeft');
-      return done(buyHorse(state, p, cmd.kind));
+      return done(requestHorse(state, p, cmd.kind));
     case 'sellHorse':
       return done(sellHorse(state, p, cmd.horseId));
     case 'restHorses':
@@ -322,7 +327,9 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       return done(retrieveGoods(p, cmd.good, cmd.qty));
     case 'hire':
       if (!['porter', 'gatherer', 'carter'].includes(cmd.role)) return fail('noWorker');
-      return done(hire(state, p, map, cmd.role));
+      return done(requestHire(state, p, map, cmd.role));
+    case 'cancelDraw':
+      return done(cancelDraw(state, p, cmd.drawId));
     case 'dismissHire':
       return done(dismiss(state, p, cmd.hireId));
     case 'setNotify': {

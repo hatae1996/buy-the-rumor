@@ -7,6 +7,7 @@ import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Warehouse } from '../warehouse/warehouse';
 import type { Hire, HireRole } from '../hire/hire';
+import type { DrawRequest } from '../draws/draws';
 import type { Caravan } from '../caravan/types';
 import type { BankAccount } from '../bank/bank';
 import type { OwnedWorkshop } from '../growth/workshop';
@@ -135,6 +136,8 @@ export type LedgerEntry =
   /** 두 번째 행렬: 꾸림(수레값), 풂(수레를 쳐 준 값은 fee가 음수), 떠남(여비), 도착 */
   /** form·disband의 rented: 빌린 수레 (0.0.9). rent: 밤마다 내는 빌린 값 */
   | { day: number; kind: 'caravan'; what: 'form' | 'disband' | 'travel' | 'arrive' | 'rent'; town: number; to?: number; fee: number; rented?: boolean }
+  /** 추첨에서 떨어짐 (0.1.0): 말이나 게시판 일꾼을 사겠다고 신청했지만 뽑히지 않았다. 맡긴 돈은 돌려받았다 */
+  | { day: number; kind: 'draw'; what: 'horse' | 'hire'; town: number; horse?: HorseKind; role?: HireRole }
   /** 고용: 데려옴, 하루 일당 합, 일당을 못 받아 떠남, 내보냄 */
   | { day: number; kind: 'hire'; what: 'hire' | 'wage' | 'quit' | 'dismiss'; role: HireRole | null; name: string | null; town: number; fee: number }
   /** 채집꾼이 그 마을 창고에 넣은 것 (창고가 없거나 차서 버린 양) */
@@ -309,6 +312,8 @@ export interface EconomyState {
   players: Record<PlayerId, PlayerState>;
   /** 오늘 장날을 기다리는 플레이어 신청 */
   orders: Order[];
+  /** 오늘 밤 추첨을 기다리는 신청 (말, 게시판 일꾼) */
+  draws: DrawRequest[];
   news: NewsItem[];
   /** 이번 겨울 첫날의 일꾼 수 (겨울에 줄어드는 한도를 잰다). 겨울이 아니면 null */
   winterStartWorkers: number | null;

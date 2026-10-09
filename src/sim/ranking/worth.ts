@@ -45,6 +45,8 @@ export function worthParts(state: EconomyState, p: PlayerState): WorthParts {
     reserved += o.reserved;
     for (const l of o.lots) qty[l.good] += l.qty;
   }
+  // 추첨을 기다리며 맡긴 돈 (말, 게시판 일꾼)
+  for (const d of state.draws) if (d.pid === p.id) reserved += d.reserved;
   const goods = GOODS.reduce((s, g) => s + qty[g] * holdingPrice(state, g), 0);
   const horses = [...p.horses, ...(p.caravan?.horses ?? [])].reduce((s, h) => s + h.price, 0);
   const cash = p.gold + reserved;

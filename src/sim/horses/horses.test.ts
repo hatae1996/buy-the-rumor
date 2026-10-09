@@ -11,6 +11,7 @@ import { createRng } from '../rng';
 import { CYCLE_DAYS, seasonOfDay, SPRING } from '../season';
 import { generateWorld, type WorldMap } from '../worldgen';
 import {
+  buyHorse,
   buyPrice,
   grainToday,
   horseDays,
@@ -92,11 +93,11 @@ describe('시즌 입고 (시드 40개)', () => {
       const spring = a.filter((x) => seasonOfDay(x.day, 0) === SPRING).length;
       const total = a.reduce((s, x) => s + x.count, 0);
       // 혼자일 때 시즌 8~10마리 (플레이어 수에 비례, 0.0.7)
-      expect(total).toBeGreaterThanOrEqual(HORSES.perPlayer[0] * HORSES.localPlayers);
-      expect(total).toBeLessThanOrEqual(HORSES.perPlayer[1] * HORSES.localPlayers + spring * HORSES.springExtra);
+      expect(total).toBeGreaterThanOrEqual(HORSES.perPlayer[0]);
+      expect(total).toBeLessThanOrEqual(HORSES.perPlayer[1] + spring * HORSES.springExtra);
       // 플레이어가 셋이면 세 배
       const many = scheduleArrivals(seed, season, 0, towns, 3).reduce((s, x) => s + x.count, 0);
-      expect(many).toBeGreaterThan(total);
+      expect(many).toBeGreaterThanOrEqual(HORSES.perPlayer[0] * 3);
       for (const x of a) {
         expect(towns).toContain(x.town);
         expect(x.day).toBeLessThanOrEqual(season.length - HORSES.quietLastDays);
@@ -139,7 +140,7 @@ describe('마구간 거래', () => {
     const stable = stableAt(state, town)!;
     const price = buyPrice(stable, 'swift')!;
     const treasury = state.towns[town]!.treasury;
-    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'swift' }).ok).toBe(true);
+    expect(buyHorse(state, state.players.me!, 'swift')).toBeNull();
     expect(state.players.me!.gold).toBe(2000 - price);
     expect(stable.stock.swift).toBe(2);
     expect(state.towns[town]!.treasury).toBe(treasury + price);
@@ -181,7 +182,7 @@ describe('마구간 거래', () => {
 describe('먹이와 체력', () => {
   it('마을에서는 마구간에서 먹이고, 그 곡물을 다음 장날 주민이 사 온다', () => {
     const { map, state, town } = atStable();
-    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'draft' });
+    expect(buyHorse(state, state.players.me!, 'draft')).toBeNull();
     const gold = state.players.me!.gold;
     advanceDay(state, map);
     expect(state.players.me!.gold).toBeLessThan(gold);
@@ -207,7 +208,7 @@ describe('먹이와 체력', () => {
   it('길 위에서는 수레 곡물을 먹고, 없으면 굶다가 마구간으로 돌아가 버린다', () => {
     const { map, state, town } = atStable();
     stableAt(state, town)!.stock.draft = 3;
-    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'draft' });
+    expect(buyHorse(state, state.players.me!, 'draft')).toBeNull();
     state.players.me!.travel = { from: town, to: town, days: 99, daysLeft: 99 };
     loadGoods(state.players.me!.cart, 'grain', 1);
     advanceDay(state, map);
@@ -220,7 +221,7 @@ describe('먹이와 체력', () => {
 
   it('길을 가면 지치고, 마구간에서 쉬게 하면 낫는다 (하루 한 번)', () => {
     const { map, state, town } = atStable();
-    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' });
+    expect(buyHorse(state, state.players.me!, 'pony')).toBeNull();
     const to = map.towns.find((t) => t.id !== town)!.id;
     expect(applyCommand(state, map, 'me', { type: 'travel', to }).ok).toBe(true);
     const tired = state.players.me!.horses[0]!.fatigue;
@@ -258,7 +259,7 @@ describe('수레 바꾸기와 이동', () => {
     const to = map.towns.filter((t) => t.id !== town).sort((a, b) => walk[b.id]! - walk[a.id]!)[0]!.id;
     state.players.me!.cart = createCart('wagon');
     expect(applyCommand(state, map, 'me', { type: 'travel', to })).toEqual({ ok: false, error: 'needHorse' });
-    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'swift' });
+    expect(buyHorse(state, state.players.me!, 'swift')).toBeNull();
     expect(applyCommand(state, map, 'me', { type: 'travel', to }).ok).toBe(true);
     expect(state.players.me!.travel!.days).toBe(horseDays(walk[to]!, [horse('swift')]));
     if (walk[to]! >= 2) expect(state.players.me!.travel!.days).toBeLessThan(walk[to]!);

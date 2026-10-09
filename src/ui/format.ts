@@ -64,7 +64,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   noInformant: '그 마을에는 정보원이 없어요.',
   noStable: '이 마을에는 말을 파는 마구간이 없어요. 목장이 있는 마을로 가 보세요.',
   noHorseLeft: '마구간에 그 말이 남아 있지 않아요.',
-  tooManyHorses: '말은 두 필까지만 가질 수 있어요.',
+  tooManyHorses: '말은 두 필까지만 가질 수 있어요. 추첨을 기다리는 말도 합쳐서요.',
   noHorse: '그 말이 없어요.',
   stableNoGold: '마구간 주인이 지금 말값을 치를 돈이 없대요.',
   alreadyRestedHorses: '오늘은 이미 말을 쉬게 했어요.',
@@ -79,6 +79,8 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   warehouseOwed: '밀린 보관료를 먼저 내야 해요. 돈이 생기면 밤에 저절로 내요.',
   noInn: '이 마을에는 여관이 없어요.',
   noWorker: '이 마을에는 지금 데려올 일손이 없어요.',
+  alreadyRequested: '오늘 이미 신청했어요. 추첨은 오늘 밤이에요.',
+  noDraw: '이미 없는 신청이에요.',
   noHire: '그 일꾼은 이미 없어요.',
   boardNotEmpty: '짐꾼 수레의 짐을 먼저 옮기세요.',
   noBoard: '그 짐칸이 없어요.',
@@ -170,6 +172,10 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
         : { text: `보관료가 오래 밀려 ${townName(e.town)} 창고지기가 짐 ${e.lost ?? 0}개를 거둬 갔어요`, amount: null };
     case 'cart':
       return { text: `${townName(e.town)} 수레방에서 ${eulReul(CART.types[e.from].name)} ${euro(CART.types[e.to].name)} 바꿨어요`, amount: -e.price };
+    case 'draw': {
+      const what = e.what === 'horse' ? `${townName(e.town)} 마구간 말 추첨` : `${townName(e.town)} 여관 일꾼 추첨`;
+      return { text: `${what}에서 뽑히지 않았어요 (맡긴 돈은 돌려받음)`, amount: null };
+    }
     case 'info': {
       const what = { drink: `${townName(e.town)} 여관에서 술 한 잔 (소문 하나)`, pigeon: `${townName(e.town)}에 전서구를 보냈어요`, informant: `${townName(e.town)} 정보원 품삯` }[e.what];
       return { text: what, amount: -e.fee };

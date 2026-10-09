@@ -62,6 +62,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     traders: [],
     players: Object.fromEntries(specs.map((sp, seq) => [sp.id, newPlayer(sp.id, seq, startTown(seq))])),
     orders: [],
+    draws: [],
     news: [],
     winterStartWorkers: null,
     season: null,

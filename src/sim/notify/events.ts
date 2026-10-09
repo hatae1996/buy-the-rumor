@@ -1,12 +1,12 @@
 // 하루가 끝나면 "알림을 보낼 사건"을 만든다. 그날 장부와 상태를 보고 사실만 적는다.
 // 플레이어가 알 수 있는 것만 쓴다 (내 거래, 내 행렬, 내 짐, 신문).
 import { cartLots, type Board } from '../cart';
-import { ECONOMY } from '../constants';
+import { ECONOMY, GROWTH, HORSES } from '../constants';
 import { GOOD_NAME, shelfLife, type GoodId } from '../economy/goods';
 import type { EconomyState, PlayerState } from '../economy/state';
 import { porterBoards } from '../hire/boards';
 import { wageToday } from '../hire/wage';
-import { euro, iGa } from '../josa';
+import { eulReul, euro, iGa } from '../josa';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
 import type { NotifyEvent } from './types';
@@ -59,6 +59,10 @@ export function dayNotices(state: EconomyState, p: PlayerState, map: WorldMap, d
   for (const e of today) {
     if (e.kind === 'hire' && e.what === 'quit') out.push({ kind: 'people', day, text: `${iGa(e.name ?? '일꾼')} 일당을 못 받아 ${euro(name(e.town))} 돌아갔어요.`, target: { tab: 'ledger' } });
     if (e.kind === 'horse' && e.what === 'lost') out.push({ kind: 'people', day, text: `굶은 말이 ${name(e.town)} 마구간으로 돌아갔어요.`, target: { tab: 'ledger' } });
+    // 말·일꾼 추첨 결과 (0.1.0): 뽑히면 산 줄이, 떨어지면 추첨 줄이 장부에 있다
+    if (e.kind === 'horse' && e.what === 'buy') out.push({ kind: 'people', day, text: `${name(e.town)} 마구간 추첨에 뽑혀 ${eulReul(HORSES.kinds[e.horse].name)} 샀어요.`, target: { tab: 'town' } });
+    if (e.kind === 'hire' && e.what === 'hire' && e.role) out.push({ kind: 'people', day, text: `${name(e.town)} 여관 추첨에 뽑혀 ${eulReul(`${GROWTH.hire[e.role].name} ${e.name ?? ''}`.trim())} 고용했어요.`, target: { tab: 'town' } });
+    if (e.kind === 'draw') out.push({ kind: 'people', day, text: `${name(e.town)} ${e.what === 'horse' ? '마구간' : '여관'} 추첨에서 뽑히지 않았어요. 맡긴 돈은 돌려받았어요.`, target: { tab: 'ledger' } });
   }
   const hungry = [...p.horses, ...(p.caravan?.horses ?? [])].filter((h) => h.hungry > 0).length;
   if (hungry) out.push({ kind: 'people', day, text: `말 ${hungry}필이 굶었어요. 먹이를 챙겨 주세요.`, target: { tab: 'ledger' } });

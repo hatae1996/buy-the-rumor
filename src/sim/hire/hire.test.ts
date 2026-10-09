@@ -7,12 +7,14 @@ import { isGatherJob } from '../economy/jobs';
 import { netWorth } from '../ranking';
 import { createRng } from '../rng';
 import { generateWorld } from '../worldgen';
-import { candidate, gathererYield, wageFor } from './index';
+import { candidate, gathererYield, hire, wageFor } from './index';
 
 const SEED = 20261008;
 const map = generateWorld(SEED);
 let s: EconomyState;
 const ok = (cmd: Parameters<typeof applyCommand>[3]) => expect(applyCommand(s, map, 'me', cmd)).toEqual(expect.objectContaining({ ok: true }));
+/** 게시판 일꾼을 바로 데려온다 (명령은 그날 밤 추첨이라, 추첨에 뽑힌 뒤와 같다) */
+const hired = (role: 'porter' | 'gatherer' | 'carter') => expect(hire(s, s.players.me!, map, role)).toBeNull();
 
 /** 일꾼이 가장 많은 생산 마을 */
 function busiestTown(st: EconomyState): number {
@@ -36,7 +38,7 @@ describe('고용 게시판', () => {
     const before = s.workers.filter((w) => w.town === s.players.me!.town).length;
     const offer = board.find((o) => o.role === 'gatherer')!;
     expect(isGatherJob(offer.job)).toBe(true);
-    ok({ type: 'hire', role: 'gatherer' });
+    hired('gatherer');
     expect(s.workers.filter((w) => w.town === s.players.me!.town).length).toBe(before - 1);
     expect(s.players.me!.gold).toBe(1000 - offer.wage * GROWTH.hire.advanceDays);
     expect(s.players.me!.hires[0]).toMatchObject({ role: 'gatherer', name: offer.name, job: offer.job, town: s.players.me!.town });
@@ -61,7 +63,7 @@ describe('고용 게시판', () => {
 
 describe('일당과 떠남', () => {
   it('밤마다 일당을 내고, 못 내면 떠나서 다시 그 마을 일꾼이 된다', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     const h = s.players.me!.hires[0]!;
     const gold = s.players.me!.gold;
     advanceDay(s, map);
@@ -76,7 +78,7 @@ describe('일당과 떠남', () => {
 
 describe('채집꾼', () => {
   it('평균 결과로 매일 원정해 그 마을 창고에 넣는다. 창고가 없으면 버린다', () => {
-    ok({ type: 'hire', role: 'gatherer' });
+    hired('gatherer');
     advanceDay(s, map);
     const first = s.players.me!.ledger.filter((e) => e.kind === 'gathered');
     expect(first.length).toBeGreaterThan(0);
@@ -88,7 +90,7 @@ describe('채집꾼', () => {
   });
 
   it('맡긴 일은 효율이 낮다: 마을 일꾼 하루 몫보다 적다', () => {
-    ok({ type: 'hire', role: 'gatherer' });
+    hired('gatherer');
     const h = s.players.me!.hires[0]!;
     let total = 0;
     for (let i = 0; i < 200; i++) total += gathererYield(JSON.parse(JSON.stringify(s)), h, createRng(i)).reduce((a, g) => a + g.qty, 0);
@@ -99,7 +101,7 @@ describe('채집꾼', () => {
 
 describe('짐꾼', () => {
   it('내 행렬에 손수레 하나: 짐을 옮겨 싣고, 순자산에 들고, 무거우면 떠날 수 없다', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     const id = s.players.me!.hires[0]!.id;
     loadGoods(s.players.me!.cart, 'salt', 6);
     const before = netWorth(s, s.players.me!);
@@ -115,7 +117,7 @@ describe('짐꾼', () => {
   });
 
   it('원정에서 내 수레에 다 못 실은 짐은 짐꾼 수레에 싣는다', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     s.players.me!.cart = createCart('pack');
     loadGoods(s.players.me!.cart, 'salt', 27);
     s.players.me!.expedition = { town: s.players.me!.town, rng: 1, deck: [], card: 'log', left: 0, haul: [{ good: 'wood', qty: 2 }], rumors: [], log: [], flags: [], guide: false, markDays: {} };
@@ -143,7 +145,7 @@ describe('여관', () => {
 
 describe('짐꾼 수레로 장사하기 (0.0.6)', () => {
   it('내 수레에 다 안 들어가는 사기 신청은 짐꾼 수레로 나눠 싣고, 장날 뒤 짐꾼 수레에 들어온다', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     const v0 = playerView(s, map, 'me');
     // 손수레(무게 70)에 소금(무게 2)은 35개까지. 짐꾼 수레가 있으면 더 살 수 있다
     expect(v0.buyRoom.salt).toBeGreaterThan(v0.cart.room.salt);
@@ -157,7 +159,7 @@ describe('짐꾼 수레로 장사하기 (0.0.6)', () => {
   });
 
   it('짐꾼 수레 짐도 장에 낼 수 있다 (내 수레 짐부터)', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     const h = s.players.me!.hires[0]!;
     loadGoods(s.players.me!.cart, 'salt', 5);
     loadGoods(h.board!, 'salt', 10);
@@ -172,7 +174,7 @@ describe('짐꾼 수레로 장사하기 (0.0.6)', () => {
   });
 
   it('내 수레 몫은 끄는 무게까지만 잡고, 넘치는 몫이 짐꾼 수레로 간다 (무거워서 못 떠나는 일이 없게)', () => {
-    ok({ type: 'hire', role: 'porter' });
+    hired('porter');
     ok({ type: 'placeBuyOrder', good: 'ore', qty: 30, maxPrice: 20 });
     const main = s.orders.filter((o) => o.owner.kind === 'player' && o.owner.porter === undefined).reduce((a, o) => a + o.qty, 0);
     // 광석 무게 3: 손수레 70이면 23개까지

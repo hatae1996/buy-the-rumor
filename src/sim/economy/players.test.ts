@@ -46,13 +46,10 @@ describe('여러 플레이어 세계', () => {
     expect(createEconomy(map, seed)).toEqual(createEconomy(map, seed, { players: [{ id: 'me' }] }));
   });
 
-  it('가만히 있는 플레이어가 늘어도 세계(마을, 일꾼, 첫 플레이어)는 같다', () => {
-    const one = createEconomy(map, seed, { warmupDays: 10 });
-    const many = createEconomy(map, seed, { warmupDays: 10, players: [{ id: 'me' }, { id: 'b1' }, { id: 'b2' }] });
-    for (let d = 0; d < 30; d++) {
-      advanceDay(one, map);
-      advanceDay(many, map);
-    }
+  it('플레이어가 늘어도 미리 돌린 세계(마을, 일꾼)와 첫 플레이어는 같다', () => {
+    // 시즌이 열린 뒤에는 말 수와 큰 주문 양이 플레이어 수에 비례해 달라진다 (draws.test.ts)
+    const one = createEconomy(map, seed, { warmupDays: 30 });
+    const many = createEconomy(map, seed, { warmupDays: 30, players: [{ id: 'me' }, { id: 'b1' }, { id: 'b2' }] });
     expect(many.towns).toEqual(one.towns);
     expect(many.workers).toEqual(one.workers);
     expect(many.rng).toBe(one.rng);

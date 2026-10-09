@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCart } from '../cart';
 import { applyCommand, createEconomy, playerView, type Command, type EconomyState } from '../economy';
+import { resolveDraws } from '../draws';
 import { hasBuilding } from '../growth/buildings';
 import { stableTowns } from '../horses';
 import { generateWorld } from '../worldgen';
@@ -21,6 +22,8 @@ let g: GrowthMind;
 const step = (growth = casual): Command | null => {
   const c = growthStep(playerView(s, map, 'me'), growth, g, (x) => x);
   if (c) expect(applyCommand(s, map, 'me', c)).toEqual(expect.objectContaining({ ok: true }));
+  // 말 사기와 고용은 신청이다. 그날 밤 추첨을 바로 돌린다 (혼자라 뽑힌다, 0.1.0)
+  if (c?.type === 'buyHorse' || c?.type === 'hire') resolveDraws(s, map);
   return c;
 };
 

@@ -42,13 +42,16 @@ function pickKind(rng: Rng): HorseKind {
   return HORSE_KINDS[HORSE_KINDS.length - 1]!;
 }
 
-/** 시즌 입고 일정. 같은 시드와 시즌이면 같다 */
+/**
+ * 시즌 입고 일정. 같은 시드와 시즌이면 같다.
+ * 한 번에 풀리는 수도 플레이어 수에 비례한다 (입고 날 수는 그대로라, 사람이 많아도 시즌 안에 다 풀린다, 0.1.0)
+ */
 export function scheduleArrivals(
   seed: number,
   season: { number: number; startDay: number; length: number },
   startSeason: Parameters<typeof seasonOfDay>[1],
   towns: readonly number[],
-  players: number = HORSES.localPlayers,
+  players = 1,
 ): HorseArrival[] {
   if (!towns.length) return [];
   const rng = createRng(mixSeed(seed, 0x4053, season.number));
@@ -57,7 +60,7 @@ export function scheduleArrivals(
   const last = season.startDay + season.length - 1 - HORSES.quietLastDays;
   let day = season.startDay + rng.int(0, HORSES.firstWithin - 1);
   while (left > 0 && day <= last) {
-    const count = Math.min(left, rng.int(HORSES.batch[0], HORSES.batch[1]));
+    const count = Math.min(left, rng.int(HORSES.batch[0], HORSES.batch[1]) * players);
     left -= count;
     const town = rng.pick(towns);
     // 같은 날 같은 마구간에 한 종류씩
@@ -67,7 +70,7 @@ export function scheduleArrivals(
       kinds.set(k, (kinds.get(k) ?? 0) + 1);
     }
     // 봄에는 망아지가 조금 더 (시즌 총수와 따로 센다)
-    if (seasonOfDay(day, startSeason) === SPRING) kinds.set('pony', (kinds.get('pony') ?? 0) + HORSES.springExtra);
+    if (seasonOfDay(day, startSeason) === SPRING) kinds.set('pony', (kinds.get('pony') ?? 0) + HORSES.springExtra * players);
     for (const [kind, n] of kinds) out.push({ day, town, kind, count: n });
     day += rng.int(HORSES.gapDays[0], HORSES.gapDays[1]);
   }
@@ -89,7 +92,8 @@ export function horseMorning(state: EconomyState, map: WorldMap): HorseArrival[]
   if (m.season !== season.number) {
     const towns = stableTowns(map);
     for (const town of towns) if (!stableAt(state, town)) m.stables.push({ town, stock: emptyStock() });
-    m.arrivals.push(...scheduleArrivals(state.seed, season, state.startSeason, towns));
+    // 시즌 말 총수는 그 세계의 플레이어 수에 비례한다 (봇 상인도 센다)
+    m.arrivals.push(...scheduleArrivals(state.seed, season, state.startSeason, towns, Object.keys(state.players).length));
     m.season = season.number;
   }
   const today: HorseArrival[] = [];

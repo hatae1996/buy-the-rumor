@@ -188,7 +188,9 @@ describe('인장', () => {
     s.players.me!.town = town;
     s.players.me!.gold = 1000;
     stableAt(s, town)!.stock.pony = 2;
+    // 사기 신청은 그날 밤 추첨이다 (0.1.0). 혼자면 남은 말이 있는 한 뽑힌다
     expect(applyCommand(s, map, 'me', { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
+    advanceDay(s, map);
     expect(s.players.me!.certificate.badges.map((b) => b.badge)).toContain('firstHorse');
   });
 

@@ -122,7 +122,8 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
     if (ok) g.couldAfford[kind] ??= view.day;
     return ok;
   };
-  const has = (role: string) => view.hires.some((h) => h.role === role);
+  // 추첨을 기다리는 일꾼도 이미 있는 것으로 센다 (0.1.0)
+  const has = (role: string) => view.hires.some((h) => h.role === role) || view.draws.some((d) => d.role === role);
 
   // 말을 잃어 수레가 움직이지 않으면 손수레로 바꾼다 (어느 마을에서나 된다)
   if (view.cart.horsesNeeded > view.horses.length) {
@@ -185,7 +186,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
   const roomPerDay = lostPerDay + perDay(g.capped, view.day);
 
   // 3. 첫 말: 손수레보다 많이 끄는 말 (짐말, 빠른 말). 마구간이 있는 마을에서
-  if (view.horses.length === 0 && view.stable) {
+  if (view.horses.length === 0 && view.stable && !view.draws.some((d) => d.kind === 'horse')) {
     const pick = view.stable.horses
       .filter((h) => h.stock > 0 && h.price !== null && h.pull > view.cart.maxWeight)
       .map((h) => ({ h, feed: h.feed * grainPrice(view) * HORSES.stableFeedMarkup }))
@@ -209,7 +210,7 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
 
   // 5. 짐꾼: 두고 온 짐이나 수레가 작아 못 산 몫의 값이 일당보다 크면 (짐꾼 수레에도 장에서 산 짐을 싣는다).
   // 데려온 뒤에도 여전히 모자라면 한 명 더 (MAX_PORTERS까지). 새로 데려온 짐꾼은 열흘 써 보고 판단한다
-  const porterCount = view.hires.filter((h) => h.role === 'porter').length;
+  const porterCount = view.hires.filter((h) => h.role === 'porter').length + view.draws.filter((d) => d.role === 'porter').length;
   const lastPorter = Math.max(-Infinity, ...view.hires.filter((h) => h.role === 'porter').map((h) => g.hiredOn[h.id] ?? view.day));
   if (porterCount < MAX_PORTERS && view.day - lastPorter > RECENT_DAYS) {
     const offer = view.hireBoard.find((o) => o.role === 'porter');

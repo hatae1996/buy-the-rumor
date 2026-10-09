@@ -3,6 +3,7 @@ export { EVENT_DEFS, SCHEDULED_DEFS, eventDef, badGoods } from './defs';
 export { createSeason, eligibleTowns } from './schedule';
 export {
   activate,
+  bigOrderQty,
   bigOrdersToday,
   blockedTiles,
   bannedGoods,

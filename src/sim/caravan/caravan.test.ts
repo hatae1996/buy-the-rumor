@@ -8,13 +8,15 @@ import type { Horse } from '../horses';
 import { netWorth } from '../ranking';
 import { generateWorld } from '../worldgen';
 import { autoLoadRoom } from './index';
-import { restWage } from '../hire';
+import { hire, restWage } from '../hire';
 import { moneySupply } from '../economy/stats';
 
 const SEED = 20261008;
 const map = generateWorld(SEED);
 let s: EconomyState;
 const ok = (cmd: Parameters<typeof applyCommand>[3]) => expect(applyCommand(s, map, 'me', cmd)).toEqual(expect.objectContaining({ ok: true }));
+/** 게시판 일꾼을 바로 데려온다 (명령은 그날 밤 추첨이라, 추첨에 뽑힌 뒤와 같다) */
+const hired = (role: 'porter' | 'gatherer' | 'carter') => expect(hire(s, s.players.me!, map, role)).toBeNull();
 const horse = (id: number, kind: Horse['kind'] = 'draft'): Horse => ({ id, kind, fatigue: 0, hungry: 0, price: 220, home: 0 });
 
 /** 수레방이 있고 일꾼이 넉넉한 마을 */
@@ -36,7 +38,7 @@ beforeEach(() => {
 describe('꾸리기', () => {
   it('마부, 내 말, 이 마을 수레방에서 산 수레로 꾸린다', () => {
     expect(applyCommand(s, map, 'me', { type: 'formCaravan', horseIds: [901], cart: 'wagon' })).toEqual({ ok: false, error: 'noCarter' });
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     const gold = s.players.me!.gold;
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     expect(s.players.me!.gold).toBe(gold - CART.types.wagon.price);
@@ -45,7 +47,7 @@ describe('꾸리기', () => {
   });
 
   it('말 2필 제한은 두 행렬 합이다. 마차(2필)를 쓰면 두 번째 행렬을 못 만든다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     s.players.me!.cart = createCart('carriage');
     s.players.me!.horses = [horse(901), horse(902)];
     expect(applyCommand(s, map, 'me', { type: 'formCaravan', horseIds: [902], cart: 'wagon' })).toEqual({ ok: false, error: 'needHorse' });
@@ -61,7 +63,7 @@ describe('꾸리기', () => {
   });
 
   it('행렬 짐과 말도 순자산에 든다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     const before = netWorth(s, s.players.me!);
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     // 수레값만큼 돈이 줄고 말은 그대로 (행렬로 옮겼을 뿐)
@@ -72,7 +74,7 @@ describe('꾸리기', () => {
 describe('지시서', () => {
   it('지시서 마을로 가서 장날에 사고, 다음 마을로 가서 판다 (마부는 지시를 바꾸지 않는다)', () => {
     const home = s.players.me!.town;
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     const other = map.towns.find((t) => t.id !== home)!.id;
     // 이 마을 장에 어제 가장 많이 나온 물건을 산다
@@ -100,7 +102,7 @@ describe('지시서', () => {
   });
 
   it('알아서 싣기는 칸의 80%까지만', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     const c = s.players.me!.caravan!;
     const slots = CART.types.wagon.rows.join('').split('').filter((x) => x === '#').length;
@@ -112,7 +114,7 @@ describe('지시서', () => {
   });
 
   it('지시서가 이상하면 받지 않는다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     expect(applyCommand(s, map, 'me', { type: 'setCaravanPlan', plan: { stops: [], repeat: true } })).toEqual({ ok: false, error: 'badPlan' });
     expect(
@@ -124,7 +126,7 @@ describe('지시서', () => {
 describe('불러들이기와 풀기, 마부가 떠나면', () => {
   it('불러들이면 내가 있는 마을로 오고, 와 있으면 짐을 주고받고 풀 수 있다', () => {
     const home = s.players.me!.town;
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     const other = map.towns.find((t) => t.id !== home)!.id;
     ok({ type: 'setCaravanPlan', plan: { stops: [{ town: other, buys: [], sells: [] }], repeat: false } });
@@ -144,7 +146,7 @@ describe('불러들이기와 풀기, 마부가 떠나면', () => {
   });
 
   it('마부가 떠나면(일당을 못 받음) 행렬은 그 자리에 멈춘다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon' });
     const other = map.towns.find((t) => t.id !== s.players.me!.town)!.id;
     ok({ type: 'setCaravanPlan', plan: { stops: [{ town: other, buys: [], sells: [] }], repeat: true } });
@@ -160,7 +162,7 @@ describe('수레 빌리기와 마부 일당 (0.0.9, questions.md 77번)', () => 
 
   it('빌려서 꾸리면 수레값이 나가지 않고, 밤마다 하루 값을 빌린 수레방 마을에 낸다', () => {
     const home = s.players.me!.town;
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     const gold = s.players.me!.gold;
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon', rent: true });
     expect(s.players.me!.gold).toBe(gold);
@@ -175,7 +177,7 @@ describe('수레 빌리기와 마부 일당 (0.0.9, questions.md 77번)', () => 
   });
 
   it('못 낸 값은 밀리고, 풀 때 다 내야 한다. 풀면 돌려받는 돈은 없다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon', rent: true });
     // 마부가 떠나지 않을 만큼만 남긴다 (쉬는 날 일당은 내고 수레 값은 밀린다)
     s.players.me!.gold = 4;
@@ -194,7 +196,7 @@ describe('수레 빌리기와 마부 일당 (0.0.9, questions.md 77번)', () => 
   });
 
   it('등짐은 빌릴 수 없고, 첫 밤 값을 낼 돈은 있어야 한다', () => {
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     s.players.me!.horses = [horse(901, 'pony')];
     expect(applyCommand(s, map, 'me', { type: 'formCaravan', horseIds: [901], cart: 'pack', rent: true })).toEqual({ ok: false, error: 'badPlan' });
     s.players.me!.gold = CART.rentPerDay.handcart - 1;
@@ -203,7 +205,7 @@ describe('수레 빌리기와 마부 일당 (0.0.9, questions.md 77번)', () => 
 
   it('마부 일당: 행렬이 길에 있거나 장날 신청을 낸 날은 다, 쉬는 날은 적게', () => {
     const home = s.players.me!.town;
-    ok({ type: 'hire', role: 'carter' });
+    hired('carter');
     const carter = s.players.me!.hires.find((h) => h.role === 'carter')!;
     // 행렬을 맡기 전: 쉬는 날
     advanceDay(s, map);

@@ -47,6 +47,7 @@ import type {
   PriceMemory,
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
+import { drawsOf } from '../draws';
 import { getPlayer, ownedBy } from './players';
 
 export type PlayerLocation =
@@ -73,6 +74,19 @@ export interface PendingOrder {
   town: number;
   /** 수레 짐이면 cart, 그 마을 창고 짐이면 store */
   from: 'cart' | 'store';
+}
+
+export interface DrawView {
+  id: number;
+  kind: 'horse' | 'hire';
+  town: number;
+  /** 말 종류나 일꾼 자리 */
+  horse: HorseKind | null;
+  role: HireRole | null;
+  /** 말 이름, 일꾼 자리 이름 */
+  name: string;
+  /** 맡긴 돈 (떨어지면 돌려받는다) */
+  reserved: number;
 }
 
 export interface HireView {
@@ -132,7 +146,7 @@ export interface PlayerView {
   /** 이 계절(봄·여름·가을·겨울)이 오늘 뒤로 며칠 더 가나 */
   seasonDaysLeft: number;
   gold: number;
-  /** 사자 신청에 맡겨 둔 돈 */
+  /** 사자 신청과 말·일꾼 추첨 신청에 맡겨 둔 돈 */
   reserved: number;
   /** 수레에 실린 물건 (묶음 목록) */
   cargo: readonly Lot[];
@@ -149,6 +163,8 @@ export interface PlayerView {
   /** 지금 마을의 큰 주문 (0.0.7). 남은 양은 그 마을에 와야 보인다 */
   bigOrders: { event: string; good: GoodId; left: number; price: number; until: number }[];
   orders: PendingOrder[];
+  /** 오늘 밤 추첨을 기다리는 내 신청 (말, 게시판 일꾼). 남이 낸 신청은 보이지 않는다 */
+  draws: DrawView[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
   news: readonly NewsItem[];
@@ -597,7 +613,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
   // 마구간 남은 수는 그 마을에 있을 때만 보인다
   const stable = p.travel ? null : stableAt(state, p.town);
   const alerts = buildingAlerts(state, p, map);
-  const reserved = mine.reduce((s, o) => s + o.reserved, 0);
+  const reserved = mine.reduce((s, o) => s + o.reserved, 0) + drawsOf(state, p).reduce((s, d) => s + d.reserved, 0);
   // 수레 짐으로 낸 팔기만 (창고 짐 신청은 수레 밖이다)
   const sellingQty = mine.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
 
@@ -699,6 +715,15 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
         : null,
     })),
     hireBoard: hireBoard(state, p, map),
+    draws: drawsOf(state, p).map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      town: d.town,
+      horse: d.kind === 'horse' ? d.horse : null,
+      role: d.kind === 'hire' ? d.role : null,
+      name: d.kind === 'horse' ? HORSES.kinds[d.horse].name : GROWTH.hire[d.role].name,
+      reserved: d.reserved,
+    })),
     caravan: caravanView(state, p),
     visited: p.visited,
     knownBuildings: Object.fromEntries(

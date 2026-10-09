@@ -12,6 +12,7 @@ export function moneySupply(state: EconomyState): number {
   for (const t of state.traders) m += t.gold;
   for (const t of state.towns) m += t.treasury;
   for (const o of state.orders) m += o.reserved;
+  for (const d of state.draws) m += d.reserved;
   return m;
 }
 

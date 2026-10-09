@@ -103,6 +103,12 @@ export function travelDaysToday(state: EconomyState, map: WorldMap, season: Para
 }
 
 /** 오늘 열려 있는 큰 주문 (남은 양이 있는 것) */
+/** 큰 주문 양: 사건 표의 양(한 사람 세계)을 플레이어 수에 맞춘다. 한 사람이면 표의 양 그대로 */
+export function bigOrderQty(qty: number, players: number): number {
+  const share = ECONOMY.events.bigOrderPerPlayer;
+  return Math.round(qty * (1 - share + share * Math.max(1, players)));
+}
+
 export function bigOrdersToday(state: EconomyState): { event: ActiveEvent; order: BigOrder }[] {
   return state.events
     .filter((ev) => ev.start <= state.day && state.day <= ev.end)
@@ -205,11 +211,11 @@ export function activate(
         ? nearbyTowns(map, town)
         : [town];
   const ev: ActiveEvent = { id: state.nextId++, event, town, towns, start: state.day, end, ...stripUndefined(extra) };
-  // 큰 주문: 물품과 값은 시작할 때 정한다 (기준 가격의 배율)
+  // 큰 주문: 물품과 값은 시작할 때 정한다 (기준 가격의 배율). 양은 플레이어 수에 비례한다 (0.1.0)
   const orders = def.effects.flatMap((e) => {
     if (e.kind !== 'bigOrder') return [];
     const good = e.good ?? extra.good;
-    return good ? [{ good, left: e.qty, price: Math.round(basePrice(good) * e.factor) }] : [];
+    return good ? [{ good, left: bigOrderQty(e.qty, Object.keys(state.players).length), price: Math.round(basePrice(good) * e.factor) }] : [];
   });
   if (orders.length) ev.orders = orders;
   state.events.push(ev);

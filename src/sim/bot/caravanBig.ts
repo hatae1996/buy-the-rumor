@@ -149,6 +149,8 @@ export function caravanBigStep(
   const c = view.caravan;
 
   if (!c) {
+    // 말이나 마부를 추첨으로 기다리는 중이면 결과를 본다 (0.1.0: 다음 날 받는다)
+    if (view.draws.some((d) => d.kind === 'horse' || d.role === 'carter')) return null;
     const spare = view.horses.slice(view.cart.horsesNeeded);
     const horse = spare[0];
     // 꾸릴 수레는 이 마을 수레방에서 빌린다 (0.0.9). 꾸리는 데는 비상금만 있으면 된다 (말을 사느라 돈이 줄어도 꾸릴 수 있게)

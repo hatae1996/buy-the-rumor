@@ -21,12 +21,17 @@ export function openInn(game: Game): void {
       3,
     );
     const board = v.hireBoard
-      .map(
-        (o) => `<li class="row">
+      .map((o) => {
+        const asked = v.draws.find((d) => d.kind === 'hire' && d.role === o.role && d.town === here);
+        return `<li class="row">
           <span><b>${GROWTH.hire[o.role].name}</b> ${o.name} <small class="muted">(${o.jobName})</small><br /><small class="muted">${ROLE_TEXT[o.role]}</small></span>
-          <button type="button" class="secondary-btn" data-hire="${o.role}" ${v.gold < o.wage ? 'disabled' : ''}>고용<small>일당 ${money(o.wage)}${o.restWage !== null ? ` · 쉬는 날 ${money(o.restWage)}` : ''}</small></button>
-        </li>`,
-      )
+          ${
+            asked
+              ? `<button type="button" class="secondary-btn" data-cancel="${asked.id}">신청 거두기<small>오늘 밤 추첨 · ${money(asked.reserved)} 맡김</small></button>`
+              : `<button type="button" class="secondary-btn" data-hire="${o.role}" ${v.gold < o.wage ? 'disabled' : ''}>고용 신청<small>일당 ${money(o.wage)}${o.restWage !== null ? ` · 쉬는 날 ${money(o.restWage)}` : ''}</small></button>`
+          }
+        </li>`;
+      })
       .join('');
     const informant = v.informant
       ? `<li class="row">
@@ -71,7 +76,7 @@ export function openInn(game: Game): void {
         v.apprentice
           ? ''
           : `<h3>고용 게시판</h3>
-             <p class="muted">일손이 모자라면 일당이 올라요. 일당을 못 주면 떠나요.</p>
+             <p class="muted">일손이 모자라면 일당이 올라요. 일당을 못 주면 떠나요. 고용은 신청해 두면 오늘 밤 신청한 사람 중에서 한 사람을 뽑아요.</p>
              <ul class="list">${board}${informant || ''}${board || informant ? '' : '<li class="muted">지금은 데려올 사람이 없어요.</li>'}</ul>
              ${
                mine.length
@@ -88,6 +93,9 @@ export function openInn(game: Game): void {
     body.querySelector('[data-informant]')?.addEventListener('click', () => sheet.send({ type: 'hireInformant' }));
     body.querySelectorAll<HTMLButtonElement>('[data-hire]').forEach((b) =>
       b.addEventListener('click', () => sheet.send({ type: 'hire', role: b.dataset.hire as 'porter' | 'gatherer' | 'carter' })),
+    );
+    body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
+      b.addEventListener('click', () => sheet.send({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) })),
     );
     body.querySelectorAll<HTMLButtonElement>('[data-dismiss]').forEach((b) =>
       b.addEventListener('click', () => sheet.send({ type: 'dismissHire', hireId: Number(b.dataset.dismiss) })),

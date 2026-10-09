@@ -31,6 +31,7 @@ import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } f
 import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
 import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import { warehouseNight } from '../warehouse/warehouse';
+import { resolveDraws } from '../draws';
 import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
 import { dayNotices, type NotifyEvent } from '../notify';
@@ -83,6 +84,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   news.push(...startDay(state, map));
   // 시즌이 바뀌었으면 지난 시즌 기록을 마감하고 새로 연다
   ensureRecord(state);
+  // 수가 정해진 것(말, 게시판 일꾼)은 어제 낮 동안 모인 신청 중에서 뽑는다 (오늘 입고 전 재고로)
+  resolveDraws(state, map);
   // 말: 시즌 입고 일정대로 목장 마을 마구간에 풀린다 (신문에는 실리지 않는다)
   horseMorning(state, map);
   // 막힌 길은 돌아간다

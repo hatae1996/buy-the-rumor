@@ -2,7 +2,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCart, loadGoods } from '../cart';
 import { advanceDay, applyCommand, createEconomy, playerView, type Command, type EconomyState } from '../economy';
+import { resolveDraws } from '../draws';
 import { hasBuilding } from '../growth/buildings';
+import { hire } from '../hire';
 import type { Horse } from '../horses';
 import { addNote } from '../rumors';
 import { generateWorld } from '../worldgen';
@@ -22,6 +24,8 @@ const horse = (id: number): Horse => ({ id, kind: 'draft', fatigue: 0, hungry: 0
 const step = (own: BigPlan | null = null, profile = trader): Command | null => {
   const c = caravanBigStep(playerView(s, map, 'me'), profile, mind, own, days, (x) => x);
   if (c) expect(applyCommand(s, map, 'me', c)).toEqual(expect.objectContaining({ ok: true }));
+  // 말 사기와 고용은 신청이다. 그날 밤 추첨을 바로 돌린다 (혼자라 뽑힌다, 0.1.0)
+  if (c?.type === 'buyHorse' || c?.type === 'hire') resolveDraws(s, map);
   return c;
 };
 /** 군대 보급 징조를 듣는다 (가죽과 염장 식품을 사들인다) */
@@ -72,7 +76,7 @@ describe('꾸리기', () => {
     expect(step()).toBeNull();
     s.players.me!.gold = trader.growth!.caravanGold + price + 50;
     expect(step()).toEqual({ type: 'buyHorse', kind: 'draft' });
-    // 산 뒤에는 같은 마을에서 마부를 데려와 꾸린다
+    // 뽑힌 뒤에는 같은 마을에서 마부를 데려와 꾸린다
     expect(step()).toEqual({ type: 'hire', role: 'carter' });
     expect(step()).toEqual(expect.objectContaining({ type: 'formCaravan' }));
   });
@@ -85,10 +89,22 @@ describe('꾸리기', () => {
   });
 });
 
+describe('추첨을 기다리는 동안 (0.1.0)', () => {
+  it('말이나 마부 추첨을 기다리면 더 신청하지 않고 결과를 본다', () => {
+    const [order, source] = map.towns.filter((t) => t.id !== s.players.me!.town).map((t) => t.id);
+    hearArmy(order!);
+    s.players.me!.memory[source!] = { day: s.day, prices: { ...playerView(s, map, 'me').market!.price, leather: 6 }, previous: null };
+    expect(applyCommand(s, map, 'me', { type: 'hire', role: 'carter' }).ok).toBe(true);
+    expect(caravanBigStep(playerView(s, map, 'me'), trader, mind, null, days, (x) => x)).toBeNull();
+    resolveDraws(s, map);
+    expect(caravanBigStep(playerView(s, map, 'me'), trader, mind, null, days, (x) => x)).toEqual(expect.objectContaining({ type: 'formCaravan' }));
+  });
+});
+
 describe('한 번짜리 지시', () => {
   /** 행렬을 꾸려 둔다 */
   const form = () => {
-    expect(applyCommand(s, map, 'me', { type: 'hire', role: 'carter' }).ok).toBe(true);
+    expect(hire(s, s.players.me!, map, 'carter')).toBeNull();
     expect(applyCommand(s, map, 'me', { type: 'formCaravan', horseIds: [901], cart: 'wagon' }).ok).toBe(true);
   };
 
@@ -153,7 +169,7 @@ describe('한 번짜리 지시', () => {
 
 describe('쉬면 푼다', () => {
   it('노릴 것 없이 오래 쉬면 행렬을 풀고, 마부를 내보낸다', () => {
-    expect(applyCommand(s, map, 'me', { type: 'hire', role: 'carter' }).ok).toBe(true);
+    expect(hire(s, s.players.me!, map, 'carter')).toBeNull();
     expect(applyCommand(s, map, 'me', { type: 'formCaravan', horseIds: [901], cart: 'handcart' }).ok).toBe(true);
     expect(step()).toBeNull();
     mind.idleSince = s.day - 10;
