@@ -1,13 +1,14 @@
 // 봇 돌리기: 세계 하나에 봇 하나를 플레이어 자리에 앉혀 여러 날을 돌리고 기록한다.
 // 지금은 플레이어 자리가 하나라, 여러 봇은 같은 시드의 세계를 따로 돌려 비교한다 (서로 경쟁하지 않는다).
-import { applyCommand, createEconomy, advanceDay, getPlayer, LOCAL_PLAYER, playerView, type CommandError, type EconomyState, type GoodId, type PlayerId } from '../economy';
-import { createRng, mixSeed } from '../rng';
+import { applyCommand, createEconomy, advanceDay, getPlayer, LOCAL_PLAYER, playerSeed, playerView, type CommandError, type EconomyState, type GoodId, type PlayerId } from '../economy';
+import { createRng, mixSeed, type Rng } from '../rng';
 import { generateWorld, type WorldMap } from '../worldgen';
-import { botStep, createMind } from './bot';
+import { botStep, createMind, type BotMind } from './bot';
 import type { AffordKind, GrowthKind } from './growth';
 import { createCart } from '../cart';
 import type { BotProfile } from './profiles';
 import { netWorth, worthParts } from '../ranking/worth';
+import { upkeepView } from '../economy/view';
 import { seasonOfDay, type Season } from '../season';
 import { eventDef } from '../events';
 
@@ -99,52 +100,88 @@ export function bigDays(run: BotRun, times = 10): number {
 
 /** 세계의 플레이어 하나(pid) 자리에 봇을 앉혀 돌린다 */
 export function runBotOn(state: EconomyState, map: WorldMap, profile: BotProfile, opt: BotRunOptions, pid: PlayerId = LOCAL_PLAYER): BotRun {
-  const p = getPlayer(state, pid);
-  // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다)
-  const rng = createRng(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)));
+  const seat = createSeat(state, pid, profile);
+  for (let d = 0; d < opt.days; d++) {
+    seatDay(state, map, seat, opt.maxCommandsPerDay);
+    const ledgerBefore = getPlayer(state, pid).ledger.length;
+    advanceDay(state, map);
+    seatRecord(state, seat, ledgerBefore);
+  }
+  return finishSeat(state, seat, opt.days);
+}
+
+/** 봇 한 자리: 세계의 플레이어 하나와 그 봇의 머릿속, 기록 */
+export interface BotSeat {
+  pid: PlayerId;
+  profile: BotProfile;
+  mind: BotMind;
+  rng: Rng;
+  run: BotRun;
+  commands: number;
+  /** 물품마다 산 값 (판 것의 이익을 잴 때) */
+  cost: Partial<Record<GoodId, { qty: number; value: number }>>;
+}
+
+export function createSeat(state: EconomyState, pid: PlayerId, profile: BotProfile): BotSeat {
+  // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다). 같은 성향 봇이 여럿이어도 자리마다 다르게
+  const rng = createRng(playerSeed(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)), getPlayer(state, pid)));
   const mind = createMind();
   const run: BotRun = { profile, startSeason: state.startSeason, bigOrders: [], worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
-  const max = opt.maxCommandsPerDay ?? 40;
-  let commands = 0;
-  const cost: Partial<Record<GoodId, { qty: number; value: number }>> = {};
+  return { pid, profile, mind, rng, run, commands: 0, cost: {} };
+}
 
-  for (let d = 0; d < opt.days; d++) {
-    for (let i = 0; i < max; i++) {
-      const cmd = botStep(playerView(state, map, pid), map, profile, mind, rng);
-      if (!cmd) break;
-      commands++;
-      const r = applyCommand(state, map, pid, cmd);
-      if (!r.ok) run.errors[r.error] = (run.errors[r.error] ?? 0) + 1;
-      else if (cmd.type === 'startExpedition') run.expeditions++;
-      else if (cmd.type === 'travel') run.travels++;
-    }
-    const ledgerBefore = p.ledger.length;
-    advanceDay(state, map);
-    // 판 것의 이익: 물품마다 산 값 평균을 들고 다닌다
-    let profit = 0;
-    for (const e of p.ledger.slice(ledgerBefore)) {
-      if (e.kind === 'buy') {
-        const c = cost[e.good] ?? { qty: 0, value: 0 };
-        cost[e.good] = { qty: c.qty + e.qty, value: c.value + e.qty * e.price };
-      } else if (e.kind === 'sell') {
-        const c = cost[e.good] ?? { qty: 0, value: 0 };
-        const unit = c.qty > 0 ? c.value / c.qty : 0;
-        const used = Math.min(c.qty, e.qty);
-        cost[e.good] = { qty: c.qty - used, value: c.value - used * unit };
-        profit += e.qty * e.price - used * unit;
-      }
-    }
-    run.profit.push(Math.round(profit));
-    run.trades += p.ledger.slice(ledgerBefore).filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
-    run.worth.push(netWorth(state, p));
-    const parts = worthParts(state, p);
-    run.wealth.push(Math.round(parts.cash + parts.deposit - parts.debt + parts.goods + parts.horses));
-    run.upkeep.push(playerView(state, map, pid).upkeep.total);
-    run.gold.push(p.gold);
+/** 하루 동안 봇이 명령을 고른다 (할 게 없을 때까지, 많아야 max개) */
+export function seatDay(state: EconomyState, map: WorldMap, seat: BotSeat, max = 40): void {
+  const { pid, run } = seat;
+  for (let i = 0; i < max; i++) {
+    const cmd = botStep(playerView(state, map, pid), map, seat.profile, seat.mind, seat.rng);
+    if (!cmd) break;
+    seat.commands++;
+    const r = applyCommand(state, map, pid, cmd);
+    if (!r.ok) run.errors[r.error] = (run.errors[r.error] ?? 0) + 1;
+    else if (cmd.type === 'startExpedition') run.expeditions++;
+    else if (cmd.type === 'travel') run.travels++;
   }
-  run.commandsPerDay = commands / Math.max(1, opt.days);
+}
+
+/** 하루가 지난 뒤 기록한다. ledgerBefore: 하루를 돌리기 전 장부 길이 */
+export function seatRecord(state: EconomyState, seat: BotSeat, ledgerBefore: number): void {
+  const { run, cost } = seat;
+  const p = getPlayer(state, seat.pid);
+  const today = p.ledger.slice(ledgerBefore);
+  // 판 것의 이익: 물품마다 산 값 평균을 들고 다닌다
+  let profit = 0;
+  for (const e of today) {
+    if (e.kind === 'buy') {
+      const c = cost[e.good] ?? { qty: 0, value: 0 };
+      cost[e.good] = { qty: c.qty + e.qty, value: c.value + e.qty * e.price };
+    } else if (e.kind === 'sell') {
+      const c = cost[e.good] ?? { qty: 0, value: 0 };
+      const unit = c.qty > 0 ? c.value / c.qty : 0;
+      const used = Math.min(c.qty, e.qty);
+      cost[e.good] = { qty: c.qty - used, value: c.value - used * unit };
+      profit += e.qty * e.price - used * unit;
+    }
+  }
+  run.profit.push(Math.round(profit));
+  run.trades += today.filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
+  run.worth.push(netWorth(state, p));
+  const parts = worthParts(state, p);
+  run.wealth.push(Math.round(parts.cash + parts.deposit - parts.debt + parts.goods + parts.horses));
+  run.upkeep.push(upkeepTotal(state, seat.pid));
+  run.gold.push(p.gold);
+}
+
+export function finishSeat(state: EconomyState, seat: BotSeat, days: number): BotRun {
+  const run = seat.run;
+  run.commandsPerDay = seat.commands / Math.max(1, days);
   run.bigOrders = (state.season?.log ?? [])
     .filter((e) => eventDef(e.event).effects.some((x) => x.kind === 'bigOrder'))
     .map((e) => seasonOfDay(e.day, state.startSeason));
   return run;
+}
+
+/** 하루 유지비 (화면에 보이는 값과 같다) */
+function upkeepTotal(state: EconomyState, pid: PlayerId): number {
+  return upkeepView(state, getPlayer(state, pid)).total;
 }

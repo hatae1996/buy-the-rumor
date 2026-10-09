@@ -384,7 +384,8 @@ function knownTraits(p: PlayerState): Record<number, { name: string; confirmed: 
   return out;
 }
 
-function upkeepView(state: EconomyState, p: PlayerState): PlayerView['upkeep'] {
+/** 하루 유지비 (일당, 빌린 수레, 정보원, 말 먹이 어림, 창고 보관료) */
+export function upkeepView(state: EconomyState, p: PlayerState): PlayerView['upkeep'] {
   const parts: { what: string; perDay: number }[] = [];
   // 마부는 쉬는 날 적게 받는다 (0.0.9): 오늘 밤 줄 일당으로 센다
   const wages = p.hires.reduce((s, h) => s + wageToday(state, p, h), 0);
@@ -547,7 +548,7 @@ function piecesView(board: Board, orders: readonly Order[]): CartPieceView[] {
   }));
 }
 
-function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]): CartView {
+function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[], room: Record<GoodId, number>): CartView {
   return {
     type: cart.type,
     name: CART.types[cart.type].name,
@@ -556,7 +557,7 @@ function cartView(cart: Cart, orders: readonly Order[], horses: readonly Horse[]
     weight: cartWeight(cart),
     maxWeight: maxWeight(cart, horses),
     horsesNeeded: horsesNeeded(cart),
-    room: Object.fromEntries(GOODS.map((g) => [g, roomFor(cart, g)])) as Record<GoodId, number>,
+    room,
   };
 }
 
@@ -569,12 +570,12 @@ function seasonDaysLeft(day: number, start: Season): number {
 }
 
 /** 장에서 사서 더 실을 수 있는 양: 내 수레(칸, 끄는 무게) + 짐꾼 수레 */
-function buyRoomView(p: PlayerState): Record<GoodId, number> {
+function buyRoomView(p: PlayerState, room: Record<GoodId, number>): Record<GoodId, number> {
   const free = maxWeight(p.cart, p.horses) - cartWeight(p.cart);
   return Object.fromEntries(
     GOODS.map((g) => [
       g,
-      Math.max(0, Math.min(roomFor(p.cart, g), Math.floor(free / unitWeight(g)))) + porters(p).reduce((s, x) => s + porterBuyRoom(x.board, g), 0),
+      Math.max(0, Math.min(room[g], Math.floor(free / unitWeight(g)))) + porters(p).reduce((s, x) => s + porterBuyRoom(x.board, g), 0),
     ]),
   ) as Record<GoodId, number>;
 }
@@ -582,6 +583,8 @@ function buyRoomView(p: PlayerState): Record<GoodId, number> {
 /** 플레이어 한 사람에게 보이는 것 */
 export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerId): PlayerView {
   const p = getPlayer(state, playerId);
+  // 물건마다 내 수레에 더 실을 칸 (짐을 실어 보며 세어 무겁다: 한 번만)
+  const room = Object.fromEntries(GOODS.map((g) => [g, roomFor(p.cart, g)])) as Record<GoodId, number>;
   const location: PlayerLocation = p.travel
     ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
     : { kind: 'town', town: p.town };
@@ -625,9 +628,9 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     reserved,
     cargo: cartLots(p.cart),
     haul: [...cartLots(p.cart), ...porters(p).flatMap((x) => cartLots(x.board))],
-    buyRoom: buyRoomView(p),
+    buyRoom: buyRoomView(p, room),
     cargoCount: totalCount(cartLots(p.cart)) + sellingQty,
-    cart: cartView(p.cart, state.orders, p.horses),
+    cart: cartView(p.cart, state.orders, p.horses, room),
     location,
     market,
     bigOrders:

@@ -5,7 +5,7 @@
 import { shelfLife, type GoodId } from '../economy/goods';
 import type { Lot } from '../economy/inventory';
 import { GROWTH } from '../constants';
-import { cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type BoardType, type CartType, type Cell } from './shapes';
+import { cartSize, cartSlots, distinctRotations, shapeOf, stackLimit, unitWeight, type BoardType, type CartType, type Cell } from './shapes';
 
 export interface Piece {
   id: number;
@@ -66,28 +66,52 @@ export function fits(cart: Board, good: GoodId, x: number, y: number, rot: numbe
   return pieceCells({ good, x, y, rot }).every(([cx, cy]) => slots.has(key(cx, cy)) && !taken.has(key(cx, cy)));
 }
 
+/** 판의 칸을 숫자 격자로 (봇이 날마다 수없이 부른다: 문자열 집합보다 훨씬 빠르다). 0 벽, 1 빈칸, 2 짐 */
+interface Grid {
+  w: number;
+  h: number;
+  cells: Uint8Array;
+  slots: readonly Cell[];
+}
+
+function gridOf(cart: Board): Grid {
+  const { w, h } = cartSize(cart.type);
+  const cells = new Uint8Array(w * h);
+  const slots = cartSlots(cart.type);
+  for (const [x, y] of slots) cells[y * w + x] = 1;
+  for (const p of cart.pieces) for (const [cx, cy] of pieceCells(p)) if (cx >= 0 && cy >= 0 && cx < w && cy < h) cells[cy * w + cx] = 2;
+  return { w, h, cells, slots };
+}
+
+const isOpen = (g: Grid, x: number, y: number) => x >= 0 && y >= 0 && x < g.w && y < g.h && g.cells[y * g.w + x] === 1;
+
 /**
  * 빈자리 찾기: 놓을 수 있는 자리 중 벽이나 다른 짐에 가장 많이 닿는 곳 (구석부터 채워야 빈칸이 덜 생긴다).
  * 같으면 위에서 아래, 왼쪽에서 오른쪽 순서
  */
 export function findSpot(cart: Board, good: GoodId): { x: number; y: number; rot: number } | null {
-  const slots = cartSlots(cart.type);
-  const open = new Set(slots.map(([x, y]) => key(x, y)));
-  for (const p of cart.pieces) for (const [cx, cy] of pieceCells(p)) open.delete(key(cx, cy));
+  return spotOn(gridOf(cart), good);
+}
+
+function spotOn(g: Grid, good: GoodId): { x: number; y: number; rot: number } | null {
   let best: { x: number; y: number; rot: number; contact: number } | null = null;
-  for (const [x, y] of slots) {
+  for (const [x, y] of g.slots) {
     for (const rot of distinctRotations(good)) {
-      // 빈칸 집합을 한 번만 만들어 쓴다 (fits와 같은 판단)
-      const cells = pieceCells({ good, x, y, rot });
-      if (!cells.every(([cx, cy]) => open.has(key(cx, cy)))) continue;
-      const mine = new Set(cells.map(([cx, cy]) => key(cx, cy)));
+      const shape = shapeOf(good, rot);
+      if (!shape.every(([dx, dy]) => isOpen(g, x + dx, y + dy))) continue;
+      // 놓을 칸을 잠시 3으로 칠해 두고 이웃을 센다 (자기 칸은 닿는 것이 아니다)
+      for (const [dx, dy] of shape) g.cells[(y + dy) * g.w + x + dx] = 3;
       let contact = 0;
-      for (const [cx, cy] of cells) {
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-          const k = key(cx + dx, cy + dy);
-          if (!mine.has(k) && !open.has(k)) contact++;
+      for (const [dx, dy] of shape) {
+        const cx = x + dx;
+        const cy = y + dy;
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as const) {
+          const inside = nx >= 0 && ny >= 0 && nx < g.w && ny < g.h;
+          const v = inside ? g.cells[ny * g.w + nx] : 0;
+          if (v !== 3 && v !== 1) contact++;
         }
       }
+      for (const [dx, dy] of shape) g.cells[(y + dy) * g.w + x + dx] = 1;
       if (!best || contact > best.contact) best = { x, y, rot, contact };
     }
   }
@@ -143,8 +167,18 @@ export function cartWeight(cart: Board): number {
 
 /** 지금 그 물건을 몇 개 더 실을 수 있나 (잡아 둔 자리 빼고, 지금 배치 그대로) */
 export function roomFor(cart: Board, good: GoodId, upTo = 99): number {
-  const copy = JSON.parse(JSON.stringify(cart)) as Board;
-  return loadGoods(copy, good, upTo);
+  // loadGoods로 실어 보는 것과 같은 셈: 같은 물품 조각의 남은 자리, 그다음 새 조각을 놓을 자리마다 한 조각만큼
+  let n = cart.pieces.reduce((s, p) => s + (p.good === good ? Math.max(0, roomIn(cart, p)) : 0), 0);
+  if (n >= upTo) return upTo;
+  const g = gridOf(cart);
+  const stack = boardStack(cart, good);
+  while (n < upTo) {
+    const spot = spotOn(g, good);
+    if (!spot) break;
+    for (const [cx, cy] of pieceCells({ good, ...spot })) g.cells[cy * g.w + cx] = 2;
+    n += stack;
+  }
+  return Math.min(n, upTo);
 }
 
 /**
