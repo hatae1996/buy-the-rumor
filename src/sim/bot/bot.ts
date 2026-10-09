@@ -449,6 +449,10 @@ function bestDeal(
 ): { good: GoodId; qty: number; maxPrice: number; to: number; capped: number } | null {
   const market = view.market!;
   let best: { good: GoodId; qty: number; maxPrice: number; to: number; profit: number; capped: number } | null = null;
+  const bigTown = big?.town ?? null;
+  const sellTowns = map.towns
+    .map((t) => t.id)
+    .filter((t) => t !== here && Number.isFinite(days[here]![t]!) && ((view.memory[t] && view.day - view.memory[t]!.day <= MEMORY_TRUST_DAYS) || t === bigTown));
   for (const good of GOODS) {
     if ((shelfLife(good) ?? Infinity) < MIN_TRADE_SHELF_LIFE) continue;
     const buy = market.price[good];
@@ -459,8 +463,9 @@ function bestDeal(
     if (supply === 0) continue;
     // 내 수레(칸·무게)와 짐꾼 수레에 더 실을 수 있는 양
     const cartCap = view.buyRoom[good];
-    // 가져갈 마을까지 여비(와 비상금)는 남긴다
-    const travelFee = Math.max(...map.towns.map((t) => (Number.isFinite(days[here]![t.id]!) ? days[here]![t.id]! : 0))) * ECONOMY.player.travelFeePerDay;
+    // 가져갈 마을까지 여비(와 비상금)는 남긴다. 팔러 갈 수 있는 곳은 시세를 아는 마을뿐이라 그중 가장 먼 곳까지
+    // (예전엔 지도의 모든 마을 중 가장 먼 곳이라, 마을이 많은 큰 맵에서 살 돈이 줄었다, 0.1.1)
+    const travelFee = Math.max(0, ...sellTowns.map((t) => days[here]![t]!)) * ECONOMY.player.travelFeePerDay;
     const goldCap = Math.floor((Math.max(0, view.gold - travelFee - TRIP_RESERVE) * 0.9) / maxPrice);
     const qty = Math.min(cartCap, goldCap);
     if (qty <= 0) continue;
