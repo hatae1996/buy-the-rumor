@@ -61,9 +61,10 @@ export type EventEffect =
   | { kind: 'bulk'; side: 'buy' | 'sell'; qty: number }
   /**
    * 큰 주문 (0.0.7): 사건 기간 동안 그 마을 장날마다 한 물품을 기준 가격의 factor배에 사들인다. 모두 qty개가 차면 끝.
-   * good을 비우면 사건에 붙은 물품. 돈은 바깥(조선소, 영주, 군대, 대상단)에서 온다
+   * good을 비우면 사건에 붙은 물품. 돈은 바깥(조선소, 영주, 군대, 대상단)에서 온다.
+   * giveOut이면 산 물건을 그 마을 일꾼에게 나눠 준다 (봄 구휼, 0.0.9: 사들인 곡물이 사라지면 보릿고개에 먹을 것이 더 모자란다)
    */
-  | { kind: 'bigOrder'; good?: GoodId; qty: number; factor: number }
+  | { kind: 'bigOrder'; good?: GoodId; qty: number; factor: number; giveOut?: boolean }
   /** 말 입고가 늦어진다 (말은 0.0.4 작업 4에서) */
   | { kind: 'horseDelay'; days: number };
 

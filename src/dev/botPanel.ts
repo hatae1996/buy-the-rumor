@@ -5,8 +5,8 @@ import { BOT_PROFILES, bigDays, dailyIncome, profitIncome, runBot, seasonIncome,
 import { generateWorld, type WorldMap } from '../sim/worldgen';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
-/** 여러 시드 요약에 쓰는 시드 (봇 테스트와 같은 5개). 시작 계절 4개마다 돌린다 (0.0.8: 시작 계절은 시즌마다 랜덤) */
-const SUMMARY_SEEDS = [20261008, 777, 4242, 1, 99999];
+/** 여러 시드 요약에 쓰는 시드 (봇 테스트와 같은 10개, 0.0.9). 시작 계절 4개마다 돌린다 (0.0.8: 시작 계절은 시즌마다 랜덤) */
+const SUMMARY_SEEDS = [20261008, 777, 4242, 1, 99999, 31337, 2024, 555, 8080, 123456];
 const SEASONS: Season[] = [0, 1, 2, 3];
 
 export interface BotPanel {

@@ -14,6 +14,7 @@ export {
   jobIncomeFactor,
   produceFactor,
   salesTax,
+  giveOutBigOrders,
   settleBigOrders,
   startDay,
   tollAt,

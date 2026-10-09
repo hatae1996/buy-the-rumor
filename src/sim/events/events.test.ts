@@ -6,6 +6,7 @@ import { CYCLE_DAYS, seasonOfDay, SPRING, WINTER, type Season } from '../season'
 import { buildNeighbors, generateWorld, townTravelDays, type WorldMap } from '../worldgen';
 import {
   activate,
+  giveOutBigOrders,
   badGoods,
   bigOrdersToday,
   bannedGoods,
@@ -241,6 +242,25 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
     expect(ev.orders![0]!.left === 0 ? ev.end : -1).toBe(state.day - 1);
   });
 
+  it('봄 구휼이 사들인 곡물은 그 마을 일꾼에게 나눠 준다 (먹을 것이 적은 일꾼부터, 0.0.9)', async () => {
+    const { count } = await import('../economy/inventory');
+    const { map, state } = world(SEEDS[0]!);
+    const town = state.player.town;
+    const ev = activate(state, map, 'relief', town, state.day + 7);
+    const workers = state.workers.filter((w) => w.town === town);
+    const before = workers.map((w) => count(w.inv, 'grain'));
+    const total = before.reduce((a, b) => a + b, 0);
+    expect(giveOutBigOrders(state, [{ event: ev.id, good: 'grain', qty: 30 }])).toBe(30);
+    const after = workers.map((w) => count(w.inv, 'grain'));
+    expect(after.reduce((a, b) => a + b, 0)).toBe(total + 30);
+    // 가장 적게 가졌던 일꾼이 가장 많이 받는다
+    const least = before.indexOf(Math.min(...before));
+    expect(after[least]! - before[least]!).toBe(Math.max(...after.map((a, i) => a - before[i]!)));
+    // 나눠 주지 않는 큰 주문(조선소 목재)은 그대로 사라진다
+    const ship = activate(state, map, 'shipyard', town, state.day + 7);
+    expect(giveOutBigOrders(state, [{ event: ship.id, good: 'wood', qty: 10 }])).toBe(0);
+  });
+
   it('큰 주문 사건은 시즌에 몇 번 있고, 징조가 늘 먼저 돈다', () => {
     const counts = SEEDS.slice(0, 20).map((seed) => {
       const { map, state } = world(seed);
@@ -280,7 +300,7 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
       expect(bySeason[WINTER]! / total).toBeGreaterThan(0.3);
     });
 
-    it('봄 구휼은 봄에만, 곡물을 기준가 1.5배에 200개 사들이고 징조가 8~12일 전에 돈다 (0.0.9)', () => {
+    it('봄 구휼은 봄에만, 곡물을 기준가 1.5배에 200개 사들여 나눠 주고 징조가 8~12일 전에 돈다 (0.0.9)', () => {
       const relief = runs.flatMap((r) => r.big).filter((b) => b.event === 'relief');
       // 시즌 절반쯤에 한 번
       expect(relief.length / runs.length).toBeGreaterThan(0.3);
@@ -290,7 +310,7 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
         expect(b.day - b.omenDay!).toBeGreaterThanOrEqual(Math.min(8, b.day - 1));
         expect(b.day - b.omenDay!).toBeLessThanOrEqual(12);
       }
-      expect(eventDef('relief').effects).toEqual([{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5 }]);
+      expect(eventDef('relief').effects).toEqual([{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5, giveOut: true }]);
     });
 
     it('겨울 축제는 겨울에 도시에서만, 혼례 잔치는 겨울에 없다', () => {

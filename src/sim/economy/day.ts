@@ -9,6 +9,7 @@ import {
   bannedGoods,
   bigOrdersToday,
   bulkTradesToday,
+  giveOutBigOrders,
   settleBigOrders,
   reactiveEvents,
   salesTax,
@@ -139,6 +140,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   state.orders = [];
   // 큰 주문이 산 만큼 남은 양을 줄인다. 큰 주문이 낸 돈은 바깥에서 들어온 돈이다
   const outsideGold = settleBigOrders(state, buyerFills);
+  // 봄 구휼: 영주가 사들인 곡물은 그 마을 일꾼에게 나눠 준다
+  giveOutBigOrders(state, buyerFills);
   noteUnsold(state, offered, sold);
   const p = state.player;
   if (!p.travel) {

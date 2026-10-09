@@ -304,7 +304,8 @@ export const EVENT_DEFS: readonly EventDef[] = [
     name: '봄 구휼',
     category: 'demandUp',
     scope: 'town',
-    effects: [{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5 }],
+    // 사들인 곡물은 그 마을 일꾼에게 나눠 준다 (사라지면 보릿고개에 먹을 것이 더 모자라 장이 무너졌다)
+    effects: [{ kind: 'bigOrder', good: 'grain', qty: 200, factor: 1.5, giveOut: true }],
     days: 8,
     seasons: [SPRING],
     omen: '영주가 보릿고개를 앞두고 곡식을 모은다더군.',

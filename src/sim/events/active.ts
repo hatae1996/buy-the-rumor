@@ -2,6 +2,7 @@
 // 다른 시뮬 코드는 효과를 직접 들여다보지 않고 여기 함수(생산 배율, 수요, 막힌 길 등)만 부른다.
 import { ECONOMY } from '../constants';
 import { basePrice, FOODS, type GoodId } from '../economy/goods';
+import { addGoods, count } from '../economy/inventory';
 import type { JobId } from '../economy/jobs';
 import type { EconomyState } from '../economy/state';
 import { AUTUMN } from '../season';
@@ -122,6 +123,32 @@ export function settleBigOrders(state: EconomyState, bought: readonly { event: n
     if (ev.orders?.length && ev.orders.every((o) => o.left === 0) && ev.end > state.day) ev.end = state.day;
   }
   return paid;
+}
+
+/**
+ * 큰 주문이 산 물건 중 나눠 주는 것(봄 구휼)을 그 마을 일꾼에게 나눠 준다: 그 물건이 가장 적은 일꾼부터 하나씩 돌아가며.
+ * 마을에 일꾼이 없으면 사라진다. 나눠 준 양을 돌려준다
+ */
+export function giveOutBigOrders(state: EconomyState, bought: readonly { event: number; good: GoodId; qty: number }[]): number {
+  let given = 0;
+  for (const b of bought) {
+    const ev = state.events.find((e) => e.id === b.event);
+    if (!ev || !eventDef(ev.event).effects.some((e) => e.kind === 'bigOrder' && e.giveOut && (e.good ?? ev.good) === b.good)) continue;
+    const workers = state.workers.filter((w) => w.town === ev.town);
+    if (!workers.length) continue;
+    const have = workers.map((w) => count(w.inv, b.good));
+    const share = workers.map(() => 0);
+    for (let n = 0; n < b.qty; n++) {
+      let i = 0;
+      for (let j = 1; j < workers.length; j++) if (have[j]! + share[j]! < have[i]! + share[i]!) i = j;
+      share[i]!++;
+    }
+    workers.forEach((w, i) => {
+      if (share[i]) addGoods(w.inv, b.good, share[i]!);
+    });
+    given += b.qty;
+  }
+  return given;
 }
 
 /** 오늘 시작한 대상단 거래 */
