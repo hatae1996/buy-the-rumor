@@ -12,7 +12,7 @@ import { stableAt } from '../horses/supply';
 import { innRumor } from '../rumors/hear';
 import type { WorldMap } from '../worldgen';
 
-export type BuildingId = 'market' | 'inn' | 'store' | 'outside' | 'warehouse' | 'stable' | 'cartShop' | 'workshop' | 'bank' | 'guildHall';
+export type BuildingId = 'market' | 'inn' | 'newsboy' | 'store' | 'outside' | 'warehouse' | 'stable' | 'cartShop' | 'workshop' | 'bank' | 'guildHall';
 
 export interface BuildingDef {
   id: BuildingId;
@@ -26,6 +26,7 @@ export interface BuildingDef {
 export const BUILDINGS: readonly BuildingDef[] = [
   { id: 'market', name: '시장', where: '모든 마을', does: '장날 신청(팔기, 사기), 오늘 시세' },
   { id: 'inn', name: '여관', where: '모든 마을', does: '소문꾼, 술 한 잔, 묵기, 고용 게시판' },
+  { id: 'newsboy', name: '신문팔이', where: '모든 마을', does: '그날 신문 사기 (0.1.2)' },
   { id: 'outside', name: '바깥', where: '자원지가 있는 마을', does: '원정 떠나기, 남은 기회' },
   { id: 'store', name: '잡화점', where: '모든 마을', does: '장비 사기와 고치기' },
   { id: 'warehouse', name: '창고', where: '모든 마을', does: '빌리기, 짐 넣고 빼기' },
@@ -45,6 +46,7 @@ export function townBuildings(state: EconomyState, map: WorldMap, town: number):
   const has: Record<BuildingId, boolean> = {
     market: true,
     inn: true,
+    newsboy: true,
     store: true,
     warehouse: true,
     outside: hasExpeditions(t),

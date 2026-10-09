@@ -53,7 +53,7 @@ import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, transferBet
 import { getPlayer, ownedBy } from './players';
 import type { EconomyState, PlayerId, PlayerState } from './state';
 import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawError } from '../draws';
-import { buyNewspaper, type NewspaperError } from '../news';
+import { buyNewspaper, readPaper, type NewspaperError } from '../news';
 import { cancelReservation, reserveOnArrival, reserveStanding, type ReservationError } from '../reservations';
 import { repairCart, roadRisk } from './incidents';
 import { buyRations } from './food';
@@ -110,7 +110,10 @@ export type Command =
   /** 신문을 읽었다 (견습: 첫 신문 장면이 끝난다) */
   | { type: 'readNews' }
   /** 그날 신문을 산다 (전문을 읽는다, 0.1.0). day: 그 신문이 나온 장날 */
-  | { type: 'buyNewspaper'; day: number }
+  /** 마을 신문팔이에게서 그날 신문을 산다 (0.1.2: 길 위에서는 못 산다) */
+  | { type: 'buyNewspaper' }
+  /** 산 신문 한 부를 읽는다 (안 읽음 표시를 지운다) */
+  | { type: 'readPaper'; day: number }
   /** 지금 마을 창고를 빌린다 / 빈 창고를 돌려준다 */
   | { type: 'rentWarehouse' }
   | { type: 'releaseWarehouse'; town: number }
@@ -189,7 +192,7 @@ const done = (error: CommandError | null): CommandResult => (error ? fail(error)
 
 /** 플레이어 하나의 명령. 서버에서는 인증된 계정이 playerId다 */
 /** 시즌 결산 뒤에도 할 수 있는 명령 (증서 고치기, 설정, 신문 읽기) */
-const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'pinBadges', 'setTitle', 'setNotify', 'readNews']);
+const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'pinBadges', 'setTitle', 'setNotify', 'readNews', 'readPaper']);
 
 export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
   const p = getPlayer(state, playerId);
@@ -351,7 +354,9 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
     case 'setTitle':
       return done(setTitle(p.certificate, cmd.title));
     case 'buyNewspaper':
-      return done(buyNewspaper(state, p, cmd.day));
+      return done(buyNewspaper(state, map, p));
+    case 'readPaper':
+      return done(readPaper(p, cmd.day));
     case 'readNews':
       p.newsReadDay = state.day;
       return { ok: true };

@@ -98,7 +98,8 @@ export function apprenticeAfterCommand(state: EconomyState, p: PlayerState, map:
   ) {
     advance(state, p, map);
   }
-  else if (is('firstNews') && cmd.type === 'readNews') advance(state, p, map);
+  // 첫 신문: 신문팔이에게서 사서(견습 동안 무료) 읽으면 (0.1.2)
+  else if (is('firstNews') && (cmd.type === 'readNews' || cmd.type === 'readPaper')) advance(state, p, map);
   else if (is('graduation') && cmd.type === 'travel') {
     // 첫 출발: 견습을 마치고 공유 시장으로 들어간다
     p.apprentice = null;

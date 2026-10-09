@@ -11,6 +11,7 @@ import seaImg from '../../../../assets/ui/sea.png';
 import sealImg from '../../../../assets/ui/seal_big.png';
 import smithyImg from '../../../../assets/ui/smithy.png';
 import tagImg from '../../../../assets/ui/tag.png';
+import paperImg from '../../../../assets/ui/paper_small.png';
 import woodblockImg from '../../../../assets/ui/woodblock.png';
 import type { BuildingId } from '../../../sim/growth';
 import type { PlayerView } from '../../../sim/economy';
@@ -20,10 +21,12 @@ import { openInn } from './inn';
 import { openMarket } from './market';
 import { openBank, openGuildHall, openOutside, openStore, openWorkshop } from './simple';
 import { openWarehouse } from './warehouse';
+import { openNewsboy } from '../newspaper';
 
 const IMG: Record<BuildingId, string> = {
   market: marketImg,
   inn: innImg,
+  newsboy: paperImg,
   store: tagImg,
   outside: forestImg,
   warehouse: woodblockImg,
@@ -51,6 +54,8 @@ function status(id: BuildingId, v: PlayerView): string {
     }
     case 'inn':
       return v.apprentice ? '묵기' : v.hireBoard.length ? '소문 · 구인' : '소문 · 묵기';
+    case 'newsboy':
+      return v.newspaper.onSale === null ? '신문 없음' : v.newspaper.onSale.bought ? '샀어요' : `오늘 신문${v.newspaper.free ? '' : ` ${v.newspaper.fee}냥`}`;
     case 'store':
       return v.gear.some((g) => g.uses === 0) ? '장비 수리' : '음식 · 장비';
     case 'outside':
@@ -95,6 +100,7 @@ export function openBuilding(game: Game, id: BuildingId): void {
   const open: Record<BuildingId, () => void> = {
     market: () => openMarket(game),
     inn: () => openInn(game),
+    newsboy: () => openNewsboy(game),
     store: () => openStore(game),
     outside: () => openOutside(game),
     warehouse: () => openWarehouse(game),

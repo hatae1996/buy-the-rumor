@@ -50,7 +50,7 @@ import type {
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
-import { paperFree, visibleNews } from '../news';
+import { paperDelay, paperFree, paperOnSale, visibleNews } from '../news';
 import type { Reservation } from '../reservations';
 import { getPlayer, ownedBy, playerList } from './players';
 
@@ -207,18 +207,17 @@ export interface PlayerView {
   rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
-  /** 신문: 산 날(과 견습 동안)은 전문, 아니면 날마다 머리기사 한 줄 (0.1.0) */
+  /** 신문: 산 신문의 기사만 (0.1.2) */
   news: readonly NewsItem[];
   newspaper: {
     fee: number;
     /** 견습 동안은 무료 */
     free: boolean;
-    /** 산 신문 (장날) */
-    bought: number[];
-    /** 날마다 사야 읽을 수 있는 기사 수 */
-    hidden: Record<number, number>;
-    /** 이날부터 산다 (지난 신문은 며칠 안의 것만) */
-    oldest: number;
+    /** 산 신문 (장날, 새것부터)과 읽었는지 */
+    papers: { day: number; headline: string; read: boolean }[];
+    /** 지금 마을 신문팔이가 파는 신문의 날짜 (소식이 없는 날, 길 위면 null)와 샀는지, 하루 늦은 신문이 오는 마을인지 */
+    onSale: { day: number; bought: boolean } | null;
+    late: boolean;
   };
   fatigue: number;
   fatigueMax: number;
@@ -744,8 +743,20 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     orders,
     memory: p.memory,
     ledger: p.ledger,
-    news: paper.items,
-    newspaper: { fee: ECONOMY.newspaper.fee, free: paperFree(p), bought: [...p.newspapers], hidden: paper.hidden, oldest: state.day - ECONOMY.newspaper.backDays },
+    news: paper,
+    newspaper: {
+      fee: paperFree(p) ? 0 : ECONOMY.newspaper.fee,
+      free: paperFree(p),
+      papers: [...p.newspapers]
+        .sort((a, b) => b - a)
+        .map((day) => ({ day, headline: state.news.find((n) => n.day === day)?.text ?? '', read: p.papersRead.includes(day) })),
+      onSale: (() => {
+        if (p.travel) return null;
+        const day = paperOnSale(state, map, p.town);
+        return day === null ? null : { day, bought: p.newspapers.includes(day) };
+      })(),
+      late: !p.travel && paperDelay(map, p.town) > 0,
+    },
     fatigue: p.fatigue,
     fatigueMax: ECONOMY.fatigue.max,
     tired: p.fatigue >= ECONOMY.fatigue.tiredAt,

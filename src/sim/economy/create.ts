@@ -164,6 +164,7 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     homeTown: 0,
     newsReadDay: null,
     newspapers: [],
+    papersRead: [],
     record: null,
     certificate: createCertificate(),
     warehouses: [],

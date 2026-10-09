@@ -316,8 +316,12 @@ export const ECONOMY = {
   /** 신문값 (0.1.0, 기획서 "소식을 얻는 방법"). 돈이 세계 밖으로 나가는 곳. 숫자는 초안 */
   newspaper: {
     fee: 2,
-    /** 지난 신문은 이 날 수 안의 것만 산다 */
-    backDays: 7,
+    /**
+     * 신문은 도시 신문사에서 찍는다 (0.1.2): 가장 가까운 도시까지 lateAfterDays일 넘게 걸리는 마을에는
+     * lateDays일 늦은 신문이 온다. 초안 (해 보고 어색하면 lateDays를 0으로)
+     */
+    lateAfterDays: 1,
+    lateDays: 1,
   },
 
   /** 예약 주문 (0.1.0). 숫자는 초안 */

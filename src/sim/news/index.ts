@@ -1,1 +1,1 @@
-export { buyNewspaper, hasPaper, paperFree, visibleNews, type NewspaperError } from './newspaper';
+export { buyNewspaper, hasPaper, paperDelay, paperFree, paperOnSale, readPaper, visibleNews, type NewspaperError } from './newspaper';

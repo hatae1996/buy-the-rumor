@@ -33,13 +33,14 @@ export function showAwaySummary(game: Game, s: AwaySummary, onClose?: () => void
   for (const e of s.ledger) if (e.kind === 'spoil') urgent.push(`${goodName(e.good)} ${e.qty}개가 상했어요.`);
   if (urgent.length) cards.push({ title: '급한 일', html: `<ul class="list">${[...new Set(urgent)].slice(0, 5).map((t) => `<li>${t}</li>`).join('')}</ul>` });
 
-  // 3. 신문 머리기사
-  if (s.news.length) {
+  // 3. 신문 머리기사: 산 신문의 머리기사만 (0.1.2. 신문은 마을의 신문팔이에게서 산다)
+  const heads: [number, string][] = [];
+  for (const n of s.news) if (!heads.some(([d]) => d === n.day)) heads.push([n.day, n.text]);
+  if (heads.length) {
     cards.push({
       title: '신문',
-      html: `<ul class="list">${s.news.slice(-3).reverse().map((n) => `<li>${n.text}</li>`).join('')}</ul>${
-        s.news.length > 3 ? `<p class="muted">그 밖에 ${s.news.length - 3}개 소식이 더 있어요.</p>` : ''
-      }`,
+      html: `<ul class="list">${heads.slice(-3).reverse().map(([day, text]) => `<li><span class="day">${day}일째</span> ${text}</li>`).join('')}</ul>
+        <p class="muted">소식 탭 신문함에서 끝까지 읽을 수 있어요.</p>`,
     });
   }
 

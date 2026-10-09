@@ -253,6 +253,8 @@ export interface PlayerState {
   newsReadDay: number | null;
   /** 산 신문 (그 신문이 나온 장날). 산 날 신문은 전문을 계속 읽는다 (0.1.0) */
   newspapers: number[];
+  /** 산 신문 중 읽은 것 (장날, 0.1.2 신문함의 안 읽음 표시) */
+  papersRead: number[];
   /** 이번 시즌 기록 (랭킹 부문 점수, 길드 의뢰, 업적). 시즌이 시작되기 전이면 null */
   record: SeasonRecord | null;
   /** 상인 증서: 시즌이 바뀌어도 남는다 */
