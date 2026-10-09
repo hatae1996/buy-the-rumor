@@ -1,7 +1,7 @@
 export * from './goods';
 export * from './jobs';
 export * from './state';
-export { createEconomy, type CreateOptions, type PlayerSpec } from './create';
+export { createEconomy, nextSeasonEconomy, type CreateOptions, type PlayerSpec } from './create';
 export { getPlayer, isPlayerOwner, LOCAL_PLAYER, ownedBy, playerList, playerOrder, playerSeed } from './players';
 export { advanceDay, advanceDays, type DayReport, type PlayerDayReport } from './day';
 export { applyCommand, type Command, type CommandError, type CommandResult } from './commands';
@@ -27,6 +27,9 @@ export type {
   HireView,
   CaravanView,
   DrawView,
+  RankingCategoryView,
+  RankingView,
+  SettlementView,
 } from './view';
 export { playerTravelDays } from './travel';
 export { noteView, playerView, type PlayerView, type PlayerLocation, type MarketView, type PendingOrder } from './view';

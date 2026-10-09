@@ -44,13 +44,22 @@ class CostBasis {
 
 /** 한 방: 장날 한 번에 판 것(같은 날, 같은 물품) 중 산 값 대비 가장 큰 이익 */
 export function bestSingleSale(trades: readonly TradeRecord[]): number {
+  return bestSale(trades)?.profit ?? 0;
+}
+
+/** 가장 크게 남긴 판매 한 번 (시즌 리포트 "내 최고 거래"). 이익이 난 판매가 없으면 null */
+export function bestSale(trades: readonly TradeRecord[]): { day: number; town: number; good: GoodId; qty: number; price: number; profit: number } | null {
   const basis = new Map<GoodId, CostBasis>();
-  let best = 0;
+  let best: { day: number; town: number; good: GoodId; qty: number; price: number; profit: number } | null = null;
   for (const t of [...trades].sort((a, b) => a.day - b.day || (a.side === 'buy' ? -1 : 1))) {
     const b = basis.get(t.good) ?? new CostBasis();
     basis.set(t.good, b);
-    if (t.side === 'buy') b.buy(t.qty, t.price);
-    else best = Math.max(best, b.sell(t.qty, t.price));
+    if (t.side === 'buy') {
+      b.buy(t.qty, t.price);
+      continue;
+    }
+    const profit = b.sell(t.qty, t.price);
+    if (profit > 0 && (!best || profit > best.profit)) best = { day: t.day, town: t.town, good: t.good, qty: t.qty, price: t.price, profit };
   }
   return best;
 }

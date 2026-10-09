@@ -6,6 +6,46 @@ import type { Certificate, EarnedBadge } from './types';
 /** 앞면에 달고 다니는 인장 수 */
 export const MAX_PINNED = 4;
 
+/** 상단 문장(깃발). 고르기만 한다 (그림은 나중) */
+export const CRESTS = {
+  plain: '무늬 없음',
+  crow: '까마귀',
+  fox: '여우',
+  fish: '물고기',
+  oak: '떡갈나무',
+  sail: '돛',
+  anvil: '모루',
+  wheat: '보리',
+  deer: '사슴',
+  anchor: '닻',
+  owl: '부엉이',
+  salt: '소금 결정',
+} as const;
+export type CrestId = keyof typeof CRESTS;
+export const CREST_IDS = Object.keys(CRESTS) as CrestId[];
+
+/** 상단 이름 길이 (글자). 금칙어 걸러 내기는 서버 버전에서 (handoff 0.1.0) */
+export const COMPANY_NAME_LENGTH = [2, 12] as const;
+
+export type CertificateError = 'badName' | 'badCrest' | 'noTitle';
+
+/** 상단 이름과 문장을 고른다. 앞뒤 빈칸은 지우고, 줄바꿈과 꺾쇠는 받지 않는다 */
+export function setCompany(c: Certificate, name: string, crest: string): CertificateError | null {
+  const n = name.trim().replace(/\s+/g, ' ');
+  if ([...n].length < COMPANY_NAME_LENGTH[0] || [...n].length > COMPANY_NAME_LENGTH[1] || /[<>&"]/.test(n)) return 'badName';
+  if (!(crest in CRESTS)) return 'badCrest';
+  c.name = n;
+  c.crest = crest;
+  return null;
+}
+
+/** 대표 칭호를 고른다 (얻은 칭호 중에서, 없애려면 null) */
+export function setTitle(c: Certificate, title: string | null): CertificateError | null {
+  if (title !== null && !c.titles.includes(title)) return 'noTitle';
+  c.title = title;
+  return null;
+}
+
 export function createCertificate(): Certificate {
   return {
     name: '이름 없는 상단',

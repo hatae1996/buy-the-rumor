@@ -48,10 +48,29 @@ export interface BotBrain {
   rng: number;
 }
 
-/** 봇 상인 n명의 자리 (id, 상단 이름). 많아야 이름 목록 수만큼 */
+/** 이름에 든 말로 문장을 고른다 (없으면 무늬 없음) */
+const CREST_WORDS: readonly [string, string][] = [
+  ['까마귀', 'crow'],
+  ['여우', 'fox'],
+  ['송어', 'fish'],
+  ['떡갈나무', 'oak'],
+  ['돛', 'sail'],
+  ['모루', 'anvil'],
+  ['보리', 'wheat'],
+  ['사슴', 'deer'],
+  ['닻', 'anchor'],
+  ['부엉이', 'owl'],
+  ['소금', 'salt'],
+];
+
+/** 봇 상인 n명의 자리 (id, 상단 이름, 문장). 많아야 이름 목록 수만큼 */
 export function botSpecs(seed: number, n: number): PlayerSpec[] {
   const names = shuffle([...BOT_COMPANY_NAMES], createRng(mixSeed(seed, 0xc0a1)));
-  return Array.from({ length: Math.min(n, names.length) }, (_, i) => ({ id: `bot${i + 1}`, name: names[i]! }));
+  return Array.from({ length: Math.min(n, names.length) }, (_, i) => ({
+    id: `bot${i + 1}`,
+    name: names[i]!,
+    crest: CREST_WORDS.find(([w]) => names[i]!.includes(w))?.[1] ?? 'plain',
+  }));
 }
 
 /** 세계의 봇 자리마다 머릿속을 만든다. 성향은 봇 여럿 시험과 같은 섞기 */

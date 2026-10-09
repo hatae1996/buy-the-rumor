@@ -1,7 +1,9 @@
 export * from './types';
 export { netWorth, worthParts, lastMarketPrice, holdingPrice, HOLDINGS_SHARE, type WorthParts } from './worth';
-export { seasonScores, bestSingleSale, buyTheRumorProfit, eventGoods, type SeasonScores } from './scores';
+export { seasonScores, bestSale, bestSingleSale, buyTheRumorProfit, eventGoods, type SeasonScores } from './scores';
 export { standings, type Standing, type StandingEntry } from './standings';
+export { newsName, rankAll, updateRankings, type RankTable, type Rankings } from './table';
+export { lastSeasonDay, placeOf, settleSeason, type SeasonReport, type SeasonSettlement } from './settle';
 export { THEMES, themeDef, questDef, pickTheme } from './quests';
 export {
   ACHIEVEMENTS,
@@ -24,7 +26,22 @@ export {
   questProgress,
   questTier,
   checkBadges,
+  awardBadge,
   tradeRecord,
 } from './record';
 export { noteExpeditionMoments, type CardOutcome } from './moments';
-export { createCertificate, paperGrade, pinBadges, certificateView, MAX_PINNED, type CertificateView } from './certificate';
+export {
+  createCertificate,
+  paperGrade,
+  pinBadges,
+  certificateView,
+  setCompany,
+  setTitle,
+  COMPANY_NAME_LENGTH,
+  CRESTS,
+  CREST_IDS,
+  MAX_PINNED,
+  type CertificateError,
+  type CertificateView,
+  type CrestId,
+} from './certificate';

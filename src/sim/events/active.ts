@@ -178,6 +178,8 @@ export function startDay(state: EconomyState, map: WorldMap): string[] {
   if (!season) return [];
   if (state.day >= season.startDay + season.length) {
     state.season = createSeason(state, map, season.number + 1, state.day);
+    // 새 시즌이 열렸다: 지난 결산은 접고 다시 명령을 받는다
+    state.settlement = null;
   }
   state.events = state.events.filter((e) => e.end >= state.day);
   const news: string[] = [];

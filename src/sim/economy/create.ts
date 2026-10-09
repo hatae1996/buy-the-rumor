@@ -8,7 +8,7 @@ import { basePrice, emptyGoodMap, GOODS, type GoodId } from './goods';
 import { addGoods } from './inventory';
 import { CRAFT_JOBS, GATHER_JOBS, JOB_RESOURCE, type JobId } from './jobs';
 import { townNodes } from './nodes';
-import { LOCAL_PLAYER, playerList, playerSeed } from './players';
+import { getPlayer, LOCAL_PLAYER, playerList, playerSeed } from './players';
 import type { EconomyState, MarketResult, PlayerId, PlayerState, TownEconomy, Worker } from './state';
 import { TRADER_NAMES } from './traders';
 import { advanceDay } from './day';
@@ -28,6 +28,8 @@ export interface PlayerSpec {
   apprentice?: boolean;
   /** 상단 이름 (상인 증서). 없으면 이름 없는 상단 */
   name?: string;
+  /** 상단 문장 (상인 증서 CRESTS). 없으면 무늬 없음 */
+  crest?: string;
 }
 
 export interface CreateOptions {
@@ -37,6 +39,8 @@ export interface CreateOptions {
   apprentice?: boolean;
   /** 세계의 플레이어 (들어온 차례대로). 없으면 로컬 플레이어(LOCAL_PLAYER) 한 사람 */
   players?: PlayerSpec[];
+  /** 몇 번째 시즌으로 여나 (기본 1). 다음 시즌 새 세계에서 (nextSeasonEconomy) */
+  seasonNumber?: number;
   /**
    * 플레이어가 오는 날(1일)의 계절을 정한다. 시험과 관찰 화면에서 시작 계절마다 재 볼 때만 쓴다 (0.0.8).
    * 없으면 시드로 랜덤 (실제 게임). 정해도 시드의 다른 난수는 그대로라, 계절 말고는 같은 세계다
@@ -72,6 +76,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     reactive: { low: {}, high: {}, cooldown: {} },
     rumorMill: emptyRumorMill(),
     horses: emptyHorseMarket(),
+    rankings: null,
+    settlement: null,
   };
 
   for (const town of state.towns) {
@@ -111,11 +117,12 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   state.rng = rng.state();
   if (opt.warmupDays) warmUp(state, map, opt.warmupDays);
   // 플레이어가 오는 날 첫 시즌이 시작된다 (사건 일정은 이때 짠다)
-  state.season = createSeason(state, map, 1, state.day);
+  state.season = createSeason(state, map, opt.seasonNumber ?? 1, state.day);
   for (const p of playerList(state)) {
     p.homeTown = p.town;
     p.visited = [p.town];
     if (specs[p.seq]!.name) p.certificate.name = specs[p.seq]!.name!;
+    if (specs[p.seq]!.crest) p.certificate.crest = specs[p.seq]!.crest!;
     if (specs[p.seq]!.apprentice) startApprentice(state, p, map, createRng(playerSeed(seed ^ 0xa99e, p)));
     else for (const id of ALL_UNLOCKS) p.unlocks[id] = state.day;
   }
@@ -168,6 +175,22 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     visited: [],
     reservations: [],
   };
+}
+
+/**
+ * 다음 시즌 (질문 89 답): 새 시드로 새 세계를 열고, 시즌을 넘어 남는 것만 들고 간다
+ * (기획서 "시즌을 넘어 남는 것": 상인 증서와 인장, 칭호, 연차, 알림 설정). 금화, 짐, 말, 일꾼, 창고, 아는 시세와 소문은 처음부터.
+ * 견습은 다시 하지 않는다
+ */
+export function nextSeasonEconomy(prev: EconomyState, map: WorldMap, seed: number, opt: Pick<CreateOptions, 'warmupDays' | 'startSeason'> = {}): EconomyState {
+  const keep = playerList(prev);
+  const state = createEconomy(map, seed, { ...opt, players: keep.map((p) => ({ id: p.id })), seasonNumber: (prev.season?.number ?? 0) + 1 });
+  for (const p of playerList(state)) {
+    const old = getPlayer(prev, p.id);
+    p.certificate = JSON.parse(JSON.stringify(old.certificate)) as PlayerState['certificate'];
+    p.notify = JSON.parse(JSON.stringify(old.notify)) as PlayerState['notify'];
+  }
+  return state;
 }
 
 /** 미리 돌린 날이 지나 플레이어가 올 때 want 계절이 되도록, 미리 돌리기를 시작할 계절 */

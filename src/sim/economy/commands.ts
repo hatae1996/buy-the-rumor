@@ -44,7 +44,7 @@ import {
 import { CART_TYPES, type Board, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
-import { checkBadges } from '../ranking';
+import { checkBadges, pinBadges, setCompany, setTitle, type CertificateError } from '../ranking';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
@@ -122,6 +122,10 @@ export type Command =
   | { type: 'reserveOrder'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number; limit: number; until: number }
   | { type: 'reserveOnArrival'; good: GoodId; qty: number | 'all'; minPrice: number }
   | { type: 'cancelReservation'; reservationId: number }
+  /** 상인 증서 (0.1.0): 상단 이름·문장, 앞면에 달 인장(인장첩 줄 번호, 4개까지), 대표 칭호 */
+  | { type: 'setCompany'; name: string; crest: string }
+  | { type: 'pinBadges'; rows: number[] }
+  | { type: 'setTitle'; title: string | null }
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
   | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number }
   /** 두 번째 행렬: 꾸리기(마부, 내 말 중 일부, 이 마을 수레방에서 산 수레), 지시서 보내기, 불러들이기, 풀기 */
@@ -164,6 +168,8 @@ export type CommandError =
   | DrawError
   | ReservationError
   | NewspaperError
+  | CertificateError
+  | 'seasonOver'
   | ArrangeError
   | 'boardNotEmpty';
 
@@ -173,8 +179,13 @@ const fail = (error: CommandError): CommandResult => ({ ok: false, error });
 const done = (error: CommandError | null): CommandResult => (error ? fail(error) : { ok: true });
 
 /** 플레이어 하나의 명령. 서버에서는 인증된 계정이 playerId다 */
+/** 시즌 결산 뒤에도 할 수 있는 명령 (증서 고치기, 설정, 신문 읽기) */
+const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'pinBadges', 'setTitle', 'setNotify', 'readNews']);
+
 export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
   const p = getPlayer(state, playerId);
+  // 결산한 시즌에는 장사하지 않는다 (서버는 쉬는 날, 로컬은 새 세계를 기다린다)
+  if (state.settlement && !AFTER_SEASON.has(cmd.type)) return fail('seasonOver');
   const result = runCommand(state, p, map, cmd);
   if (result.ok) {
     // 견습 장면을 넘기고, 조건이 맞으면 하나씩 연다
@@ -322,6 +333,14 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       return done(repairGear(state, p, cmd.gear));
     case 'hireGuide':
       return done(hireGuide(state, p));
+    case 'setCompany':
+      return done(setCompany(p.certificate, String(cmd.name ?? ''), String(cmd.crest ?? '')));
+    case 'pinBadges':
+      if (!Array.isArray(cmd.rows) || !cmd.rows.every((r) => Number.isInteger(r))) return fail('badQty');
+      pinBadges(p.certificate, cmd.rows);
+      return { ok: true };
+    case 'setTitle':
+      return done(setTitle(p.certificate, cmd.title));
     case 'buyNewspaper':
       return done(buyNewspaper(state, p, cmd.day));
     case 'readNews':

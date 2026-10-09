@@ -5,6 +5,8 @@ import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType } from '../cart';
 import type { ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
+import type { Rankings } from '../ranking/table';
+import type { SeasonSettlement } from '../ranking/settle';
 import type { Warehouse } from '../warehouse/warehouse';
 import type { Hire, HireRole } from '../hire/hire';
 import type { DrawRequest } from '../draws/draws';
@@ -334,4 +336,8 @@ export interface EconomyState {
   rumorMill: RumorMill;
   /** 마구간 재고와 시즌 말 입고 일정 (남은 수는 그 마구간에 가야 보인다) */
   horses: HorseMarket;
+  /** 장날마다 매긴 부문 순위 (0.1.0). 아직 장날이 없었으면 null */
+  rankings: Rankings | null;
+  /** 이번 시즌 결산 (시즌 마지막 장날 뒤). 다음 시즌이 열리면 null. 결산 뒤에는 명령을 받지 않는다 */
+  settlement: SeasonSettlement | null;
 }

@@ -22,7 +22,7 @@ import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingI
 import { hireBoard, porterBuyRoom, porters, restWage, wageToday, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
-import { badgeDef, certificateView, questProgress, questTier, themeDef, type CertificateView } from '../ranking';
+import { badgeDef, CATEGORIES, categoryName, certificateView, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport } from '../ranking';
 import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
@@ -76,6 +76,32 @@ export interface PendingOrder {
   town: number;
   /** 수레 짐이면 cart, 그 마을 창고 짐이면 store */
   from: 'cart' | 'store';
+}
+
+export interface RankingCategoryView {
+  id: CategoryId;
+  name: string;
+  /** 1~3위 (같은 점수는 같은 순위) */
+  top: { id: PlayerId; name: string; rank: number }[];
+  /** 내 순위. 이 부문에 아직 기록이 없으면 null */
+  mine: { rank: number; topShare: number; score: number } | null;
+  /** 이 부문에 오른 상단 수 */
+  count: number;
+}
+
+export interface RankingView {
+  /** 순위를 매긴 장날. 아직 없으면 null */
+  day: number | null;
+  categories: RankingCategoryView[];
+}
+
+export interface SettlementView {
+  season: number;
+  categories: RankingCategoryView[];
+  report: SeasonReport | null;
+  /** 새로 받은 인장 이름과 칭호 */
+  badges: string[];
+  titles: string[];
 }
 
 export interface DrawView {
@@ -169,6 +195,12 @@ export interface PlayerView {
   draws: DrawView[];
   /** 예약 주문 (0.1.0): 여러 날 가는 신청(남은 양, 마감 날), 도착하면 팔기 */
   reservations: Reservation[];
+  /** 랭킹 (장날마다 갱신, 0.1.0): 부문마다 1~3위 이름과 내 순위. 남의 점수(순자산)는 보이지 않는다 */
+  ranking: RankingView;
+  /** 이번 시즌 결산 (시즌 마지막 장날 뒤). 끝난 시즌 순위, 내 리포트, 새로 받은 인장과 칭호 */
+  settlement: SettlementView | null;
+  /** 이 세계 상단들의 증서 (남에게 보이는 증서라 순자산이 없다). 이름을 누르면 본다 */
+  certificates: Record<PlayerId, CertificateView>;
   /** 같은 세계의 다른 상단: 이름과 있는 곳만 (지도에 말로 보인다, 0.1.0) */
   rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
@@ -598,6 +630,22 @@ function buyRoomView(p: PlayerState, room: Record<GoodId, number>): Record<GoodI
   ) as Record<GoodId, number>;
 }
 
+/** 부문마다 1~3위와 내 순위 (남의 점수는 담지 않는다) */
+function rankingView(state: EconomyState, p: PlayerState, table: RankTable): RankingCategoryView[] {
+  const nameOf = (id: PlayerId) => state.players[id]?.certificate.name ?? id;
+  return CATEGORIES.map((id) => {
+    const rows = table[id] ?? [];
+    const mine = rows.find((r) => r.id === p.id);
+    return {
+      id,
+      name: categoryName(id),
+      top: rows.filter((r) => r.rank <= 3).map((r) => ({ id: r.id, name: nameOf(r.id), rank: r.rank })),
+      mine: mine ? { rank: mine.rank, topShare: mine.topShare, score: mine.score } : null,
+      count: rows.length,
+    };
+  });
+}
+
 function locationOf(p: PlayerState): PlayerLocation {
   return p.travel
     ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
@@ -743,6 +791,17 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     })),
     hireBoard: hireBoard(state, p, map),
     reservations: p.reservations.map((r) => ({ ...r })),
+    ranking: { day: state.rankings?.day ?? null, categories: rankingView(state, p, state.rankings?.table ?? {}) },
+    settlement: state.settlement
+      ? {
+          season: state.settlement.season,
+          categories: rankingView(state, p, state.settlement.table),
+          report: state.settlement.reports[p.id] ?? null,
+          badges: (state.settlement.awarded[p.id]?.badges ?? []).map((id) => badgeDef(id)?.name ?? id),
+          titles: state.settlement.awarded[p.id]?.titles ?? [],
+        }
+      : null,
+    certificates: Object.fromEntries(playerList(state).map((o) => [o.id, certificateView(o.certificate)])),
     rivals: playerList(state)
       .filter((o) => o.id !== p.id)
       .map((o) => ({ id: o.id, name: o.certificate.name, location: locationOf(o) })),
