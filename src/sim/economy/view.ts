@@ -48,6 +48,7 @@ import type {
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
+import type { Reservation } from '../reservations';
 import { getPlayer, ownedBy, playerList } from './players';
 
 export type PlayerLocation =
@@ -165,6 +166,8 @@ export interface PlayerView {
   orders: PendingOrder[];
   /** 오늘 밤 추첨을 기다리는 내 신청 (말, 게시판 일꾼). 남이 낸 신청은 보이지 않는다 */
   draws: DrawView[];
+  /** 예약 주문 (0.1.0): 여러 날 가는 신청(남은 양, 마감 날), 도착하면 팔기 */
+  reservations: Reservation[];
   /** 같은 세계의 다른 상단: 이름과 있는 곳만 (지도에 말로 보인다, 0.1.0) */
   rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
@@ -724,6 +727,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
         : null,
     })),
     hireBoard: hireBoard(state, p, map),
+    reservations: p.reservations.map((r) => ({ ...r })),
     rivals: playerList(state)
       .filter((o) => o.id !== p.id)
       .map((o) => ({ id: o.id, name: o.certificate.name, location: locationOf(o) })),

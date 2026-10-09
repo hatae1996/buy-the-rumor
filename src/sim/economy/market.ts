@@ -8,6 +8,8 @@ import { takeOldest, type Lot } from './inventory';
 import type { MarketResult, Order, OrderOwner, TownEconomy } from './state';
 
 export interface Fill {
+  /** 신청 번호 (견습 손님처럼 장 밖에서 맞춘 것은 없다) */
+  orderId?: number;
   owner: OrderOwner;
   good: GoodId;
   side: 'buy' | 'sell';
@@ -49,7 +51,7 @@ export function runMarket(
         const tax = Math.floor(n * price * (rules.tax ?? 0));
         accounts.addGold(o.owner, n * price - tax);
         town.treasury += tax;
-        fills.push({ owner: o.owner, good, side: 'sell', qty: n, price });
+        fills.push({ orderId: o.id, owner: o.owner, good, side: 'sell', qty: n, price });
       }
       accounts.receive(o.owner, o.lots, o.id);
       o.lots = [];
@@ -60,7 +62,7 @@ export function runMarket(
       const n = res.buyFills.get(o.id) ?? 0;
       // 못 산 경우에도 넘겨야 잡아 둔 수레 자리가 풀린다
       accounts.receive(o.owner, n > 0 ? takeOldest(pool, good, n) : [], o.id);
-      if (n > 0) fills.push({ owner: o.owner, good, side: 'buy', qty: n, price });
+      if (n > 0) fills.push({ orderId: o.id, owner: o.owner, good, side: 'buy', qty: n, price });
       accounts.addGold(o.owner, o.reserved - n * price);
       o.reserved = 0;
     }

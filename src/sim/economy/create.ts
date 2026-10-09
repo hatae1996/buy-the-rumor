@@ -165,6 +165,7 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     workshops: [],
     notify: defaultNotifySettings(),
     visited: [],
+    reservations: [],
   };
 }
 

@@ -8,6 +8,7 @@ import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Warehouse } from '../warehouse/warehouse';
 import type { Hire, HireRole } from '../hire/hire';
 import type { DrawRequest } from '../draws/draws';
+import type { Reservation } from '../reservations/reservations';
 import type { Caravan } from '../caravan/types';
 import type { BankAccount } from '../bank/bank';
 import type { OwnedWorkshop } from '../growth/workshop';
@@ -109,8 +110,8 @@ export interface PriceMemory {
 }
 
 export type LedgerEntry =
-  /** by: 창고 짐이나 두 번째 행렬이 한 거래 (없으면 내가 직접) */
-  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number; by?: 'store' | 'caravan' }
+  /** by: 창고 짐이나 두 번째 행렬이 한 거래 (없으면 내가 직접). reserved: 예약 주문이 한 거래 (0.1.0) */
+  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number; by?: 'store' | 'caravan'; reserved?: true }
   | { day: number; kind: 'travel'; from: number; to: number; days: number; fee: number }
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
@@ -255,6 +256,8 @@ export interface PlayerState {
   notify: NotifySettings;
   /** 가 본 마을 (플레이어가 아는 것: 서버가 이 경계로 데이터를 보낸다) */
   visited: number[];
+  /** 예약 주문 (0.1.0): 날마다 장날 신청으로 다시 들어가는 신청, 도착하면 팔기 */
+  reservations: Reservation[];
 }
 
 /** 플레이어의 신청 (pid: 주인 플레이어) */
@@ -289,6 +292,8 @@ export interface Order {
   reserved: number;
   /** 팔자: 맡긴 물건 */
   lots: Lot[];
+  /** 예약 주문이 넣은 신청이면 그 예약 번호 */
+  reservation?: number;
 }
 
 export interface NewsItem {

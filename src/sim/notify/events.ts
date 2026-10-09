@@ -21,6 +21,11 @@ export function dayNotices(state: EconomyState, p: PlayerState, map: WorldMap, d
   const byTown = new Map<number, { parts: string[]; net: number }>();
   for (const e of today) {
     if (e.kind !== 'buy' && e.kind !== 'sell') continue;
+    // 예약 주문 체결은 따로 알린다 (내 거래와 체결 값만, 그 마을 시세는 알리지 않는다)
+    if (e.reserved) {
+      out.push({ kind: 'reservation', day, text: `예약 주문: ${name(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 ${e.kind === 'sell' ? '팔림' : '삼'} (개당 ${e.price})`, target: { tab: 'ledger' } });
+      continue;
+    }
     const t = byTown.get(e.town) ?? { parts: [], net: 0 };
     t.parts.push(`${GOOD_NAME[e.good]} ${e.qty}개 ${e.kind === 'sell' ? '팔림' : '삼'}`);
     t.net += (e.kind === 'sell' ? 1 : -1) * e.qty * e.price;

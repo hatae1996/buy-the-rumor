@@ -53,6 +53,7 @@ import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt
 import { getPlayer, ownedBy } from './players';
 import type { EconomyState, PlayerId, PlayerState } from './state';
 import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawError } from '../draws';
+import { cancelReservation, reserveOnArrival, reserveStanding, type ReservationError } from '../reservations';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
@@ -114,6 +115,10 @@ export type Command =
   | { type: 'dismissHire'; hireId: number }
   /** 말·일꾼 추첨 신청을 거둔다 (맡긴 돈을 돌려받는다) */
   | { type: 'cancelDraw'; drawId: number }
+  /** 예약 주문 (0.1.0): 마감 날까지 날마다 그 마을 장날에 넣는 신청 / 가는 길에 도착하면 팔기 / 지우기 */
+  | { type: 'reserveOrder'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number; limit: number; until: number }
+  | { type: 'reserveOnArrival'; good: GoodId; qty: number | 'all'; minPrice: number }
+  | { type: 'cancelReservation'; reservationId: number }
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
   | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number }
   /** 두 번째 행렬: 꾸리기(마부, 내 말 중 일부, 이 마을 수레방에서 산 수레), 지시서 보내기, 불러들이기, 풀기 */
@@ -154,6 +159,7 @@ export type CommandError =
   | BoardError
   | CaravanError
   | DrawError
+  | ReservationError
   | ArrangeError
   | 'boardNotEmpty';
 
@@ -328,6 +334,12 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
     case 'hire':
       if (!['porter', 'gatherer', 'carter'].includes(cmd.role)) return fail('noWorker');
       return done(requestHire(state, p, map, cmd.role));
+    case 'reserveOrder':
+      return done(reserveStanding(state, p, cmd));
+    case 'reserveOnArrival':
+      return done(reserveOnArrival(state, p, cmd));
+    case 'cancelReservation':
+      return done(cancelReservation(p, cmd.reservationId));
     case 'cancelDraw':
       return done(cancelDraw(state, p, cmd.drawId));
     case 'dismissHire':

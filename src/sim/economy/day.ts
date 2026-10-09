@@ -33,6 +33,7 @@ import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks }
 import { checkBadges, ensureRecord, noteTrade, trackWorth, tradeRecord } from '../ranking';
 import { warehouseNight } from '../warehouse/warehouse';
 import { resolveDraws } from '../draws';
+import { noteReservationFill, placeReservations } from '../reservations';
 import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
 import { dayNotices, type NotifyEvent } from '../notify';
@@ -101,6 +102,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     }
   }
 
+  // 예약 주문: 오늘 장날 신청으로 넣는다 (자리를 비운 사이에도)
+  for (const p of turn) state.orders.push(...placeReservations(state, p, accounts));
+
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
   for (const o of state.orders) byTown[o.town]!.push(o);
@@ -133,6 +137,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     if (o.side === 'sell' && o.owner.kind === 'player') offered.set(o.owner.pid, (offered.get(o.owner.pid) ?? 0) + o.qty);
   }
   const playerBuys: Partial<Record<GoodId, number>>[] = state.towns.map(() => ({}));
+  const reservationOf = new Map(state.orders.filter((o) => o.reservation !== undefined).map((o) => [o.id, o.reservation!]));
   const markets = state.towns.map((town) => {
     const { results, fills } = runMarket(town, byTown[town.id]!, accounts, rng, {
       banned: bannedGoods(state, town.id),
@@ -147,7 +152,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
       const by = f.owner.kind === 'player' ? undefined : f.owner.kind;
       if (f.side === 'sell' && f.owner.kind === 'player') sold.set(p.id, (sold.get(p.id) ?? 0) + f.qty);
       if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
-      p.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price, ...(by ? { by } : {}) });
+      const res = f.orderId === undefined ? undefined : reservationOf.get(f.orderId);
+      if (res !== undefined) noteReservationFill(p, res, f.qty);
+      p.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price, ...(by ? { by } : {}), ...(res !== undefined ? { reserved: true as const } : {}) });
       noteTrade(p, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
