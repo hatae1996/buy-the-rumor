@@ -122,6 +122,15 @@ export class Game {
     return Math.max(0, this.dayStartedAt + DAY_MS - now);
   }
 
+  /**
+   * 길 위에서 도착까지 남은 실제 시간. 남은 날의 마지막 날 넘김에 도착한다.
+   * 견습 중이거나 시즌이 끝나 시간이 흐르지 않으면 null
+   */
+  msUntilArrival(daysLeft: number, now: number): number | null {
+    if (this.inApprentice || this.seasonOver) return null;
+    return this.msUntilMarket(now) + Math.max(0, daysLeft - 1) * DAY_MS;
+  }
+
   /** 견습 중인가. 견습 마을은 혼자 쓰는 마을이라 실제 시간이 흐르지 않는다 */
   get inApprentice(): boolean {
     return this.me.apprentice !== null;

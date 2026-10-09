@@ -34,6 +34,24 @@ describe('실제 시간과 장날', () => {
     expect(s.arrivedAt).toBe(2);
   });
 
+  it('도착 예상 시간이 되면 정말 도착해 있다', () => {
+    const g = Game.fresh(0, SEED, { apprentice: false });
+    expect(g.dispatch({ type: 'travel', to: 2 }).ok).toBe(true);
+    const t = 1000;
+    const loc = g.view().location;
+    if (loc.kind !== 'road') throw new Error('길 위가 아니다');
+    const ms = g.msUntilArrival(loc.daysLeft, t)!;
+    expect(ms).toBe(DAY_MS - t + (loc.daysLeft - 1) * DAY_MS);
+    g.catchUp(t + ms - 1);
+    expect(g.view().location.kind).toBe('road');
+    expect(g.catchUp(t + ms)!.arrivedAt).toBe(2);
+  });
+
+  it('견습 중에는 도착 시각을 실제 시간으로 셈하지 않는다', () => {
+    const g = Game.fresh(0, SEED);
+    expect(g.msUntilArrival(2, 0)).toBeNull();
+  });
+
   it('명령이 성공하면 화면에 알린다', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
     let calls = 0;

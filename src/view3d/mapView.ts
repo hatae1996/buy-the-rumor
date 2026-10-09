@@ -9,8 +9,8 @@ import { MapCamera } from './camera';
 import { TownLabels } from './labels';
 import { tileCenter } from './layout';
 import { MaterialKit } from './materials';
-import { BACKGROUND } from './palette';
-import { createPawn, PAWN_SLOTS, PawnGeometries, PawnMover } from './pawn';
+import { BACKGROUND, MARKER_RING } from './palette';
+import { addMarker, createPawn, PAWN_SLOTS, PawnGeometries, PawnMover, ringMaterial } from './pawn';
 import { addProps, PropGeometries } from './props';
 import { Snowfall } from './snow';
 import { loadTileArt, type TileArtSet } from './tileArt';
@@ -36,6 +36,8 @@ export interface PawnSpec {
   slot: number;
   /** 크기 (다른 상단 말은 조금 작게). 없으면 1 */
   scale?: number;
+  /** 내 말 표시(발밑 고리와 깃발)를 붙인다 */
+  marker?: boolean;
 }
 
 export interface MapViewEvents {
@@ -45,6 +47,8 @@ export interface MapViewEvents {
 
 /** 탭으로 볼 손가락 움직임 한도 (px) */
 const TAP_SLOP = 8;
+/** 내 말 고리가 한 번 퍼져 나가는 데 걸리는 초 */
+const PULSE_SECONDS = 1.4;
 
 export class MapView {
   readonly root: HTMLDivElement;
@@ -65,7 +69,11 @@ export class MapView {
   private style: MapStyle = { ...DEFAULT_STYLE };
   private art: TileArtSet | null = null;
   private board: { group: THREE.Group; tiles: TileBoard } | null = null;
-  private pawns = new Map<string, { obj: THREE.Group; color: number }>();
+  private pawns = new Map<string, { obj: THREE.Group; color: number; marker: boolean }>();
+  private readonly ringMats = { ring: ringMaterial(MARKER_RING, 0.95), pulse: ringMaterial(MARKER_RING, 0.8) };
+  private pulseT = 0;
+  /** 카메라가 따라가는 말 */
+  private focusKey: string | null = null;
   private pawnSpecs: PawnSpec[] = [];
   private mover: { key: string; mover: PawnMover; done: () => void } | null = null;
 
@@ -158,10 +166,15 @@ export class MapView {
     }
     for (const spec of specs) {
       let p = this.pawns.get(spec.key);
-      if (!p || p.color !== spec.color) {
+      const marker = spec.marker ?? false;
+      if (!p || p.color !== spec.color || p.marker !== marker) {
         if (p) this.scene.remove(p.obj);
-        p = { obj: createPawn(this.pawnGeo, this.kit, spec.color, this.style.outline), color: spec.color };
+        const obj = createPawn(this.pawnGeo, this.kit, spec.color, this.style.outline);
+        if (marker) addMarker(obj, this.pawnGeo, this.kit, this.ringMats, spec.color, this.style.outline);
+        p = { obj, color: spec.color, marker };
         this.scene.add(p.obj);
+        // 말을 다시 만들었으면 카메라도 새 말을 따라간다
+        if (spec.key === this.focusKey) this.cam.follow(obj);
         this.pawns.set(spec.key, p);
       }
       p.obj.scale.setScalar(spec.scale ?? 1);
@@ -187,6 +200,17 @@ export class MapView {
     return new Promise((resolve) => {
       this.mover = { key, mover: new PawnMover(p.obj, points), done: resolve };
     });
+  }
+
+  /** 말 하나를 따라가며 다가간다. null이면 판 전체로 물러난다 */
+  focusPawn(key: string | null): void {
+    const obj = key ? (this.pawns.get(key)?.obj ?? null) : null;
+    this.focusKey = obj ? key : null;
+    this.cam.focusOn(obj);
+  }
+
+  get focused(): boolean {
+    return this.cam.focused;
   }
 
   get moving(): boolean {
@@ -217,6 +241,8 @@ export class MapView {
     this.prisms.dispose();
     this.propGeo.dispose();
     this.pawnGeo.dispose();
+    this.ringMats.ring.dispose();
+    this.ringMats.pulse.dispose();
     this.kit.dispose();
     this.renderer.dispose();
     this.root.remove();
@@ -299,11 +325,22 @@ export class MapView {
       done();
     }
     if (this.season === 3) this.snow.step(dt);
-    this.cam.controls.update();
+    this.stepPulse(dt);
+    this.cam.step(dt);
     this.renderer.render(this.scene, this.cam.camera);
     this.labels.update(this.cam.camera, this.width, this.height);
     this.frame = requestAnimationFrame(this.loop);
   };
+
+  /** 내 말 발밑 고리가 퍼지며 옅어진다 */
+  private stepPulse(dt: number): void {
+    this.pulseT = (this.pulseT + dt / PULSE_SECONDS) % 1;
+    this.ringMats.pulse.opacity = 0.8 * (1 - this.pulseT);
+    const s = 1 + this.pulseT * 0.9;
+    for (const p of this.pawns.values()) {
+      if (p.marker) p.obj.getObjectByName('pulse')?.scale.set(s, 1, s);
+    }
+  }
 
   private readonly onVisibility = (): void => {
     if (!document.hidden) this.start();

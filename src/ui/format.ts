@@ -8,19 +8,45 @@ export const money = (n: number): string => Math.round(n).toLocaleString('ko-KR'
 
 export const dayText = (day: number, season: Season): string => `${day}일째 · ${SEASON_NAME[season]}`;
 
-/** 1시간 23분, 7분 */
+/** 1시간 23분, 7분, 하루가 넘으면 2일 5시간 */
 export function durationText(ms: number): string {
   const min = Math.ceil(ms / 60000);
   const h = Math.floor(min / 60);
   const m = min % 60;
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    return h % 24 === 0 ? `${d}일` : `${d}일 ${h % 24}시간`;
+  }
   if (h === 0) return `${m}분`;
   return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
+}
+
+/** 길 위의 도착 안내: "오늘 오후 7:40쯤 도착 (3시간 20분 남음)". 시간이 흐르지 않으면(견습) 게임 속 날로 */
+export function arrivalText(msLeft: number | null, daysLeft: number, now: number): string {
+  if (msLeft === null) return `<b>${daysLeft}일</b> 뒤 도착`;
+  return `<b>${clockAtText(now + msLeft, now)}</b>쯤 도착 (${durationText(msLeft)} 남음)`;
 }
 
 /** 위쪽 줄용 짧은 시간: "1:42" (시:분) */
 export function clockText(ms: number): string {
   const min = Math.ceil(ms / 60000);
   return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+}
+
+/** 실제 시각을 "오늘 오후 7:40", "내일 오전 9:10", "10월 12일 오후 3:00"으로 (10분 단위로 올림) */
+export function clockAtText(at: number, now: number): string {
+  const step = 10 * 60 * 1000;
+  const t = new Date(Math.ceil(at / step) * step);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(t);
+  d.setHours(0, 0, 0, 0);
+  const days = Math.round((d.getTime() - today.getTime()) / 86_400_000);
+  const dayPart = days <= 0 ? '오늘' : days === 1 ? '내일' : days === 2 ? '모레' : `${t.getMonth() + 1}월 ${t.getDate()}일`;
+  const h = t.getHours();
+  const half = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${dayPart} ${half} ${h12}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
 /** 오늘 본 날 기준으로 "오늘", "어제", "3일 전" */

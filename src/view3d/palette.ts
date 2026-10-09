@@ -56,3 +56,5 @@ export const PROP = {
 
 /** 내 상단은 빨강, 다른 상단들 */
 export const PAWN_COLORS = [0xd2594b, 0x2e9c98, 0xe6b43c, 0x6d4c8e] as const;
+/** 내 말 발밑 고리 (밝은 종이색: 초록 들판과 바다 위에서 잘 보인다) */
+export const MARKER_RING = 0xfff4d6;

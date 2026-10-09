@@ -4,10 +4,13 @@ import village from '../../../assets/ui/village.png';
 import type { BuildingId } from '../../sim/growth';
 import type { PlayerView } from '../../sim/economy';
 import { euro } from '../../sim/josa';
-import type { Game } from '../game';
+import { DAY_MS, type Game } from '../game';
+import { arrivalText } from '../format';
 import { buildingCards, openBuilding } from './buildings';
 
 export interface TownScreenActions {
+  /** 지금 실제 시각 (도착 예상 시각을 셈한다) */
+  now: number;
   passDay: () => void;
   passApprenticeDay: () => void;
   openSettlement: () => void;
@@ -41,11 +44,22 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
 
   let body: string;
   if (v.location.kind === 'road') {
-    const { from, to, daysLeft } = v.location;
+    const { from, to, days, daysLeft } = v.location;
+    const msLeft = game.msUntilArrival(daysLeft, act.now);
+    // 간 만큼: 지난 날 + 오늘 하루 중 지난 몫 (견습은 날 단위로만)
+    const todayDone = msLeft === null ? 0 : 1 - game.msUntilMarket(act.now) / DAY_MS;
+    const pct = Math.round(Math.min(1, Math.max(0, (days - daysLeft + todayDone) / days)) * 100);
     body = `
-      <section class="card">
-        <h2>길 위에 있어요</h2>
-        <p>${townName(from)}에서 ${euro(townName(to))} 가는 중이에요. <b>${daysLeft}일</b> 뒤에 도착해요.</p>
+      <section class="card travel-card">
+        <div class="travel-route">
+          <span class="travel-town">${townName(from)}</span>
+          <span class="travel-path" aria-hidden="true">
+            <span class="travel-done" style="width:${pct}%"></span>
+            <span class="travel-pawn" style="left:${pct}%"></span>
+          </span>
+          <span class="travel-town">${townName(to)}</span>
+        </div>
+        <p class="travel-eta">이동 중 · ${arrivalText(msLeft, daysLeft, act.now)}</p>
         <p class="muted">길 위에서는 장에 신청할 수 없어요. 창고에 둔 짐은 그 마을 장날에 팔 수 있어요(장부 탭).</p>
       </section>`;
   } else {

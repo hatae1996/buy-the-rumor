@@ -90,6 +90,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     const el = screens[current];
     if (current === 'town') {
       renderTown(el, game, v, {
+        now: now(),
         passDay: () => away(game.passDay(now())),
         passApprenticeDay: () => away(game.passApprenticeDay(now())),
         openSettlement: settle,
@@ -107,7 +108,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     for (const t of TABS) screens[t.id].hidden = t.id !== id;
     body.classList.toggle('is-map', id === 'map');
     body.scrollTop = 0;
-    if (id === 'map' && !map) map = import('./mapScreen').then((m) => m.mountMapScreen(screens.map, game));
+    if (id === 'map' && !map) map = import('./mapScreen').then((m) => m.mountMapScreen(screens.map, game, now));
     // 소식 탭을 열면 오늘 신문을 읽은 것으로 친다 (견습의 첫 신문 장면)
     if (id === 'news' && game.view().newsReadDay !== game.view().day) game.dispatch({ type: 'readNews' });
     void map?.then((m) => m.setActive(id === 'map'));

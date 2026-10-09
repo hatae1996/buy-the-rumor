@@ -44,3 +44,25 @@
 .map-status:empty {
   display: none;
 }
+
+/* 오른쪽 위 단추 줄 (내 위치, 두 번째 행렬) */
+.map-tools {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.map-tools .map-caravan-btn {
+  position: static;
+}
+
+/* 내 위치: 내 말 색 */
+.map-locate-btn {
+  background: var(--coral);
+  box-shadow: 0 3px 0 var(--coral-deep);
+}

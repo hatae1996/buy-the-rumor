@@ -966,3 +966,68 @@
   min-height: var(--tap);
   white-space: nowrap;
 }
+
+/* 길 위 카드 (마을 탭): 떠난 마을 ~~~→ 갈 마을, 말이 간 만큼 앞에 선다 */
+.travel-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 10px;
+}
+
+.travel-town {
+  flex: 0 1 auto;
+  max-width: 34%;
+  font-family: var(--f-display);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.travel-path {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 48px;
+  height: 22px;
+  /* 점선 길 */
+  background: linear-gradient(90deg, var(--ink-soft) 50%, transparent 0) left center / 10px 2px repeat-x;
+}
+
+/* 화살촉 */
+.travel-path::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--ink-soft);
+  border-right: 2px solid var(--ink-soft);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* 간 길은 굵은 실선 */
+.travel-done {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--coral);
+  transform: translateY(-50%);
+}
+
+/* 내 말 (지도의 말과 같은 색) */
+.travel-pawn {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--coral);
+  transform: translate(-50%, -50%);
+}
+
+.travel-eta {
+  font-size: 16px;
+}

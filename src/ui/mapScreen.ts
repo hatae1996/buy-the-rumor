@@ -6,7 +6,7 @@ import { ECONOMY } from '../sim/constants';
 import { euro } from '../sim/josa';
 import { findRoute } from '../sim/worldgen';
 import { MapView, PAWN_COLORS, PAWN_SLOTS, type PawnSpec } from '../view3d';
-import { agoText, ERROR_TEXT, money } from './format';
+import { agoText, arrivalText, ERROR_TEXT, money } from './format';
 import type { Game } from './game';
 import type { PlayerView } from '../sim/economy';
 import { openSheet } from './sheet';
@@ -18,7 +18,7 @@ export interface MapScreen {
   render(): void;
 }
 
-export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
+export function mountMapScreen(container: HTMLElement, game: Game, now: () => number): MapScreen {
   const status = document.createElement('p');
   status.className = 'map-status';
   status.setAttribute('role', 'status');
@@ -32,12 +32,28 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     return { setActive: () => {}, render: () => {} };
   }
   container.appendChild(status);
+  // 오른쪽 위 단추 줄: 내 위치, 두 번째 행렬
+  const tools = document.createElement('div');
+  tools.className = 'map-tools';
+  const locateBtn = document.createElement('button');
+  locateBtn.type = 'button';
+  locateBtn.className = 'map-caravan-btn map-locate-btn';
+  locateBtn.addEventListener('click', () => {
+    view.focusPawn(view.focused ? null : 'me');
+    syncLocate();
+  });
+  const syncLocate = () => {
+    locateBtn.textContent = view.focused ? '전체 보기' : '내 위치';
+    locateBtn.setAttribute('aria-pressed', String(view.focused));
+  };
+  syncLocate();
   const caravanBtn = document.createElement('button');
   caravanBtn.type = 'button';
   caravanBtn.className = 'map-caravan-btn';
   caravanBtn.textContent = '두 번째 행렬';
   caravanBtn.addEventListener('click', () => openCaravanSheet(game));
-  container.appendChild(caravanBtn);
+  tools.append(locateBtn, caravanBtn);
+  container.appendChild(tools);
   // 예약 주문이 열렸으면 길 위에서 "도착하면 팔기"를 걸어 둘 수 있다 (0.1.0)
   const arrivalBtn = document.createElement('button');
   arrivalBtn.type = 'button';
@@ -80,7 +96,8 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
     const v = game.view();
     view.setSeason(v.season);
     if (!departing) {
-      const me: PawnSpec = { key: 'me', color: PAWN_COLORS[0], tile: myTile().tile, slot: 0 };
+      // 내 말: 크게, 발밑 고리와 깃발 (다른 상단 말 사이에서 찾기 쉽게)
+      const me: PawnSpec = { key: 'me', color: PAWN_COLORS[0], tile: myTile().tile, slot: 0, scale: 1.3, marker: true };
       const ct = caravanTile();
       const pawns = [me];
       if (ct !== null) pawns.push({ key: 'caravan', color: PAWN_COLORS[1], tile: ct, slot: ct === me.tile ? 1 : 0 });
@@ -92,16 +109,17 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
         const slot = used.get(tile) ?? 0;
         if (slot >= PAWN_SLOTS.length) return;
         used.set(tile, slot + 1);
-        pawns.push({ key: `rival:${r.id}`, color: i % 2 ? PAWN_COLORS[3] : PAWN_COLORS[2], tile, slot, scale: 0.75 });
+        pawns.push({ key: `rival:${r.id}`, color: i % 2 ? PAWN_COLORS[3] : PAWN_COLORS[2], tile, slot, scale: 0.65 });
       });
       view.setPawns(pawns);
     }
     caravanBtn.hidden = !v.caravan && !v.hires.some((h) => h.role === 'carter');
     arrivalBtn.hidden = v.location.kind !== 'road' || !v.unlocks.includes('reservation');
-    status.textContent =
-      v.location.kind === 'town'
-        ? `${name(v.location.town)}에 있어요. 다른 마을을 누르면 떠날 수 있어요.`
-        : `${euro(name(v.location.to))} 가는 길 · ${v.location.daysLeft}일 남았어요.`;
+    const loc = v.location;
+    status.innerHTML =
+      loc.kind === 'town'
+        ? `${name(loc.town)}에 있어요. 다른 마을을 누르면 떠날 수 있어요.`
+        : `${euro(name(loc.to))} 가는 길 · ${arrivalText(game.msUntilArrival(loc.daysLeft, now()), loc.daysLeft, now())}`;
   }
 
   /** 마을 정보 카드: 이동 시간, 아는 시세, 들은 특색, 건물, 여기로 가기 */
