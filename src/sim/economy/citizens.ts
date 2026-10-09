@@ -14,7 +14,7 @@ const C = ECONOMY.citizens;
 
 export function citizenDemand(state: EconomyState, town: TownEconomy, good: GoodId, season: Season): number {
   let d: number = C.demand[good] * C.depth;
-  if (town.tier === 'city') d *= ECONOMY.city.demandFactor;
+  if (town.tier === 'city') d *= ECONOMY.city.demandFactor * (town.scale ?? 1);
   if (season === WINTER) {
     if (good === 'wood') d *= C.winterWoodFactor;
     if (good === 'leather') d *= C.winterLeatherFactor;
@@ -48,12 +48,13 @@ export function citizenOrders(state: EconomyState, town: TownEconomy, season: Se
 /** 장날 뒤: 금고에 돈이 들어오고, 넘치면 바친다. 바친 돈을 돌려준다 */
 /** 하루 금고에 들어오는 돈 (도시는 더 많다) */
 export function stipendOf(town: TownEconomy): number {
-  return C.stipend * (town.tier === 'city' ? ECONOMY.city.treasuryFactor : 1);
+  // 돈은 늘 정수 (도시 크기 배율이 분수일 수 있다)
+  return Math.round(C.stipend * (town.tier === 'city' ? ECONOMY.city.treasuryFactor * (town.scale ?? 1) : 1));
 }
 
 export function treasuryDay(town: TownEconomy): number {
   town.treasury += stipendOf(town);
-  const cap = C.treasuryCap * (town.tier === 'city' ? ECONOMY.city.treasuryFactor : 1);
+  const cap = Math.round(C.treasuryCap * (town.tier === 'city' ? ECONOMY.city.treasuryFactor * (town.scale ?? 1) : 1));
   let tribute = 0;
   if (town.treasury > cap) {
     tribute = Math.floor((town.treasury - cap) * C.tributeRate);

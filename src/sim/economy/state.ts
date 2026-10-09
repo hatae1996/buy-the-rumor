@@ -55,6 +55,11 @@ export interface TownEconomy {
   refPrice: Record<GoodId, number>;
   lastMarket: Record<GoodId, MarketResult>;
   treasury: number;
+  /**
+   * 도시의 크기 (0.1.1): 도시 하나가 맡는 생산 마을 수 / 3. 주민 수요와 금고가 이만큼 커진다.
+   * 마을 4곳 맵(생산 마을 3, 도시 1)이면 1이라 두지 않는다. 생산 마을은 없다
+   */
+  scale?: number;
   /** 도시 공방의 재료와 만든 물건. 공방이 없는 마을은 null */
   workshop: Inventory | null;
   /** 신문에 실린 이 마을 사건 (원정 덱의 사건 카드를 부른다) */

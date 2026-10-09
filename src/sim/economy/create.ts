@@ -220,21 +220,30 @@ function warmUp(state: EconomyState, map: WorldMap, days: number): void {
   }
 }
 
+/** 도시의 크기: 도시 하나가 맡는 생산 마을 수 / 3 (마을 4곳 맵이면 1). 마을이 늘면 도시도 커진다 (0.1.1) */
+export function cityScale(map: WorldMap): number {
+  const cities = map.towns.filter((t) => t.tier === 'city').length;
+  return cities ? (map.towns.length - cities) / cities / 3 : 1;
+}
+
 function createTown(map: WorldMap, id: number): TownEconomy {
   const refPrice = {} as Record<GoodId, number>;
   for (const g of GOODS) refPrice[g] = basePrice(g);
   const tier = map.towns[id]!.tier;
-  return {
+  const scale = tier === 'city' ? cityScale(map) : 1;
+  const town: TownEconomy = {
     id,
     tier,
     nodes: townNodes(map, id),
     refPrice,
     lastMarket: emptyGoodMap<MarketResult>({ price: null, volume: 0, demand: 0, supply: 0, bestBid: null, bestAsk: null, imbalance: 0 }),
-    treasury: ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor : 1),
+    treasury: Math.round(ECONOMY.citizens.startTreasury * (tier === 'city' ? ECONOMY.city.treasuryFactor * scale : 1)),
     workshop: tier === 'city' ? [] : null,
     recentEvents: [],
     stableGrain: 0,
   };
+  if (scale !== 1) town.scale = scale;
+  return town;
 }
 
 /** 새 일꾼. 처음엔 이틀 치 먹을 것(상하지 않는 염장 식품)과 쓸 만한 도구를 갖고 있다 */

@@ -22,6 +22,16 @@ describe.each([6, 8, 12])('마을 %i곳 세계', (towns) => {
     }
   });
 
+  it('도시는 맡는 생산 마을 수만큼 커진다 (주민 수요와 금고, 마을 4곳 맵이면 그대로)', () => {
+    const cities = map.towns.filter((t) => t.tier === 'city').length;
+    const scale = (towns - cities) / cities / 3;
+    for (const t of state.towns.filter((x) => x.tier === 'city')) {
+      expect(t.scale ?? 1).toBeCloseTo(scale);
+      expect(t.treasury).toBe(Math.round(ECONOMY.citizens.startTreasury * ECONOMY.city.treasuryFactor * scale));
+    }
+    expect(createEconomy(generateWorld(SEED), SEED).towns.every((t) => t.scale === undefined)).toBe(true);
+  });
+
   it('NPC 상단은 마을 4곳에 5상단 비율, 이름이 겹치지 않는다', () => {
     expect(state.traders).toHaveLength(Math.round(ECONOMY.traders.count * townScale(towns)));
     expect(new Set(state.traders.map((t) => t.name)).size).toBe(state.traders.length);
