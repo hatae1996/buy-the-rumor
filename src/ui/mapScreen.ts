@@ -11,6 +11,7 @@ import type { Game } from './game';
 import type { PlayerView } from '../sim/economy';
 import { openSheet } from './sheet';
 import { openCaravanSheet } from './screens/caravanSheet';
+import { openArrivalSheet } from './screens/arrivalSheet';
 
 export interface MapScreen {
   setActive(active: boolean): void;
@@ -37,6 +38,13 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
   caravanBtn.textContent = '두 번째 행렬';
   caravanBtn.addEventListener('click', () => openCaravanSheet(game));
   container.appendChild(caravanBtn);
+  // 예약 주문이 열렸으면 길 위에서 "도착하면 팔기"를 걸어 둘 수 있다 (0.1.0)
+  const arrivalBtn = document.createElement('button');
+  arrivalBtn.type = 'button';
+  arrivalBtn.className = 'map-caravan-btn map-arrival-btn';
+  arrivalBtn.textContent = '도착하면 팔기';
+  arrivalBtn.addEventListener('click', () => openArrivalSheet(game));
+  container.appendChild(arrivalBtn);
   view.setWorld(game.map);
   const name = (id: number) => game.map.towns[id]!.name;
   /** 떠나는 순간에는 상태가 먼저 바뀌어도 말을 순간이동시키지 않고 걸어가게 한다 */
@@ -89,6 +97,7 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
       view.setPawns(pawns);
     }
     caravanBtn.hidden = !v.caravan && !v.hires.some((h) => h.role === 'carter');
+    arrivalBtn.hidden = v.location.kind !== 'road' || !v.unlocks.includes('reservation');
     status.textContent =
       v.location.kind === 'town'
         ? `${name(v.location.town)}에 있어요. 다른 마을을 누르면 떠날 수 있어요.`

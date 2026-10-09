@@ -20,6 +20,12 @@
   display: none;
 }
 
+/* 도착하면 팔기는 왼쪽 위 (두 번째 행렬 단추와 겹치지 않게) */
+.map-arrival-btn {
+  right: auto;
+  left: 12px;
+}
+
 .map-status {
   position: absolute;
   left: 12px;

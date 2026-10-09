@@ -109,9 +109,9 @@ const byText = (by: 'store' | 'caravan' | undefined): string => (by === 'caravan
 export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { text: string; amount: number | null } {
   switch (e.kind) {
     case 'buy':
-      return { text: `${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 샀어요 (개당 ${e.price})`, amount: -e.qty * e.price };
+      return { text: `${e.reserved ? '예약 주문으로 ' : ''}${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 샀어요 (개당 ${e.price})`, amount: -e.qty * e.price };
     case 'sell':
-      return { text: `${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 팔았어요 (개당 ${e.price})`, amount: e.qty * e.price };
+      return { text: `${e.reserved ? '예약 주문으로 ' : ''}${byText(e.by)}${townName(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 팔았어요 (개당 ${e.price})`, amount: e.qty * e.price };
     case 'travel':
       return { text: `${townName(e.from)} → ${townName(e.to)} 출발 (${e.days}일)`, amount: -e.fee };
     case 'spoil':

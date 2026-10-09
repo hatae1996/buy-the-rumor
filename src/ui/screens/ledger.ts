@@ -61,6 +61,22 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       )
       .join('') || '<li class="muted">장날에 낼 신청이 없어요.</li>';
 
+  // 예약 주문: 마감 날까지 날마다 그 마을 장날에 들어가는 신청, 도착하면 팔기
+  const reservations = v.reservations
+    .map((r) => {
+      const what =
+        r.kind === 'standing'
+          ? `${townName(r.town)} · ${goodName(r.good)} ${r.qty}개 남음 · ${r.side === 'sell' ? `${r.limit} 이상` : `${r.limit} 이하`} · ${r.until}일째까지`
+          : `${townName(r.town)}에 도착하면 · ${goodName(r.good)} ${r.qty === 'all' ? '전부' : `${r.qty}개`} · ${r.minPrice} 이상`;
+      const side = r.kind === 'standing' ? r.side : 'sell';
+      return `<li class="order-row">
+          <span class="order-side ${side}">예약 ${side === 'sell' ? '팔기' : '사기'}</span>
+          <span>${what}</span>
+          <button type="button" class="link-btn" data-unreserve="${r.id}">지우기</button>
+        </li>`;
+    })
+    .join('');
+
   // 사람과 말: 하루 유지비 합계가 맨 위
   const people = [
     ...v.hires.map((h) => `<li class="row"><span>${h.roleName} ${h.name} <small class="muted">${h.jobName} · ${townName(h.town)}</small></span><b>${money(h.wage)}/일${h.restWage !== null ? ` <small class="muted">쉬는 날 ${money(h.restWage)}</small>` : ''}</b></li>`),
@@ -102,6 +118,13 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
     <section class="card">
       <h2>신청</h2>
       <ul class="order-list">${orders}</ul>
+      ${
+        reservations
+          ? `<h3>예약 주문</h3>
+             <p class="muted">마감 날까지 날마다 그 마을 장날에 다시 들어가요. 체결되면 알려 드려요.</p>
+             <ul class="order-list">${reservations}</ul>`
+          : ''
+      }
     </section>
     ${
       people || v.upkeep.total
@@ -141,5 +164,8 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
 
   el.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
     b.addEventListener('click', () => cancelOrder(Number(b.dataset.cancel))),
+  );
+  el.querySelectorAll<HTMLButtonElement>('[data-unreserve]').forEach((b) =>
+    b.addEventListener('click', () => game.dispatch({ type: 'cancelReservation', reservationId: Number(b.dataset.unreserve) })),
   );
 }
