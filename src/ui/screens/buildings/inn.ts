@@ -24,7 +24,7 @@ export function openInn(game: Game): void {
       .map(
         (o) => `<li class="row">
           <span><b>${GROWTH.hire[o.role].name}</b> ${o.name} <small class="muted">(${o.jobName})</small><br /><small class="muted">${ROLE_TEXT[o.role]}</small></span>
-          <button type="button" class="secondary-btn" data-hire="${o.role}" ${v.gold < o.wage ? 'disabled' : ''}>고용<small>일당 ${money(o.wage)}</small></button>
+          <button type="button" class="secondary-btn" data-hire="${o.role}" ${v.gold < o.wage ? 'disabled' : ''}>고용<small>일당 ${money(o.wage)}${o.restWage !== null ? ` · 쉬는 날 ${money(o.restWage)}` : ''}</small></button>
         </li>`,
       )
       .join('');
@@ -76,7 +76,7 @@ export function openInn(game: Game): void {
              ${
                mine.length
                  ? `<h3>이 마을에서 데려온 사람</h3><ul class="list">${mine
-                     .map((h) => `<li class="row"><span>${h.roleName} ${h.name} · 일당 ${money(h.wage)}</span><button type="button" class="link-btn" data-dismiss="${h.id}">내보내기</button></li>`)
+                     .map((h) => `<li class="row"><span>${h.roleName} ${h.name} · 일당 ${money(h.wage)}${h.restWage !== null ? ` (쉬는 날 ${money(h.restWage)})` : ''}</span><button type="button" class="link-btn" data-dismiss="${h.id}">내보내기</button></li>`)
                      .join('')}</ul>`
                  : ''
              }`

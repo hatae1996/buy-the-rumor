@@ -569,7 +569,8 @@ export const GROWTH = {
   hire: {
     porter: { name: '짐꾼', wage: 6 },
     gatherer: { name: '채집꾼', wage: 9 },
-    carter: { name: '마부', wage: 12 },
+    /** 마부 (0.0.9): 행렬이 길에 있거나 장날 신청을 낸 날은 wage, 쉬는 날(지시 없이 서 있거나 행렬을 맡지 않은 날)은 restWage */
+    carter: { name: '마부', wage: 12, restWage: 4 },
     informant: { name: '정보원', wage: 20 },
     /** 일당 배율의 아래·위 한도 (일손 사정) */
     wageFactor: [0.7, 2],
@@ -619,6 +620,11 @@ export const CART = {
     carriage: { name: '마차', rows: ['.######.', '########', '########', '########', '########'], humanPull: 0, horses: 2, price: 420 },
   },
   tradeIn: 0.5,
+  /**
+   * 행렬 수레 빌리기 (0.0.9): 두 번째 행렬을 꾸릴 때 수레방에서 하루 값을 내고 빌린다. 행렬을 풀면 돌려준다(돌려받는 돈 없음).
+   * 큰 주문 한 번 다녀오는 데 수레를 사고 반값에 되팔면 안 맞아서 (questions.md 77번). 초안
+   */
+  rentPerDay: { pack: 0, handcart: 2, wagon: 5, carriage: 10 },
   goods: {
     // 가죽·생선 2칸 가로, 고기 2칸 세로, 곡물 2×2, 목재 1×3, 광석·소금 1칸, 도구·염장 통 ㄱ자 3칸
     fish: { shape: [[0, 0], [1, 0]], stack: 2, weight: 1 },

@@ -63,7 +63,7 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
 
   // 사람과 말: 하루 유지비 합계가 맨 위
   const people = [
-    ...v.hires.map((h) => `<li class="row"><span>${h.roleName} ${h.name} <small class="muted">${h.jobName} · ${townName(h.town)}</small></span><b>${money(h.wage)}/일</b></li>`),
+    ...v.hires.map((h) => `<li class="row"><span>${h.roleName} ${h.name} <small class="muted">${h.jobName} · ${townName(h.town)}</small></span><b>${money(h.wage)}/일${h.restWage !== null ? ` <small class="muted">쉬는 날 ${money(h.restWage)}</small>` : ''}</b></li>`),
     ...v.informants.map((t) => `<li class="row"><span>정보원 <small class="muted">${townName(t)}</small></span></li>`),
     ...v.horses.map((h) => `<li><b>${h.name}</b> <small class="muted">내 행렬 · 끄는 무게 ${h.pulling} · ${speedWord(h.speed)}</small>${horseFatigue(h)}</li>`),
     ...(v.caravan?.horses ?? []).map((h) => `<li><b>${h.name}</b> <small class="muted">두 번째 행렬</small>${horseFatigue(h)}</li>`),

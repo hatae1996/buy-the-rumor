@@ -8,6 +8,8 @@ import type { Horse } from '../horses';
 import { netWorth } from '../ranking';
 import { generateWorld } from '../worldgen';
 import { autoLoadRoom } from './index';
+import { restWage } from '../hire';
+import { moneySupply } from '../economy/stats';
 
 const SEED = 20261008;
 const map = generateWorld(SEED);
@@ -150,5 +152,83 @@ describe('불러들이기와 풀기, 마부가 떠나면', () => {
     advanceDay(s, map);
     expect(s.player.hires.some((h) => h.role === 'carter')).toBe(false);
     expect(s.player.caravan!.plan).toBeNull();
+  });
+});
+
+describe('수레 빌리기와 마부 일당 (0.0.9, questions.md 77번)', () => {
+  const wageLine = () => s.player.ledger.filter((e) => e.kind === 'hire' && e.what === 'wage' && e.day === s.day - 1).reduce((a, e) => a + (e.kind === 'hire' ? e.fee : 0), 0);
+
+  it('빌려서 꾸리면 수레값이 나가지 않고, 밤마다 하루 값을 빌린 수레방 마을에 낸다', () => {
+    const home = s.player.town;
+    ok({ type: 'hire', role: 'carter' });
+    const gold = s.player.gold;
+    ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon', rent: true });
+    expect(s.player.gold).toBe(gold);
+    expect(s.player.caravan!.rent).toEqual({ town: home, perDay: CART.rentPerDay.wagon, owed: 0 });
+    expect(playerView(s, map).upkeep.parts).toContainEqual({ what: '빌린 수레', perDay: CART.rentPerDay.wagon });
+    const money = moneySupply(s);
+    const r = advanceDay(s, map);
+    const rent = s.player.ledger.filter((e) => e.kind === 'caravan' && e.what === 'rent');
+    expect(rent).toEqual([expect.objectContaining({ town: home, fee: CART.rentPerDay.wagon })]);
+    // 돈은 새거나 생기지 않는다 (빌린 값은 마을 금고로)
+    expect(moneySupply(s)).toBe(money + r.stipend + r.outsideGold + r.arrivedGold - r.tribute - r.leftGold);
+  });
+
+  it('못 낸 값은 밀리고, 풀 때 다 내야 한다. 풀면 돌려받는 돈은 없다', () => {
+    ok({ type: 'hire', role: 'carter' });
+    ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon', rent: true });
+    // 마부가 떠나지 않을 만큼만 남긴다 (쉬는 날 일당은 내고 수레 값은 밀린다)
+    s.player.gold = 4;
+    advanceDay(s, map);
+    advanceDay(s, map);
+    const owed = s.player.caravan!.rent!.owed;
+    expect(owed).toBeGreaterThan(0);
+    s.player.gold = owed - 1;
+    expect(applyCommand(s, map, { type: 'disbandCaravan' })).toEqual({ ok: false, error: 'notEnoughGold' });
+    s.player.gold = owed + 100;
+    ok({ type: 'disbandCaravan' });
+    expect(s.player.gold).toBe(100);
+    expect(s.player.caravan).toBeNull();
+    expect(s.player.horses.map((h) => h.id)).toEqual([901]);
+    expect(s.player.ledger.at(-1)).toMatchObject({ kind: 'caravan', what: 'disband', rented: true, fee: owed });
+  });
+
+  it('등짐은 빌릴 수 없고, 첫 밤 값을 낼 돈은 있어야 한다', () => {
+    ok({ type: 'hire', role: 'carter' });
+    s.player.horses = [horse(901, 'pony')];
+    expect(applyCommand(s, map, { type: 'formCaravan', horseIds: [901], cart: 'pack', rent: true })).toEqual({ ok: false, error: 'badPlan' });
+    s.player.gold = CART.rentPerDay.handcart - 1;
+    expect(applyCommand(s, map, { type: 'formCaravan', horseIds: [901], cart: 'handcart', rent: true })).toEqual({ ok: false, error: 'notEnoughGold' });
+  });
+
+  it('마부 일당: 행렬이 길에 있거나 장날 신청을 낸 날은 다, 쉬는 날은 적게', () => {
+    const home = s.player.town;
+    ok({ type: 'hire', role: 'carter' });
+    const carter = s.player.hires.find((h) => h.role === 'carter')!;
+    // 행렬을 맡기 전: 쉬는 날
+    advanceDay(s, map);
+    expect(wageLine()).toBe(restWage(carter));
+    expect(restWage(carter)).toBe(Math.max(1, Math.round((carter.wage * GROWTH.hire.carter.restWage) / GROWTH.hire.carter.wage)));
+    ok({ type: 'formCaravan', horseIds: [901], cart: 'wagon', rent: true });
+    // 지시 없이 서 있는 날: 쉬는 날
+    advanceDay(s, map);
+    expect(wageLine()).toBe(restWage(carter));
+    // 장날 신청을 낸 날과 길에 있는 날: 다
+    const other = map.towns.find((t) => t.id !== home)!.id;
+    ok({ type: 'setCaravanPlan', plan: { stops: [{ town: home, buys: [], sells: [] }, { town: other, buys: [], sells: [] }], repeat: false } });
+    advanceDay(s, map);
+    expect(wageLine()).toBe(carter.wage);
+    expect(s.player.caravan!.travel).not.toBeNull();
+    advanceDay(s, map);
+    expect(wageLine()).toBe(carter.wage);
+  });
+
+  it('게시판과 수레방은 쉬는 날 일당과 빌리는 값을 보인다', () => {
+    const v = playerView(s, map);
+    const offer = v.hireBoard.find((o) => o.role === 'carter');
+    if (offer) expect(offer.restWage).toBe(restWage(offer));
+    expect(v.hireBoard.filter((o) => o.role !== 'carter').every((o) => o.restWage === null)).toBe(true);
+    expect(v.carts.find((c) => c.type === 'wagon')!.rentPerDay).toBe(CART.rentPerDay.wagon);
+    expect(v.carts.find((c) => c.type === 'pack')!.rentPerDay).toBeNull();
   });
 });

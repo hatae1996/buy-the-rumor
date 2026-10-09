@@ -19,7 +19,7 @@ import {
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
 import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingId } from '../growth/buildings';
-import { hireBoard, porterBuyRoom, porters, type HireOffer, type HireRole } from '../hire';
+import { hireBoard, porterBuyRoom, porters, restWage, wageToday, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
 import { badgeDef, certificateView, questProgress, questTier, themeDef, type CertificateView } from '../ranking';
@@ -79,7 +79,12 @@ export interface HireView {
   name: string;
   jobName: string;
   town: number;
+  /** 일하는 날 일당 */
   wage: number;
+  /** 마부가 쉬는 날 일당 (0.0.9). 다른 일꾼은 null */
+  restWage: number | null;
+  /** 오늘 밤 줄 일당 */
+  wageToday: number;
   /** 짐꾼 손수레 (아니면 null) */
   board: { rows: readonly string[]; pieces: CartPieceView[]; weight: number; maxWeight: number } | null;
 }
@@ -95,6 +100,8 @@ export interface CaravanView {
   recalled: boolean;
   /** 내가 있는 마을에 와 있어 짐을 주고받을 수 있나 */
   here: boolean;
+  /** 빌린 수레 (0.0.9): 하루 값과 밀린 값. 산 수레면 null */
+  rent: { perDay: number; owed: number } | null;
 }
 
 export interface WarehouseView {
@@ -260,6 +267,8 @@ export interface CartOffer {
   horses: number;
   /** 지금 수레를 쳐 주고 내는 값. 지금 수레면 null */
   cost: number | null;
+  /** 두 번째 행렬 수레로 빌리는 하루 값 (0.0.9). 빌릴 수 없으면 null */
+  rentPerDay: number | null;
 }
 
 const kindInfo = (kind: HorseKind): HorseKindInfo => {
@@ -359,8 +368,10 @@ function knownTraits(state: EconomyState): Record<number, { name: string; confir
 function upkeepView(state: EconomyState): PlayerView['upkeep'] {
   const p = state.player;
   const parts: { what: string; perDay: number }[] = [];
-  const wages = p.hires.reduce((s, h) => s + h.wage, 0);
+  // 마부는 쉬는 날 적게 받는다 (0.0.9): 오늘 밤 줄 일당으로 센다
+  const wages = p.hires.reduce((s, h) => s + wageToday(state, h), 0);
   if (wages) parts.push({ what: '일꾼 일당', perDay: wages });
+  if (p.caravan?.rent) parts.push({ what: '빌린 수레', perDay: p.caravan.rent.perDay });
   if (p.informants.length) parts.push({ what: '정보원', perDay: p.informants.length * GROWTH.hire.informant.wage });
   const horses = [...p.horses, ...(p.caravan?.horses ?? [])];
   const feedTown = p.travel ? p.travel.to : p.town;
@@ -403,6 +414,7 @@ function caravanView(state: EconomyState): CaravanView | null {
     stop: c.stop,
     recalled: c.recalled,
     here: !p.travel && !c.travel && c.town === p.town,
+    rent: c.rent ? { perDay: c.rent.perDay, owed: c.rent.owed } : null,
   };
 }
 
@@ -676,6 +688,8 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       jobName: JOB_NAME[h.job],
       town: h.town,
       wage: h.wage,
+      restWage: h.role === 'carter' ? restWage(h) : null,
+      wageToday: wageToday(state, h),
       board: h.board
         ? { rows: CART.types.handcart.rows, pieces: piecesView(h.board, state.orders), weight: cartWeight(h.board), maxWeight: CART.types.handcart.humanPull }
         : null,
@@ -707,6 +721,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       humanPull: CART.types[type].humanPull,
       horses: CART.types[type].horses,
       cost: type === p.cart.type ? null : cartCost(p.cart.type, type),
+      rentPerDay: CART.rentPerDay[type] > 0 ? CART.rentPerDay[type] : null,
     })),
   };
 }

@@ -5,6 +5,7 @@ import { ECONOMY } from '../constants';
 import { GOOD_NAME, shelfLife, type GoodId } from '../economy/goods';
 import type { EconomyState } from '../economy/state';
 import { porterBoards } from '../hire/boards';
+import { wageToday } from '../hire/wage';
 import { euro, iGa } from '../josa';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
@@ -54,7 +55,7 @@ export function dayNotices(state: EconomyState, map: WorldMap, day: number, news
   }
 
   // 사람과 말: 내일 일당을 다 못 주면 누군가 떠난다, 말이 굶었다
-  const wages = p.hires.reduce((s, h) => s + h.wage, 0);
+  const wages = p.hires.reduce((s, h) => s + wageToday(state, h), 0);
   if (wages > 0 && p.gold < wages) out.push({ kind: 'people', day, text: `내일 일당 ${wages}에 돈이 모자라요 (가진 돈 ${p.gold}). 못 받은 일꾼은 떠나요.`, target: { tab: 'ledger' } });
   for (const e of today) {
     if (e.kind === 'hire' && e.what === 'quit') out.push({ kind: 'people', day, text: `${iGa(e.name ?? '일꾼')} 일당을 못 받아 ${euro(name(e.town))} 돌아갔어요.`, target: { tab: 'ledger' } });

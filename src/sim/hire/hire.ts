@@ -9,6 +9,7 @@ import type { EconomyState, Worker } from '../economy/state';
 import { hasBuilding } from '../growth/buildings';
 import { mixSeed } from '../rng';
 import type { WorldMap } from '../worldgen';
+import { restWage } from './wage';
 
 const H = GROWTH.hire;
 
@@ -82,6 +83,8 @@ export interface HireOffer {
   job: JobId;
   jobName: string;
   wage: number;
+  /** 마부가 쉬는 날 일당 (0.0.9). 다른 일꾼은 null */
+  restWage: number | null;
 }
 
 /** 지금 마을 게시판 (여관이 있는 마을에서만) */
@@ -91,7 +94,9 @@ export function hireBoard(state: EconomyState, map: WorldMap): HireOffer[] {
   const out: HireOffer[] = [];
   for (const role of ['porter', 'gatherer', 'carter'] as const) {
     const w = candidate(state, p.town, role);
-    if (w) out.push({ role, name: workerName(w), job: w.job, jobName: JOB_NAME[w.job], wage: wageFor(state, p.town, role, w.job) });
+    if (!w) continue;
+    const wage = wageFor(state, p.town, role, w.job);
+    out.push({ role, name: workerName(w), job: w.job, jobName: JOB_NAME[w.job], wage, restWage: role === 'carter' ? restWage({ wage }) : null });
   }
   return out;
 }

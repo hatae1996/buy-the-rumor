@@ -3,6 +3,7 @@
 // 싼 마을에서 그 물품을 사 모아 주문 마을로 보내고, 주문 마을에서 주문 값 가까이에 판다. 지시는 늘 한 번짜리.
 // 내가 노리는 큰 주문과 다른 것이 있으면 행렬은 그쪽을 맡는다 (다른 곳의 다른 기회).
 // 마부 일당이 크므로 노릴 것이 없으면 행렬을 불러들여 풀고 마부를 내보낸다.
+// 0.0.9: 수레는 사지 않고 수레방에서 빌린다 (풀면 돌려준다). 마부는 쉬는 날 일당이 적다 (questions.md 77번).
 import { CART, GROWTH, HORSES } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { omenPlans, type BigPlan } from './bigOrder';
@@ -16,10 +17,12 @@ export interface CaravanMind {
   idleSince: number | null;
   /** 처음 행렬을 꾸린 날 */
   formed: number | null;
+  /** 주문이 열리지 않아 그만둔 큰 주문 (사건:마을). 다시 노리지 않는다 (0.0.9) */
+  dropped: string[];
 }
 
 export function createCaravanMind(): CaravanMind {
-  return { target: null, idleSince: null, formed: null };
+  return { target: null, idleSince: null, formed: null, dropped: [] };
 }
 
 /** 주문 값의 이 비율 아래인 마을에서 사 모은다 */
@@ -40,6 +43,12 @@ const PER_MARKET = 12;
 const LATE_DAYS = 20;
 /** 말 먹이 곡물 하나 값 (어림) */
 const FEED_PRICE = 8;
+/** 징조를 믿는 정도: 헛징조가 시즌에 1~3개 돈다 (0.0.9: 헛징조를 쫓아 행렬을 꾸린 판이 손해였다) */
+const OMEN_TRUST = 0.75;
+/** 주문이 열릴 가장 늦은 날에서 이만큼 지나도 주문 마을에서 안 팔리면 그만둔다 */
+const GIVE_UP_AFTER = 1;
+
+const planKey = (p: BigPlan) => `${p.event}:${p.town}`;
 
 const cargoOf = (view: PlayerView): Partial<Record<GoodId, number>> => {
   const out: Partial<Record<GoodId, number>> = {};
@@ -77,19 +86,45 @@ function bestSource(view: PlayerView, t: BigPlan, from: number, days: number[][]
   );
 }
 
-/** 이 큰 주문을 행렬로 노리면 남는가: 사 모을 양 × (파는 값 − 기억하는 값) ≥ 끝날 때까지 마부 일당과 말 먹이 × WORTH */
-function worthIt(view: PlayerView, t: BigPlan, src: Source | null, pull: number, carterWage: number, feed: number): boolean {
+/**
+ * 이 큰 주문을 행렬로 노리면 남는가: 사 모을 양 × (파는 값 − 기억하는 값) ≥ 드는 돈 × WORTH.
+ * 드는 돈: 팔 때까지 마부 일당(일하는 날), 말 먹이, 빌린 수레 값 + 팔고 쉬다 푸는 며칠(쉬는 날 일당) + 새로 산 말을 되팔 때 잃는 값.
+ * 팔 때까지 = 사 모을 곳에 가서 사흘 사고 주문 마을에 닿는 날 (주문이 열리기 전이면 열릴 때까지) + 주문을 기다리는 며칠.
+ * 헛징조도 있으니 남는 값은 OMEN_TRUST만큼만 믿는다
+ */
+function worthIt(
+  view: PlayerView,
+  t: BigPlan,
+  src: Source | null,
+  from: number,
+  days: number[][],
+  cart: 'handcart' | 'wagon',
+  pull: number,
+  carter: { wage: number; restWage: number | null },
+  feed: number,
+  horsePrice = 0,
+): boolean {
   if (!src) return false;
-  const qty = Math.min(loadEstimate('wagon', pull, src.good), BUY_DAYS * PER_MARKET);
-  const gain = qty * (t.price[src.good]! * SELL_AT - src.price);
-  const days = t.until - view.day + IDLE_DAYS;
-  return gain >= (carterWage + feed * FEED_PRICE) * days * WORTH;
+  const qty = Math.min(loadEstimate(cart, pull, src.good), BUY_DAYS * PER_MARKET);
+  const gain = qty * (t.price[src.good]! * SELL_AT - src.price) * OMEN_TRUST;
+  const daily = feed * FEED_PRICE + CART.rentPerDay[cart];
+  const reach = (days[from]![src.town] ?? Infinity) + BUY_DAYS + (days[src.town]![t.town] ?? Infinity);
+  const work = Math.max(t.start - view.day, reach) + (t.latest - t.start) / 2 + 1;
+  const cost = (carter.wage + daily) * work + ((carter.restWage ?? carter.wage) + daily) * IDLE_DAYS + horsePrice * (1 - HORSES.resale);
+  return gain >= cost * WORTH;
+}
+
+/** 빌릴 행렬 수레: 짐수레를 끌 만한 말(손수레에 다 실은 무게보다 많이 끄는 말)이고 이 마을에서 빌릴 수 있으면 짐수레, 아니면 손수레 */
+function rentCart(view: PlayerView, pull: number): 'handcart' | 'wagon' | null {
+  const can = (type: 'handcart' | 'wagon') => view.carts.some((x) => x.type === type && x.rentPerDay !== null);
+  if (pull > CART.types.handcart.humanPull && can('wagon')) return 'wagon';
+  return can('handcart') ? 'handcart' : null;
 }
 
 /** 행렬이 맡을 큰 주문: 새 징조 중 내가 노리는 것과 다른 것을 먼저, 없으면 같은 것 */
 function pickTarget(view: PlayerView, mind: CaravanMind, own: BigPlan | null, profile: BotProfile): BigPlan | null {
   if (mind.target && view.day <= mind.target.until) return mind.target;
-  const plans = omenPlans(view, profile).filter((p) => p.until - view.day >= 6);
+  const plans = omenPlans(view, profile).filter((p) => p.until - view.day >= 6 && !mind.dropped.includes(planKey(p)));
   const same = (p: BigPlan) => own !== null && p.event === own.event && p.town === own.town;
   return plans.find((p) => !same(p)) ?? plans[0] ?? null;
 }
@@ -116,16 +151,13 @@ export function caravanBigStep(
   if (!c) {
     const spare = view.horses.slice(view.cart.horsesNeeded);
     const horse = spare[0];
-    // 꾸릴 수레: 짐수레를 끌 만한 말(손수레에 다 실은 무게보다 많이 끄는 말)이고 살 돈이 넉넉하면 짐수레, 아니면 손수레 (이 마을 수레방에서)
-    const strong = horse !== undefined && horse.pull > CART.types.handcart.humanPull;
-    const wagon = strong && view.carts.some((x) => x.type === 'wagon') && view.gold - CART.types.wagon.price >= growth.caravanGold / 2;
-    const cart = wagon ? 'wagon' : 'handcart';
-    // 꾸리는 데는 수레값과 비상금만 있으면 된다 (말을 사느라 돈이 줄어도 꾸릴 수 있게)
-    const canForm = t !== null && horse !== undefined && view.carts.some((x) => x.type === cart) && view.gold - CART.types[cart].price >= growth.reserve;
+    // 꾸릴 수레는 이 마을 수레방에서 빌린다 (0.0.9). 꾸리는 데는 비상금만 있으면 된다 (말을 사느라 돈이 줄어도 꾸릴 수 있게)
+    const cart = horse ? rentCart(view, horse.pull) : null;
+    const canForm = t !== null && horse !== undefined && cart !== null && view.gold - CART.rentPerDay[cart] >= growth.reserve;
     // 마부는 수레방 마을에서 데려와 그날 꾸린다. 꾸릴 수 없는 마부는 일당만 나가니 바로 내보낸다
     if (carter) {
       if (!canForm) return once({ type: 'dismissHire', hireId: carter.id });
-      const cmd = once({ type: 'formCaravan', horseIds: [horse!.id], cart });
+      const cmd = once({ type: 'formCaravan', horseIds: [horse!.id], cart: cart!, rent: true });
       if (cmd) mind.formed ??= view.day;
       return cmd;
     }
@@ -136,19 +168,20 @@ export function caravanBigStep(
     }
     if (view.gold < growth.caravanGold || CYCLE_DAYS - ((view.day - 1) % CYCLE_DAYS) <= LATE_DAYS) return null;
     const offer = view.hireBoard.find((o) => o.role === 'carter');
-    const wage = offer?.wage ?? GROWTH.hire.carter.wage;
+    const wage = offer ?? { wage: GROWTH.hire.carter.wage, restWage: GROWTH.hire.carter.restWage };
     const src = bestSource(view, t, view.location.town, days);
     // 1. 말: 남는 말이 없으면 마구간에서 가장 많이 끄는 말. 그 마을에서 바로 꾸릴 수 있을 때만 산다 (꾸리지 못한 말은 먹이만 먹는다)
     if (!horse) {
-      if (!offer || !view.carts.some((x) => x.type === 'handcart' || x.type === 'wagon')) return null;
+      if (!offer) return null;
       const pick = view.stable?.horses
         .filter((h) => h.stock > 0 && h.price !== null && view.gold - h.price >= growth.caravanGold)
         .sort((a, b) => b.pull - a.pull)[0];
-      if (!pick || !worthIt(view, t, src, pick.pull, wage, pick.feed)) return null;
+      const pickCart = pick ? rentCart(view, pick.pull) : null;
+      if (!pick || !pickCart || !worthIt(view, t, src, view.location.town, days, pickCart, pick.pull, wage, pick.feed, pick.price!)) return null;
       return once({ type: 'buyHorse', kind: pick.kind });
     }
     // 2. 마부 (수레방이 있는 마을에서만, 꾸릴 만할 때)
-    if (!canForm || !offer || !worthIt(view, t, src, horse.pull, offer.wage, HORSES.kinds[horse.kind].feed)) return null;
+    if (!canForm || !offer || !worthIt(view, t, src, view.location.town, days, cart!, horse.pull, offer, HORSES.kinds[horse.kind].feed)) return null;
     return once({ type: 'hire', role: 'carter' });
   }
 
@@ -156,6 +189,13 @@ export function caravanBigStep(
   if (c.travel || c.plan || !c.carter) return null;
   const cargo = cargoOf(view);
   const at = c.town;
+
+  // 주문 마을에서 주문이 열릴 가장 늦은 날이 지나도 안 팔렸으면 헛징조였거나 이미 찼다: 그만두고 남은 짐을 판다
+  if (t && at === t.town && view.day > t.latest + GIVE_UP_AFTER && t.goods.some((g) => (cargo[g] ?? 0) > 0)) {
+    mind.dropped.push(planKey(t));
+    mind.target = null;
+    return caravanBigStep(view, profile, mind, own, days, once);
+  }
 
   if (t) {
     mind.idleSince = null;

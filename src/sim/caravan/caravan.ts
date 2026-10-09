@@ -28,29 +28,41 @@ export function ownedHorses(state: EconomyState): number {
 }
 
 /**
- * 두 번째 행렬을 꾸린다: 고용한 마부, 내 말 중 일부, 이 마을 수레방에서 새로 산 수레.
+ * 두 번째 행렬을 꾸린다: 고용한 마부, 내 말 중 일부, 이 마을 수레방에서 새로 사거나 빌린 수레 (0.0.9: rent면 빌린다).
  * 내 행렬은 남은 말로 움직일 수 있어야 하고(마차는 2필), 새 수레도 행렬 말로 움직일 수 있어야 한다
  */
-export function formCaravan(state: EconomyState, map: WorldMap, horseIds: readonly number[], cart: CartType): Err | null {
+export function formCaravan(state: EconomyState, map: WorldMap, horseIds: readonly number[], cart: CartType, rent = false): Err | null {
   const p = state.player;
   if (p.travel) return 'traveling';
   if (p.caravan) return 'haveCaravan';
   const carter = freeCarter(state);
   if (carter === null) return 'noCarter';
   if (!hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
-  if (!CART_TYPES.includes(cart)) return 'badPlan';
+  if (!CART_TYPES.includes(cart) || (rent && CART.rentPerDay[cart] <= 0)) return 'badPlan';
   const horses = p.horses.filter((h) => horseIds.includes(h.id));
   if (horses.length !== horseIds.length || horses.length === 0) return 'noHorse';
   const left = p.horses.filter((h) => !horseIds.includes(h.id));
   const board = createCart(cart);
   if (lacksHorses(p.cart, left) || lacksHorses(board, horses)) return 'needHorse';
-  const price = CART.types[cart].price;
-  if (p.gold < price) return 'notEnoughGold';
+  // 빌리면 수레값 없이 오늘 밤부터 하루 값을 낸다 (첫 밤 값을 낼 돈은 있어야 한다)
+  const price = rent ? 0 : CART.types[cart].price;
+  if (p.gold < (rent ? CART.rentPerDay[cart] : price)) return 'notEnoughGold';
   p.gold -= price;
   state.towns[p.town]!.treasury += price;
   p.horses = left;
-  p.caravan = { carter, horses, cart: board, town: p.town, travel: null, plan: null, stop: 0, tradedDay: null, recalled: false };
-  p.ledger.push({ day: state.day, kind: 'caravan', what: 'form', town: p.town, fee: price });
+  p.caravan = {
+    carter,
+    horses,
+    cart: board,
+    town: p.town,
+    travel: null,
+    plan: null,
+    stop: 0,
+    tradedDay: null,
+    recalled: false,
+    rent: rent ? { town: p.town, perDay: CART.rentPerDay[cart], owed: 0 } : null,
+  };
+  p.ledger.push({ day: state.day, kind: 'caravan', what: 'form', town: p.town, fee: price, rented: rent });
   return null;
 }
 
@@ -83,7 +95,8 @@ export function recallCaravan(state: EconomyState): Err | null {
 
 /**
  * 행렬을 푼다 (내가 있는 마을에 와 있을 때, 수레가 비었을 때).
- * 말은 내 행렬로 돌아오고, 수레는 쓰던 수레 값으로 판다. 마부는 고용된 채로 남는다
+ * 말은 내 행렬로 돌아오고, 산 수레는 쓰던 수레 값으로 판다. 빌린 수레는 밀린 값을 다 내고 돌려준다
+ * (어느 마을에서나, 0.0.9). 마부는 고용된 채로 남는다
  */
 export function disbandCaravan(state: EconomyState): Err | null {
   const p = state.player;
@@ -91,12 +104,38 @@ export function disbandCaravan(state: EconomyState): Err | null {
   if (!c) return 'noCaravan';
   if (p.travel || c.travel || c.town !== p.town) return 'caravanAway';
   if (c.cart.pieces.length) return 'boardNotEmpty';
+  if (c.rent) {
+    const owed = c.rent.owed;
+    if (p.gold < owed) return 'notEnoughGold';
+    p.gold -= owed;
+    state.towns[c.rent.town]!.treasury += owed;
+    p.horses.push(...c.horses);
+    p.caravan = null;
+    p.ledger.push({ day: state.day, kind: 'caravan', what: 'disband', town: p.town, fee: owed, rented: true });
+    return null;
+  }
   const refund = Math.round(CART.types[c.cart.type].price * CART.tradeIn);
   p.gold += refund;
   p.horses.push(...c.horses);
   p.caravan = null;
   p.ledger.push({ day: state.day, kind: 'caravan', what: 'disband', town: p.town, fee: -refund });
   return null;
+}
+
+/**
+ * 밤에: 빌린 수레 값 (0.0.9). 하루 값을 더하고, 낼 돈이 있으면 밀린 것까지 빌린 수레방 마을에 낸다.
+ * 못 내면 밀린다 (행렬을 풀 때 다 내야 한다)
+ */
+export function caravanRentNight(state: EconomyState): void {
+  const p = state.player;
+  const r = p.caravan?.rent;
+  if (!r) return;
+  r.owed += r.perDay;
+  if (p.gold < r.owed) return;
+  p.gold -= r.owed;
+  state.towns[r.town]!.treasury += r.owed;
+  p.ledger.push({ day: state.day, kind: 'caravan', what: 'rent', town: r.town, fee: r.owed });
+  r.owed = 0;
 }
 
 /** 알아서 싣기: 칸의 80%까지, 행렬 말이 끌 수 있는 무게까지 더 실을 수 있는 양 */

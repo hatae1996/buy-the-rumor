@@ -9,7 +9,7 @@ import { feedHorses } from '../horses/care';
 import { horseDays, maxWeight } from '../horses/pull';
 import { seasonOfDay } from '../season';
 import type { WorldMap } from '../worldgen';
-import { autoLoadRoom } from './caravan';
+import { autoLoadRoom, caravanRentNight } from './caravan';
 import type { Caravan } from './types';
 
 const owner = { kind: 'caravan' } as const;
@@ -65,6 +65,7 @@ export function caravanNight(state: EconomyState, map: WorldMap): void {
   const p = state.player;
   const c = p.caravan;
   if (!c) return;
+  caravanRentNight(state);
   // 마부가 떠났으면(일당을 못 받음) 행렬은 그 자리에 멈춘다
   const driven = p.hires.some((h) => h.id === c.carter);
   if (!driven) c.plan = null;

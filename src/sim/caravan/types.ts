@@ -33,4 +33,12 @@ export interface Caravan {
   tradedDay: number | null;
   /** 불러들이는 중: 지시서를 멈추고 내가 있는 마을로 온다 */
   recalled: boolean;
+  /** 빌린 수레 (0.0.9): 빌린 수레방 마을, 하루 값, 밀린 값. 산 수레면 null */
+  rent: CartRent | null;
+}
+
+export interface CartRent {
+  town: number;
+  perDay: number;
+  owed: number;
 }

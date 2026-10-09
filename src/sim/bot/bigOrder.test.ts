@@ -40,7 +40,7 @@ describe('모으고 판다', () => {
     const town = map.towns.find((t) => t.id !== here)!.id;
     s.towns[here]!.refPrice.leather = 8;
     s.towns[here]!.lastMarket.leather = { ...s.towns[here]!.lastMarket.leather, supply: 20 };
-    const plan = { event: 'army' as const, town, goods: ['leather' as const], price: { leather: 26 }, start: s.day + 8, until: s.day + 20 };
+    const plan = { event: 'army' as const, town, goods: ['leather' as const], price: { leather: 26 }, start: s.day + 8, latest: s.day + 12, until: s.day + 20 };
     const days = map.towns.map(() => map.towns.map(() => 1));
     const r = bigPlanStep(playerView(s, map), plan, days, (c) => c);
     expect(r.command).toEqual(expect.objectContaining({ type: 'placeBuyOrder', good: 'leather' }));
@@ -51,7 +51,7 @@ describe('모으고 판다', () => {
     const s = setup();
     const here = s.player.town;
     loadGoods(s.player.cart, 'leather', 20);
-    const plan = { event: 'army' as const, town: here, goods: ['leather' as const], price: { leather: 26 }, start: s.day, until: s.day + 10 };
+    const plan = { event: 'army' as const, town: here, goods: ['leather' as const], price: { leather: 26 }, start: s.day, latest: s.day + 4, until: s.day + 10 };
     expect(holdForBigOrder(playerView(s, map), plan, 'leather')).toBe(true);
     activate(s, map, 'army', here, s.day + 5);
     const v = playerView(s, map);

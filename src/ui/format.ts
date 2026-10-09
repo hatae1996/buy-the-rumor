@@ -159,8 +159,9 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `채집꾼 ${e.name}: ${townName(e.town)} 창고에 ${got || '넣은 것 없음'}${e.lost ? ` (${e.lost}개는 둘 곳이 없어 버림)` : ''}`, amount: null };
     }
     case 'caravan':
-      if (e.what === 'form') return { text: `${townName(e.town)}에서 두 번째 행렬을 꾸렸어요 (수레값)`, amount: -e.fee };
-      if (e.what === 'disband') return { text: `두 번째 행렬을 풀고 수레를 팔았어요`, amount: -e.fee };
+      if (e.what === 'form') return { text: e.rented ? `${townName(e.town)}에서 수레를 빌려 두 번째 행렬을 꾸렸어요` : `${townName(e.town)}에서 두 번째 행렬을 꾸렸어요 (수레값)`, amount: e.rented ? null : -e.fee };
+      if (e.what === 'disband') return e.rented ? { text: `두 번째 행렬을 풀고 빌린 수레를 돌려줬어요${e.fee ? ' (밀린 값)' : ''}`, amount: e.fee ? -e.fee : null } : { text: `두 번째 행렬을 풀고 수레를 팔았어요`, amount: -e.fee };
+      if (e.what === 'rent') return { text: `${townName(e.town)} 수레방에 빌린 수레 값`, amount: -e.fee };
       if (e.what === 'travel') return { text: `두 번째 행렬이 ${townName(e.town)}에서 ${euro(townName(e.to ?? e.town))} 떠났어요`, amount: -e.fee };
       return { text: `두 번째 행렬이 ${townName(e.town)}에 도착했어요`, amount: null };
     case 'warehouse':

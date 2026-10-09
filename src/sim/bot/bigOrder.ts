@@ -16,6 +16,8 @@ export interface BigPlan {
   price: Partial<Record<GoodId, number>>;
   /** 주문이 열릴 가장 이른 날 (징조 + 가장 짧은 기간) */
   start: number;
+  /** 주문이 열릴 가장 늦은 날 (징조 + 가장 긴 기간). 이날이 지나도 안 열리면 헛징조였거나 이미 찼다 (0.0.9) */
+  latest: number;
   /** 이날까지 노린다 (징조 기한 + 사건 기간) */
   until: number;
 }
@@ -42,6 +44,7 @@ export function omenPlans(view: PlayerView, profile: BotProfile): BigPlan[] {
       goods: orders.map((o) => o.good),
       price: Object.fromEntries(orders.map((o) => [o.good, Math.round(basePrice(o.good) * o.factor)])),
       start: n.day + earliest,
+      latest: n.day + lead,
       until: n.day + lead + days,
     });
   }

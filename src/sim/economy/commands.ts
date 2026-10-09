@@ -114,7 +114,8 @@ export type Command =
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
   | { type: 'transferGoods'; from: BoardRef; to: BoardRef; good: GoodId; qty: number }
   /** 두 번째 행렬: 꾸리기(마부, 내 말 중 일부, 이 마을 수레방에서 산 수레), 지시서 보내기, 불러들이기, 풀기 */
-  | { type: 'formCaravan'; horseIds: number[]; cart: CartType }
+  /** rent: 수레를 사지 않고 빌린다 (0.0.9) */
+  | { type: 'formCaravan'; horseIds: number[]; cart: CartType; rent?: boolean }
   | { type: 'setCaravanPlan'; plan: CaravanPlan }
   | { type: 'recallCaravan' }
   | { type: 'disbandCaravan' }
@@ -335,7 +336,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return { ok: true };
     }
     case 'formCaravan':
-      return done(formCaravan(state, map, cmd.horseIds, cmd.cart));
+      return done(formCaravan(state, map, cmd.horseIds, cmd.cart, cmd.rent === true));
     case 'setCaravanPlan':
       return done(setCaravanPlan(state, cmd.plan));
     case 'recallCaravan':

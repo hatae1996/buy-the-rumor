@@ -95,8 +95,9 @@ export function openCaravanSheet(game: Game, preset?: QuickSell): void {
       body.innerHTML = formHtml(v);
       body.querySelector('[data-form]')?.addEventListener('click', () => {
         const horseIds = [...body.querySelectorAll<HTMLInputElement>('[data-horse]:checked')].map((i) => Number(i.value));
-        const cart = body.querySelector<HTMLSelectElement>('[data-cart]')!.value as CartType;
-        sheet.send({ type: 'formCaravan', horseIds, cart });
+        // 값은 "수레:buy" 또는 "수레:rent" (0.0.9: 빌리기)
+        const [cart, how] = body.querySelector<HTMLSelectElement>('[data-cart]')!.value.split(':') as [CartType, string];
+        sheet.send({ type: 'formCaravan', horseIds, cart, rent: how === 'rent' });
       });
       return;
     }
@@ -124,7 +125,8 @@ export function openCaravanSheet(game: Game, preset?: QuickSell): void {
           .join('')}</ol><p class="muted">${c.plan.repeat ? '끝나면 1번부터 다시' : '끝나면 그 마을에서 멈춰요'}</p>`
       : `<p class="muted">${c.recalled ? '내가 있는 마을로 오는 중이에요.' : '지시서가 없어요. 지시서를 보내면 다음 장날부터 움직여요.'}</p>`;
     body.innerHTML = `
-      <p><b>마부 ${c.carter ?? '없음'}</b> · ${c.horses.map((h) => h.name).join(', ') || '말 없음'} · ${c.cart.name}</p>
+      <p><b>마부 ${c.carter ?? '없음'}</b> · ${c.horses.map((h) => h.name).join(', ') || '말 없음'} · ${c.cart.name}${c.rent ? ' (빌림)' : ''}</p>
+      ${c.rent ? `<p class="muted">빌린 수레 하루 ${money(c.rent.perDay)}${c.rent.owed ? ` · 밀린 값 ${money(c.rent.owed)} (행렬을 풀 때 다 내요)` : ''}</p>` : ''}
       <p class="muted">${where} · 무게 ${c.cart.weight}/${c.cart.maxWeight}</p>
       ${c.carter ? '' : '<p class="warn">마부가 떠나 행렬이 멈췄어요. 그 마을에 가서 행렬을 푸세요.</p>'}
       <h3>지시서</h3>
@@ -143,7 +145,7 @@ export function openCaravanSheet(game: Game, preset?: QuickSell): void {
       <div class="btn-row">
         <button type="button" class="secondary-btn" data-edit ${c.carter ? '' : 'disabled'}>지시서 고치기</button>
         <button type="button" class="secondary-btn" data-recall ${c.here ? 'disabled' : ''}>불러들이기</button>
-        ${c.here ? '<button type="button" class="secondary-btn" data-disband>행렬 풀기<small>수레는 팔고 말은 내 행렬로</small></button>' : ''}
+        ${c.here ? `<button type="button" class="secondary-btn" data-disband>행렬 풀기<small>${c.rent ? '빌린 수레는 돌려주고' : '수레는 팔고'} 말은 내 행렬로</small></button>` : ''}
       </div>`;
     body.querySelector<HTMLSelectElement>('[data-quick-town]')?.addEventListener('change', (e) => {
       q.town = Number((e.target as HTMLSelectElement).value);
@@ -171,7 +173,7 @@ export function openCaravanSheet(game: Game, preset?: QuickSell): void {
   });
 }
 
-/** 행렬이 없을 때: 꾸리기 (마부, 내 말 중 일부, 이 마을 수레방에서 살 수레) */
+/** 행렬이 없을 때: 꾸리기 (마부, 내 말 중 일부, 이 마을 수레방에서 사거나 빌릴 수레) */
 function formHtml(v: PlayerView): string {
   const carter = v.hires.find((h) => h.role === 'carter');
   if (!carter) return '<p class="muted">여관 고용 게시판에서 마부를 고용하면 두 번째 행렬을 꾸릴 수 있어요.</p>';
@@ -180,11 +182,17 @@ function formHtml(v: PlayerView): string {
     .join('');
   const carts = v.carts.filter((c) => c.horses > 0 || c.type === 'handcart');
   return `
-    <p>마부 <b>${carter.name}</b>와 내 말, 이 마을 수레방에서 새로 살 수레로 꾸려요. 말은 두 행렬 합쳐 2필까지예요.</p>
+    <p>마부 <b>${carter.name}</b>와 내 말, 이 마을 수레방에서 사거나 빌린 수레로 꾸려요. 말은 두 행렬 합쳐 2필까지예요.</p>
     ${horses ? `<h3>데려갈 말</h3>${horses}` : '<p class="warn">말이 없어요. 목장 마을 마구간에서 사 오세요.</p>'}
     ${
       carts.length
-        ? `<h3>행렬 수레</h3><select data-cart>${carts.map((c) => `<option value="${c.type}">${c.name} · ${money(CART.types[c.type].price)}</option>`).join('')}</select>`
+        ? `<h3>행렬 수레</h3><select data-cart aria-label="행렬 수레">${carts
+            .flatMap((c) => [
+              ...(c.rentPerDay !== null ? [`<option value="${c.type}:rent">${c.name} 빌리기 · 하루 ${money(c.rentPerDay)}</option>`] : []),
+              `<option value="${c.type}:buy">${c.name} 사기 · ${money(CART.types[c.type].price)}</option>`,
+            ])
+            .join('')}</select>
+          <p class="muted">빌린 수레는 밤마다 하루 값을 내고, 행렬을 풀면 돌려줘요. 산 수레는 풀 때 반값에 팔아요.</p>`
         : '<p class="warn">이 마을에는 수레방이 없어요. 목재 마을이나 도시에서 꾸려요.</p>'
     }
     <button type="button" class="primary-btn" data-form ${horses && carts.length ? '' : 'disabled'}>행렬 꾸리기</button>`;

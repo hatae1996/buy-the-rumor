@@ -60,9 +60,10 @@ describe('꾸리기', () => {
   });
 
   it('말이 없으면, 말을 사고도 꾸릴 돈이 남을 때만 마구간에서 산다 (꾸리지 못한 말은 먹이만 먹는다)', () => {
+    // 말을 되팔 때 잃는 값까지 쳐도 남을 만큼 싸게 사 모을 곳 (0.0.9)
     const [order, source] = map.towns.filter((t) => t.id !== s.player.town).map((t) => t.id);
     hearArmy(order!);
-    s.player.memory[source!] = { day: s.day, prices: { ...playerView(s, map).market!.price, leather: 6 }, previous: null };
+    s.player.memory[source!] = { day: s.day, prices: { ...playerView(s, map).market!.price, leather: 2 }, previous: null };
     s.player.horses = [];
     // 시즌이 없는 시험 세계라 마구간을 직접 연다
     s.horses.stables.push({ town: s.player.town, stock: { pony: 0, draft: 1, swift: 0 } });
@@ -117,6 +118,25 @@ describe('한 번짜리 지시', () => {
       type: 'setCaravanPlan',
       plan: { stops: [{ town: order, buys: [], sells: [{ good: 'salted', qty: 'all', minPrice: 37 }] }], repeat: false },
     });
+  });
+
+  it('주문 마을에서 주문이 열릴 가장 늦은 날이 지나도 안 팔렸으면 그만두고 남은 짐을 판다 (헛징조, 0.0.9)', () => {
+    form();
+    const here = s.player.town;
+    hearArmy(here);
+    loadGoods(s.player.caravan!.cart, 'leather', 10);
+    // 주문 마을에 있으니 주문 값 가까이에 판다
+    expect(step()).toMatchObject({ type: 'setCaravanPlan', plan: { stops: [{ town: here, sells: [{ good: 'leather', minPrice: 23 }] }] } });
+    // 징조 + 12일(가장 늦게 열릴 날)이 지나도 그대로 남았다
+    s.player.caravan!.plan = null;
+    s.day = mind.target!.latest + 2;
+    s.player.memory[here] = { day: s.day, prices: { ...playerView(s, map).market!.price, leather: 10 }, previous: null };
+    expect(step()).toEqual({
+      type: 'setCaravanPlan',
+      plan: { stops: [{ town: here, buys: [], sells: [{ good: 'leather', qty: 'all', minPrice: 8 }] }], repeat: false },
+    });
+    expect(mind.dropped).toEqual([`army:${here}`]);
+    expect(mind.target).toBeNull();
   });
 
   it('한 번짜리 지시가 끝나면 행렬은 그 마을에서 멈추고 다시 돌지 않는다', () => {
