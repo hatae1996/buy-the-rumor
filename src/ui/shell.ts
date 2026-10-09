@@ -1,26 +1,30 @@
-// 앱 틀 (기획서 "화면 구성", 0.0.5): 위쪽 줄(내 문장, 날짜·계절, 장날까지, 소지금, 피로), 가운데 화면, 아래 탭 4개.
-// 탭마다 질문 하나: 마을 = 여기서 무엇을, 지도 = 어디로, 장부 = 내 것, 소식 = 들어오는 것.
+// 앱 틀 (기획서 "화면 구성", 0.1.2): 위쪽 줄(내 문장, 날짜·계절, 장날까지, 소지금, 피로), 가운데 화면, 아래 탭 5개.
+// 탭마다 질문 하나: 마을 = 여기서 무엇을, 지도 = 어디로, 짐칸 = 무엇을 실었나, 장부 = 돈과 약속, 소식 = 들어오는 것.
 import coin from '../../assets/ui/coin.png';
 import seal from '../../assets/ui/seal_small.png';
 import tabLedger from '../../assets/ui/tab_ledger.png';
 import tabMap from '../../assets/ui/tab_map.png';
 import tabNews from '../../assets/ui/tab_news.png';
 import tabTown from '../../assets/ui/tab_town.png';
+// 짐칸 탭 그림이 오기 전까지 임시 아이콘
+import tabCart from './icons/tab_cart.svg';
 import { clockText, dayText, money } from './format';
 import type { AwaySummary, Game } from './game';
 import type { MapScreen } from './mapScreen';
 import { showAwaySummary } from './screens/away';
+import { renderCart } from './screens/cart';
 import { renderLedger } from './screens/ledger';
 import { renderNews } from './screens/news';
 import { openCertificate } from './screens/certificate';
 import { renderTown } from './screens/town';
 import { openSettlement } from './screens/settlement';
 
-export type TabId = 'town' | 'map' | 'ledger' | 'news';
+export type TabId = 'town' | 'map' | 'cart' | 'ledger' | 'news';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'town', label: '마을', icon: tabTown },
   { id: 'map', label: '지도', icon: tabMap },
+  { id: 'cart', label: '짐칸', icon: tabCart },
   { id: 'ledger', label: '장부', icon: tabLedger },
   { id: 'news', label: '소식', icon: tabNews },
 ];
@@ -81,7 +85,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
     $('[data-market]').textContent = v.settlement ? '시즌 결산' : v.apprentice ? '견습 중' : `장날까지 ${clockText(game.msUntilMarket(now()))}`;
     $('[data-fatigue]').textContent = `피로 ${v.fatigue}/${v.fatigueMax}`;
-    // 탭은 하나씩 열린다 (견습: 마을 → 장부 → 소식 → 지도)
+    // 탭은 하나씩 열린다 (견습: 마을 → 짐칸 → 장부 → 소식 → 지도)
     buttons.forEach((b) => {
       const id = b.dataset.tab as TabId;
       b.hidden = id !== 'town' && !v.unlocks.includes(id);
@@ -95,6 +99,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
         passApprenticeDay: () => away(game.passApprenticeDay(now())),
         openSettlement: settle,
       });
+    } else if (current === 'cart') {
+      renderCart(el, game, v);
     } else if (current === 'ledger') {
       renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));
     }

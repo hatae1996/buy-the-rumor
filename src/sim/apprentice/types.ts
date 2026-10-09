@@ -5,10 +5,10 @@
 export type SceneId = 'start' | 'firstExpedition' | 'firstLoad' | 'firstSale' | 'firstNews' | 'firstBuy' | 'graduation';
 
 /**
- * 하나씩 열리는 것. 탭(장부, 소식, 지도)은 견습 장면이, 나머지는 견습 뒤 조건이 연다.
+ * 하나씩 열리는 것. 탭(짐칸, 장부, 소식, 지도)은 견습 장면이, 나머지는 견습 뒤 조건이 연다 (0.1.2: 짐칸 탭이 장부에서 나왔다).
  * reservation(예약 주문)과 bank(은행)는 기능이 아직 없어 열린 날만 적어 둔다
  */
-export type UnlockId = 'ledger' | 'news' | 'map' | 'memory' | 'rumors' | 'editPrice' | 'reservation' | 'bank';
+export type UnlockId = 'cart' | 'ledger' | 'news' | 'map' | 'memory' | 'rumors' | 'editPrice' | 'reservation' | 'bank';
 
 export interface ApprenticeState {
   scene: SceneId;

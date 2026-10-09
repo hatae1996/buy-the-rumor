@@ -20,14 +20,15 @@ export const SCENES: readonly SceneDef[] = [
     id: 'firstLoad',
     title: '첫 짐 싣기',
     learn: '끌어다 놓기, 돌리기',
-    unlocks: ['ledger'],
-    hint: '"장부에서 짐을 끌어다 옮겨 보게. 톡 누르면 돌아간다네."',
+    unlocks: ['cart'],
+    hint: '"짐칸에서 짐을 끌어다 옮겨 보게. 톡 누르면 돌아간다네."',
   },
   {
     id: 'firstSale',
     title: '첫 판매와 첫 장날',
     learn: '장날에 가격이 정해짐',
-    unlocks: [],
+    // 장날에 낸 신청과 돈 내역을 보는 장부는 첫 판매 때 (0.1.2)
+    unlocks: ['ledger'],
     hint: '"가져온 걸 장에 내 보게. 값은 내가 적어 둔 대로면 되네. 그리고 하루를 보내 보게."',
   },
   {

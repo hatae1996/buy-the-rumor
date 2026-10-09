@@ -18,7 +18,8 @@ export interface NotifyKindDef {
 export type NotifyTarget =
   | { tab: 'town'; building?: string }
   | { tab: 'map' }
-  | { tab: 'ledger' }
+  | { tab: 'cart' }
+  | { tab: 'ledger'; section?: 'orders' | 'accounts' | 'prices' | 'people' }
   | { tab: 'news'; section?: 'paper' | 'notebook' | 'reports' | 'guild' };
 
 /** 시뮬이 하루마다 만드는 "알림을 보낼 사건" */

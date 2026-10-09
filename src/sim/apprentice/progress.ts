@@ -17,7 +17,7 @@ import type { SceneId, UnlockId } from './types';
 const A = ECONOMY.apprentice;
 
 /** 견습을 건너뛴 사람(두 번째 시즌부터)과 봇은 처음부터 모두 열려 있다 */
-export const ALL_UNLOCKS: readonly UnlockId[] = ['ledger', 'news', 'map', 'memory', 'rumors', 'editPrice', 'reservation', 'bank'];
+export const ALL_UNLOCKS: readonly UnlockId[] = ['cart', 'ledger', 'news', 'map', 'memory', 'rumors', 'editPrice', 'reservation', 'bank'];
 
 /**
  * 견습을 시작한다: 자원지가 있는 생산 마을에서, 빈 등짐과 금화 50으로.

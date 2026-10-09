@@ -1,53 +1,51 @@
-// 장부 탭 (기획서 "화면 구성 - 장부 탭: 내 것 전부", 0.0.5): 짐, 신청, 사람과 말, 시세, 돈.
+// 장부 탭 (기획서 "화면 구성", 0.1.2): 작은 탭 4개. 신청(장날·예약) / 가계부(돈 내역과 손익) / 시세 / 사람과 말.
+// 짐은 짐칸 탭으로 옮겼다. "돈과 약속은 어떻게 됐나".
 import coins from '../../../assets/ui/coins.png';
-import { ECONOMY } from '../../sim/constants';
-import { count, GOODS, type CartPieceView, type PlayerView } from '../../sim/economy';
-import { agoText, freshness, goodName, ledgerLine, money } from '../format';
-import { mountCartBoard } from '../cartBoard';
+import { GOODS, type PlayerView } from '../../sim/economy';
+import { agoText, goodName, ledgerLine, money } from '../format';
 import type { Game } from '../game';
 import { horseFatigue, speedWord } from './horseSheet';
-import { euro } from '../../sim/josa';
 
-/** 판 위 짐 요약: "소금 6 · 목재 2" */
-function piecesSummary(pieces: readonly CartPieceView[]): string {
-  const by = new Map<string, number>();
-  for (const p of pieces) if (p.qty) by.set(p.good, (by.get(p.good) ?? 0) + p.qty);
-  return [...by].map(([g, n]) => `${goodName(g as (typeof GOODS)[number])} ${n}`).join(' · ') || '빈 판';
+export type LedgerSection = 'orders' | 'accounts' | 'prices' | 'people';
+
+const SECTIONS: { id: LedgerSection; label: string }[] = [
+  { id: 'orders', label: '신청' },
+  { id: 'accounts', label: '가계부' },
+  { id: 'prices', label: '시세' },
+  { id: 'people', label: '사람과 말' },
+];
+
+const SECTION_KEY = 'buy-the-rumor/ledger-section';
+let section: LedgerSection = loadSection();
+
+function loadSection(): LedgerSection {
+  try {
+    const s = localStorage.getItem(SECTION_KEY);
+    return SECTIONS.some((x) => x.id === s) ? (s as LedgerSection) : 'orders';
+  } catch {
+    return 'orders';
+  }
+}
+
+/** 알림을 눌러 들어올 때 그 작은 탭을 연다 */
+export function showLedgerSection(id: LedgerSection): void {
+  section = id;
+  try {
+    localStorage.setItem(SECTION_KEY, id);
+  } catch {
+    // 저장하지 못해도 이번에는 그 탭을 연다
+  }
 }
 
 export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelOrder: (id: number) => void): void {
   const townName = (id: number) => game.map.towns[id]!.name;
-  const rate = ECONOMY.spoilRate[v.season];
+  // 시세는 다른 마을에 처음 닿으면 열린다 (기획서 "견습 뒤에도 시스템은 하나씩 열린다")
+  const open = SECTIONS.filter((s) => s.id !== 'prices' || v.unlocks.includes('memory'));
+  if (!open.some((s) => s.id === section)) section = 'orders';
 
   // 아는 시세로 짐 값을 어림한다 (지금 마을 시세, 길 위면 떠난 마을에서 마지막으로 본 시세)
   const prices = v.market?.price ?? v.memory[v.location.kind === 'road' ? v.location.from : v.location.town]?.prices;
   const cargoValue = prices ? v.cargo.reduce((s, l) => s + l.qty * prices[l.good], 0) : null;
-
-  // 내 수레: 물품마다 한 줄. 상하는 물건은 가장 먼저 상하는 묶음의 상태
-  const cargo =
-    GOODS.filter((g) => count(v.cargo, g) > 0)
-      .map((g) => {
-        const lots = v.cargo.filter((l) => l.good === g);
-        const oldest = lots.reduce((a, l) => (l.age > a.age ? l : a));
-        const f = freshness(oldest, rate);
-        return `<li class="row"><span>${goodName(g)} ${count(v.cargo, g)}개</span><span class="chip ${f.level}">${f.text}</span></li>`;
-      })
-      .join('') || '<li class="muted">짐칸이 비었어요.</li>';
-
-  // 다른 판들: 짐꾼 손수레, 두 번째 행렬 수레, 창고
-  const others = [
-    ...v.hires
-      .filter((h) => h.board)
-      .map((h) => `<li class="row"><span><b>짐꾼 ${h.name}</b> 손수레 <small class="muted">${h.board!.weight}/${h.board!.maxWeight}</small><br /><small>${piecesSummary(h.board!.pieces)}</small></span></li>`),
-    ...(v.caravan
-      ? [
-          `<li class="row"><span><b>두 번째 행렬</b> ${v.caravan.cart.name} <small class="muted">${v.caravan.travel ? `${euro(townName(v.caravan.travel.to))} 가는 중` : townName(v.caravan.town)}</small><br /><small>${piecesSummary(v.caravan.cart.pieces)}</small></span></li>`,
-        ]
-      : []),
-    ...v.warehouses.map(
-      (w) => `<li class="row"><span><b>${townName(w.town)} 창고</b> <small class="muted">짐 ${w.count}개 · 보관료 하루 ${money(w.fee)}${w.owed ? ` · 밀린 보관료 ${money(w.owed)}` : ''}</small><br /><small>${piecesSummary(w.pieces)}</small></span></li>`,
-    ),
-  ].join('');
 
   // 신청: 마을마다 (수레 짐, 창고 짐)
   const orders =
@@ -108,60 +106,62 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       })
       .join('') || '<li class="muted">아직 적힌 게 없어요. 마을에서 물건을 사고팔아 보세요.</li>';
 
-  el.innerHTML = `
-    <section class="card">
-      <h2>짐</h2>
-      <div data-cart></div>
-      <ul class="list">${cargo}</ul>
-      ${others ? `<h3>다른 짐칸</h3><ul class="list">${others}</ul>` : ''}
-    </section>
-    <section class="card">
-      <h2>신청</h2>
-      <ul class="order-list">${orders}</ul>
+  const bodies: Record<LedgerSection, string> = {
+    orders: `
+      <section class="card">
+        <h2>장날 신청</h2>
+        <ul class="order-list">${orders}</ul>
+      </section>
       ${
         reservations
-          ? `<h3>예약 주문</h3>
-             <p class="muted">마감 날까지 날마다 그 마을 장날에 다시 들어가요. 체결되면 알려 드려요.</p>
-             <ul class="order-list">${reservations}</ul>`
+          ? `<section class="card">
+              <h2>예약 주문</h2>
+              <p class="muted">마감 날까지 날마다 그 마을 장날에 다시 들어가요. 체결되면 알려 드려요.</p>
+              <ul class="order-list">${reservations}</ul>
+            </section>`
           : ''
-      }
-    </section>
-    ${
-      people || v.upkeep.total
-        ? `<section class="card">
-            <header class="card-head"><h2>사람과 말</h2><span class="badge">하루 ${money(v.upkeep.total)}</span></header>
-            <p class="muted">${v.upkeep.parts.map((x) => `${x.what} ${money(x.perDay)}`).join(' · ') || '유지비 없음'}</p>
-            <ul class="list">${people}</ul>
-          </section>`
-        : ''
-    }
-    ${
-      // 다른 마을에 처음 닿으면 열린다 (기획서 "견습 뒤에도 시스템은 하나씩 열린다")
-      v.unlocks.includes('memory')
-        ? `<section class="card">
-            <h2>시세</h2>
-            <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
-            ${known}
-          </section>`
-        : ''
-    }
-    <section class="card money-card">
-      <img src="${coins}" alt="" />
-      <div>
-        <div class="muted">가진 돈</div>
-        <div class="big-number">${money(v.gold)}</div>
-        ${v.reserved ? `<div class="muted">신청에 맡긴 돈 ${money(v.reserved)}</div>` : ''}
-        ${cargoValue !== null ? `<div class="muted">수레 짐을 아는 시세로 치면 ${money(cargoValue)}</div>` : ''}
-        ${v.bank.deposit || v.bank.loan ? `<div class="muted">예금 ${money(v.bank.deposit)} · 대출 ${money(v.bank.loan)}</div>` : ''}
-      </div>
-    </section>
-    <section class="card">
-      <h2>돈 (손익)</h2>
-      <ul class="list">${ledger}</ul>
-    </section>`;
+      }`,
+    accounts: `
+      <section class="card money-card">
+        <img src="${coins}" alt="" />
+        <div>
+          <div class="muted">가진 돈</div>
+          <div class="big-number">${money(v.gold)}</div>
+          ${v.reserved ? `<div class="muted">신청에 맡긴 돈 ${money(v.reserved)}</div>` : ''}
+          ${cargoValue !== null ? `<div class="muted">수레 짐을 아는 시세로 치면 ${money(cargoValue)}</div>` : ''}
+          ${v.bank.deposit || v.bank.loan ? `<div class="muted">예금 ${money(v.bank.deposit)} · 대출 ${money(v.bank.loan)}</div>` : ''}
+        </div>
+      </section>
+      <section class="card">
+        <h2>들어오고 나간 돈</h2>
+        <ul class="list">${ledger}</ul>
+      </section>`,
+    prices: `
+      <section class="card">
+        <h2>내가 아는 시세</h2>
+        <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
+        ${known}
+      </section>`,
+    people: `
+      <section class="card">
+        <header class="card-head"><h2>사람과 말</h2><span class="badge">하루 ${money(v.upkeep.total)}</span></header>
+        <p class="muted">${v.upkeep.parts.map((x) => `${x.what} ${money(x.perDay)}`).join(' · ') || '유지비 없음'}</p>
+        <ul class="list">${people || '<li class="muted">아직 함께하는 일꾼도 말도 없어요.</li>'}</ul>
+      </section>`,
+  };
 
-  mountCartBoard(el.querySelector<HTMLElement>('[data-cart]')!, game);
+  el.innerHTML = `
+    <div class="seg ledger-tabs" role="tablist" aria-label="장부">
+      ${open.map((s) => `<button type="button" role="tab" data-section="${s.id}" aria-pressed="${s.id === section}" aria-selected="${s.id === section}">${s.label}</button>`).join('')}
+    </div>
+    ${bodies[section]}`;
 
+  el.querySelectorAll<HTMLButtonElement>('[data-section]').forEach((b) =>
+    b.addEventListener('click', () => {
+      showLedgerSection(b.dataset.section as LedgerSection);
+      renderLedger(el, game, v, cancelOrder);
+    }),
+  );
   el.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
     b.addEventListener('click', () => cancelOrder(Number(b.dataset.cancel))),
   );
