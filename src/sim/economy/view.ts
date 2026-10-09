@@ -1,5 +1,6 @@
 // 플레이어에게 보이는 것만 골라 낸다. 화면은 실제 상태(EconomyState) 대신 이것만 그린다.
 // 지금 있는 마을 시세만 정확히 알고, 다른 마을은 날짜가 붙은 기억으로만 안다.
+import { foodPerDay, myFood, rationPrice } from './food';
 import { repairCost } from './incidents';
 import { boardStack, CART_TYPES, cartCount, cartLots, cartWeight, isGear, pieceCells, roomFor, unitWeight, usedCells, type Board, type Cart, type CartType, type ItemId, type ItemLot } from '../cart';
 import { boardFee, WAREHOUSE_CELLS } from '../warehouse/fee';
@@ -292,6 +293,11 @@ export interface PlayerView {
   gear: GearView[];
   /** 수레에 실은 도구 수 (원정에서 나무 베기·광석 캐기에 쓰고, 장비를 고친다) */
   tools: number;
+  /**
+   * 길의 식량 (0.1.2): 내 수레·짐꾼 수레에 실린 식량, 내 행렬이 하루에 먹는 양,
+   * 이 마을 잡화점 여행 식량 값(마을에 있을 때), 여행 식량을 더 실을 수 있는 수
+   */
+  food: { have: number; perDay: number; rationPrice: number | null; rationRoom: number };
   /** 지금 쓰는 도구가 원정 선택지를 몇 번 더 버티나 (도구가 없으면 0) */
   toolUsesLeft: number;
   /** 여관 안내인: 고용 값과 고용했는지. 원정을 못 나가는 마을이나 길 위면 null */
@@ -783,6 +789,12 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
       maxUses: ECONOMY.expedition.gear[kind].durability,
     })),
     tools: cartCount(p.cart, 'tools'),
+    food: {
+      have: myFood(p),
+      perDay: foodPerDay(p),
+      rationPrice: p.travel ? null : rationPrice(state, p.town),
+      rationRoom: roomFor(p.cart, 'rations', 99),
+    },
     toolUsesLeft: cartCount(p.cart, 'tools') > 0 ? ECONOMY.expedition.usesPerTool - p.toolUses : 0,
     apprentice: apprenticeView(p, map),
     newsReadDay: p.newsReadDay,

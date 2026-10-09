@@ -1,8 +1,8 @@
 // 견습 진행: 플레이어가 한 일(명령)과 지나간 장날을 보고 다음 장면으로 넘긴다.
 // 견습 마을은 혼자 쓰는 마을이라 실제 시간이 흐르지 않고, "하루 보내기"로만 날이 간다.
 // 견습 동안은 손해를 보지 않고, 첫 판매는 반드시 이익이 난다 (market.ts).
-import { createCart, moveAll } from '../cart';
-import { ECONOMY } from '../constants';
+import { createCart, loadGoods, moveAll } from '../cart';
+import { ECONOMY, FOOD } from '../constants';
 import type { Command } from '../economy/commands';
 import { hasExpeditions } from '../economy/player';
 import type { EconomyState, PlayerState } from '../economy/state';
@@ -59,7 +59,7 @@ function advance(state: EconomyState, p: PlayerState, map: WorldMap): void {
   ap.sceneDay = state.day;
   for (const id of sceneDef(next).unlocks) unlock(state, p, id);
   if (next === 'firstNews') firstNews(state, p, map);
-  if (next === 'graduation') graduationGift(p);
+  if (next === 'graduation') graduationGift(p, map);
 }
 
 /** 첫 신문: 졸업하고 갈 마을에 조선소 대형 상선 (목재 수요가 는다). 견습 동안 신문은 무료다 */
@@ -73,12 +73,16 @@ function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
   state.news.push({ day: state.day, text: def.news({ town: map.towns[ap.destination]!.name, good: null, job: null }) });
 }
 
-/** 졸업 선물: 손수레. 짐은 그대로 옮겨 싣는다 */
-function graduationGift(p: PlayerState): void {
-  if (p.cart.type !== 'pack') return;
-  const next = createCart('handcart');
-  moveAll(p.cart, next);
-  p.cart = next;
+/** 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 첫 길에 먹을 여행 식량 (0.1.2 길의 식량) */
+function graduationGift(p: PlayerState, map: WorldMap): void {
+  const ap = p.apprentice!;
+  if (p.cart.type === 'pack') {
+    const next = createCart('handcart');
+    moveAll(p.cart, next);
+    p.cart = next;
+  }
+  const days = townTravelDays(map, AUTUMN)[ap.town]![ap.destination]!;
+  if (Number.isFinite(days)) loadGoods(p.cart, 'rations', Math.ceil(days) * FOOD.perPersonPerDay, 0, 0);
 }
 
 /** 명령이 성공한 뒤 부른다 */

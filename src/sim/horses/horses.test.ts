@@ -1,6 +1,6 @@
 // 말 (기획서 "말"): 끄는 무게와 속도, 시즌 입고, 마구간 거래, 먹이와 체력, 수레 바꾸기, 입고 소문.
 import { describe, expect, it } from 'vitest';
-import { createCart, loadGoods } from '../cart';
+import { cartCount, createCart, loadGoods } from '../cart';
 import { CART, HORSES } from '../constants';
 import { advanceDay, applyCommand, citizenDemand, createEconomy, type EconomyState } from '../economy';
 import { capacityOf } from '../economy/traders';
@@ -211,8 +211,11 @@ describe('먹이와 체력', () => {
     expect(buyHorse(state, state.players.me!, 'draft')).toBeNull();
     state.players.me!.travel = { from: town, to: town, days: 99, daysLeft: 99 };
     loadGoods(state.players.me!.cart, 'grain', 1);
+    // 사람이 먼저 먹는다 (0.1.2 길의 식량): 여행 식량은 곡물보다 먼저 상하니 사람이 그것을 먹고, 곡물은 말이 먹는다
+    loadGoods(state.players.me!.cart, 'rations', 1);
     advanceDay(state, map);
     expect(state.players.me!.horses[0]!.hungry).toBe(0);
+    expect(cartCount(state.players.me!.cart, 'rations')).toBe(0);
     for (let d = 0; d < HORSES.runAwayAfterHungryDays; d++) advanceDay(state, map);
     expect(state.players.me!.horses).toEqual([]);
     expect(stableAt(state, town)!.stock.draft).toBe(3);

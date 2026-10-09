@@ -18,21 +18,34 @@ export function fatigueBar(v: PlayerView): string {
 }
 
 export function openStore(game: Game): void {
-  openLiveSheet(game, '잡화점', (body, v) => {
+  openLiveSheet(game, '잡화점', (body, v, sheet) => {
     body.innerHTML = `
       <h3>음식 먹기</h3>
       ${fatigueBar(v)}
       <div class="btn-row">
         <button type="button" class="secondary-btn" data-meal ${v.fatigue > 0 && v.mealsLeft > 0 ? '' : 'disabled'}>짐에 있는 음식 먹기<small>오늘 ${v.mealsLeft}끼 더</small></button>
       </div>
+      <h3>여행 식량</h3>
+      <p class="muted">길을 가는 날마다 사람 하나에 식량 하나를 먹어요. 수레의 음식(생선, 고기, 곡물, 염장 식품)도 먹지만, 여행 식량은 한 칸에 4개가 들어가요. 가진 식량 ${v.food.have}.</p>
+      <div class="btn-row">
+        ${[2, 4, 8]
+          .map(
+            (n) =>
+              `<button type="button" class="secondary-btn" data-rations="${n}" ${v.food.rationPrice !== null && v.gold >= n * v.food.rationPrice && v.food.rationRoom >= n ? '' : 'disabled'}>${n}개 사기<small>${v.food.rationPrice !== null ? money(n * v.food.rationPrice) : '-'}</small></button>`,
+          )
+          .join('')}
+      </div>
       ${
         v.apprentice
           ? ''
           : `<h3>장비</h3>
-             <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 수레의 도구 ${v.tools}개${v.tools ? ` (지금 도구 ${v.toolUsesLeft}번 더)` : ''}. 도구 하나로 나무 베기·광석 캐기를 ${USES}번 해요.</p>
+             <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 장비도 짐칸 자리를 차지하고, 실은 장비만 써요. 수레의 도구 ${v.tools}개${v.tools ? ` (지금 도구 ${v.toolUsesLeft}번 더)` : ''}. 도구 하나로 나무 베기·광석 캐기를 ${USES}번 해요.</p>
              <div class="btn-row"><button type="button" class="secondary-btn" data-gear>장비 사기·고치기<small>${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 쓸 만함</small></button></div>`
       }`;
     body.querySelector('[data-meal]')?.addEventListener('click', () => openMealSheet(game));
+    body.querySelectorAll<HTMLButtonElement>('[data-rations]').forEach((b) =>
+      b.addEventListener('click', () => sheet.send({ type: 'buyRations', qty: Number(b.dataset.rations) })),
+    );
     body.querySelector('[data-gear]')?.addEventListener('click', () => openGearSheet(game));
   });
 }

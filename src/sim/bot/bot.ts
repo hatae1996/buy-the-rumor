@@ -50,12 +50,37 @@ const TRIP_SELL_CAP = 25;
 /** 사 모을 때 여비 말고도 남기는 돈 */
 const TRIP_RESERVE = 20;
 
+/** 길 하루에 드는 돈: 이동비 + 내 행렬이 먹는 식량 값 (0.1.2. 여행 식량 값을 모르면 곡물 기준값쯤) */
+function dayCost(view: PlayerView): number {
+  return ECONOMY.player.travelFeePerDay + view.food.perDay * (view.food.rationPrice ?? 5);
+}
+
 /** 오늘 할 다음 명령. 할 게 없으면 null */
 export function botStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: BotMind, rng: Rng): Command | null {
   const cmd = chooseStep(view, map, profile, mind, rng);
   // 말·일꾼 추첨을 기다리는 날은 떠나지 않는다 (떠나면 신청이 거둬진다, 0.1.0)
   if (cmd?.type === 'travel' && view.draws.length) return null;
+  // 길의 식량 (0.1.2): 떠나기 전에 모자란 만큼 잡화점에서 여행 식량을 산다 (여비는 남긴다)
+  if (cmd?.type === 'travel') {
+    const buy = rationsFor(view, cmd.to);
+    const key = `rations:${cmd.to}`;
+    if (buy > 0 && !mind.tried.includes(key)) {
+      mind.tried.push(key);
+      return { type: 'buyRations', qty: buy };
+    }
+  }
   return cmd;
+}
+
+/** 이 마을까지 가는 동안 먹을 식량 중 더 사야 할 수 (살 수 있는 만큼) */
+function rationsFor(view: PlayerView, to: number): number {
+  const f = view.food;
+  const days = view.travel.days[to] ?? Infinity;
+  if (f.rationPrice === null || !Number.isFinite(days)) return 0;
+  const need = Math.ceil(days) * f.perDay - f.have;
+  const fee = Math.ceil(days) * ECONOMY.player.travelFeePerDay + (view.roads.tolls[to] ?? 0) + (view.location.kind === 'town' ? (view.roads.tolls[view.location.town] ?? 0) : 0);
+  // 돈이 모자라면 덜 사고 배고픈 채 간다 (느려질 뿐 죽지 않는다). 비상금은 남긴다
+  return Math.max(0, Math.min(need, f.rationRoom, Math.floor((view.gold - fee - TRIP_RESERVE) / f.rationPrice)));
 }
 
 function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: BotMind, rng: Rng): Command | null {
@@ -222,7 +247,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   // 5. 떠나기: 산 물건을 실었으면 가져갈 마을로 (말이 있으면 길에서 먹일 곡물부터)
   const loaded = mind.plan !== null && (mind.plan.days >= BUY_DAYS || fill >= LOAD_FULL);
   // 여비가 없으면 계획을 접는다 (다음 차례에 여기서 판다)
-  if (mind.plan && mind.plan.to !== here && loaded && !buying && view.gold < (days[here]![mind.plan.to]! ?? 0) * ECONOMY.player.travelFeePerDay) mind.plan = null;
+  if (mind.plan && mind.plan.to !== here && loaded && !buying && view.gold < (days[here]![mind.plan.to]! ?? 0) * dayCost(view)) mind.plan = null;
   if (!buying && !overweight && selling.size === 0 && mind.plan && mind.plan.to !== here && cargo > 0 && loaded) {
     const c = once(feedFor(view, mind.plan.to) ?? { type: 'travel', to: mind.plan.to });
     if (c) return c;
@@ -262,7 +287,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
             (view.memory[a.id]?.day ?? -Infinity) - (view.memory[b.id]?.day ?? -Infinity) ||
             days[here]![a.id]! - days[here]![b.id]!,
         )[0];
-      const fee = unknown ? days[here]![unknown.id]! * ECONOMY.player.travelFeePerDay : Infinity;
+      const fee = unknown ? days[here]![unknown.id]! * dayCost(view) : Infinity;
       if (unknown && view.gold > fee * 3) {
         const c = once(feedFor(view, unknown.id) ?? { type: 'travel', to: unknown.id });
         if (c) return c;
@@ -276,7 +301,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
       .filter((t) => t.id !== here && Number.isFinite(days[here]![t.id]!))
       .filter((t) => view.day - (view.memory[t.id]?.day ?? -Infinity) > STALE_DAYS)
       .sort((a, b) => (view.memory[a.id]?.day ?? -1) - (view.memory[b.id]?.day ?? -1))[0];
-    const fee = stale ? days[here]![stale.id]! * ECONOMY.player.travelFeePerDay : Infinity;
+    const fee = stale ? days[here]![stale.id]! * dayCost(view) : Infinity;
     if (stale && view.gold > fee * 3) {
       const c = once(feedFor(view, stale.id) ?? { type: 'travel', to: stale.id });
       if (c) return c;
@@ -396,13 +421,13 @@ function bestKnownPrice(
     if (town === here || !Number.isFinite(d) || view.day - mem.day > MEMORY_TRUST_DAYS) continue;
     const life = shelfLife(good);
     if (life !== null && life <= d * ECONOMY.spoilRate[view.season] + 1) continue;
-    const net = mem.prices[good] - (d * ECONOMY.player.travelFeePerDay) / Math.max(1, qty);
+    const net = mem.prices[good] - (d * dayCost(view)) / Math.max(1, qty);
     if (!best || net > best.net) best = { town, net };
   }
   // 노리는 큰 주문: 그 마을은 주문 값에 사 준다고 본다 (가 본 적이 없어도)
   const target = bigTarget(big, good);
   if (target && target.town !== here && (only === null || only === target.town) && Number.isFinite(days[here]![target.town]!)) {
-    const net = target.price - (days[here]![target.town]! * ECONOMY.player.travelFeePerDay) / Math.max(1, qty);
+    const net = target.price - (days[here]![target.town]! * dayCost(view)) / Math.max(1, qty);
     if (!best || net > best.net) best = { town: target.town, net };
   }
   return best;
@@ -416,7 +441,7 @@ function bestSource(view: PlayerView, map: WorldMap, here: number, days: number[
   const fresh = Object.entries(view.memory)
     .map(([id, m]) => ({ town: Number(id), prices: m.prices, day: m.day }))
     .filter((m) => view.day - m.day <= MEMORY_TRUST_DAYS && Number.isFinite(days[here]![m.town]!));
-  const fee = ECONOMY.player.travelFeePerDay;
+  const fee = dayCost(view);
   let best: { town: number; profit: number } | null = null;
   for (const a of fresh) {
     if (a.town === here) continue;
@@ -465,7 +490,7 @@ function bestDeal(
     const cartCap = view.buyRoom[good];
     // 가져갈 마을까지 여비(와 비상금)는 남긴다. 팔러 갈 수 있는 곳은 시세를 아는 마을뿐이라 그중 가장 먼 곳까지
     // (예전엔 지도의 모든 마을 중 가장 먼 곳이라, 마을이 많은 큰 맵에서 살 돈이 줄었다, 0.1.1)
-    const travelFee = Math.max(0, ...sellTowns.map((t) => days[here]![t]!)) * ECONOMY.player.travelFeePerDay;
+    const travelFee = Math.max(0, ...sellTowns.map((t) => days[here]![t]!)) * dayCost(view);
     const goldCap = Math.floor((Math.max(0, view.gold - travelFee - TRIP_RESERVE) * 0.9) / maxPrice);
     const qty = Math.min(cartCap, goldCap);
     if (qty <= 0) continue;

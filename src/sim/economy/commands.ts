@@ -56,6 +56,7 @@ import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawErr
 import { buyNewspaper, type NewspaperError } from '../news';
 import { cancelReservation, reserveOnArrival, reserveStanding, type ReservationError } from '../reservations';
 import { repairCart, roadRisk } from './incidents';
+import { buyRations } from './food';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
@@ -96,6 +97,8 @@ export type Command =
   | { type: 'restHorses' }
   /** 수레방에서 수레를 바꾼다 (쓰던 수레는 쳐 준다) */
   | { type: 'buyCart'; cart: CartType }
+  /** 잡화점에서 여행 식량을 산다 (0.1.2) */
+  | { type: 'buyRations'; qty: number }
   /** 수레방에서 망가진 짐칸을 고친다 (돈이 되는 만큼, 0.1.2) */
   | { type: 'repairCart' }
   /** 잡화점에서 장비(활, 횃불, 덫, 그물)를 산다 */
@@ -411,6 +414,8 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       state.orders.push(o);
       return { ok: true, orderId: o.id };
     }
+    case 'buyRations':
+      return done(buyRations(state, p, cmd.qty));
     case 'repairCart':
       return done(repairCart(state, p, map));
     case 'buyCart':

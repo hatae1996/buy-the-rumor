@@ -1,7 +1,7 @@
 // 두 번째 행렬의 하루: 아침에 지시서 마을이면 장날 신청을 내고, 밤에 다음 마을로 떠나거나 길을 간다.
 // 돈은 내 금고(소지금)에서 쓰고 받는다. 여비도 내 돈에서 나간다. 돈이 모자라면 그 마을에서 기다린다.
-import { cartCount, cartWeight, type Board } from '../cart';
-import { ECONOMY, HORSES } from '../constants';
+import { cartCount, cartWeight, loadGoods, type Board } from '../cart';
+import { ECONOMY, FOOD, HORSES } from '../constants';
 import type { Accounts } from '../economy/accounts';
 import type { EconomyState, Order, PlayerState } from '../economy/state';
 import { travelDaysToday } from '../events/active';
@@ -12,6 +12,7 @@ import type { WorldMap } from '../worldgen';
 import { autoLoadRoom, caravanRentNight } from './caravan';
 import type { Caravan } from './types';
 import { roadNight, roadRisk } from '../economy/incidents';
+import { eatFrom, foodOn, rationPrice, slowDown } from '../economy/food';
 
 /** 아침에: 지시서 마을에 와 있으면 오늘 장날 신청을 낸다 (팔기 먼저, 사기는 알아서 싣기만큼) */
 export function caravanOrders(state: EconomyState, p: PlayerState, accounts: Accounts): Order[] {
@@ -51,6 +52,18 @@ function setOff(state: EconomyState, p: PlayerState, map: WorldMap, c: Caravan, 
   if (p.gold < fee) return false;
   p.gold -= fee;
   state.towns[c.town]!.treasury += fee;
+  // 마부가 먹을 식량: 행렬 수레에 모자라면 이 마을 잡화점에서 여행 식량을 사 싣는다 (내 돈으로, 0.1.2)
+  const need = Math.ceil(days) * FOOD.perPersonPerDay - foodOn([c.cart]);
+  if (need > 0) {
+    const price = rationPrice(state, c.town);
+    const n = Math.min(need, Math.floor(p.gold / price));
+    const got = n > 0 ? loadGoods(c.cart, 'rations', n, 0, price) : 0;
+    if (got > 0) {
+      p.gold -= got * price;
+      state.towns[c.town]!.treasury += got * price;
+      p.ledger.push({ day: state.day, kind: 'rations', town: c.town, qty: got, price });
+    }
+  }
   for (const h of c.horses) h.fatigue = Math.min(HORSES.fatigue.max, h.fatigue + HORSES.kinds[h.kind].travelFatigue * days);
   c.travel = { from: c.town, to, days, daysLeft: days, risk: roadRisk(state, map, c.town, to) };
   p.ledger.push({ day: state.day, kind: 'caravan', what: 'travel', town: c.town, to, fee });
@@ -69,6 +82,10 @@ export function caravanNight(state: EconomyState, p: PlayerState, map: WorldMap)
   c.horses = feedHorses(state, p, c.horses, c.travel ? c.travel.to : c.town, c.cart as Board, !c.travel);
   if (c.travel) {
     roadNight(state, p, c.travel, c.cart, true);
+    // 마부가 먹는다. 모자라면 행렬이 느려진다
+    const meal = eatFrom([c.cart], FOOD.perPersonPerDay);
+    if (meal.short > 0) slowDown(c.travel);
+    p.ledger.push({ day: state.day, kind: 'roadFood', eaten: meal.eaten, short: meal.short, caravan: true });
     if (--c.travel.daysLeft <= 0) {
       c.town = c.travel.to;
       c.travel = null;

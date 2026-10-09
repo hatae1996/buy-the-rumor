@@ -136,7 +136,7 @@ export function bigPlanStep(
   if (buying) return { command: null, trip: { goods: plan.goods, to: plan.town, go: false } };
   if (held > 0) return { command: null, trip: { goods: plan.goods, to: plan.town, go: goNow } };
   // 모을 곳: 기억하는 시세가 주문 값의 BUY_UNDER배 아래인 마을 중 가까운 곳 (거기 갔다가 주문 마을까지 시간 안에)
-  const fee = ECONOMY.player.travelFeePerDay;
+  const fee = ECONOMY.player.travelFeePerDay + view.food.perDay * (view.food.rationPrice ?? 5);
   const source = Object.entries(view.memory)
     .map(([id, m]) => ({ town: Number(id), m }))
     .filter(({ town, m }) => town !== here && town !== plan.town && plan.goods.some((g) => m.prices[g] <= plan.price[g]! * BUY_UNDER))

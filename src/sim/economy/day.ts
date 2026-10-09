@@ -42,6 +42,7 @@ import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
 import { workshopDay, workshopOrders } from './workshop';
 import { roadNight } from './incidents';
+import { eatOnRoad } from './food';
 
 /** 플레이어 한 사람의 하루 */
 export interface PlayerDayReport {
@@ -220,6 +221,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const p of turn) {
     // 길 위 사건: 짐칸 한 칸이 망가질 수 있다 (0.1.2)
     if (p.travel) roadNight(state, p, p.travel, p.cart, false);
+    // 길의 식량: 나와 짐꾼이 먹는다 (0.1.2). 모자라면 지치고 느려진다
+    if (p.travel) eatOnRoad(state, p, p.travel);
     if (p.travel && --p.travel.daysLeft <= 0) {
       p.town = p.travel.to;
       p.travel = null;

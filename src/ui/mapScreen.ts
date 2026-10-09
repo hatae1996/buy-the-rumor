@@ -144,9 +144,21 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
     const fee = days * ECONOMY.player.travelFeePerDay + toll;
     const mem = v.memory[to];
     const city = game.map.towns[to]!.tier === 'city';
+    // 길의 식량 (0.1.2): 하루에 사람 하나에 식량 하나
+    const needFood = Math.ceil(days) * v.food.perDay;
+    const short = Math.max(0, needFood - v.food.have);
+    const canBuy = v.food.rationPrice !== null ? Math.min(short, v.food.rationRoom, Math.floor(v.gold / v.food.rationPrice)) : 0;
     const sheet = openSheet(name(to));
     sheet.body.innerHTML = `
       <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
+      <p class="${short ? 'warn' : 'muted'}">필요한 식량 <b>${needFood}</b> (가진 식량 ${v.food.have}${v.food.perDay > 1 ? `, 하루 ${v.food.perDay}명이 먹어요` : ''}).${
+        short ? ` ${short} 모자라요. 떨어지면 지치고 길이 늦어져요.` : ''
+      }</p>
+      ${
+        canBuy > 0
+          ? `<button type="button" class="secondary-btn" data-rations>잡화점 여행 식량 ${canBuy}개 사기<small>개당 ${money(v.food.rationPrice!)}</small></button>`
+          : ''
+      }
       ${info}
       ${days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : ''}
       ${v.horses.length ? `<p class="muted">말이 길에서 지쳐요. 길 위에서는 수레에 실은 곡물을 먹어요 (하루 ${v.horses.reduce((s, h) => s + h.feed, 0)}개).</p>` : ''}
@@ -162,6 +174,12 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
       }
       <p class="error" data-error hidden></p>
       <button type="button" class="primary-btn" data-go>여기로 가기</button>`;
+    sheet.body.querySelector('[data-rations]')?.addEventListener('click', () => {
+      const r = game.dispatch({ type: 'buyRations', qty: canBuy });
+      sheet.close();
+      if (r.ok) openTownCard(to);
+      else render();
+    });
     sheet.body.querySelector('[data-handcart]')?.addEventListener('click', () => {
       const r = game.dispatch({ type: 'buyCart', cart: 'handcart' });
       const err = sheet.body.querySelector<HTMLElement>('[data-error]')!;

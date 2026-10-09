@@ -36,6 +36,8 @@ describe('실제 시간과 장날', () => {
 
   it('도착 예상 시간이 되면 정말 도착해 있다', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
+    // 식량이 떨어지면 길이 늦어진다 (0.1.2). 넉넉히 싣고 떠난다
+    expect(g.dispatch({ type: 'buyRations', qty: 10 }).ok).toBe(true);
     expect(g.dispatch({ type: 'travel', to: 2 }).ok).toBe(true);
     const t = 1000;
     const loc = g.view().location;

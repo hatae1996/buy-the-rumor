@@ -89,6 +89,8 @@ export interface Travel {
   daysLeft: number;
   /** 떠날 때 잰 길의 위험 (짐칸 손상, 0.1.2). NPC 상단과 예전 저장에는 없다 */
   risk?: RoadRisk;
+  /** 배고픈 날로 늘어난 길 (하루가 차면 남은 날 +1, 0.1.2) */
+  hunger?: number;
 }
 
 export interface Trader {
@@ -124,6 +126,10 @@ export type LedgerEntry =
   | { day: number; kind: 'discard'; good: ItemId; qty: number }
   /** 길 위 사건으로 짐칸 한 칸이 망가졌다 (0.1.2). 그 칸의 짐 조각은 잃었다 */
   | { day: number; kind: 'cartDamage'; cause: IncidentCause; lost: { good: ItemId; qty: number } | null; caravan: boolean }
+  /** 길에서 식량을 먹었다 (모자란 양이 있으면 배고픈 날, 0.1.2) */
+  | { day: number; kind: 'roadFood'; eaten: { good: ItemId; qty: number }[]; short: number; caravan?: boolean }
+  /** 잡화점에서 여행 식량을 샀다 */
+  | { day: number; kind: 'rations'; town: number; qty: number; price: number }
   /** 수레방에서 망가진 칸을 고쳤다 */
   | { day: number; kind: 'cartRepair'; town: number; cells: number; price: number }
   | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }

@@ -163,6 +163,15 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
         text: `${e.caravan ? '두 번째 행렬 ' : ''}${INCIDENT_NAME[e.cause]}에 짐칸 한 칸이 망가졌어요${e.lost ? ` (${itemName(e.lost.good)} ${e.lost.qty}개를 잃음)` : ''}`,
         amount: null,
       };
+    case 'roadFood': {
+      const what = e.eaten.map((x) => `${itemName(x.good)} ${x.qty}`).join(', ');
+      const who = e.caravan ? '두 번째 행렬이 ' : '';
+      if (e.short > 0)
+        return { text: `${who}길에서 식량이 ${e.short} 모자라 배고팠어요${what ? ` (${what}만 먹음)` : ''}. 지치고 길이 늦어져요`, amount: null };
+      return { text: `${who}길에서 식량을 먹었어요 (${what})`, amount: null };
+    }
+    case 'rations':
+      return { text: `${townName(e.town)} 잡화점에서 여행 식량 ${e.qty}개를 샀어요 (개당 ${e.price})`, amount: -e.qty * e.price };
     case 'cartRepair':
       return { text: `${townName(e.town)} 수레방에서 짐칸 ${e.cells}칸을 고쳤어요`, amount: -e.price };
     case 'expedition': {
