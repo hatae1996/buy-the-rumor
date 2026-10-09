@@ -9,14 +9,15 @@ import { tradeRecord } from './record';
 
 const SEED = 4242;
 const map = generateWorld(SEED);
-const IDS = ['me', 'b1', 'b2'];
+const IDS = ['me', 'b1', 'b2', 'b3', 'b4'];
+const NAMES = ['나의 상단', '붉은 여우 상단', '푸른 돛 상단', '잿빛 상단', '들꽃 상단'];
 
-/** 세 상단, 시즌을 짧게(3일) 줄인 세계. 소금을 me 10, b1 5, b2 1개 팔았고 돈은 me가 가장 적다 */
+/** 다섯 상단, 시즌을 짧게(3일) 줄인 세계. 소금을 me 10, b1 5, 나머지 1개씩 팔았고 돈은 me가 셋째 */
 function world(): EconomyState {
-  const s = createEconomy(map, SEED, { players: IDS.map((id, i) => ({ id, name: ['나의 상단', '붉은 여우 상단', '푸른 돛 상단'][i] })) });
+  const s = createEconomy(map, SEED, { players: IDS.map((id, i) => ({ id, name: NAMES[i] })) });
   s.season!.length = 3;
-  [10, 5, 1].forEach((n, i) => s.players[IDS[i]!]!.record!.trades.push(tradeRecord(1, 'sell', 0, 'salt', n, 20)));
-  [100, 900, 500].forEach((g, i) => (s.players[IDS[i]!]!.gold = g));
+  [10, 5, 1, 1, 1].forEach((n, i) => s.players[IDS[i]!]!.record!.trades.push(tradeRecord(1, 'sell', 0, 'salt', n, 20)));
+  [100, 900, 500, 50, 60].forEach((g, i) => (s.players[IDS[i]!]!.gold = g));
   return s;
 }
 
@@ -27,10 +28,9 @@ describe('장날마다 순위', () => {
     expect(s.rankings?.day).toBe(1);
     const v = playerView(s, map, 'me');
     const salt = v.ranking.categories.find((c) => c.id === 'goodsKing:salt')!;
-    expect(salt.top.map((t) => [t.name, t.rank])).toEqual([
+    expect(salt.top.map((t) => [t.name, t.rank]).slice(0, 2)).toEqual([
       ['나의 상단', 1],
       ['붉은 여우 상단', 2],
-      ['푸른 돛 상단', 3],
     ]);
     expect(salt.mine).toMatchObject({ rank: 1, score: 10 });
     expect(JSON.stringify(salt.top)).not.toMatch(/score/);
@@ -64,6 +64,18 @@ describe('시즌 결산', () => {
     expect(settleSeason(s)).toBe(st);
     expect(s.players.me!.certificate.seasonsCompleted).toBe(1);
     expect(s.players.me!.certificate.badges.filter((b) => b.badge === 'season-1')).toHaveLength(1);
+  });
+
+  it('그 부문에 5명이 안 되면 랭킹 인장과 칭호가 없다 (답 94)', () => {
+    const s = world();
+    // 생선은 넷만 팔았다
+    [3, 2, 1, 1].forEach((n, i) => s.players[IDS[i]!]!.record!.trades.push(tradeRecord(1, 'sell', 0, 'fish', n, 5)));
+    for (let d = 0; d < 3; d++) advanceDay(s, map);
+    expect(s.settlement!.table['goodsKing:fish']).toHaveLength(4);
+    const badges = s.players.me!.certificate.badges.map((b) => b.badge);
+    expect(badges.some((b) => b.startsWith('rank-goodsKing:fish'))).toBe(false);
+    expect(s.players.me!.certificate.titles).not.toContain('1시즌 생선왕');
+    expect(badges).toContain('rank-goodsKing:salt-first');
   });
 
   it('결산 뒤에는 장사 명령을 받지 않고, 증서 고치기는 된다. 화면에는 내 리포트만', () => {

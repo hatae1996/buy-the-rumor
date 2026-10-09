@@ -37,6 +37,9 @@ export interface MarketStats {
   horseNever: number;
   /** 처음 신청한 날부터 처음 산 날까지 (산 사람만, 평균) */
   horseWaitDays: number | null;
+  /** 말을 원했는데 마구간에 남은 말이 없어 신청도 못 한 날 (모든 봇의 합)과 그런 날이 있었던 봇 수 (참고 숫자, 답 93) */
+  horseNoStockDays: number;
+  horseNoStockPeople: number;
   /** 큰 주문마다: 주문 물품을 그 마을 장에 낸 사람, 그중 한 개도 못 판 사람 */
   bigOrders: { event: string; town: number; good: GoodId; joined: number; soldNone: number }[];
 }
@@ -96,7 +99,11 @@ export function startBots(seed: number, n: number, opt: MarketRunOptions, world?
       return {
         n,
         seats: [...seats.values()].map((s: BotSeat) => ({ ...finishSeat(state, s, day), pid: s.pid })),
-        stats: watch.stats(),
+        stats: {
+          ...watch.stats(),
+          horseNoStockDays: [...seats.values()].reduce((s, x) => s + (x.mind.growth.noStockDays?.length ?? 0), 0),
+          horseNoStockPeople: [...seats.values()].filter((x) => x.mind.growth.noStockDays?.length).length,
+        },
         daily: watch.daily,
         prices: state.towns.map((t) => ({ ...t.refPrice })),
       };
@@ -171,7 +178,7 @@ function createWatch() {
       const volume = markets.reduce((a, m) => a + Object.values(m).reduce((b, r) => b + r.volume, 0), 0);
       daily.push({ volume, playerSold });
     },
-    stats(): MarketStats {
+    stats(): Omit<MarketStats, 'horseNoStockDays' | 'horseNoStockPeople'> {
       let worst: [string, number] | null = null;
       for (const [k, v] of monopoly) if (!worst || v > worst[1]) worst = [k, v];
       let total = 0;
@@ -217,7 +224,7 @@ export function byProfile(run: MarketRun): Record<string, { count: number; incom
 
 /** 합격 기준 (handoff 0.1.0)으로 본 문제. 참이면 문제다 */
 export interface MarketProblems {
-  /** 한 마을·한 물품에서 상위 1명이 플레이어 판매의 50%를 넘은 날이 시즌의 절반을 넘었다 */
+  /** 같은 한 사람이 한 마을·한 물품에서 플레이어 판매의 50%를 넘은 날이 시즌의 절반을 넘었다 (답 92: 날마다 다른 사람이 1등인 것은 독점이 아니다) */
   monopoly: boolean;
   /** 말을 원한 사람 중 시즌 내내 한 마리도 못 산 사람이 절반을 넘었다 */
   horses: boolean;
@@ -230,7 +237,7 @@ export function marketProblems(run: MarketRun): MarketProblems {
   const s = run.stats;
   const joined = s.bigOrders.filter((b) => b.joined > 0);
   return {
-    monopoly: s.monopolyDays > run.daily.length / 2,
+    monopoly: s.soleDays > run.daily.length / 2,
     horses: s.horseWanted > 0 && s.horseNever > s.horseWanted / 2,
     bigOrders: joined.filter((b) => b.soldNone > b.joined / 2).length,
     bigOrdersJoined: joined.length,

@@ -1,7 +1,8 @@
 // 시즌 결산 (기획서 "시즌 흐름 3", 0.1.0 작업 5): 시즌 마지막 장날 뒤 한 번.
-// 순자산과 부문 순위를 매기고, 랭킹 인장(부문마다 1위·상위 3명·상위 10% 중 가장 좋은 것 하나),
+// 순자산과 부문 순위를 매기고, 랭킹 인장(부문마다 1위·상위 3명·상위 10% 중 가장 좋은 것 하나, 그 부문에 5명 이상일 때만),
 // 1위 칭호("3시즌 소금왕"), 완주 기념 인장과 상인 연차, 시즌 리포트를 남긴다.
 // 결산 뒤에는 그 시즌 명령을 받지 않는다 (서버는 다음 날 쉬고, 로컬은 결산 화면을 닫으면 새 세계로).
+import { ECONOMY } from '../constants';
 import { playerList } from '../economy/players';
 import type { EconomyState, PlayerId, PlayerState } from '../economy/state';
 import type { GoodId } from '../economy/goods';
@@ -61,6 +62,8 @@ export function settleSeason(state: EconomyState): SeasonSettlement | null {
       const mine = table[c]?.find((x) => x.id === p.id);
       if (!mine) continue;
       if (c === 'bigShot') p.certificate.bestBigShotRank = Math.min(p.certificate.bestBigShotRank ?? Infinity, mine.rank);
+      // 그 부문에 오른 사람이 적으면 랭킹 인장과 칭호는 없다 (답 94)
+      if (table[c]!.length < ECONOMY.ranking.minEntrants) continue;
       const place = placeOf(mine);
       if (!place) continue;
       if (awardBadge(state, p, rankingBadge(c, place).id, null, season.number)) got.badges.push(rankingBadge(c, place).id);

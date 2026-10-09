@@ -44,10 +44,12 @@ export interface GrowthMind {
   firsts: Partial<Record<GrowthKind, number>>;
   /** 돈으로는 살 수 있게 된 첫날 */
   couldAfford: Partial<Record<AffordKind, number>>;
+  /** 말을 원했는데 마구간에 남은 말이 없어 신청도 못 한 날 (측정용, 답 93). 예전 저장에는 없다 */
+  noStockDays?: number[];
 }
 
 export function createGrowthMind(): GrowthMind {
-  return { lost: [], capped: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, shiftCost: {}, firsts: {}, couldAfford: {} };
+  return { lost: [], capped: [], gearWanted: {}, hauls: [], gathered: [], porterUsed: -1, hiredOn: {}, rentedOn: {}, shiftCost: {}, firsts: {}, couldAfford: {}, noStockDays: [] };
 }
 
 /** 이만큼 지난 일은 잊는다 (새로 들인 것도 이만큼 써 보고 판단한다) */
@@ -187,15 +189,26 @@ export function growthStep(view: PlayerView, growth: BotGrowth, g: GrowthMind, o
 
   // 3. 첫 말: 손수레보다 많이 끄는 말 (짐말, 빠른 말). 마구간이 있는 마을에서
   if (view.horses.length === 0 && view.stable && !view.draws.some((d) => d.kind === 'horse')) {
-    const pick = view.stable.horses
-      .filter((h) => h.stock > 0 && h.price !== null && h.pull > view.cart.maxWeight)
-      .map((h) => ({ h, feed: h.feed * grainPrice(view) * HORSES.stableFeedMarkup }))
-      .filter((x) => afford('horse', affordable(view, growth, x.h.price!, x.feed)))
-      .sort((a, b) => b.h.pull - a.h.pull)[0];
-    // 먹이에 말값을 갚는 몫(PAYBACK_DAYS일에 나눠)까지 벌어야 산다
-    if (pick && (growth.horseGoal || lostPerDay >= (pick.feed + pick.h.price! / PAYBACK_DAYS) * growth.payMargin)) {
+    // 남은 말이 없으면 값이 보이지 않는다. 그때는 마지막 한 마리 값으로 원했을지를 본다 (측정용)
+    const wants = view.stable.horses
+      .filter((h) => h.pull > view.cart.maxWeight)
+      .map((h) => ({
+        h,
+        price: h.price ?? Math.round(HORSES.kinds[h.kind as HorseKind].price * HORSES.scarcity[2]),
+        feed: h.feed * grainPrice(view) * HORSES.stableFeedMarkup,
+      }))
+      .filter((x) => afford('horse', affordable(view, growth, x.price, x.feed)))
+      // 먹이에 말값을 갚는 몫(PAYBACK_DAYS일에 나눠)까지 벌어야 산다
+      .filter((x) => growth.horseGoal || lostPerDay >= (x.feed + x.price / PAYBACK_DAYS) * growth.payMargin)
+      .sort((a, b) => b.h.pull - a.h.pull);
+    const pick = wants.find((x) => x.h.stock > 0 && x.h.price !== null);
+    if (pick) {
       const c = mark('horse', once({ type: 'buyHorse', kind: pick.h.kind as HorseKind }));
       if (c) return c;
+    } else if (wants.length) {
+      // 원했는데 남은 말이 없다 (값은 남은 수로 매기므로 재고가 0이어도 값이 보인다)
+      const days = (g.noStockDays ??= []);
+      if (days.at(-1) !== view.day) days.push(view.day);
     }
   }
 
