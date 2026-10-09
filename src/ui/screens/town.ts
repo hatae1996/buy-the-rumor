@@ -7,6 +7,16 @@ import { euro } from '../../sim/josa';
 import { DAY_MS, type Game } from '../game';
 import { arrivalText } from '../format';
 import { buildingCards, openBuilding } from './buildings';
+import { openArrivalSheet } from './arrivalSheet';
+
+/** 남은 식량 (0.1.2): 남은 길에 먹을 만큼 있는지 */
+function foodLine(v: PlayerView, daysLeft: number): string {
+  const need = Math.ceil(daysLeft) * v.food.perDay;
+  const have = v.food.have;
+  const people = v.food.perDay > 1 ? `${v.food.perDay}명이 ` : '';
+  if (have >= need) return `<p class="muted">남은 식량 ${have} · 남은 길 ${daysLeft}일에 ${people}먹기 넉넉해요.</p>`;
+  return `<p class="warn">남은 식량 ${have} · 남은 길에 ${need}이 필요해요. 떨어지면 지치고 길이 늦어져요.</p>`;
+}
 
 export interface TownScreenActions {
   /** 지금 실제 시각 (도착 예상 시각을 셈한다) */
@@ -60,6 +70,14 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
           <span class="travel-town">${townName(to)}</span>
         </div>
         <p class="travel-eta">이동 중 · ${arrivalText(msLeft, daysLeft, act.now)}</p>
+        ${foodLine(v, daysLeft)}
+        ${
+          v.unlocks.includes('reservation')
+            ? `<div class="btn-row"><button type="button" class="secondary-btn" data-arrival>도착하면 팔기<small>${
+                v.reservations.some((r) => r.kind === 'onArrival') ? '예약해 둔 것이 있어요' : `${townName(to)} 첫 장날에 팔게 걸어 두기`
+              }</small></button></div>`
+            : ''
+        }
         <p class="muted">길 위에서는 장에 신청할 수 없어요. 창고에 둔 짐은 그 마을 장날에 팔 수 있어요(장부 탭).</p>
       </section>`;
   } else {
@@ -82,6 +100,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
   el.querySelectorAll<HTMLButtonElement>('[data-building]').forEach((b) =>
     b.addEventListener('click', () => openBuilding(game, b.dataset.building as BuildingId)),
   );
+  el.querySelector('[data-arrival]')?.addEventListener('click', () => openArrivalSheet(game));
   el.querySelector('[data-pass-day]')?.addEventListener('click', act.passDay);
   el.querySelector('[data-settlement]')?.addEventListener('click', act.openSettlement);
   el.querySelector('[data-apprentice-day]')?.addEventListener('click', act.passApprenticeDay);
