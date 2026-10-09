@@ -147,7 +147,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     const name = (id: number) => map?.towns[id]?.name ?? String(id);
     const pct = (x: number) => `${Math.round(x * 100)}%`;
     $('[data-market-stats]').innerHTML = `<ul>
-      <li><span>독점</span> ${mark(bad.monopoly)} 상위 1명이 그날 판매의 절반을 넘은 날이 가장 많은 곳: ${s.monopolyAt ? `${name(s.monopolyAt.town)} ${GOOD_NAME[s.monopolyAt.good]}` : '-'} ${s.monopolyDays}일 / ${run.daily.length}일. 시즌 판매 중 상위 1명 몫 ${pct(s.top1Share)}, 상위 10% ${pct(s.top10Share)}</li>
+      <li><span>독점</span> ${mark(bad.monopoly)} 상위 1명이 그날 판매의 절반을 넘은 날이 가장 많은 곳: ${s.monopolyAt ? `${name(s.monopolyAt.town)} ${GOOD_NAME[s.monopolyAt.good]}` : '-'} ${s.monopolyDays}일 / ${run.daily.length}일 (같은 한 사람이 쥔 날은 많아야 ${s.soleDays}일). 시즌 판매 중 상위 1명 몫 ${pct(s.top1Share)}, 상위 10% ${pct(s.top10Share)}</li>
       <li><span>말</span> ${mark(bad.horses)} 원한 사람 ${s.horseWanted}, 한 마리도 못 산 사람 ${s.horseNever}, 처음 신청부터 산 날까지 평균 ${s.horseWaitDays === null ? '-' : `${s.horseWaitDays.toFixed(1)}일`}</li>
       <li><span>큰 주문</span> ${mark(bad.bigOrders > 0)} 참여한 사람이 있는 주문 ${bad.bigOrdersJoined}개 중 절반 넘게 한 개도 못 판 주문 ${bad.bigOrders}개</li>
       ${s.bigOrders.map((b) => `<li><span></span>${b.event} (${name(b.town)} ${GOOD_NAME[b.good]}): 낸 사람 ${b.joined}, 못 판 사람 ${b.soldNone}</li>`).join('')}

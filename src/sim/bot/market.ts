@@ -27,6 +27,8 @@ export interface MarketStats {
   /** 한 마을·한 물품에서 상위 1명이 그날 플레이어 판매의 50%를 넘은 날 수 (가장 많은 곳) */
   monopolyDays: number;
   monopolyAt: { town: number; good: GoodId } | null;
+  /** 같은 한 사람이 한 마을·한 물품에서 그날 플레이어 판매의 50%를 넘은 날 수 (가장 많은 사람과 곳). 날마다 다른 사람이면 독점이 아니다 */
+  soleDays: number;
   /** 마을·물품마다 시즌 플레이어 판매량 중 상위 1명, 상위 10%의 몫 (판매량으로 가중 평균) */
   top1Share: number;
   top10Share: number;
@@ -106,6 +108,7 @@ function createWatch() {
   // 마을·물품 → 플레이어 → 시즌 판매량
   const season = new Map<string, Map<PlayerId, number>>();
   const monopoly = new Map<string, number>();
+  const sole = new Map<string, number>();
   const firstAsk = new Map<PlayerId, number>();
   const firstHorse = new Map<PlayerId, number>();
   // 큰 주문마다 낸 사람과 판 사람
@@ -158,7 +161,11 @@ function createWatch() {
       for (const [key, sellers] of today) {
         const qty = [...sellers.values()];
         const total = qty.reduce((a, b) => a + b, 0);
-        if (total > 0 && Math.max(...qty) / total > 0.5) monopoly.set(key, (monopoly.get(key) ?? 0) + 1);
+        if (total > 0 && Math.max(...qty) / total > 0.5) {
+          monopoly.set(key, (monopoly.get(key) ?? 0) + 1);
+          const top = [...sellers].find(([, q]) => q === Math.max(...qty))![0];
+          sole.set(`${key}:${top}`, (sole.get(`${key}:${top}`) ?? 0) + 1);
+        }
       }
       const volume = markets.reduce((a, m) => a + Object.values(m).reduce((b, r) => b + r.volume, 0), 0);
       daily.push({ volume, playerSold });
@@ -183,6 +190,7 @@ function createWatch() {
       return {
         monopolyDays: worst?.[1] ?? 0,
         monopolyAt: worst ? { town: Number(town), good: good as GoodId } : null,
+        soleDays: Math.max(0, ...sole.values()),
         top1Share: total ? top1 / total : 0,
         top10Share: total ? top10 / total : 0,
         horseWanted: wanted.size,

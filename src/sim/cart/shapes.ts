@@ -11,7 +11,7 @@ export const CART_TYPES = Object.keys(CART.types) as CartType[];
 
 // 모양은 상수 데이터에서만 나오니 한 번 계산해 기억한다 (빈자리 찾기가 자주 부른다). 돌려받은 배열은 고치지 않는다
 const slotsCache = new Map<BoardType, Cell[]>();
-const shapeCache = new Map<string, Cell[]>();
+const shapeCache = new Map<GoodId, Cell[][]>();
 const rotationsCache = new Map<GoodId, number[]>();
 
 /** 판의 모양 (수레마다, 창고) */
@@ -38,15 +38,17 @@ export function cartSize(type: BoardType): { w: number; h: number } {
 
 /** 90도씩 rot번 돌린 모양. 돌린 뒤 가장 왼쪽 위가 (0, 0)이 되게 옮긴다 */
 export function shapeOf(good: GoodId, rot: number): Cell[] {
-  const k = `${good}:${((rot % 4) + 4) % 4}`;
-  const cached = shapeCache.get(k);
+  const r = ((rot % 4) + 4) % 4;
+  let byRot = shapeCache.get(good);
+  if (!byRot) shapeCache.set(good, (byRot = []));
+  const cached = byRot[r];
   if (cached) return cached;
   let cells: Cell[] = CART.goods[good].shape.map(([x, y]) => [x, y] as const);
   for (let r = 0; r < ((rot % 4) + 4) % 4; r++) cells = cells.map(([x, y]) => [-y, x] as const);
   const minX = Math.min(...cells.map((c) => c[0]));
   const minY = Math.min(...cells.map((c) => c[1]));
   const out = cells.map(([x, y]) => [x - minX, y - minY] as const).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-  shapeCache.set(k, out);
+  byRot[r] = out;
   return out;
 }
 

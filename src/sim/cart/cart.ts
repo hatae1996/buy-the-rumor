@@ -83,7 +83,6 @@ function gridOf(cart: Board): Grid {
   return { w, h, cells, slots };
 }
 
-const isOpen = (g: Grid, x: number, y: number) => x >= 0 && y >= 0 && x < g.w && y < g.h && g.cells[y * g.w + x] === 1;
 
 /**
  * 빈자리 찾기: 놓을 수 있는 자리 중 벽이나 다른 짐에 가장 많이 닿는 곳 (구석부터 채워야 빈칸이 덜 생긴다).
@@ -94,28 +93,52 @@ export function findSpot(cart: Board, good: GoodId): { x: number; y: number; rot
 }
 
 function spotOn(g: Grid, good: GoodId): { x: number; y: number; rot: number } | null {
-  let best: { x: number; y: number; rot: number; contact: number } | null = null;
+  // 가장 자주 도는 곳이라 배열을 새로 만들지 않고 격자 숫자만 본다 (모양 칸은 늘 0 이상이다)
+  const { w, h, cells } = g;
+  const rots = distinctRotations(good);
+  let bx = 0;
+  let by = 0;
+  let brot = -1;
+  let best = -1;
+  const at = (x: number, y: number) => (x >= 0 && y >= 0 && x < w && y < h ? cells[y * w + x]! : 0);
   for (const [x, y] of g.slots) {
-    for (const rot of distinctRotations(good)) {
+    for (const rot of rots) {
       const shape = shapeOf(good, rot);
-      if (!shape.every(([dx, dy]) => isOpen(g, x + dx, y + dy))) continue;
+      let ok = true;
+      for (const [dx, dy] of shape) {
+        const cx = x + dx;
+        const cy = y + dy;
+        if (cx >= w || cy >= h || cells[cy * w + cx] !== 1) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) continue;
       // 놓을 칸을 잠시 3으로 칠해 두고 이웃을 센다 (자기 칸은 닿는 것이 아니다)
-      for (const [dx, dy] of shape) g.cells[(y + dy) * g.w + x + dx] = 3;
+      for (const [dx, dy] of shape) cells[(y + dy) * w + x + dx] = 3;
       let contact = 0;
       for (const [dx, dy] of shape) {
         const cx = x + dx;
         const cy = y + dy;
-        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as const) {
-          const inside = nx >= 0 && ny >= 0 && nx < g.w && ny < g.h;
-          const v = inside ? g.cells[ny * g.w + nx] : 0;
-          if (v !== 3 && v !== 1) contact++;
-        }
+        let v = at(cx + 1, cy);
+        if (v !== 3 && v !== 1) contact++;
+        v = at(cx - 1, cy);
+        if (v !== 3 && v !== 1) contact++;
+        v = at(cx, cy + 1);
+        if (v !== 3 && v !== 1) contact++;
+        v = at(cx, cy - 1);
+        if (v !== 3 && v !== 1) contact++;
       }
-      for (const [dx, dy] of shape) g.cells[(y + dy) * g.w + x + dx] = 1;
-      if (!best || contact > best.contact) best = { x, y, rot, contact };
+      for (const [dx, dy] of shape) cells[(y + dy) * w + x + dx] = 1;
+      if (contact > best) {
+        best = contact;
+        bx = x;
+        by = y;
+        brot = rot;
+      }
     }
   }
-  return best && { x: best.x, y: best.y, rot: best.rot };
+  return brot < 0 ? null : { x: bx, y: by, rot: brot };
 }
 
 function newPiece(cart: Board, good: GoodId, spot: { x: number; y: number; rot: number }): Piece {
@@ -167,6 +190,31 @@ export function cartWeight(cart: Board): number {
 
 /** 지금 그 물건을 몇 개 더 실을 수 있나 (잡아 둔 자리 빼고, 지금 배치 그대로) */
 export function roomFor(cart: Board, good: GoodId, upTo = 99): number {
+  // 같은 배치면 같은 답이다: 판마다 배치 글자를 열쇠로 기억해 둔다 (화면 데이터를 만들 때마다 실어 보면 봇이 느리다)
+  const sig = layoutKey(cart);
+  let memo = roomMemo.get(cart);
+  if (!memo || memo.sig !== sig) {
+    memo = { sig, room: new Map() };
+    roomMemo.set(cart, memo);
+  }
+  const k = `${good}:${upTo}`;
+  const hit = memo.room.get(k);
+  if (hit !== undefined) return hit;
+  const n = countRoom(cart, good, upTo);
+  memo.room.set(k, n);
+  return n;
+}
+
+const roomMemo = new WeakMap<Board, { sig: string; room: Map<string, number> }>();
+
+/** 판 배치를 글자 하나로 (종류, 조각마다 물품·자리·방향·양·잡아 둔 자리) */
+function layoutKey(cart: Board): string {
+  let k = cart.type;
+  for (const p of cart.pieces) k += `|${p.good},${p.x},${p.y},${p.rot},${qtyOf(p)},${incomingOf(p)}`;
+  return k;
+}
+
+function countRoom(cart: Board, good: GoodId, upTo: number): number {
   // loadGoods로 실어 보는 것과 같은 셈: 같은 물품 조각의 남은 자리, 그다음 새 조각을 놓을 자리마다 한 조각만큼
   let n = cart.pieces.reduce((s, p) => s + (p.good === good ? Math.max(0, roomIn(cart, p)) : 0), 0);
   if (n >= upTo) return upTo;
