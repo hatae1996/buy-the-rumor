@@ -1,7 +1,7 @@
 // 창고 (기획서 "성장", 0.0.5): 마을마다 빌리는 칸 판. 짐을 두고 다니고, 내가 없어도 그 마을 장날에 판다.
 // 수레 판과 같은 짐 조각 규칙을 쓰고, 음식은 창고에서도 상한다. 보관료는 짐이 차지한 칸 수만큼 날마다 낸다 (0.0.8).
 // 보관료가 밀리면 짐을 꺼내거나 팔 수 없고, 너무 오래 밀리면 창고지기가 짐을 거둬 간다(빚이 되지 않는다).
-import { cartCount, cartLots, createCart, type Cart } from '../cart';
+import { cartCount, cartLots, createCart, transferPiece, type Board, type Cart } from '../cart';
 import { moveBetween } from '../hire/boards';
 import { GROWTH } from '../constants';
 import type { GoodId } from '../economy/goods';
@@ -69,6 +69,26 @@ export function storeGoods(p: PlayerState, good: GoodId, qty: number): Err | nul
 }
 
 /** 지금 마을 창고 짐을 수레로 꺼낸다 (보관료가 밀리면 못 꺼낸다) */
+/**
+ * 창고와 수레 두 판 사이로 조각을 끌어 옮긴다 (0.1.2 짐칸 화면). from: 꺼낼 판.
+ * 밀린 보관료가 있으면 창고에서 꺼낼 수 없다 (넣기는 된다)
+ */
+export function transferBetween(
+  p: PlayerState,
+  from: 'cart' | 'warehouse',
+  pieceId: number,
+  x: number,
+  y: number,
+  rot: number,
+): Err | 'cantPlace' | null {
+  if (p.travel) return 'traveling';
+  const w = warehouseAt(p, p.town);
+  if (!w) return 'noWarehouse';
+  if (from === 'warehouse' && w.owed > 0) return 'warehouseOwed';
+  const [src, dst] = from === 'cart' ? [p.cart, w.board] : [w.board, p.cart];
+  return transferPiece(src as Board, dst as Board, pieceId, x, y, rot) ? null : 'cantPlace';
+}
+
 export function retrieveGoods(p: PlayerState, good: GoodId, qty: number): Err | null {
   if (p.travel) return 'traveling';
   const w = warehouseAt(p, p.town);

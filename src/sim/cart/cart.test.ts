@@ -10,6 +10,7 @@ import {
   loadGoods,
   movePiece,
   packCart,
+  transferPiece,
   pieceCells,
   reserveRoom,
   rotatePiece,
@@ -156,5 +157,43 @@ describe('옮기기, 돌리기, 정리', () => {
     // 가운데가 막혀 곡물(2×2)을 둘 곳이 하나뿐인 상태에서 정리하면 둘을 놓을 자리가 생긴다
     expect(packCart(c)).toBe(true);
     expect(loadGoods(c, 'grain', 2)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('빈칸 정리는 놓인 차례대로, 돌리지 않고 위·왼쪽으로 모아 붙인다 (0.1.2: 최적 배치를 찾지 않는다)', () => {
+    const c = createCart('handcart');
+    loadGoods(c, 'wood', 1);
+    loadGoods(c, 'ore', 1);
+    const wood = c.pieces.find((p) => p.good === 'wood')!;
+    const ore = c.pieces.find((p) => p.good === 'ore')!;
+    // 목재를 세워 오른쪽 아래에, 광석을 가운데에 둔다
+    expect(movePiece(c, ore.id, 3, 2, 0)).toBe(true);
+    expect(movePiece(c, wood.id, 4, 0, 1)).toBe(true);
+    expect(packCart(c)).toBe(true);
+    const w = c.pieces.find((p) => p.good === 'wood')!;
+    const o = c.pieces.find((p) => p.good === 'ore')!;
+    // 목재가 먼저 놓여 있었으므로(위쪽 줄) 먼저 첫 자리로, 돌린 방향 그대로
+    expect(w.rot).toBe(1);
+    expect([w.x, w.y]).toEqual([1, 0]);
+    expect([o.x, o.y]).toEqual([2, 0]);
+  });
+
+  it('두 판 사이로 조각을 옮긴다: 맞는 자리면 조각째, 같은 물품 위면 합친다', () => {
+    const cart = createCart('handcart');
+    const store = createCart('warehouse');
+    loadGoods(cart, 'salt', 3, 1, 7);
+    const salt = cart.pieces[0]!;
+    expect(transferPiece(cart, store, salt.id, 0, 0, 0)).toBe(true);
+    expect(cartCount(cart, 'salt')).toBe(0);
+    expect(cartCount(store, 'salt')).toBe(3);
+    expect(store.pieces[0]!.lots[0]).toMatchObject({ age: 1, cost: 7 });
+    // 같은 물품 위에 놓으면 합친다
+    loadGoods(cart, 'salt', 2);
+    expect(transferPiece(cart, store, cart.pieces[0]!.id, 0, 0, 0)).toBe(true);
+    expect(store.pieces).toHaveLength(1);
+    expect(cartCount(store, 'salt')).toBe(5);
+    // 놓을 수 없는 자리면 그대로
+    loadGoods(cart, 'wood', 1);
+    expect(transferPiece(cart, store, cart.pieces[0]!.id, 99, 0, 0)).toBe(false);
+    expect(cartCount(cart, 'wood')).toBe(1);
   });
 });

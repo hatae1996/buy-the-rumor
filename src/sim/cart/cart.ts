@@ -448,8 +448,10 @@ export function discardPiece(cart: Board, pieceId: number): ItemLot[] | null {
 }
 
 /**
- * 빈칸 정리: 조각을 큰 것부터 다시 놓는다. 다 들어가지 않으면 원래대로 두고 false.
- * 같은 물품은 먼저 합쳐 조각 수를 줄인다 (신청이 걸린 조각은 그대로 둔다)
+ * 빈칸 정리 (0.1.2 기획서 "빈칸 정리 버튼"): 짐을 한쪽으로 모아 붙이는 단순한 정리.
+ * 지금 놓인 차례(위에서 아래, 왼쪽에서 오른쪽)대로, 돌리지 않고, 위·왼쪽부터 처음 들어가는 자리에 다시 놓는다.
+ * 가장 잘 들어가는 배치를 찾아 주지는 않는다 (손으로 싣는 맛은 남긴다). 다 들어가지 않으면 원래대로 두고 false.
+ * 같은 물품은 먼저 합쳐 조각 수를 줄인다 (신청이 걸린 조각과 장비는 그대로 둔다)
  */
 export function packCart(cart: Board): boolean {
   const before = JSON.stringify(cart);
@@ -463,17 +465,49 @@ export function packCart(cart: Board): boolean {
     }
   }
   tidy(cart);
-  // 다시 놓기: 큰 조각부터
-  const pieces = [...cart.pieces].sort((a, b) => shapeOf(b.good, 0).length - shapeOf(a.good, 0).length || a.id - b.id);
+  // 모아 붙이기: 놓인 차례대로, 같은 방향으로, 읽는 순서의 첫 빈자리에
+  const pieces = [...cart.pieces].sort((a, b) => a.y - b.y || a.x - b.x || a.id - b.id);
+  const order = [...openSlots(cart)].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
   cart.pieces = [];
   for (const p of pieces) {
-    const spot = findSpot(cart, p.good);
-    if (!spot) {
+    const at = order.find(([x, y]) => fits(cart, p.good, x, y, p.rot));
+    if (!at) {
       Object.assign(cart, JSON.parse(before) as Cart);
       return false;
     }
-    cart.pieces.push({ ...p, ...spot });
+    cart.pieces.push({ ...p, x: at[0], y: at[1] });
   }
+  return true;
+}
+
+/**
+ * 판 사이로 조각을 옮긴다 (창고와 수레 두 판, 0.1.2). 놓을 자리(x, y, rot)에 맞으면 조각째,
+ * 그 칸에 같은 물품 조각이 있으면 담을 수 있는 만큼 합친다. 장날 신청이 걸린 조각은 옮길 수 없다. 성공하면 true
+ */
+export function transferPiece(from: Board, to: Board, pieceId: number, x: number, y: number, rot: number): boolean {
+  const p = from.pieces.find((q) => q.id === pieceId);
+  if (!p || p.incoming.length > 0) return false;
+  const onto = to.pieces.find((q) => q.good === p.good && q.uses === undefined && p.uses === undefined && pieceCells(q).some(([cx, cy]) => cx === x && cy === y));
+  if (onto) {
+    const n = Math.min(roomIn(to, onto), qtyOf(p));
+    if (n <= 0) return false;
+    for (const lot of takeFromPiece(p, n)) addLotTo(onto, lot);
+    tidy(from);
+    return true;
+  }
+  const r = ((rot % 4) + 4) % 4;
+  if (!fits(to, p.good, x, y, r)) return false;
+  // 창고는 수레보다 높이 쌓는다: 수레로 옮길 때 한 조각에 다 안 들어가면 나머지는 그 판에 남는다
+  const room = boardStack(to, p.good);
+  const moved = newPiece(to, p.good, { x, y, rot: r });
+  if (p.uses !== undefined) {
+    moved.uses = p.uses;
+    moved.lots = p.lots.map((l) => ({ ...l }));
+    from.pieces = from.pieces.filter((q) => q !== p);
+    return true;
+  }
+  for (const lot of takeFromPiece(p, Math.min(room, qtyOf(p)))) addLotTo(moved, lot);
+  tidy(from);
   return true;
 }
 

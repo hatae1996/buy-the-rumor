@@ -121,10 +121,28 @@ export function openCartShopSheet(game: Game): void {
         </li>`;
       })
       .join('');
+    // 길 위 사건으로 망가진 칸 고치기 (0.1.2): 칸마다 값, 돈이 되는 만큼
+    const broken = v.cart.broken.length;
+    const per = broken ? v.cart.repairCost / broken : 0;
     sheet.body.innerHTML = `
-      <p class="muted">쓰던 수레는 절반 값으로 쳐 줘요. 짐은 새 수레에 옮겨 실어요. 무게는 끄는 말이 정해요.</p>
+      ${
+        broken
+          ? `<h3>짐칸 고치기</h3>
+             <p class="muted">${v.cart.name}의 망가진 칸 ${broken}개. 칸마다 ${money(per)}이에요.</p>
+             <div class="btn-row"><button type="button" class="primary-btn" data-repair ${v.gold < per ? 'disabled' : ''}>${
+               v.gold >= v.cart.repairCost ? `모두 고치기 · ${money(v.cart.repairCost)}` : `${Math.floor(v.gold / per)}칸 고치기 · ${money(Math.floor(v.gold / per) * per)}`
+             }</button></div>
+             <h3>수레 바꾸기</h3>`
+          : ''
+      }
+      <p class="muted">쓰던 수레는 절반 값으로 쳐 줘요. 짐은 새 수레에 옮겨 실어요. 새 수레는 멀쩡해요. 무게는 끄는 말이 정해요.</p>
       <ul class="list">${rows}</ul>
       ${error ? `<p class="error">${error}</p>` : ''}`;
+    sheet.body.querySelector('[data-repair]')?.addEventListener('click', () => {
+      const r = game.dispatch({ type: 'repairCart' });
+      error = r.ok ? '' : ERROR_TEXT[r.error];
+      render();
+    });
     sheet.body.querySelectorAll<HTMLButtonElement>('[data-cart]').forEach((b) =>
       b.addEventListener('click', () => {
         const r = game.dispatch({ type: 'buyCart', cart: b.dataset.cart as (typeof v.carts)[number]['type'] });

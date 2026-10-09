@@ -45,8 +45,10 @@ export function renderCart(el: HTMLElement, game: Game, v: PlayerView): void {
 
   el.innerHTML = `
     <section class="card">
-      <h2>짐칸</h2>
       <div data-cart></div>
+    </section>
+    <section class="card">
+      <h2>실은 물건</h2>
       <ul class="list">${cargo}</ul>
     </section>
     ${others ? `<section class="card"><h2>다른 짐칸</h2><ul class="list">${others}</ul></section>` : ''}`;
