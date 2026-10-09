@@ -43,12 +43,28 @@ export interface MarketRun {
   n: number;
   seats: SeatRun[];
   stats: MarketStats;
+  /** 날마다 모든 마을 장날 거래량과 그중 플레이어가 판 양 */
+  daily: { volume: number; playerSold: number }[];
   /** 시즌 끝 마을 기준 시세 (플레이어 없는 세계와 비교할 때) */
   prices: Record<GoodId, number>[];
 }
 
 /** 봇 n명이 한 세계에서 한 시즌. n = 0이면 플레이어 없는 세계 (NPC만) */
 export function runBots(seed: number, n: number, opt: MarketRunOptions, world?: WorldMap, mix: readonly BotProfile[] = MARKET_MIX): MarketRun {
+  const m = startBots(seed, n, opt, world, mix);
+  while (m.step());
+  return m.result();
+}
+
+/** 하루씩 돌리는 봇 n명 한 시장 (관찰 화면이 멈추지 않게 나눠 돌린다) */
+export interface MarketStepper {
+  /** 하루를 돌린다. 시즌이 끝났으면 false */
+  step(): boolean;
+  readonly day: number;
+  result(): MarketRun;
+}
+
+export function startBots(seed: number, n: number, opt: MarketRunOptions, world?: WorldMap, mix: readonly BotProfile[] = MARKET_MIX): MarketStepper {
   const map = world ?? generateWorld(seed);
   const ids = Array.from({ length: n }, (_, i) => `bot${i + 1}`);
   const state = createEconomy(map, seed, { warmupDays: opt.warmupDays ?? 20, startSeason: opt.startSeason, players: ids.map((id) => ({ id })) });
@@ -56,21 +72,32 @@ export function runBots(seed: number, n: number, opt: MarketRunOptions, world?: 
   for (const id of ids) getPlayer(state, id).cart = createCart('handcart');
   const seats = new Map(ids.map((id, i) => [id, createSeat(state, id, mix[i % mix.length]!)] as const));
   const watch = createWatch();
-
-  for (let d = 0; d < opt.days; d++) {
-    // 명령은 오늘 차례대로 (장날은 동시호가라 차례가 값을 바꾸지 않는다. 바로 사는 것만 차례를 탄다)
-    for (const p of playerOrder(state)) seatDay(state, map, seats.get(p.id)!, opt.maxCommandsPerDay);
-    watch.beforeDay(state);
-    const before = new Map(ids.map((id) => [id, getPlayer(state, id).ledger.length]));
-    advanceDay(state, map);
-    for (const seat of seats.values()) seatRecord(state, seat, before.get(seat.pid)!);
-    watch.afterDay(state, before);
-  }
+  let day = 0;
   return {
-    n,
-    seats: [...seats.values()].map((s: BotSeat) => ({ ...finishSeat(state, s, opt.days), pid: s.pid })),
-    stats: watch.stats(),
-    prices: state.towns.map((t) => ({ ...t.refPrice })),
+    get day() {
+      return day;
+    },
+    step() {
+      if (day >= opt.days) return false;
+      // 명령은 오늘 차례대로 (장날은 동시호가라 차례가 값을 바꾸지 않는다. 바로 사는 것만 차례를 탄다)
+      for (const p of playerOrder(state)) seatDay(state, map, seats.get(p.id)!, opt.maxCommandsPerDay);
+      watch.beforeDay(state);
+      const before = new Map(ids.map((id) => [id, getPlayer(state, id).ledger.length]));
+      const report = advanceDay(state, map);
+      for (const seat of seats.values()) seatRecord(state, seat, before.get(seat.pid)!);
+      watch.afterDay(state, before, report.markets);
+      day++;
+      return day < opt.days;
+    },
+    result() {
+      return {
+        n,
+        seats: [...seats.values()].map((s: BotSeat) => ({ ...finishSeat(state, s, day), pid: s.pid })),
+        stats: watch.stats(),
+        daily: watch.daily,
+        prices: state.towns.map((t) => ({ ...t.refPrice })),
+      };
+    },
   };
 }
 
@@ -84,8 +111,10 @@ function createWatch() {
   // 큰 주문마다 낸 사람과 판 사람
   const big = new Map<number, { event: string; town: number; good: GoodId; joined: Set<PlayerId>; sold: Set<PlayerId> }>();
   let offered: { event: number; pid: PlayerId; good: GoodId; town: number }[] = [];
+  const daily: { volume: number; playerSold: number }[] = [];
 
   return {
+    daily,
     beforeDay(state: EconomyState): void {
       for (const d of state.draws) if (d.kind === 'horse' && !firstAsk.has(d.pid)) firstAsk.set(d.pid, d.day);
       // 오늘 열린 큰 주문에 그 물품을 낸 플레이어
@@ -108,12 +137,14 @@ function createWatch() {
         }
       }
     },
-    afterDay(state: EconomyState, before: Map<PlayerId, number>): void {
+    afterDay(state: EconomyState, before: Map<PlayerId, number>, markets: readonly Record<GoodId, { volume: number }>[]): void {
       const today = new Map<string, Map<PlayerId, number>>();
+      let playerSold = 0;
       for (const [pid, from] of before) {
         for (const e of getPlayer(state, pid).ledger.slice(from)) {
           if (e.kind === 'horse' && e.what === 'buy' && !firstHorse.has(pid)) firstHorse.set(pid, e.day);
           if (e.kind !== 'sell') continue;
+          playerSold += e.qty;
           const key = `${e.town}:${e.good}`;
           const t = today.get(key) ?? new Map<PlayerId, number>();
           t.set(pid, (t.get(pid) ?? 0) + e.qty);
@@ -129,6 +160,8 @@ function createWatch() {
         const total = qty.reduce((a, b) => a + b, 0);
         if (total > 0 && Math.max(...qty) / total > 0.5) monopoly.set(key, (monopoly.get(key) ?? 0) + 1);
       }
+      const volume = markets.reduce((a, m) => a + Object.values(m).reduce((b, r) => b + r.volume, 0), 0);
+      daily.push({ volume, playerSold });
     },
     stats(): MarketStats {
       let worst: [string, number] | null = null;
@@ -171,4 +204,26 @@ export function byProfile(run: MarketRun): Record<string, { count: number; incom
     out[id] = { count: seats.length, income: med(seats.map((s) => seasonIncome(s).avg)), endWorth: med(seats.map((s) => s.worth.at(-1) ?? 0)) };
   }
   return out;
+}
+
+/** 합격 기준 (handoff 0.1.0)으로 본 문제. 참이면 문제다 */
+export interface MarketProblems {
+  /** 한 마을·한 물품에서 상위 1명이 플레이어 판매의 50%를 넘은 날이 시즌의 절반을 넘었다 */
+  monopoly: boolean;
+  /** 말을 원한 사람 중 시즌 내내 한 마리도 못 산 사람이 절반을 넘었다 */
+  horses: boolean;
+  /** 참여한 사람 중 한 개도 못 판 사람이 절반을 넘은 큰 주문 수 (참여한 사람이 있는 주문 중) */
+  bigOrders: number;
+  bigOrdersJoined: number;
+}
+
+export function marketProblems(run: MarketRun): MarketProblems {
+  const s = run.stats;
+  const joined = s.bigOrders.filter((b) => b.joined > 0);
+  return {
+    monopoly: s.monopolyDays > run.daily.length / 2,
+    horses: s.horseWanted > 0 && s.horseNever > s.horseWanted / 2,
+    bigOrders: joined.filter((b) => b.soldNone > b.joined / 2).length,
+    bigOrdersJoined: joined.length,
+  };
 }

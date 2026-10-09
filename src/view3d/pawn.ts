@@ -41,6 +41,8 @@ export const PAWN_SLOTS: readonly (readonly [number, number])[] = [
   [-0.45, 0.35],
   [0.05, 0.55],
   [-0.1, -0.5],
+  [0.5, -0.2],
+  [-0.55, -0.15],
 ];
 
 /** 길 따라 한 칸씩 깡충깡충 */

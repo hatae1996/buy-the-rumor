@@ -34,6 +34,8 @@ export interface PawnSpec {
   /** 서 있는 칸 번호 */
   tile: number;
   slot: number;
+  /** 크기 (다른 상단 말은 조금 작게). 없으면 1 */
+  scale?: number;
 }
 
 export interface MapViewEvents {
@@ -162,6 +164,7 @@ export class MapView {
         this.scene.add(p.obj);
         this.pawns.set(spec.key, p);
       }
+      p.obj.scale.setScalar(spec.scale ?? 1);
       if (this.mover?.key !== spec.key) this.placePawn(p.obj, spec.tile, spec.slot);
     }
   }

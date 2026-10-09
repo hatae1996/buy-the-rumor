@@ -5,9 +5,10 @@ import './mapScreen.css';
 import { ECONOMY } from '../sim/constants';
 import { euro } from '../sim/josa';
 import { findRoute } from '../sim/worldgen';
-import { MapView, PAWN_COLORS, type PawnSpec } from '../view3d';
+import { MapView, PAWN_COLORS, PAWN_SLOTS, type PawnSpec } from '../view3d';
 import { agoText, ERROR_TEXT, money } from './format';
 import type { Game } from './game';
+import type { PlayerView } from '../sim/economy';
 import { openSheet } from './sheet';
 import { openCaravanSheet } from './screens/caravanSheet';
 
@@ -44,8 +45,12 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
   /** 내 말이 서 있는 칸: 마을이면 마을 칸, 길 위면 간 날만큼 경로를 따라간 칸 */
   function myTile(): { tile: number; route: number[] | null } {
     const v = game.view();
-    if (v.location.kind === 'town') return { tile: game.map.towns[v.location.town]!.tile, route: null };
-    const { from, to, days, daysLeft } = v.location;
+    return tileOf(v.location, v);
+  }
+
+  function tileOf(loc: PlayerView['location'], v: PlayerView): { tile: number; route: number[] | null } {
+    if (loc.kind === 'town') return { tile: game.map.towns[loc.town]!.tile, route: null };
+    const { from, to, days, daysLeft } = loc;
     const route = findRoute(game.map, from, to, v.season, new Set(v.roads.blocked))?.tiles ?? [game.map.towns[from]!.tile];
     // 떠난 날에도 마을 밖 첫 칸에 서서 길을 나섰다는 게 보이게 한다
     const inner = Math.max(1, route.length - 2);
@@ -71,6 +76,16 @@ export function mountMapScreen(container: HTMLElement, game: Game): MapScreen {
       const ct = caravanTile();
       const pawns = [me];
       if (ct !== null) pawns.push({ key: 'caravan', color: PAWN_COLORS[1], tile: ct, slot: ct === me.tile ? 1 : 0 });
+      // 다른 상단 말: 작게, 칸마다 빈 자리부터 (자리가 다 차면 더 그리지 않는다)
+      const used = new Map<number, number>();
+      for (const p of pawns) used.set(p.tile, Math.max(used.get(p.tile) ?? 0, p.slot + 1));
+      v.rivals.forEach((r, i) => {
+        const tile = tileOf(r.location, v).tile;
+        const slot = used.get(tile) ?? 0;
+        if (slot >= PAWN_SLOTS.length) return;
+        used.set(tile, slot + 1);
+        pawns.push({ key: `rival:${r.id}`, color: i % 2 ? PAWN_COLORS[3] : PAWN_COLORS[2], tile, slot, scale: 0.75 });
+      });
       view.setPawns(pawns);
     }
     caravanBtn.hidden = !v.caravan && !v.hires.some((h) => h.role === 'carter');

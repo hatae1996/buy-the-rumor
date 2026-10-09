@@ -1,6 +1,6 @@
 // 봇 돌리기: 세계 하나에 봇 하나를 플레이어 자리에 앉혀 여러 날을 돌리고 기록한다.
 // 지금은 플레이어 자리가 하나라, 여러 봇은 같은 시드의 세계를 따로 돌려 비교한다 (서로 경쟁하지 않는다).
-import { applyCommand, createEconomy, advanceDay, getPlayer, LOCAL_PLAYER, playerSeed, playerView, type CommandError, type EconomyState, type GoodId, type PlayerId } from '../economy';
+import { applyCommand, createEconomy, advanceDay, getPlayer, LOCAL_PLAYER, playerSeed, playerView, type Command, type CommandError, type CommandResult, type EconomyState, type GoodId, type PlayerId } from '../economy';
 import { createRng, mixSeed, type Rng } from '../rng';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { botStep, createMind, type BotMind } from './bot';
@@ -132,15 +132,31 @@ export function createSeat(state: EconomyState, pid: PlayerId, profile: BotProfi
 
 /** 하루 동안 봇이 명령을 고른다 (할 게 없을 때까지, 많아야 max개) */
 export function seatDay(state: EconomyState, map: WorldMap, seat: BotSeat, max = 40): void {
-  const { pid, run } = seat;
-  for (let i = 0; i < max; i++) {
-    const cmd = botStep(playerView(state, map, pid), map, seat.profile, seat.mind, seat.rng);
-    if (!cmd) break;
+  const { run } = seat;
+  botTurn(state, map, seat.pid, seat.profile, seat.mind, seat.rng, max, (cmd, r) => {
     seat.commands++;
-    const r = applyCommand(state, map, pid, cmd);
     if (!r.ok) run.errors[r.error] = (run.errors[r.error] ?? 0) + 1;
     else if (cmd.type === 'startExpedition') run.expeditions++;
     else if (cmd.type === 'travel') run.travels++;
+  });
+}
+
+/** 봇 하나의 하루 차례: 화면 데이터를 보고 명령을 하나씩 보낸다 (할 게 없을 때까지, 많아야 max개) */
+export function botTurn(
+  state: EconomyState,
+  map: WorldMap,
+  pid: PlayerId,
+  profile: BotProfile,
+  mind: BotMind,
+  rng: Rng,
+  max = 40,
+  onResult?: (cmd: Command, result: CommandResult) => void,
+): void {
+  for (let i = 0; i < max; i++) {
+    const cmd = botStep(playerView(state, map, pid), map, profile, mind, rng);
+    if (!cmd) break;
+    const r = applyCommand(state, map, pid, cmd);
+    onResult?.(cmd, r);
   }
 }
 

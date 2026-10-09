@@ -25,7 +25,7 @@ describe('실제 시간과 장날', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
     expect(g.catchUp(DAY_MS * 400)!.days).toBe(45);
     expect(g.view().day).toBe(46);
-  });
+  }, 60000);
 
   it('여행 중 비운 사이 도착하면 알려 준다', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
@@ -58,5 +58,23 @@ describe('견습 마을은 시간이 멈춰 있다', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
     expect(g.passApprenticeDay(0)).toBeNull();
     expect(g.view().day).toBe(1);
+  });
+});
+
+describe('봇 상인 (0.1.0)', () => {
+  it('새 판에는 봇 상인 10명이 같은 시장에 앉고, 날이 가면 장사한다', () => {
+    const g = Game.fresh(0, SEED, { apprentice: false });
+    expect(g.view().rivals).toHaveLength(10);
+    const where = () => g.view().rivals.map((r) => JSON.stringify(r.location));
+    const before = where();
+    g.catchUp(DAY_MS * 8);
+    // 장사하는 봇은 마을을 옮겨 다닌다
+    const after = where();
+    expect(after.filter((x, i) => x !== before[i]).length).toBeGreaterThan(0);
+  }, 60000);
+
+  it('개발용으로 봇 수를 0~20명으로 정한다', () => {
+    expect(Game.fresh(0, SEED, { apprentice: false, bots: 0 }).view().rivals).toHaveLength(0);
+    expect(Game.fresh(0, SEED, { apprentice: false, bots: 99 }).view().rivals).toHaveLength(20);
   });
 });

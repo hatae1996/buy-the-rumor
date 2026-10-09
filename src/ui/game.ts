@@ -19,7 +19,9 @@ import {
   type PlayerView,
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
+import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
+import { createCart } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
 
 /** 게임 속 하루 = 실제 2시간 30분 */
@@ -28,14 +30,16 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일 / v20: 0.1.0 여러 플레이어)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일 / v20: 0.1.0 여러 플레이어 / v21: 0.1.0 봇 상인)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v20';
+const SAVE_KEY = 'buy-the-rumor/save/v21';
 
 interface SaveData {
   version: 1;
   seed: number;
   state: EconomyState;
+  /** 같은 시장의 봇 상인 머릿속 (0.1.0) */
+  crew: BotBrain[];
   /** 오늘 장날이 시작된 실제 시각 (ms) */
   dayStartedAt: number;
 }
@@ -65,20 +69,32 @@ export class Game {
   private constructor(
     readonly map: WorldMap,
     private state: EconomyState,
+    private crew: BotBrain[],
     private dayStartedAt: number,
   ) {}
 
   /** 저장된 판이 있으면 이어서, 없으면 새 판 */
   static start(now: number): Game {
     const saved = load();
-    if (saved) return new Game(generateWorld(saved.seed), saved.state, saved.dayStartedAt);
+    if (saved) return new Game(generateWorld(saved.seed), saved.state, saved.crew, saved.dayStartedAt);
     return Game.fresh(now, now % 1_000_000_007);
   }
 
-  /** 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다 */
-  static fresh(now: number, seed: number, opt: { apprentice?: boolean } = {}): Game {
+  /**
+   * 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다.
+   * 같은 시장에 봇 상인이 함께 앉는다 (기본 10명, 개발용 0~20)
+   */
+  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number } = {}): Game {
     const map = generateWorld(seed);
-    const game = new Game(map, createEconomy(map, map.seed, { warmupDays: ECONOMY.warmupDays, apprentice: opt.apprentice ?? true }), now);
+    const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
+    const specs = botSpecs(map.seed, bots);
+    const state = createEconomy(map, map.seed, {
+      warmupDays: ECONOMY.warmupDays,
+      players: [{ id: LOCAL_PLAYER, apprentice: opt.apprentice ?? true }, ...specs],
+    });
+    // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레
+    for (const s of specs) getPlayer(state, s.id).cart = createCart('handcart');
+    const game = new Game(map, state, createCrew(state, specs.map((s) => s.id)), now);
     game.save();
     return game;
   }
@@ -156,6 +172,8 @@ export class Game {
     const notices: NotifyEvent[] = [];
     let stamped = 0;
     for (let i = 0; i < days; i++) {
+      // 봇 상인은 장날 전에 오늘 할 일을 한다
+      crewDay(this.state, this.map, this.crew);
       const r = advanceDay(this.state, this.map).players[this.playerId];
       if (!r) continue;
       heard.push(...r.heard.map(noteView));
@@ -182,7 +200,7 @@ export class Game {
   }
 
   private save(): void {
-    const data: SaveData = { version: 1, seed: this.state.seed, state: this.state, dayStartedAt: this.dayStartedAt };
+    const data: SaveData = { version: 1, seed: this.state.seed, state: this.state, crew: this.crew, dayStartedAt: this.dayStartedAt };
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch {
@@ -196,7 +214,7 @@ function load(): SaveData | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    return data.version === 1 && data.state?.version === 1 ? data : null;
+    return data.version === 1 && data.state?.version === 1 && Array.isArray(data.crew) ? data : null;
   } catch {
     return null;
   }

@@ -306,6 +306,9 @@ export const ECONOMY = {
     travelFeePerDay: 3,
     /** 이보다 큰 거래(금액)는 신문에 실린다 */
     bigTradeNews: 400,
+    /** 로컬 게임에 함께 앉는 봇 상인 수 (질문 87 답). 개발용으로 0~maxLocalBots */
+    localBots: 10,
+    maxLocalBots: 20,
   },
 
   /** 피로와 원정 기회 (기획서 "퍼즐 기회와 피로도"). 숫자는 초안 */

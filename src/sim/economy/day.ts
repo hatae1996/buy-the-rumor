@@ -1,7 +1,8 @@
 // 하루 진행: 사건 시작 → 신청 받기 → 장날 정산 → 일꾼 생산과 소비 → 반응 사건과 소식.
 // 앱을 다시 열면 지나간 날만큼 이 함수를 빠르게 돌린다.
 import { ECONOMY } from '../constants';
-import { eulReul } from '../josa';
+import { eulReul, iGa } from '../josa';
+import { createCertificate } from '../ranking/certificate';
 import { createRng, shuffle } from '../rng';
 import { seasonOfDay, WINTER, type Season } from '../season';
 import type { WorldMap } from '../worldgen';
@@ -36,7 +37,7 @@ import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
 import { dayNotices, type NotifyEvent } from '../notify';
 import { getPlayer, isPlayerOwner, playerOrder } from './players';
-import type { EconomyState, MarketResult, Order, PlayerId } from './state';
+import type { EconomyState, MarketResult, Order, PlayerId, PlayerState } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
 import { workshopDay, workshopOrders } from './workshop';
@@ -150,7 +151,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
       noteTrade(p, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
-        news.push(`어느 상단이 ${name(town.id)}에서 ${GOOD_NAME[f.good]} ${f.qty}개를 한꺼번에 ${verb}.`);
+        news.push(`${companyName(p)} ${name(town.id)}에서 ${GOOD_NAME[f.good]} ${f.qty}개를 한꺼번에 ${verb}.`);
       }
     }
     return results;
@@ -280,6 +281,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   state.day++;
   state.rng = rng.state();
   return report;
+}
+
+/** 신문에 실리는 상단 이름 ("잿빛 까마귀 상단이"). 이름을 짓지 않았으면 "어느 상단이" */
+function companyName(p: PlayerState): string {
+  const name = p.certificate.name;
+  return iGa(name === createCertificate().name ? '어느 상단' : name);
 }
 
 /** 여러 날을 한꺼번에 (자리를 비운 사이) */

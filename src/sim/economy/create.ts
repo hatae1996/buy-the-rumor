@@ -26,6 +26,8 @@ export interface PlayerSpec {
   id: PlayerId;
   /** 견습으로 시작한다 (처음 하는 플레이어). 아니면 모든 것이 열린 채로 */
   apprentice?: boolean;
+  /** 상단 이름 (상인 증서). 없으면 이름 없는 상단 */
+  name?: string;
 }
 
 export interface CreateOptions {
@@ -113,6 +115,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   for (const p of playerList(state)) {
     p.homeTown = p.town;
     p.visited = [p.town];
+    if (specs[p.seq]!.name) p.certificate.name = specs[p.seq]!.name!;
     if (specs[p.seq]!.apprentice) startApprentice(state, p, map, createRng(playerSeed(seed ^ 0xa99e, p)));
     else for (const id of ALL_UNLOCKS) p.unlocks[id] = state.day;
   }

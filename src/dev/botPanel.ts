@@ -1,13 +1,30 @@
 // 봇 돌리기: 플레이어 봇을 성향별로 한 시즌 돌려 순자산이 어떻게 느는지 본다 (기획서 "숫자를 맞출 기준").
 // 플레이어 자리가 하나라 봇마다 같은 시드의 세계를 따로 돌린다 (서로 경쟁하지 않는다).
 import { CYCLE_DAYS, SEASON_NAME, type Season } from '../sim/season';
-import { BOT_PROFILES, bigDays, dailyIncome, profitIncome, runBot, seasonIncome, type BotProfile, type BotRun, type GrowthKind } from '../sim/bot';
+import {
+  BOT_PROFILES,
+  bigDays,
+  byProfile,
+  dailyIncome,
+  marketProblems,
+  profitIncome,
+  runBot,
+  seasonIncome,
+  startBots,
+  type BotProfile,
+  type BotRun,
+  type GrowthKind,
+  type MarketRun,
+} from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
+import { GOOD_NAME } from '../sim/economy';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
 /** 여러 시드 요약에 쓰는 시드 (봇 테스트와 같은 10개, 0.0.9). 시작 계절 4개마다 돌린다 (0.0.8: 시작 계절은 시즌마다 랜덤) */
 const SUMMARY_SEEDS = [20261008, 777, 4242, 1, 99999, 31337, 2024, 555, 8080, 123456];
 const SEASONS: Season[] = [0, 1, 2, 3];
+/** 봇 n명 한 시장에서 고를 수 있는 n (handoff 0.1.0: 10, 20, 35, 50에서 잰다. 1, 5는 비교용) */
+const MARKET_NS = [1, 5, 10, 20, 35, 50];
 
 export interface BotPanel {
   reset(map: WorldMap): void;
@@ -27,6 +44,16 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     </div>
     <section class="dev-slip"><h2>순자산 (성향별)</h2><div class="dev-chart-box" data-bot-chart></div></section>
     <section class="dev-slip"><h2>한 시즌 결과</h2><div class="dev-scroll"><table class="dev-table" data-bot-table></table></div></section>
+    <h2 class="dev-h2">봇 n명 한 시장</h2>
+    <p class="dev-mono">세계 하나에 봇 n명(보통 사람 절반, 장사꾼·원정꾼 넷에 하나)을 앉혀 서로 경쟁시킨다. 시작 계절은 위 단추를 따른다. 합격 기준은 handoff 0.1.0.</p>
+    <div class="dev-bar" role="group" aria-label="봇 수">
+      ${MARKET_NS.map((n) => `<button type="button" class="dev-btn alt" data-market-n="${n}" aria-pressed="${n === 10}">${n}명</button>`).join('')}
+      <button type="button" class="dev-btn" data-market-run>한 시장에서 한 시즌</button>
+    </div>
+    <section class="dev-slip"><h2>성향별 벌이와 순자산 (가운데 값)</h2><div class="dev-chart-box" data-market-chart></div>
+      <div class="dev-scroll"><table class="dev-table" data-market-table></table></div></section>
+    <section class="dev-slip"><h2>플레이어가 판 몫 (모든 마을 장날 거래량 중)</h2><div class="dev-chart-box" data-market-share></div></section>
+    <section class="dev-slip"><h2>독점 · 말 · 큰 주문</h2><div data-market-stats></div></section>
     <section class="dev-slip"><h2>시작 계절별 요약 (가운데 값)</h2>
       <p class="dev-mono">하루 벌이 = 그날 판 것의 이익 (판 값 − 산 값, 원정에서 얻은 것은 산 값 0). 첫 5일만 가진 것의 온값이 하루에 는 양 (처음엔 사 모아 두는 것도 좋은 장사라서, 0.0.9). 목표: 첫 5일 5~10, 67일 20~40, 후반 평균 &gt; 전반 평균, 10배 번 날 2~3번, 유지비는 벌이의 20~30%.</p>
       <div class="dev-scroll"><table class="dev-table" data-bot-many-table></table></div></section>
@@ -61,6 +88,71 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
       $('[data-bot-table]').innerHTML = runTable(runs);
     });
   });
+
+  let marketN = 10;
+  root.querySelectorAll<HTMLButtonElement>('[data-market-n]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      marketN = Number(btn.dataset.marketN);
+      root.querySelectorAll('[data-market-n]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    }),
+  );
+  let marketRunning = false;
+  $('[data-market-run]').addEventListener('click', () => {
+    if (!map || marketRunning) return;
+    marketRunning = true;
+    const m = startBots(map.requestedSeed, marketN, { days: CYCLE_DAYS, startSeason }, map);
+    const table = $('[data-market-table]');
+    const t0 = performance.now();
+    // 며칠씩 쉬어 가며 돌린다 (화면이 멈추지 않게)
+    const next = () => {
+      const until = performance.now() + 120;
+      let more = true;
+      while (more && performance.now() < until) more = m.step();
+      if (more) {
+        table.innerHTML = `<tr><td>돌리는 중… ${m.day}/${CYCLE_DAYS}일</td></tr>`;
+        setTimeout(next, 0);
+        return;
+      }
+      renderMarket(m.result(), (performance.now() - t0) / 1000);
+      marketRunning = false;
+    };
+    table.innerHTML = '<tr><td>돌리는 중…</td></tr>';
+    setTimeout(next, 30);
+  });
+
+  function renderMarket(run: MarketRun, seconds: number) {
+    const groups = BOT_PROFILES.map((p) => ({ p, seats: run.seats.filter((s) => s.profile.id === p.id) })).filter((g) => g.seats.length);
+    renderLineChart(
+      $('[data-market-chart]'),
+      groups.map((g, i) => ({
+        name: g.p.name,
+        color: SERIES_COLORS[i % SERIES_COLORS.length]!,
+        values: g.seats[0]!.worth.map((_, d) => median(g.seats.map((s) => s.worth[d]!))),
+      })),
+      { firstDay: 1, height: 220 },
+    );
+    renderLineChart(
+      $('[data-market-share]'),
+      [{ name: '플레이어 몫', color: SERIES_COLORS[0], values: run.daily.map((d) => (d.volume ? (100 * d.playerSold) / d.volume : 0)) }],
+      { firstDay: 1, height: 160, format: (v) => `${Math.round(v)}%` },
+    );
+    const prof = byProfile(run);
+    $('[data-market-table]').innerHTML =
+      '<tr><th>성향</th><th>몇 명</th><th>시즌 평균 하루 벌이</th><th>끝 순자산</th></tr>' +
+      groups.map((g) => `<tr><th>${g.p.name}</th><td>${prof[g.p.id]!.count}</td><td>${Math.round(prof[g.p.id]!.income)}</td><td>${prof[g.p.id]!.endWorth}</td></tr>`).join('') +
+      `<tr><td colspan="4" class="dev-mono">${run.n}명 ${run.daily.length}일 · ${seconds.toFixed(1)}초. 보통 사람 목표: 시즌 평균 20~30</td></tr>`;
+    const s = run.stats;
+    const bad = marketProblems(run);
+    const mark = (problem: boolean) => `<span class="${problem ? 'dev-no' : 'dev-ok'}">${problem ? '문제' : '통과'}</span>`;
+    const name = (id: number) => map?.towns[id]?.name ?? String(id);
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
+    $('[data-market-stats]').innerHTML = `<ul>
+      <li><span>독점</span> ${mark(bad.monopoly)} 상위 1명이 그날 판매의 절반을 넘은 날이 가장 많은 곳: ${s.monopolyAt ? `${name(s.monopolyAt.town)} ${GOOD_NAME[s.monopolyAt.good]}` : '-'} ${s.monopolyDays}일 / ${run.daily.length}일. 시즌 판매 중 상위 1명 몫 ${pct(s.top1Share)}, 상위 10% ${pct(s.top10Share)}</li>
+      <li><span>말</span> ${mark(bad.horses)} 원한 사람 ${s.horseWanted}, 한 마리도 못 산 사람 ${s.horseNever}, 처음 신청부터 산 날까지 평균 ${s.horseWaitDays === null ? '-' : `${s.horseWaitDays.toFixed(1)}일`}</li>
+      <li><span>큰 주문</span> ${mark(bad.bigOrders > 0)} 참여한 사람이 있는 주문 ${bad.bigOrdersJoined}개 중 절반 넘게 한 개도 못 판 주문 ${bad.bigOrders}개</li>
+      ${s.bigOrders.map((b) => `<li><span></span>${b.event} (${name(b.town)} ${GOOD_NAME[b.good]}): 낸 사람 ${b.joined}, 못 판 사람 ${b.soldNone}</li>`).join('')}
+    </ul>`;
+  }
 
   let manyRunning = false;
   $('[data-bot-many]').addEventListener('click', () => {

@@ -48,7 +48,7 @@ import type {
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
-import { getPlayer, ownedBy } from './players';
+import { getPlayer, ownedBy, playerList } from './players';
 
 export type PlayerLocation =
   | { kind: 'town'; town: number }
@@ -165,6 +165,8 @@ export interface PlayerView {
   orders: PendingOrder[];
   /** 오늘 밤 추첨을 기다리는 내 신청 (말, 게시판 일꾼). 남이 낸 신청은 보이지 않는다 */
   draws: DrawView[];
+  /** 같은 세계의 다른 상단: 이름과 있는 곳만 (지도에 말로 보인다, 0.1.0) */
+  rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
   news: readonly NewsItem[];
@@ -580,14 +582,18 @@ function buyRoomView(p: PlayerState, room: Record<GoodId, number>): Record<GoodI
   ) as Record<GoodId, number>;
 }
 
+function locationOf(p: PlayerState): PlayerLocation {
+  return p.travel
+    ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
+    : { kind: 'town', town: p.town };
+}
+
 /** 플레이어 한 사람에게 보이는 것 */
 export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerId): PlayerView {
   const p = getPlayer(state, playerId);
   // 물건마다 내 수레에 더 실을 칸 (짐을 실어 보며 세어 무겁다: 한 번만)
   const room = Object.fromEntries(GOODS.map((g) => [g, roomFor(p.cart, g)])) as Record<GoodId, number>;
-  const location: PlayerLocation = p.travel
-    ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
-    : { kind: 'town', town: p.town };
+  const location = locationOf(p);
 
   let market: MarketView | null = null;
   if (!p.travel) {
@@ -718,6 +724,9 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
         : null,
     })),
     hireBoard: hireBoard(state, p, map),
+    rivals: playerList(state)
+      .filter((o) => o.id !== p.id)
+      .map((o) => ({ id: o.id, name: o.certificate.name, location: locationOf(o) })),
     draws: drawsOf(state, p).map((d) => ({
       id: d.id,
       kind: d.kind,

@@ -19,8 +19,8 @@ export interface BotMind {
   /** 오늘 한 일 (날이 바뀌면 다시 센다) */
   day: number;
   expeditionsToday: number;
-  /** 오늘 이미 해 본 명령 (실패한 것을 되풀이하지 않게) */
-  tried: Set<string>;
+  /** 오늘 이미 해 본 명령 (실패한 것을 되풀이하지 않게). 저장할 수 있게 배열로 */
+  tried: string[];
   /** 살 것 고르기에 쓰는 기억 (수레가 찼던 날, 못 고른 선택지, 원정 값) */
   growth: GrowthMind;
   /** 징조를 듣고 노리는 큰 주문 (0.0.7): 그 마을에 그 물품을 미리 모아 간다 */
@@ -30,7 +30,7 @@ export interface BotMind {
 }
 
 export function createMind(): BotMind {
-  return { plan: null, day: -1, expeditionsToday: 0, tried: new Set(), growth: createGrowthMind(), bigPlan: null, caravan: createCaravanMind() };
+  return { plan: null, day: -1, expeditionsToday: 0, tried: [], growth: createGrowthMind(), bigPlan: null, caravan: createCaravanMind() };
 }
 
 /** 이 정도 지난 기억은 믿지 않는다 */
@@ -62,14 +62,14 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   if (mind.day !== view.day) {
     mind.day = view.day;
     mind.expeditionsToday = 0;
-    mind.tried.clear();
+    mind.tried = [];
     noteDay(view, mind.growth);
     mind.bigPlan = updateBigPlan(view, mind.bigPlan, profile);
   }
   const once = (cmd: Command): Command | null => {
     const key = JSON.stringify(cmd);
-    if (mind.tried.has(key)) return null;
-    mind.tried.add(key);
+    if (mind.tried.includes(key)) return null;
+    mind.tried.push(key);
     return cmd;
   };
 
