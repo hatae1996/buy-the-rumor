@@ -71,11 +71,11 @@ export const TRAVEL = {
 
 /**
  * 계절마다 게임 속 며칠인가 (봄, 여름, 가을, 겨울).
- * 기획서: 시즌(실제 15일) 동안 사계절, 계절 하나는 실제 약 3.75일.
- * 게임 속 하루가 실제 2.5시간(src/ui/game.ts의 DAY_MS)이면 계절 하나는 게임 속 36일이다.
+ * 기획서: 시즌(실제 13일 플레이, 0.0.9) 동안 사계절, 계절 하나는 실제 약 3.25일.
+ * 게임 속 하루가 실제 2.5시간(src/ui/game.ts의 DAY_MS)이면 시즌은 13 × 9.6 = 게임 속 125일, 계절 하나는 31일쯤이다.
  */
 export const CALENDAR = {
-  seasonDays: [36, 36, 36, 36],
+  seasonDays: [31, 31, 31, 32],
 } as const;
 
 export const ECONOMY = {
@@ -83,12 +83,12 @@ export const ECONOMY = {
   goods: {
     fish: { basePrice: 8, shelfLife: 4 },
     meat: { basePrice: 10, shelfLife: 5 },
-    grain: { basePrice: 6, shelfLife: 60 },
+    grain: { basePrice: 6, shelfLife: 52 },
     wood: { basePrice: 8, shelfLife: null },
     leather: { basePrice: 16, shelfLife: null },
     ore: { basePrice: 14, shelfLife: null },
     salt: { basePrice: 10, shelfLife: null },
-    salted: { basePrice: 24, shelfLife: 40 },
+    salted: { basePrice: 24, shelfLife: 35 },
     tools: { basePrice: 60, shelfLife: null },
   },
   /** 계절별로 하루에 상하는 정도 (봄, 여름, 가을, 겨울). 여름엔 빨리, 겨울엔 천천히 */
@@ -281,7 +281,7 @@ export const ECONOMY = {
 
   /** 랭킹 (기획서 "랭킹과 보상"). 숫자는 초안 */
   ranking: {
-    /** 수완가 부문: 이만큼(게임 속 날) 넘게 해야 기록한다. 기획서 "최소 5일"을 실제 15일 = 게임 속 144일로 옮겼다 */
+    /** 수완가 부문: 이만큼(게임 속 날) 넘게 해야 기록한다. 기획서 "최소 5일"을 게임 속 날로 옮겼다 (실제 하루 = 게임 속 9.6일) */
     multiplierMinDays: 48,
     /** Buy the Rumor: 징조를 듣고 이 날 안에 신문에 난 사건만, 신문 뒤 이 날 안에 판 것만 센다 */
     rumorWindowDays: 15,
@@ -381,8 +381,8 @@ export const ECONOMY = {
       /** 기준 가격의 이 배율보다 높은 날이 이어지면 일꾼이 몰려든다 */
       highAbove: 2.2,
       streakDays: 10,
-      /** 같은 마을에 같은 반응 사건을 다시 내지 않는 날 */
-      cooldownDays: 36,
+      /** 같은 마을에 같은 반응 사건을 다시 내지 않는 날 (계절 하나) */
+      cooldownDays: 31,
       /** 반응 사건은 하루에 하나, 시즌에 이만큼까지 (신문이 반응 사건으로 덮이지 않게) */
       perSeason: 6,
       /** 일꾼 중 이 비율 넘게 굶고 장에 음식이 없으면 굶주린 마을 */
@@ -509,7 +509,7 @@ export const HORSES = {
   localPlayers: 1,
   /** 한 번에 풀리는 수 (최소, 최대), 다음 입고까지 날 (최소, 최대) */
   batch: [1, 2],
-  gapDays: [6, 14],
+  gapDays: [5, 12],
   /** 첫 입고는 시즌 시작 뒤 며칠 안에 */
   firstWithin: 3,
   /** 시즌 마지막 며칠에는 풀지 않는다 */

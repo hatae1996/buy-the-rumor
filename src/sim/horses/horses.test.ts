@@ -8,7 +8,7 @@ import { playerTravelDays } from '../economy/travel';
 import { activate } from '../events';
 import { makeRumorsToday } from '../rumors';
 import { createRng } from '../rng';
-import { seasonOfDay, SPRING } from '../season';
+import { CYCLE_DAYS, seasonOfDay, SPRING } from '../season';
 import { generateWorld, type WorldMap } from '../worldgen';
 import {
   buyPrice,
@@ -86,7 +86,7 @@ describe('시즌 입고 (시드 40개)', () => {
     for (const seed of SEEDS) {
       const map = generateWorld(seed);
       const towns = stableTowns(map);
-      const season = { number: 1, startDay: 1, length: 144 };
+      const season = { number: 1, startDay: 1, length: CYCLE_DAYS };
       const a = scheduleArrivals(seed, season, 0, towns);
       expect(scheduleArrivals(seed, season, 0, towns)).toEqual(a);
       const spring = a.filter((x) => seasonOfDay(x.day, 0) === SPRING).length;

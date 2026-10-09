@@ -219,7 +219,8 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
     const town = state.player.town;
     const ev = activate(state, map, 'shipyard', town, state.day + 7);
     expect(ev.orders).toEqual([{ good: 'wood', left: 200, price: Math.round(basePrice('wood') * 1.6) }]);
-    expect(bigOrdersToday(state).map((x) => x.order.good)).toEqual(['wood']);
+    // 다른 큰 주문이 일정대로 함께 열려 있을 수 있어 이 사건 것만 본다
+    expect(bigOrdersToday(state).filter((x) => x.event === ev).map((x) => x.order.good)).toEqual(['wood']);
     // 플레이어가 목재를 내면 큰 주문 값에 가깝게 팔린다
     state.player.cart = createCart('wagon');
     state.player.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];

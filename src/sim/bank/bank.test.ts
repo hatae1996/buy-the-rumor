@@ -1,6 +1,7 @@
 // 은행 (기획서 "은행", 0.0.5): 도시에만, 계좌 하나. 이번 버전은 구조만.
 import { describe, expect, it } from 'vitest';
 import { GROWTH } from '../constants';
+import { CYCLE_DAYS } from '../season';
 import { createEconomy } from '../economy';
 import { townBuildings } from '../growth/buildings';
 import { netWorth } from '../ranking';
@@ -25,7 +26,7 @@ describe('은행', () => {
 
   it('이자는 시즌 한 바퀴 기준 비율을 날로 나눈 단리, 대출 한도는 순자산 × 신용', () => {
     const a = { ...emptyAccount(), deposit: 1440, loan: 1440 };
-    expect(interestFor(a, 144)).toEqual({ deposit: Math.floor(1440 * GROWTH.bank.depositRate), loan: Math.ceil(1440 * GROWTH.bank.loanRate) });
+    expect(interestFor(a, CYCLE_DAYS)).toEqual({ deposit: Math.floor(1440 * GROWTH.bank.depositRate), loan: Math.ceil(1440 * GROWTH.bank.loanRate) });
     expect(loanLimit({ deposit: 0, loan: 100, credit: 0.5 }, 1000)).toBe(400);
     expect(loanLimit({ deposit: 0, loan: 600, credit: 0.5 }, 1000)).toBe(0);
   });

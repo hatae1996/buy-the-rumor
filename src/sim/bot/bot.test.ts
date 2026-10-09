@@ -2,11 +2,11 @@
 // 시작 계절은 시즌마다 랜덤이라 (0.0.8) 시드마다 다른 시작 계절로 돌려 네 계절을 다 본다.
 import { describe, expect, it } from 'vitest';
 import { generateWorld } from '../worldgen';
-import type { Season } from '../season';
+import { CYCLE_DAYS, type Season } from '../season';
 import { BOT_PROFILES, botProfile, runBot, seasonIncome } from './index';
 
 const SEEDS = [20261008, 777, 4242, 1, 99999];
-const SEASON = 144;
+const SEASON = CYCLE_DAYS;
 /** 시드마다 시작 계절: 봄, 여름, 가을, 겨울, 봄 */
 const startOf = (i: number) => (i % 4) as Season;
 

@@ -8,6 +8,7 @@ import { generateWorld } from '../worldgen';
 import { createGrowthMind, growthStep, type GrowthMind } from './growth';
 import { botProfile } from './profiles';
 import { runBotOn } from './run';
+import { CYCLE_DAYS } from '../season';
 
 const SEED = 20261008;
 const map = generateWorld(SEED);
@@ -100,7 +101,7 @@ describe('시즌을 돌려도', () => {
       st.player.cart = createCart('handcart');
       // 짐꾼만 본다 (시간차 장사는 seasonal.test.ts)
       const p = { ...botProfile('trader'), growth: { ...botProfile('trader').growth!, timeShift: false } };
-      return runBotOn(st, map, withGrowth ? p : { ...p, growth: null }, { days: 144 });
+      return runBotOn(st, map, withGrowth ? p : { ...p, growth: null }, { days: CYCLE_DAYS });
     };
     const on = run(true);
     const off = run(false);

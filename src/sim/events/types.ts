@@ -160,7 +160,7 @@ export interface EventRecord {
   good?: GoodId;
 }
 
-/** 시즌 (기획서 "멀티플레이와 시즌": 실제 15일 = 게임 속 사계절 한 바퀴) */
+/** 시즌 (기획서 "멀티플레이와 시즌": 실제 13일 = 게임 속 사계절 한 바퀴) */
 export interface SeasonState {
   /** 몇 번째 시즌 (1부터) */
   number: number;

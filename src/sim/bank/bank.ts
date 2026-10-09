@@ -2,6 +2,7 @@
 // 이번 버전은 자리와 데이터 구조만: 예금·대출의 실제 동작(맡기기, 빌리기, 이자 붙이기)은 나중 버전 (questions.md 61번).
 // 순자산의 "예금 − 빚" 칸이 이 계좌를 본다.
 import { GROWTH } from '../constants';
+import { CYCLE_DAYS } from '../season';
 
 export interface BankAccount {
   /** 맡긴 돈 */
@@ -19,8 +20,8 @@ export function emptyAccount(): BankAccount {
   return { deposit: 0, loan: 0, credit: 0.5 };
 }
 
-/** 이자율은 시즌(게임 속 144일) 한 바퀴 기준. 하루치로 나눈다 */
-const SEASON_DAYS = 144;
+/** 이자율은 시즌 한 바퀴 기준. 하루치로 나눈다 */
+const SEASON_DAYS = CYCLE_DAYS;
 
 /** days일 동안 붙는 이자 (예금은 받고, 대출은 낸다). 단리 초안 */
 export function interestFor(account: BankAccount, days: number): { deposit: number; loan: number } {

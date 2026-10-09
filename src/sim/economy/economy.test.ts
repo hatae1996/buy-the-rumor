@@ -7,7 +7,7 @@ import { createEconomy } from './create';
 import { GOODS, priceBounds } from './goods';
 import { hungryWorkers, moneySupply, population } from './stats';
 import type { EconomyState } from './state';
-import { AUTUMN, seasonOfDay, SPRING, SUMMER, WINTER } from '../season';
+import { AUTUMN, CYCLE_DAYS, seasonOfDay, SPRING, SUMMER, WINTER } from '../season';
 
 const SEEDS = [20261008, 777, 4242, 1, 99999];
 const DAYS = 360;
@@ -102,15 +102,22 @@ describe(`${DAYS}일 안정성 (시드 ${SEEDS.length}개)`, () => {
   // 광맥이 적은 맵(3칸 이하이거나 한 마을뿐)은 도구 재료가 모자라 20%를 넘기도 한다.
   // 맵 생성에서 광맥을 보장할지는 기획 질문 (docs/questions.md 26번). 답이 오기 전까지는 30%를 넘지 않는지만 본다
   // 0.0.7: 광맥이 적은 맵은 상단 말 수 같은 작은 차이에도 30% 근처를 오르내려서 45%로 둔다 (26번 "그대로": 도구가 귀한 맵 = 장사거리, questions.md 72번)
-  it('도구 없이 일하는 일꾼은 광맥이 넉넉한 맵에서 20% 이하, 광맥이 적은 맵도 45% 이하 (handoff 0.0.4)', () => {
-    for (const { seed, balance } of runs) {
+  // 0.0.9: 시즌이 125일로 짧아져 360일은 시즌 세 바퀴다. 세계는 시즌마다 새로 만들므로 목표(20%)는 한 시즌 안에서 잰다.
+  // 광맥은 줄어들기만 해서 같은 세계를 세 시즌 돌리면 넉넉한 맵도 바닥난다 (시드 1: 230일쯤). 360일은 45% 이하만 본다
+  it('도구 없이 일하는 일꾼은 한 시즌 동안 광맥이 넉넉한 맵에서 20% 이하, 광맥이 적은 맵도 45% 이하 (handoff 0.0.4)', () => {
+    for (const { seed } of runs) {
       // 맵이 처음 줄 때의 광맥 (사건으로 새 광맥이 늘기 전)
       const start = createEconomy(generateWorld(seed), seed);
       const oreTowns = start.towns.filter((t) => t.nodes.some((n) => n.kind === 'ore'));
       const oreTiles = oreTowns.reduce((s, t) => s + t.nodes.find((n) => n.kind === 'ore')!.tiles, 0);
       const rich = oreTiles >= 4 && oreTowns.length >= 2;
-      expect(balance.toollessShare, `시드 ${seed} (광맥 ${oreTiles}칸, ${oreTowns.length}마을)`).toBeLessThanOrEqual(rich ? 0.2 : 0.45);
+      const season = measureBalance(start, generateWorld(seed), CYCLE_DAYS);
+      expect(season.toollessShare, `시드 ${seed} (광맥 ${oreTiles}칸, ${oreTowns.length}마을)`).toBeLessThanOrEqual(rich ? 0.2 : 0.45);
     }
+  });
+
+  it('같은 세계를 360일 돌려도 도구 없이 일하는 일꾼은 45% 이하', () => {
+    for (const { seed, balance } of runs) expect(balance.toollessShare, `시드 ${seed}`).toBeLessThanOrEqual(0.45);
   });
 
   it('장이 계속 선다: 마을마다 한 달에 거래가 있다', () => {
