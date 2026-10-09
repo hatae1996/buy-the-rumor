@@ -229,6 +229,12 @@ export interface PlayerState {
   rumors: HeardRumor[];
   /** 오늘 여관에서 술 한 잔을 샀는지 (소문 1개 더, 하루 한 번) */
   drankToday: boolean;
+  /** 여관 소문꾼에게 들은 날 (하루 한 번, 0.1.2) */
+  listenedDay: number | null;
+  /**
+   * 소문을 밤마다 저절로 듣고 바로 수첩에 적는다 (봇, 0.1.2). 사람은 false: 여관에서 듣고 적을지 고른다
+   */
+  autoRumors: boolean;
   /** 날려 보낸 전서구. 장날이 끝나면 그 마을 시세를 갖고 온다 */
   pigeons: { town: number; day: number }[];
   /** 정보원을 심어 둔 마을 */

@@ -1166,3 +1166,36 @@
 .travel-eta {
   font-size: 16px;
 }
+
+/* ───── 최근 들은 이야기, 수첩 칸 (0.1.2) ───── */
+.note.heard .btn-row {
+  margin-top: 6px;
+}
+
+.note.dismissed .note-text {
+  opacity: 0.55;
+}
+
+.note-groups {
+  margin: 8px 0;
+}
+
+.note-groups button {
+  min-height: var(--tap);
+  font-size: 15px;
+}
+
+.note-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.note-filter select {
+  min-height: var(--tap);
+  padding: 0 8px;
+  border-radius: 6px;
+  font: inherit;
+}

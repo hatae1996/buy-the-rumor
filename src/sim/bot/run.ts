@@ -125,6 +125,8 @@ export interface BotSeat {
 export function createSeat(state: EconomyState, pid: PlayerId, profile: BotProfile): BotSeat {
   // 봇의 판단은 세계와 다른 난수로 (세계의 난수를 건드리지 않는다). 같은 성향 봇이 여럿이어도 자리마다 다르게
   const rng = createRng(playerSeed(mixSeed(state.seed, profile.id.length * 7919 + profile.id.charCodeAt(0)), getPlayer(state, pid)));
+  // 봇은 소문을 밤마다 저절로 듣고 바로 쓴다 (적기 단계 없이, 0.1.2)
+  getPlayer(state, pid).autoRumors = true;
   const mind = createMind();
   const run: BotRun = { profile, startSeason: state.startSeason, bigOrders: [], worth: [], wealth: [], upkeep: [], profit: [], gold: [], trades: 0, expeditions: 0, travels: 0, commandsPerDay: 0, errors: {}, firsts: mind.growth.firsts, couldAfford: mind.growth.couldAfford };
   return { pid, profile, mind, rng, run, commands: 0, cost: {} };

@@ -66,7 +66,8 @@ export function verifyNotebook(state: EconomyState, p: PlayerState, map: WorldMa
   const day = state.day;
   let n = 0;
   for (const h of p.rumors) {
-    if (h.stamp || !h.claim) continue;
+    // 도장은 수첩에 적은 것에만 (0.1.2)
+    if (h.stamp || !h.claim || h.noted === false) continue;
     const c = h.claim;
     const result = check(state, map, h, c, here, day);
     if (result !== null) {

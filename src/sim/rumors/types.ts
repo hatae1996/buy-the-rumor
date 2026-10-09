@@ -146,4 +146,11 @@ export interface HeardRumor {
    */
   stamp: Stamp | null;
   stampDay: number | null;
+  /**
+   * 수첩에 적었나 (0.1.2): false면 아직 "최근 들은 이야기"(적기 / 흘려듣기를 고르는 중).
+   * 없으면 적은 것으로 친다 (봇, 전서구·정보원·원정 보고, 예전 저장)
+   */
+  noted?: boolean;
+  /** 흘려들었다 (최근 들은 이야기에 며칠 남았다 사라진다) */
+  dismissed?: boolean;
 }

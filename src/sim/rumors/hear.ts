@@ -37,11 +37,35 @@ interface Option {
   told: Telling;
 }
 
-/** 밤에: 마을에 있으면 소문꾼에게 공짜로 듣는다 */
-export function hearFromGossips(state: EconomyState, p: PlayerState, map: WorldMap, rng: Rng): HeardRumor[] {
-  if (p.travel) return [];
+/** 이 마을 소문꾼들이 아직 이 플레이어에게 들려주지 않은 이야기 (중요한 것부터 고르기 전) */
+function gossipOptions(state: EconomyState, p: PlayerState, map: WorldMap, gossips: readonly Gossip[]): Option[] {
   const here = p.town;
   const day = state.day;
+  const heard = heardIds(p);
+  const options: Option[] = [];
+  for (const gossip of gossips) {
+    for (const rumor of state.rumorMill.live) {
+      if (heard.has(rumor.id) || seenHere(rumor.fact, here) || !believes(gossip, rumor)) continue;
+      const copy = knownCopy(gossip, rumor, day);
+      if (copy) options.push({ gossip, rumor, told: tell(rumor, copy, gossip, map, day) });
+    }
+  }
+  return options;
+}
+
+/** 이 마을 여관에 아직 못 들은 소문이 몇 개 있나 (여관 카드 알림, 자리를 비운 사이 표시, 0.1.2) */
+export function freshGossip(state: EconomyState, p: PlayerState, map: WorldMap): number {
+  if (p.travel) return 0;
+  return new Set(gossipOptions(state, p, map, state.rumorMill.gossips.filter((g) => g.town === p.town)).map((o) => o.rumor!.id)).size;
+}
+
+/**
+ * 마을에 있으면 소문꾼에게 듣는다. 봇은 밤마다 저절로, 사람은 여관에서 "듣기"를 눌러야 (0.1.2).
+ * pending이면 들은 것을 "최근 들은 이야기"에 둔다 (적기 / 흘려듣기를 고른다)
+ */
+export function hearFromGossips(state: EconomyState, p: PlayerState, map: WorldMap, rng: Rng, pending = false): HeardRumor[] {
+  if (p.travel) return [];
+  const here = p.town;
   const mill = state.rumorMill;
   let budget = rng.int(RUMORS.freePerDay[0], RUMORS.freePerDay[1]);
   // 여럿이 같은 소문을 알면 그날그날 다른 사람이 먼저 꺼낸다
@@ -49,16 +73,7 @@ export function hearFromGossips(state: EconomyState, p: PlayerState, map: WorldM
     mill.gossips.filter((g) => g.town === here),
     rng,
   );
-  const heard = heardIds(p);
-
-  const options: Option[] = [];
-  for (const gossip of gossips) {
-    for (const rumor of mill.live) {
-      if (heard.has(rumor.id) || seenHere(rumor.fact, here) || !believes(gossip, rumor)) continue;
-      const copy = knownCopy(gossip, rumor, day);
-      if (copy) options.push({ gossip, rumor, told: tell(rumor, copy, gossip, map, day) });
-    }
-  }
+  const options = gossipOptions(state, p, map, gossips);
   // 중요한 것부터, 같으면 새 소문부터
   options.sort((a, b) => b.told.importance - a.told.importance || b.rumor!.day - a.rumor!.day || a.rumor!.id - b.rumor!.id);
 
@@ -70,16 +85,21 @@ export function hearFromGossips(state: EconomyState, p: PlayerState, map: WorldM
     if (o.rumor) told.add(o.rumor.id);
     budget--;
     out.push(
-      addNote(state, p, {
-        town: here,
-        text: o.told.text,
-        via: 'gossip',
-        from: o.gossip.name,
-        gossip: o.gossip.id,
-        rumor: o.rumor?.id ?? null,
-        importance: o.told.importance,
-        claim: o.told.claim,
-      }),
+      addNote(
+        state,
+        p,
+        {
+          town: here,
+          text: o.told.text,
+          via: 'gossip',
+          from: o.gossip.name,
+          gossip: o.gossip.id,
+          rumor: o.rumor?.id ?? null,
+          importance: o.told.importance,
+          claim: o.told.claim,
+        },
+        { pending },
+      ),
     );
   };
   const canTalk = (g: Gossip) => (talked.get(g.id) ?? 0) < RUMORS.personality[g.personality].talk;

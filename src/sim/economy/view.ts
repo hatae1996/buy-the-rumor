@@ -48,7 +48,7 @@ import type {
   PlayerState,
   PriceMemory,
 } from './state';
-import { drinkFee, type HeardRumor } from '../rumors';
+import { drinkFee, freshGossip, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
 import { paperDelay, paperFree, paperOnSale, visibleNews } from '../news';
 import type { Reservation } from '../reservations';
@@ -234,6 +234,10 @@ export interface PlayerView {
   lastExpedition: ExpeditionResult | null;
   /** 들은 이야기 수첩. 도장 판정용 주장은 빼고 보인다 */
   rumors: readonly NoteView[];
+  /** 여관에서 들었지만 아직 수첩에 적지 않은 이야기 (적기 / 흘려듣기, 며칠 뒤 사라진다, 0.1.2) */
+  recentHeard: readonly NoteView[];
+  /** 이 마을 여관 소문꾼: 오늘 들을 수 있나, 아직 못 들은 이야기 수. 길 위면 null */
+  gossip: { canListen: boolean; fresh: number } | null;
   /** 지금 마을 여관의 술 한 잔 (소문 1개 더). 길 위면 null */
   drink: { fee: number; drank: boolean } | null;
   /** 전서구: 한 번 값과 날려 보낸 마을 (다음 날 시세가 온다) */
@@ -392,11 +396,14 @@ export interface GearView {
 export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'> & {
   /** 징조 소문이면 문장이 말하는 사건과 마을 ("○○ 쪽에서 조선소에 목수가 모인다더군"). 플레이어가 읽는 그대로다 */
   omen: { event: ScheduledEventId; town: number } | null;
+  /** 문장이 말하는 물품 (수첩 물품별 찾기, 0.1.2). 시세·신청 소문과, 물품을 고른 징조 */
+  good: GoodId | null;
 };
 
 /** 수첩 한 줄을 화면용으로: 도장 판정용 주장과 세계 소문 번호는 뺀다 */
 export function noteView({ claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
-  return { ...rest, omen: claim?.kind === 'omen' ? { event: claim.event, town: claim.town } : null };
+  const good = claim?.kind === 'price' || claim?.kind === 'orders' ? claim.good : claim?.kind === 'omen' ? (eventDef(claim.event).goods?.[0] ?? null) : null;
+  return { ...rest, omen: claim?.kind === 'omen' ? { event: claim.event, town: claim.town } : null, good };
 }
 
 export interface ExpeditionChoiceView {
@@ -766,7 +773,10 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     inn: p.travel ? null : { ...innOf(state.towns[p.town]!), rested: p.restedToday },
     expedition: expeditionView(state, p),
     lastExpedition: p.lastExpedition,
-    rumors: p.rumors.map(noteView),
+    // 수첩과 보고 (적은 것), 최근 들은 이야기 (적을지 고르는 중, 0.1.2)
+    rumors: p.rumors.filter((h) => h.noted !== false).map(noteView),
+    recentHeard: p.rumors.filter((h) => h.noted === false).map(noteView),
+    gossip: p.travel ? null : { canListen: p.listenedDay !== state.day, fresh: freshGossip(state, p, map) },
     drink: p.travel ? null : { fee: drinkFee(state, p.town), drank: p.drankToday },
     pigeon: { fee: RUMORS.pigeonFee, pending: p.pigeons.map((pg) => pg.town) },
     informants: p.informants,

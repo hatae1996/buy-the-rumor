@@ -20,9 +20,12 @@ import {
 
 const SEEDS = Array.from({ length: 12 }, (_, i) => i * 7919 + 3);
 
+/** 소문 규칙을 보는 세계: 플레이어는 봇처럼 밤마다 저절로 듣고 바로 적는다 (사람의 듣기·적기는 listen.test.ts) */
 function world(seed: number, warmupDays = 0): { map: WorldMap; state: EconomyState } {
   const map = generateWorld(seed);
-  return { map, state: createEconomy(map, seed, { warmupDays }) };
+  const state = createEconomy(map, seed, { warmupDays });
+  state.players.me!.autoRumors = true;
+  return { map, state };
 }
 
 /** 시험용 소문 하나를 세계에 넣는다 */

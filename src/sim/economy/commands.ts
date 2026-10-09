@@ -30,7 +30,7 @@ import {
   type GearKind,
 } from '../expedition';
 import { innOf, mealRecovery, pickMeal, spoilRateToday } from './player';
-import { buyDrink, dismissInformant, hireInformant, sendPigeon, type RumorError } from '../rumors';
+import { buyDrink, dismissInformant, dismissRumor, hireInformant, listenGossip, noteRumor, sendPigeon, type NoteError, type RumorError } from '../rumors';
 import {
   buyCart,
   HORSE_KINDS,
@@ -85,6 +85,11 @@ export type Command =
   | { type: 'endExpedition' }
   /** 여관에서 술 한 잔을 사고 소문 하나를 더 듣는다 (하루 한 번) */
   | { type: 'buyDrink' }
+  /** 여관 소문꾼에게 듣는다 (하루 한 번, 0.1.2) */
+  | { type: 'listenGossip' }
+  /** 들은 이야기를 수첩에 적는다 / 흘려듣는다 (0.1.2) */
+  | { type: 'noteRumor'; id: number }
+  | { type: 'dismissRumor'; id: number }
   /** 먼 마을로 전서구를 보낸다 (그 마을 오늘 시세가 다음 날 온다) */
   | { type: 'sendPigeon'; to: number }
   /** 지금 마을에 정보원을 심는다 (여관 고용 게시판) */
@@ -181,6 +186,7 @@ export type CommandError =
   | ReservationError
   | NewspaperError
   | CertificateError
+  | NoteError
   | 'seasonOver'
   | ArrangeError
   | 'boardNotEmpty';
@@ -324,6 +330,13 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
     case 'buyDrink':
       if (p.expedition) return fail('inExpedition');
       return done(buyDrink(state, p, map));
+    case 'listenGossip':
+      if (p.expedition) return fail('inExpedition');
+      return done(listenGossip(state, p, map));
+    case 'noteRumor':
+      return done(noteRumor(state, p, cmd.id));
+    case 'dismissRumor':
+      return done(dismissRumor(p, cmd.id));
     case 'sendPigeon':
       return done(sendPigeon(state, p, cmd.to));
     case 'hireInformant':

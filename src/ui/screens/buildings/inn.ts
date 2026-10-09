@@ -1,10 +1,10 @@
 // 여관 (시안 prototypes/screens-0.0.5.html): 소문꾼, 술 한 잔, 묵기(말도 쉼), 고용 게시판(짐꾼, 채집꾼, 마부, 정보원),
-// 전서구, 안내인. 소문꾼 이야기는 마을에 있으면 밤마다 저절로 듣는다 (questions.md 60번).
+// 전서구, 안내인. 소문꾼 이야기는 "듣기"를 눌러 듣고, 수첩에 적을지 고른다 (0.1.2, questions.md 60번 답을 바꿈).
 import { GROWTH } from '../../../sim/constants';
 import { money } from '../../format';
 import type { Game } from '../../game';
 import { openLiveSheet } from '../../liveSheet';
-import { noteItem, topNotes } from '../noteItem';
+import { heardCard, wireHeard } from '../noteItem';
 import { buyDrink, openPigeonSheet } from '../rumorSheet';
 
 export function openInn(game: Game): void {
@@ -16,10 +16,9 @@ export function openInn(game: Game): void {
     }
     const here = v.location.town;
     const rumorsOpen = v.unlocks.includes('rumors');
-    const lastNight = topNotes(
-      v.rumors.filter((n) => n.day === v.day - 1 && n.via === 'gossip' && n.town === here),
-      3,
-    );
+    const gossip = v.gossip;
+    // 오늘 이 마을에서 들은 것 (적기 / 흘려듣기를 고르는 중)
+    const heardHere = v.recentHeard.filter((n) => n.town === here && n.day === v.day);
     const board = v.hireBoard
       .map((o) => {
         const asked = v.draws.find((d) => d.kind === 'hire' && d.role === o.role && d.town === here);
@@ -48,11 +47,13 @@ export function openInn(game: Game): void {
       ${
         rumorsOpen
           ? `<h3>소문꾼</h3>
-             ${
-               lastNight.length
-                 ? `<p class="muted">어젯밤 들은 이야기예요.</p><ul class="list">${lastNight.map((n) => noteItem(n, v.day, townName)).join('')}</ul>`
-                 : '<p class="muted">마을에 머물면 밤마다 소문꾼들이 이야기를 두세 개 들려줘요.</p>'
-             }
+             <p class="muted">소문꾼에게 말을 걸면 이야기를 두세 개 들려줘요 (하루 한 번, 공짜). 들은 이야기는 수첩에 적거나 흘려들어요. 적은 것만 수첩에 남고, 맞았는지 도장이 찍혀요.</p>
+             <div class="btn-row">
+               <button type="button" class="primary-btn" data-listen ${gossip?.canListen && gossip.fresh > 0 ? '' : 'disabled'}>
+                 소문꾼에게 듣기<small>${!gossip?.canListen ? '오늘은 들었어요' : gossip.fresh > 0 ? '새 이야기가 있어요' : '오늘은 새 이야기가 없어요'}</small>
+               </button>
+             </div>
+             ${heardHere.length ? `<ul class="list">${heardHere.map((n) => heardCard(n, v.day, townName)).join('')}</ul>` : ''}
              <div class="btn-row">
                <button type="button" class="secondary-btn" data-drink ${v.drink && !v.drink.drank && v.gold >= v.drink.fee ? '' : 'disabled'}>
                  술 한 잔<small>${v.drink?.drank ? '오늘은 마셨어요' : `소문 하나 더 · ${money(v.drink?.fee ?? 0)}`}</small>
@@ -86,6 +87,8 @@ export function openInn(game: Game): void {
                  : ''
              }`
       }`;
+    body.querySelector('[data-listen]')?.addEventListener('click', () => sheet.send({ type: 'listenGossip' }));
+    wireHeard(body, (cmd) => sheet.send(cmd));
     body.querySelector('[data-drink]')?.addEventListener('click', () => buyDrink(game));
     body.querySelector('[data-pigeon]')?.addEventListener('click', () => openPigeonSheet(game));
     body.querySelector('[data-rest]')?.addEventListener('click', () => sheet.send({ type: 'restAtInn' }));

@@ -61,6 +61,8 @@ export interface AwaySummary {
   stamped: number;
   /** 그 사이 알림을 보낼 만한 사건 (장날 결과, 급한 일, 도착 등) */
   notices: NotifyEvent[];
+  /** 지금 마을 여관에 아직 못 들은 소문이 있다 (0.1.2: 자리를 비운 사이에는 표시만) */
+  innFresh: boolean;
 }
 
 export class Game {
@@ -231,6 +233,10 @@ export class Game {
       heard,
       stamped,
       notices,
+      innFresh: (() => {
+        const g = this.view().gossip;
+        return g !== null && g.canListen && g.fresh > 0;
+      })(),
     };
   }
 

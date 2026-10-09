@@ -1,10 +1,10 @@
 // 소식 탭 (기획서 "화면 구성 - 소식 탭: 들어오는 것 전부", 0.0.5): 신문, 소문 수첩, 보고, 길드.
 import sealSmall from '../../../assets/ui/seal_small.png';
-import type { LedgerEntry, NoteView, PlayerView, RankingCategoryView } from '../../sim/economy';
+import { GOODS, type GoodId, type LedgerEntry, type NoteView, type PlayerView, type RankingCategoryView } from '../../sim/economy';
 import { openCertificate } from './certificate';
-import { ledgerLine } from '../format';
+import { goodName, ledgerLine } from '../format';
 import type { Game } from '../game';
-import { noteItem } from './noteItem';
+import { heardCard, noteItem, wireHeard } from './noteItem';
 import { guildHtml } from './buildings/simple';
 import { openPaper, paperBoxHtml } from './newspaper';
 
@@ -21,8 +21,9 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
     if (!reportKinds.has(e.kind) || (e.kind === 'hire' && e.what === 'wage') || (e.kind === 'warehouse' && e.what === 'rent')) continue;
     byDay.set(e.day, [...(byDay.get(e.day) ?? []), ledgerLine(e as LedgerEntry, townName).text]);
   }
+  // 소문이 아닌 것 (전서구, 정보원, 원정에서 직접 본 것)은 수첩이 아니라 보고에 저절로 남는다 (질문 97 기본안)
   for (const n of v.rumors) {
-    if (n.via !== 'informant' && n.via !== 'pigeon') continue;
+    if (n.via !== 'informant' && n.via !== 'pigeon' && n.via !== 'seen') continue;
     byDay.set(n.day, [...(byDay.get(n.day) ?? []), `${n.from}: ${n.text}`]);
   }
   const results =
@@ -32,13 +33,27 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
       .map(([day, lines]) => `<li><span class="day">${day}일째</span> ${lines.join('<br />')}</li>`)
       .join('') || '<li class="muted">아직 보고가 없어요.</li>';
 
+  // 소문 수첩 (0.1.2): 여관에서 듣고 내가 적은 것만. 확인 기다림 / 맞음 / 틀림, 물품별로 찾기
+  const book = v.rumors.filter((n) => n.via === 'gossip' || n.via === 'inn');
+  const inGroup = (n: NoteView) => (group === 'right' ? n.stamp === 'right' : group === 'wrong' ? n.stamp === 'wrong' : n.stamp === null || n.stamp === 'unchecked');
+  const goods = GOODS.filter((g) => book.some((n) => n.good === g));
+  if (goodFilter && !goods.includes(goodFilter)) goodFilter = null;
+  const shown = book.filter((n) => inGroup(n) && (goodFilter === null || n.good === goodFilter));
   const notes =
-    [...v.rumors]
+    [...shown]
       .reverse()
       .slice(0, NOTEBOOK_ROWS)
       .map((n) => noteItem(n, v.day, townName))
       .join('') ||
-    '<li class="muted">아직 들은 이야기가 없어요. 마을에 머물면 소문꾼들이 이야기를 들려줘요.</li>';
+    `<li class="muted">${book.length ? '여기에 해당하는 이야기가 없어요.' : '아직 적은 이야기가 없어요. 여관 소문꾼에게 듣고 수첩에 적어 보세요.'}</li>`;
+  const count = (g: NoteGroup) => book.filter((n) => (g === 'right' ? n.stamp === 'right' : g === 'wrong' ? n.stamp === 'wrong' : n.stamp === null || n.stamp === 'unchecked')).length;
+  const recent = v.recentHeard.length
+    ? `<section class="card">
+        <h2>최근 들은 이야기</h2>
+        <p class="muted">적지 않은 이야기는 며칠 뒤 잊혀요. 수첩에 적은 것만 맞았는지 도장이 찍혀요.</p>
+        <ul class="list">${[...v.recentHeard].reverse().map((n) => heardCard(n, v.day, townName)).join('')}</ul>
+      </section>`
+    : '';
 
   el.innerHTML = `
     <section class="card newspaper">
@@ -47,10 +62,21 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
       <p class="muted">산 신문이 날짜순으로 쌓여요. 누르면 한 부를 처음부터 끝까지 읽어요.</p>
       ${paperBoxHtml(v)}
     </section>
+    ${recent}
     <section class="card">
       <h2>소문 수첩</h2>
       <p class="muted">오가며 들은 이야기라 가끔 틀려요. 신문이나 직접 본 것으로 확인되면 도장이 찍혀요.</p>
-      ${tellerStamps(v.rumors)}
+      ${tellerStamps(book)}
+      <div class="seg note-groups" role="tablist" aria-label="수첩">
+        ${NOTE_GROUPS.map((g) => `<button type="button" role="tab" data-group="${g.id}" aria-pressed="${g.id === group}">${g.label} ${count(g.id)}</button>`).join('')}
+      </div>
+      ${
+        goods.length
+          ? `<label class="note-filter">물품 <select data-good-filter><option value="">모두</option>${goods
+              .map((g) => `<option value="${g}" ${g === goodFilter ? 'selected' : ''}>${goodName(g)}</option>`)
+              .join('')}</select></label>`
+          : ''
+      }
       <ul class="list">${notes}</ul>
     </section>
     <section class="card">
@@ -71,7 +97,28 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
     b.addEventListener('click', () => openCertificate(game, b.dataset.certId)),
   );
   el.querySelectorAll<HTMLButtonElement>('[data-paper]').forEach((b) => b.addEventListener('click', () => openPaper(game, Number(b.dataset.paper))));
+  el.querySelectorAll<HTMLButtonElement>('[data-group]').forEach((b) =>
+    b.addEventListener('click', () => {
+      group = b.dataset.group as NoteGroup;
+      renderNews(el, game, game.view());
+    }),
+  );
+  el.querySelector<HTMLSelectElement>('[data-good-filter]')?.addEventListener('change', (e) => {
+    goodFilter = ((e.target as HTMLSelectElement).value || null) as GoodId | null;
+    renderNews(el, game, game.view());
+  });
+  wireHeard(el, (cmd) => game.dispatch(cmd));
 }
+
+type NoteGroup = 'waiting' | 'right' | 'wrong';
+const NOTE_GROUPS: { id: NoteGroup; label: string }[] = [
+  { id: 'waiting', label: '확인 기다림' },
+  { id: 'right', label: '맞음' },
+  { id: 'wrong', label: '틀림' },
+];
+/** 수첩에서 고른 칸과 물품 (다시 그려도 남긴다) */
+let group: NoteGroup = 'waiting';
+let goodFilter: GoodId | null = null;
 
 /** 대표 부문은 1~3위를, 물품왕은 1위만. 이름을 누르면 상인 증서. 남의 순자산 숫자는 보이지 않는다 */
 function rankingHtml(v: PlayerView): string {

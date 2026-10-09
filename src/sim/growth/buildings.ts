@@ -9,7 +9,7 @@ import { seasonOfDay } from '../season';
 import { hasExpeditions } from '../economy/player';
 import type { EconomyState, PlayerState } from '../economy/state';
 import { stableAt } from '../horses/supply';
-import { innRumor } from '../rumors/hear';
+import { freshGossip, innRumor } from '../rumors/hear';
 import type { WorldMap } from '../worldgen';
 
 export type BuildingId = 'market' | 'inn' | 'newsboy' | 'store' | 'outside' | 'warehouse' | 'stable' | 'cartShop' | 'workshop' | 'bank' | 'guildHall';
@@ -69,7 +69,7 @@ export function buildingAlerts(state: EconomyState, p: PlayerState, map: WorldMa
   if (p.travel) return {};
   const town = p.town;
   const out: Partial<Record<BuildingId, string>> = {};
-  if (!p.drankToday && innRumor(state, p, map)) out.inn = '새 소문';
+  if ((p.listenedDay !== state.day && freshGossip(state, p, map) > 0) || (!p.drankToday && innRumor(state, p, map))) out.inn = '새 소문';
   if (hasExpeditions(state.towns[town]!) && p.expeditionChances >= ECONOMY.expedition.maxChances) out.outside = '기회 가득';
   if (p.cart.pieces.some((q) => q.uses === 0)) out.store = '장비 수리';
   if (p.cart.broken?.length && hasBuilding(state, map, town, 'cartShop')) out.cartShop = `망가진 칸 ${p.cart.broken.length}`;

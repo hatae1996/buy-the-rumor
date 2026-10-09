@@ -5,6 +5,7 @@ import type { EconomyState, PlayerId } from '../economy/state';
 import { createRng, mixSeed } from '../rng';
 import type { WorldMap } from '../worldgen';
 import { makeRumorsToday } from './facts';
+import { pruneHeard } from './notebook';
 import { createGossips } from './gossips';
 import { hearFromGossips } from './hear';
 import { deliverPigeons, informantReports } from './pigeon';
@@ -47,7 +48,9 @@ export function rumorNight(state: EconomyState, map: WorldMap): Record<PlayerId,
   for (const p of playerOrder(state)) {
     // 첫 플레이어는 소문을 만들고 남은 난수를 이어 쓴다 (한 사람 세계와 같게)
     const heardRng = p.seq === 0 ? rng : createRng(playerSeed(seed, p));
-    const heard = [...deliverPigeons(state, p, map), ...informantReports(state, p, map), ...hearFromGossips(state, p, map, heardRng)];
+    // 소문꾼에게 밤마다 저절로 듣는 것은 봇뿐이다. 사람은 여관에서 "듣기"를 누른다 (0.1.2, 60번 답을 바꿈)
+    const heard = [...deliverPigeons(state, p, map), ...informantReports(state, p, map), ...(p.autoRumors ? hearFromGossips(state, p, map, heardRng) : [])];
+    pruneHeard(state, p);
     out[p.id] = { heard, stamped: verifyNotebook(state, p, map) };
   }
   return out;

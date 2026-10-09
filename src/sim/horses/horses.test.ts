@@ -279,6 +279,7 @@ describe('말 입고 소문', () => {
     state.rumorMill.live.push(...made);
     state.rumorMill.gossips = [{ id: 1, town, name: '마구간 오토', personality: 'elder', good: null }];
     state.rumorMill.gossipSeason = state.season!.number;
+    state.players.me!.autoRumors = true; // 밤마다 저절로 듣는다 (봇처럼)
     state.day += 1; // 노인은 하루 늦게 안다
     advanceDay(state, map);
     const note = state.players.me!.rumors.find((h) => h.claim?.kind === 'horse')!;

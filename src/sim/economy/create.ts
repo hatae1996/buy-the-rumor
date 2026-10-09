@@ -152,6 +152,8 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     lastExpedition: null,
     rumors: [],
     drankToday: false,
+    listenedDay: null,
+    autoRumors: false,
     pigeons: [],
     informants: [],
     horses: [],

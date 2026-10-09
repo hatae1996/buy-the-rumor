@@ -53,11 +53,14 @@ export function showAwaySummary(game: Game, s: AwaySummary, onClose?: () => void
   ];
   if (reports.length) cards.push({ title: '보고', html: `<ul class="list">${reports.slice(0, 5).map((t) => `<li>${t}</li>`).join('')}</ul>` });
 
-  // 5. 새 소문: 한 번 접속에 많아야 몇 개만, 중요한 것부터 (기획서 "소문 - 듣는 방법")
+  // 여관에 새 소문 (0.1.2): 소문은 여관에서 직접 들어야 해서 여기서는 표시만
+  if (s.innFresh) cards.push({ title: '여관에 새 소문', html: '<p class="muted">이 마을 여관 소문꾼들에게 아직 못 들은 이야기가 있어요.</p>' });
+
+  // 5. 전서구·정보원 보고: 한 번 접속에 많아야 몇 개만, 중요한 것부터
   if (s.heard.length) {
     const heard = topNotes(s.heard, RUMORS.perVisit);
     cards.push({
-      title: '들은 이야기',
+      title: '전해 온 이야기',
       html: `<ul class="list">${heard.map((n) => noteItem(n, s.toDay, townName)).join('')}</ul>${
         s.heard.length > heard.length ? `<p class="muted">그 밖에 ${s.heard.length - heard.length}개는 수첩에 적어 두었어요.</p>` : ''
       }${s.stamped ? `<p class="muted">수첩에 도장이 ${s.stamped}개 새로 찍혔어요.</p>` : ''}`,

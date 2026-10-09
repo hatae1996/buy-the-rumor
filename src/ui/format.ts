@@ -117,6 +117,8 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   notTraveling: '도착하면 팔기는 길을 가는 동안 걸어 둘 수 있어요.',
   noPaper: '그 신문은 없어요. 신문팔이는 그날 신문만 팔아요.',
   alreadyBought: '이미 산 신문이에요.',
+  alreadyListened: '오늘은 소문꾼 이야기를 들었어요. 내일 다시 들어 보세요.',
+  noNote: '그 이야기는 이미 적었거나 잊혀졌어요.',
   badName: '상단 이름은 2~12글자로 지어 주세요.',
   badCrest: '없는 문장이에요.',
   noTitle: '아직 얻지 못한 칭호예요.',

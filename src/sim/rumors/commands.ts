@@ -3,10 +3,12 @@
 import { RUMORS } from '../constants';
 import type { EconomyState, PlayerState } from '../economy/state';
 import type { WorldMap } from '../worldgen';
-import { innRumor } from './hear';
+import { createRng, mixSeed } from '../rng';
+import { playerSeed } from '../economy/players';
+import { hearFromGossips, innRumor } from './hear';
 import { addNote } from './notebook';
 
-export type RumorError = 'alreadyDrank' | 'noRumor' | 'alreadyInformant' | 'noInformant';
+export type RumorError = 'alreadyDrank' | 'noRumor' | 'alreadyInformant' | 'noInformant' | 'alreadyListened';
 type Err = RumorError | 'traveling' | 'notEnoughGold' | 'noTown' | 'sameTown';
 
 export function drinkFee(state: EconomyState, town: number): number {
@@ -25,16 +27,35 @@ export function buyDrink(state: EconomyState, p: PlayerState, map: WorldMap): Er
   p.gold -= fee;
   p.drankToday = true;
   p.ledger.push({ day: state.day, kind: 'info', what: 'drink', town: p.town, fee });
-  addNote(state, p, {
-    town: p.town,
-    text: found.told.text,
-    via: 'inn',
-    from: '여관 손님',
-    gossip: null,
-    rumor: found.rumor.id,
-    importance: found.told.importance,
-    claim: found.told.claim,
-  });
+  addNote(
+    state,
+    p,
+    {
+      town: p.town,
+      text: found.told.text,
+      via: 'inn',
+      from: '여관 손님',
+      gossip: null,
+      rumor: found.rumor.id,
+      importance: found.told.importance,
+      claim: found.told.claim,
+    },
+    { pending: !p.autoRumors },
+  );
+  return null;
+}
+
+/**
+ * 여관 소문꾼에게 듣는다 (하루 한 번, 공짜, 0.1.2). 들은 이야기는 "최근 들은 이야기"에 두고 적을지 고른다.
+ * 들려줄 이야기가 없으면 noRumor (그날 다시 들을 수 있다)
+ */
+export function listenGossip(state: EconomyState, p: PlayerState, map: WorldMap): Err | null {
+  if (p.travel) return 'traveling';
+  if (p.listenedDay === state.day) return 'alreadyListened';
+  const rng = createRng(playerSeed(mixSeed(state.seed, 0x7a1f, state.day), p));
+  const heard = hearFromGossips(state, p, map, rng, !p.autoRumors);
+  if (heard.length === 0) return 'noRumor';
+  p.listenedDay = state.day;
   return null;
 }
 
