@@ -86,7 +86,7 @@ export class Game {
    * 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다.
    * 같은 시장에 봇 상인이 함께 앉는다 (기본 10명, 개발용 0~20)
    */
-  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number } = {}): Game {
+  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number; seasonDays?: number } = {}): Game {
     const map = generateWorld(seed);
     const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
     const specs = botSpecs(map.seed, bots);
@@ -96,6 +96,8 @@ export class Game {
     });
     // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레
     for (const s of specs) getPlayer(state, s.id).cart = createCart('handcart');
+    // 시험용: 시즌을 짧게 (결산을 빨리 보려고)
+    if (opt.seasonDays && state.season && opt.seasonDays >= 2) state.season.length = Math.min(state.season.length, Math.floor(opt.seasonDays));
     const game = new Game(map, state, createCrew(state, specs.map((s) => s.id)), now);
     game.save();
     return game;
