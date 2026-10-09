@@ -57,7 +57,10 @@ export function runBot(seed: number, profile: BotProfile, opt: BotRunOptions, wo
   return runBotOn(state, map, profile, opt);
 }
 
-/** 하루 벌이: from일부터 to일까지 가진 것의 온값이 하루에 는 양 (시작 200에서) */
+/**
+ * 하루 벌이: from일부터 to일까지 가진 것의 온값이 하루에 는 양 (시작 200에서).
+ * 첫 5일 목표(5~10)만 이것으로 잰다: 처음엔 사 모아 두는 것도 좋은 장사라 판 것의 이익으로는 0에 가깝다 (questions.md 76번, 0.0.9)
+ */
 export function dailyIncome(run: BotRun, from: number, to: number, start = 200): number {
   const w = [start, ...run.wealth];
   const b = Math.min(to, w.length - 1);

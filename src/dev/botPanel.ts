@@ -1,7 +1,7 @@
 // 봇 돌리기: 플레이어 봇을 성향별로 한 시즌 돌려 순자산이 어떻게 느는지 본다 (기획서 "숫자를 맞출 기준").
 // 플레이어 자리가 하나라 봇마다 같은 시드의 세계를 따로 돌린다 (서로 경쟁하지 않는다).
 import { CYCLE_DAYS, SEASON_NAME, type Season } from '../sim/season';
-import { BOT_PROFILES, bigDays, profitIncome, runBot, seasonIncome, type BotProfile, type BotRun, type GrowthKind } from '../sim/bot';
+import { BOT_PROFILES, bigDays, dailyIncome, profitIncome, runBot, seasonIncome, type BotProfile, type BotRun, type GrowthKind } from '../sim/bot';
 import { generateWorld, type WorldMap } from '../sim/worldgen';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
@@ -28,7 +28,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     <section class="dev-slip"><h2>순자산 (성향별)</h2><div class="dev-chart-box" data-bot-chart></div></section>
     <section class="dev-slip"><h2>한 시즌 결과</h2><div class="dev-scroll"><table class="dev-table" data-bot-table></table></div></section>
     <section class="dev-slip"><h2>시작 계절별 요약 (가운데 값)</h2>
-      <p class="dev-mono">하루 벌이 = 그날 판 것의 이익 (판 값 − 산 값, 원정에서 얻은 것은 산 값 0). 목표: 67일 20~40, 후반 평균 &gt; 전반 평균, 10배 번 날 2~3번, 유지비는 벌이의 20~30%.</p>
+      <p class="dev-mono">하루 벌이 = 그날 판 것의 이익 (판 값 − 산 값, 원정에서 얻은 것은 산 값 0). 첫 5일만 가진 것의 온값이 하루에 는 양 (처음엔 사 모아 두는 것도 좋은 장사라서, 0.0.9). 목표: 첫 5일 5~10, 67일 20~40, 후반 평균 &gt; 전반 평균, 10배 번 날 2~3번, 유지비는 벌이의 20~30%.</p>
       <div class="dev-scroll"><table class="dev-table" data-bot-many-table></table></div></section>
   `;
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
@@ -112,7 +112,7 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
 }
 
 const SUMMARY_HEAD =
-  '<tr><th>시작</th><th>성향</th><th>끝 순자산 (최소 · 가운데 · 최대)</th><th>잃은 판</th><th>하루 벌이 첫5일 · 67일</th><th>시즌 평균</th><th>전반 → 후반 (후반이 높은 판)</th><th>끝 유지비 (평균 대비)</th><th>10배 번 날</th><th>큰 주문 (겨울)</th><th>행렬 꾸린 판</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th></tr>';
+  '<tr><th>시작</th><th>성향</th><th>끝 순자산 (최소 · 가운데 · 최대)</th><th>잃은 판</th><th>하루 벌이 첫5일(온값) · 67일</th><th>시즌 평균</th><th>전반 → 후반 (후반이 높은 판)</th><th>끝 유지비 (평균 대비)</th><th>10배 번 날</th><th>큰 주문 (겨울)</th><th>행렬 꾸린 판</th><th>첫 말·짐꾼</th><th>첫 채집꾼·창고</th></tr>';
 
 /** 같은 시작 계절, 같은 성향의 여러 판을 한 줄로 */
 function summaryRow(season: string, p: BotProfile, runs: BotRun[]): string {
@@ -133,7 +133,7 @@ function summaryRow(season: string, p: BotProfile, runs: BotRun[]): string {
   // 큰 주문 사건 수 평균, 그중 겨울 (0.0.8 목표: 시즌 2~4번, 겨울 비중을 높게)
   const mean = (f: (r: BotRun) => number) => (runs.reduce((a, r) => a + f(r), 0) / runs.length).toFixed(1);
   const orders = `${mean((r) => r.bigOrders.length)} (${mean((r) => r.bigOrders.filter((s) => s === 3).length)})`;
-  return `<tr><th>${season}</th><th>${p.name}</th><td>${spread(end)}</td><td>${lost}/${runs.length}</td><td>${income(0, 5)} · ${income(60, 74)}</td><td>${avg}</td><td>${halves}</td><td>${upkeep} (${share})</td><td>${big}</td><td>${orders}</td><td>${runs.filter((r) => r.firsts.caravan !== undefined).length}/${runs.length}</td><td>${firstHorse}</td><td>${firstGather}</td></tr>`;
+  return `<tr><th>${season}</th><th>${p.name}</th><td>${spread(end)}</td><td>${lost}/${runs.length}</td><td>${median(runs.map((r) => dailyIncome(r, 0, 5)))} · ${income(60, 74)}</td><td>${avg}</td><td>${halves}</td><td>${upkeep} (${share})</td><td>${big}</td><td>${orders}</td><td>${runs.filter((r) => r.firsts.caravan !== undefined).length}/${runs.length}</td><td>${firstHorse}</td><td>${firstGather}</td></tr>`;
 }
 
 function runTable(runs: BotRun[]): string {
