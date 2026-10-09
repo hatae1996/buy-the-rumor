@@ -30,9 +30,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일 / v20: 0.1.0 여러 플레이어 / v21: 0.1.0 봇 상인)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일 / v20: 0.1.0 여러 플레이어 / v21: 0.1.0 봇 상인 / v22: 0.1.0 예약 주문, 신문값)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v21';
+const SAVE_KEY = 'buy-the-rumor/save/v22';
 
 interface SaveData {
   version: 1;
@@ -167,7 +167,6 @@ export class Game {
     const me = this.me;
     const wasOnRoad = me.travel !== null;
     const ledgerFrom = me.ledger.length;
-    const newsFrom = this.state.news.length;
     const heard: NoteView[] = [];
     const notices: NotifyEvent[] = [];
     let stamped = 0;
@@ -186,7 +185,8 @@ export class Game {
       fromDay,
       toDay: this.state.day,
       ledger: me.ledger.slice(ledgerFrom),
-      news: this.state.news.slice(newsFrom),
+      // 신문은 산 날만 전문, 아니면 머리기사만 (0.1.0)
+      news: this.view().news.filter((n) => n.day >= fromDay),
       arrivedAt: arrived ? me.town : null,
       heard,
       stamped,

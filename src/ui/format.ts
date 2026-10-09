@@ -86,6 +86,9 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   badDeadline: '마감 날은 오늘부터 이번 시즌 마지막 날까지예요.',
   noReservation: '이미 없는 예약 주문이에요.',
   notTraveling: '도착하면 팔기는 길을 가는 동안 걸어 둘 수 있어요.',
+  noPaper: '그날 신문은 살 수 없어요. 지난 신문은 일주일 안의 것만 팔아요.',
+  alreadyBought: '이미 산 신문이에요.',
+  paperFree: '견습 동안은 신문이 무료예요.',
   noHire: '그 일꾼은 이미 없어요.',
   boardNotEmpty: '짐꾼 수레의 짐을 먼저 옮기세요.',
   noBoard: '그 짐칸이 없어요.',
@@ -182,7 +185,7 @@ export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { 
       return { text: `${what}에서 뽑히지 않았어요 (맡긴 돈은 돌려받음)`, amount: null };
     }
     case 'info': {
-      const what = { drink: `${townName(e.town)} 여관에서 술 한 잔 (소문 하나)`, pigeon: `${townName(e.town)}에 전서구를 보냈어요`, informant: `${townName(e.town)} 정보원 품삯` }[e.what];
+      const what = { drink: `${townName(e.town)} 여관에서 술 한 잔 (소문 하나)`, pigeon: `${townName(e.town)}에 전서구를 보냈어요`, informant: `${townName(e.town)} 정보원 품삯`, newspaper: '신문을 샀어요' }[e.what];
       return { text: what, amount: -e.fee };
     }
   }

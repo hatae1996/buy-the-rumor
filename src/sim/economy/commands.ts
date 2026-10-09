@@ -53,6 +53,7 @@ import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt
 import { getPlayer, ownedBy } from './players';
 import type { EconomyState, PlayerId, PlayerState } from './state';
 import { cancelDraw, cancelDrawsOnLeave, requestHire, requestHorse, type DrawError } from '../draws';
+import { buyNewspaper, type NewspaperError } from '../news';
 import { cancelReservation, reserveOnArrival, reserveStanding, type ReservationError } from '../reservations';
 
 export type Command =
@@ -100,8 +101,10 @@ export type Command =
   | { type: 'repairGear'; gear: GearKind }
   /** 여관에서 안내인을 고용한다 (다음 원정 한 번) */
   | { type: 'hireGuide' }
-  /** 신문을 읽었다 (견습: 첫 신문 장면이 끝난다. 나중에 신문값을 받는 자리) */
+  /** 신문을 읽었다 (견습: 첫 신문 장면이 끝난다) */
   | { type: 'readNews' }
+  /** 그날 신문을 산다 (전문을 읽는다, 0.1.0). day: 그 신문이 나온 장날 */
+  | { type: 'buyNewspaper'; day: number }
   /** 지금 마을 창고를 빌린다 / 빈 창고를 돌려준다 */
   | { type: 'rentWarehouse' }
   | { type: 'releaseWarehouse'; town: number }
@@ -160,6 +163,7 @@ export type CommandError =
   | CaravanError
   | DrawError
   | ReservationError
+  | NewspaperError
   | ArrangeError
   | 'boardNotEmpty';
 
@@ -318,6 +322,8 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       return done(repairGear(state, p, cmd.gear));
     case 'hireGuide':
       return done(hireGuide(state, p));
+    case 'buyNewspaper':
+      return done(buyNewspaper(state, p, cmd.day));
     case 'readNews':
       p.newsReadDay = state.day;
       return { ok: true };

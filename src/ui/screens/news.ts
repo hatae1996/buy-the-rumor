@@ -1,7 +1,7 @@
 // 소식 탭 (기획서 "화면 구성 - 소식 탭: 들어오는 것 전부", 0.0.5): 신문, 소문 수첩, 보고, 길드.
 import sealSmall from '../../../assets/ui/seal_small.png';
 import type { LedgerEntry, NoteView, PlayerView } from '../../sim/economy';
-import { agoText, ledgerLine } from '../format';
+import { agoText, ERROR_TEXT, ledgerLine, money } from '../format';
 import type { Game } from '../game';
 import { noteItem } from './noteItem';
 import { guildHtml } from './buildings/simple';
@@ -11,10 +11,25 @@ const NOTEBOOK_ROWS = 30;
 
 export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
   const townName = (id: number) => game.map.towns[id]!.name;
-  const items = [...v.news].reverse().slice(0, 30);
+  // 신문은 장날마다 한 부: 사지 않은 날은 머리기사만 (0.1.0)
+  const byPaper = new Map<number, string[]>();
+  for (const n of v.news) byPaper.set(n.day, [...(byPaper.get(n.day) ?? []), n.text]);
+  const np = v.newspaper;
   const paper =
-    items.map((n) => `<li><span class="day">${agoText(v.day, n.day)}</span> ${n.text}</li>`).join('') ||
-    '<li class="muted">아직 큰 소식이 없어요.</li>';
+    [...byPaper]
+      .sort((a, b) => b[0] - a[0])
+      .slice(0, 10)
+      .map(([day, lines]) => {
+        const hidden = np.hidden[day] ?? 0;
+        const canBuy = hidden > 0 && day >= np.oldest;
+        const more = hidden
+          ? `<div class="paper-more"><span class="muted">기사 ${hidden}개 더</span>${
+              canBuy ? `<button type="button" class="secondary-btn" data-paper="${day}" ${v.gold < np.fee ? 'disabled' : ''}>신문 사기<small>${money(np.fee)}</small></button>` : ''
+            }</div>`
+          : '';
+        return `<li><span class="day">${agoText(v.day, day)}</span> ${lines.map((t, i) => (i === 0 ? `<b>${t}</b>` : t)).join('<br />')}${more}</li>`;
+      })
+      .join('') || '<li class="muted">아직 큰 소식이 없어요.</li>';
 
   // 보고: 장날 결과(내가, 창고 짐이, 두 번째 행렬이), 일꾼·마부·정보원. 날짜순 (기획서 "소식 탭")
   const reportKinds = new Set(['buy', 'sell', 'gathered', 'hire', 'caravan', 'warehouse']);
@@ -46,8 +61,9 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
     <section class="card newspaper">
       <img class="seal" src="${sealSmall}" alt="" />
       <h2>장터 신문</h2>
-      <p class="muted">${v.day}일째 · 큰 사건을 사실만 실어요</p>
+      <p class="muted">${v.day}일째 · 큰 사건을 사실만 실어요 · ${np.free ? '견습 동안은 무료예요' : `머리기사는 공짜, 사면 전문을 읽어요 (한 부 ${money(np.fee)})`}</p>
       <ul class="list news-list">${paper}</ul>
+      ${paperError ? `<p class="error">${paperError}</p>` : ''}
     </section>
     <section class="card">
       <h2>소문 수첩</h2>
@@ -65,7 +81,19 @@ export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
       ${guildHtml(v)}
       <p class="muted">랭킹은 여럿이 함께하는 버전에서 열려요.</p>
     </section>`;
+
+  el.querySelectorAll<HTMLButtonElement>('[data-paper]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const r = game.dispatch({ type: 'buyNewspaper', day: Number(b.dataset.paper) });
+      paperError = r.ok ? '' : ERROR_TEXT[r.error];
+      // 성공하면 화면이 새로 그려진다. 실패는 여기서 다시 그린다
+      if (!r.ok) renderNews(el, game, game.view());
+    }),
+  );
 }
+
+/** 신문을 못 산 까닭 (다시 그릴 때까지 남긴다) */
+let paperError = '';
 
 /** 소문꾼마다 받은 도장 수. 비율은 보여 주지 않고 도장만 센다 (기획서 "들은 이야기 수첩") */
 function tellerStamps(notes: readonly NoteView[]): string {

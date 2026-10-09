@@ -120,7 +120,7 @@ export type LedgerEntry =
   | { day: number; kind: 'expedition'; town: number; goods: { good: GoodId; qty: number }[]; leftBehind: number }
   | { day: number; kind: 'toll'; town: number; gold: number }
   /** 소식을 산 돈: 여관 술 한 잔, 전서구, 정보원 */
-  | { day: number; kind: 'info'; what: 'drink' | 'pigeon' | 'informant'; town: number; fee: number }
+  | { day: number; kind: 'info'; what: 'drink' | 'pigeon' | 'informant' | 'newspaper'; town: number; fee: number }
   /** 말 사고팔기, 굶다 도망친 말 */
   | { day: number; kind: 'horse'; what: 'buy' | 'sell' | 'lost'; town: number; horse: HorseKind; price: number }
   /** 말 먹이: 마구간에서 먹였으면 fee, 길 위에서 수레 곡물을 먹였으면 fee 0 (town null) */
@@ -238,6 +238,8 @@ export interface PlayerState {
   homeTown: number;
   /** 마지막으로 신문을 읽은 날 */
   newsReadDay: number | null;
+  /** 산 신문 (그 신문이 나온 장날). 산 날 신문은 전문을 계속 읽는다 (0.1.0) */
+  newspapers: number[];
   /** 이번 시즌 기록 (랭킹 부문 점수, 길드 의뢰, 업적). 시즌이 시작되기 전이면 null */
   record: SeasonRecord | null;
   /** 상인 증서: 시즌이 바뀌어도 남는다 */

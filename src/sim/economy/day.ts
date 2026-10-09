@@ -1,8 +1,7 @@
 // 하루 진행: 사건 시작 → 신청 받기 → 장날 정산 → 일꾼 생산과 소비 → 반응 사건과 소식.
 // 앱을 다시 열면 지나간 날만큼 이 함수를 빠르게 돌린다.
 import { ECONOMY } from '../constants';
-import { eulReul, iGa } from '../josa';
-import { createCertificate } from '../ranking/certificate';
+import { eulReul } from '../josa';
 import { createRng, shuffle } from '../rng';
 import { seasonOfDay, WINTER, type Season } from '../season';
 import type { WorldMap } from '../worldgen';
@@ -290,10 +289,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   return report;
 }
 
-/** 신문에 실리는 상단 이름 ("잿빛 까마귀 상단이"). 이름을 짓지 않았으면 "어느 상단이" */
-function companyName(p: PlayerState): string {
-  const name = p.certificate.name;
-  return iGa(name === createCertificate().name ? '어느 상단' : name);
+/**
+ * 신문에 실리는 상단 이름. 기본은 "어느 상단"으로 익명이다 (기획서 "플레이어의 큰 거래도 신문에 실린다").
+ * 랭킹 상위권 상단만 이름이 실린다: 랭킹 화면을 만들 때(작업 5) 붙인다
+ */
+function companyName(_p: PlayerState): string {
+  return '어느 상단이';
 }
 
 /** 여러 날을 한꺼번에 (자리를 비운 사이) */

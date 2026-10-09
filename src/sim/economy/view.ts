@@ -48,6 +48,7 @@ import type {
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
+import { paperFree, visibleNews } from '../news';
 import type { Reservation } from '../reservations';
 import { getPlayer, ownedBy, playerList } from './players';
 
@@ -172,7 +173,19 @@ export interface PlayerView {
   rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
+  /** 신문: 산 날(과 견습 동안)은 전문, 아니면 날마다 머리기사 한 줄 (0.1.0) */
   news: readonly NewsItem[];
+  newspaper: {
+    fee: number;
+    /** 견습 동안은 무료 */
+    free: boolean;
+    /** 산 신문 (장날) */
+    bought: number[];
+    /** 날마다 사야 읽을 수 있는 기사 수 */
+    hidden: Record<number, number>;
+    /** 이날부터 산다 (지난 신문은 며칠 안의 것만) */
+    oldest: number;
+  };
   fatigue: number;
   fatigueMax: number;
   /** 많이 지쳐서 원정 결과가 나빠지는 상태 */
@@ -597,6 +610,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
   // 물건마다 내 수레에 더 실을 칸 (짐을 실어 보며 세어 무겁다: 한 번만)
   const room = Object.fromEntries(GOODS.map((g) => [g, roomFor(p.cart, g)])) as Record<GoodId, number>;
   const location = locationOf(p);
+  const paper = visibleNews(state, p);
 
   let market: MarketView | null = null;
   if (!p.travel) {
@@ -651,7 +665,8 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     orders,
     memory: p.memory,
     ledger: p.ledger,
-    news: state.news,
+    news: paper.items,
+    newspaper: { fee: ECONOMY.newspaper.fee, free: paperFree(p), bought: [...p.newspapers], hidden: paper.hidden, oldest: state.day - ECONOMY.newspaper.backDays },
     fatigue: p.fatigue,
     fatigueMax: ECONOMY.fatigue.max,
     tired: p.fatigue >= ECONOMY.fatigue.tiredAt,
