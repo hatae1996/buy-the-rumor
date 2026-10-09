@@ -7,7 +7,7 @@ import type { GoodId } from '../economy/goods';
 import { GOOD_NAME } from '../economy/goods';
 import { depletes, findNode } from '../economy/nodes';
 import { hasExpeditions } from '../economy/player';
-import type { ActiveExpedition, EconomyState, ExpeditionLogLine } from '../economy/state';
+import type { ActiveExpedition, EconomyState, ExpeditionLogLine, PlayerState } from '../economy/state';
 import { createRng, mixSeed, type Rng } from '../rng';
 import type { WorldMap } from '../worldgen';
 import { APPRENTICE_DECK, cardById } from './cards';
@@ -35,8 +35,7 @@ export type ExpeditionError =
   | 'noHorse'
   | GearError;
 
-export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionError | null {
-  const p = state.player;
+export function startExpedition(state: EconomyState, p: PlayerState, map: WorldMap): ExpeditionError | null {
   if (p.expedition) return 'inExpedition';
   if (p.travel) return 'traveling';
   if (!hasExpeditions(state.towns[p.town]!)) return 'noExpedition';
@@ -46,11 +45,11 @@ export function startExpedition(state: EconomyState, map: WorldMap): ExpeditionE
   const rng = createRng(mixSeed(state.seed, state.day, state.nextId++));
   // 견습 첫 원정은 스크립트로 정한 쉬운 카드 3장 (반드시 성공)
   const scripted = p.apprentice?.scene === 'start';
-  const { deck, markDays } = scripted ? { deck: [...APPRENTICE_DECK], markDays: {} } : buildDeck(state, map, p.town, rng);
+  const { deck, markDays } = scripted ? { deck: [...APPRENTICE_DECK], markDays: {} } : buildDeck(state, p, map, p.town, rng);
   if (deck.length === 0) return 'noExpedition';
   p.expeditionChances -= 1;
   // 자원지를 직접 보니 그 마을 자원지 소문에 도장을 찍는다
-  verifyByExpedition(state, p.town);
+  verifyByExpedition(state, p, p.town);
   // 한 번의 원정은 카드 3~4장. 안내인은 이번 원정 한 번만 따라간다
   const total = scripted ? deck.length : rng.next() < 0.5 ? 3 : 4;
   const ex: ActiveExpedition = {
@@ -86,15 +85,15 @@ function drawNext(ex: ActiveExpedition): void {
 }
 
 /** 성공 확률 (화면에 대략 보여 줄 때도 같은 식을 쓴다) */
-export function chanceOf(chance: Chance, state: EconomyState, townId: number): number {
-  let p = chance.base;
+export function chanceOf(chance: Chance, state: EconomyState, p: PlayerState, townId: number): number {
+  let odds = chance.base;
   if (chance.node) {
     const node = findNode(state.towns[townId]!, chance.node);
     const fullness = node ? node.amount / node.capacity : 0;
-    p += (chance.nodeWeight ?? 0) * (fullness - 0.5);
+    odds += (chance.nodeWeight ?? 0) * (fullness - 0.5);
   }
-  if (state.player.fatigue >= ECONOMY.fatigue.tiredAt) p -= TIRED_PENALTY;
-  return Math.min(0.95, Math.max(0.05, p));
+  if (p.fatigue >= ECONOMY.fatigue.tiredAt) odds -= TIRED_PENALTY;
+  return Math.min(0.95, Math.max(0.05, odds));
 }
 
 /** 선택지에 쌓이는 피로 (눈 덮인 길이면 모든 카드에 +1) */
@@ -102,14 +101,13 @@ export function choiceFatigue(choice: Choice, ex: ActiveExpedition): number {
   return choice.fatigue + (ex.flags.includes('snow') && choice.fatigue >= 0 ? 1 : 0);
 }
 
-export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceIndex: number): ExpeditionError | null {
-  const p = state.player;
+export function chooseExpeditionCard(state: EconomyState, p: PlayerState, map: WorldMap, choiceIndex: number): ExpeditionError | null {
   const ex = p.expedition;
   if (!ex) return 'notInExpedition';
   const card = cardById(ex.card);
   const choice = card.choices[choiceIndex];
   if (!Number.isInteger(choiceIndex) || !choice) return 'badChoice';
-  const unmet = needsMet(state, choice.needs);
+  const unmet = needsMet(p, choice.needs);
   if (unmet) return unmet;
   const rng = createRng(ex.rng);
 
@@ -118,12 +116,12 @@ export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceI
   if (choice.needs?.gear) useGear(p, choice.needs.gear);
 
   // 결과는 이 선택을 하기 전 몸 상태로 판단하고, 피로는 그다음에 쌓인다
-  const chance = choice.chance ? chanceOf(choice.chance, state, ex.town) : null;
+  const chance = choice.chance ? chanceOf(choice.chance, state, p, ex.town) : null;
   const success = chance === null || rng.next() < chance;
   const effects = success ? choice.success : (choice.failure ?? []);
   const result = { ended: false, risk: !success && chance !== null, parts: [] as string[] };
   const before = new Map(ex.haul.map((h) => [h.good, h.qty]));
-  for (const e of effects) applyEffect(e, state, map, ex, rng, result);
+  for (const e of effects) applyEffect(e, state, p, map, ex, rng, result);
   // 랭킹: 이야기가 되는 순간 (곰을 횃불로 쫓음, 늑대를 무사히 지남 등)
   const gained: Partial<Record<string, number>> = {};
   let lost = 0;
@@ -132,7 +130,7 @@ export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceI
     if (d > 0) gained[g] = d;
     else lost -= d;
   }
-  noteExpeditionMoments(state, { card: card.id, choice, success, gained, lost });
+  noteExpeditionMoments(state, p, { card: card.id, choice, success, gained, lost });
   p.fatigue = Math.min(ECONOMY.fatigue.max, Math.max(0, p.fatigue + choiceFatigue(choice, ex)));
   ex.log.push(logLine(card.title, choice, chance === null ? null : success ? 'success' : 'failure', result.parts));
 
@@ -147,7 +145,7 @@ export function chooseExpeditionCard(state: EconomyState, map: WorldMap, choiceI
 
   ex.rng = rng.state();
   if (result.ended || ex.left <= 0 || p.fatigue >= ECONOMY.fatigue.max || ex.deck.length === 0) {
-    finishExpedition(state);
+    finishExpedition(state, p);
   } else {
     drawNext(ex);
   }
@@ -166,8 +164,7 @@ interface EffectResult {
   parts: string[];
 }
 
-function applyEffect(e: Effect, state: EconomyState, map: WorldMap, ex: ActiveExpedition, rng: Rng, out: EffectResult): void {
-  const p = state.player;
+function applyEffect(e: Effect, state: EconomyState, p: PlayerState, map: WorldMap, ex: ActiveExpedition, rng: Rng, out: EffectResult): void {
   const town = state.towns[ex.town]!;
   const say = (text: string): void => {
     out.parts.push(text);
@@ -216,12 +213,12 @@ function applyEffect(e: Effect, state: EconomyState, map: WorldMap, ex: ActiveEx
       out.risk = true;
       return say(`${X.gear[e.gear].name}${p.gear[e.gear] === 0 ? '이 망가졌어요' : '이 상했어요'}.`);
     case 'maybe':
-      if (rng.next() < e.chance) for (const inner of e.effects) applyEffect(inner, state, map, ex, rng, out);
+      if (rng.next() < e.chance) for (const inner of e.effects) applyEffect(inner, state, p, map, ex, rng, out);
       return;
     case 'oneOf': {
       const pick = e.options[rng.int(0, e.options.length - 1)]!;
       if (!pick.length) say('쓸 만한 건 없었어요.');
-      for (const inner of pick) applyEffect(inner, state, map, ex, rng, out);
+      for (const inner of pick) applyEffect(inner, state, p, map, ex, rng, out);
       return;
     }
     case 'rumor': {
@@ -267,8 +264,8 @@ function applyEffect(e: Effect, state: EconomyState, map: WorldMap, ex: ActiveEx
       const age = state.day - (ex.markDays.checkTrap ?? state.day);
       const caught = age <= X.trapFreshDays || (age <= X.trapGoneDays && rng.next() < 0.5);
       if (!caught) return say('다른 짐승이 먼저 먹어 치웠어요.');
-      applyEffect({ kind: 'goods', good: 'meat', min: 1, max: 2, from: 'forest' }, state, map, ex, rng, out);
-      applyEffect({ kind: 'goods', good: 'leather', min: 1, max: 1, from: 'forest' }, state, map, ex, rng, out);
+      applyEffect({ kind: 'goods', good: 'meat', min: 1, max: 2, from: 'forest' }, state, p, map, ex, rng, out);
+      applyEffect({ kind: 'goods', good: 'leather', min: 1, max: 1, from: 'forest' }, state, p, map, ex, rng, out);
       return;
     }
   }
@@ -281,8 +278,7 @@ function addHaul(ex: ActiveExpedition, good: GoodId, qty: number): void {
 }
 
 /** 원정을 마치고 돌아온다: 얻은 것을 수레에 싣고(자리가 없으면 두고 온다), 들은 이야기를 수첩에 적는다 */
-export function finishExpedition(state: EconomyState): ExpeditionError | null {
-  const p = state.player;
+export function finishExpedition(state: EconomyState, p: PlayerState): ExpeditionError | null {
   const ex = p.expedition;
   if (!ex) return 'notInExpedition';
   const loaded: { good: GoodId; qty: number }[] = [];
@@ -298,7 +294,7 @@ export function finishExpedition(state: EconomyState): ExpeditionError | null {
     if (n > 0) loaded.push({ good: h.good, qty: n });
     if (h.qty - n > 0) leftBehind.push({ good: h.good, qty: h.qty - n });
   }
-  for (const text of ex.rumors) noteSeen(state, ex.town, text);
+  for (const text of ex.rumors) noteSeen(state, p, ex.town, text);
   p.ledger.push({
     day: state.day,
     kind: 'expedition',

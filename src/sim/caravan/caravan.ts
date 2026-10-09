@@ -5,7 +5,7 @@
 import { CART_TYPES, cartLots, createCart, loadGoods, type Cart, type CartType } from '../cart';
 import { CART, GROWTH, HORSES } from '../constants';
 import { GOODS, type GoodId } from '../economy/goods';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { hasBuilding } from '../growth/buildings';
 import { lacksHorses } from '../horses/pull';
 import type { WorldMap } from '../worldgen';
@@ -15,15 +15,13 @@ export type CaravanError = 'noCarter' | 'haveCaravan' | 'noCaravan' | 'caravanAw
 type Err = CaravanError | 'traveling' | 'notEnoughGold' | 'noCartShop' | 'needHorse' | 'noHorse' | 'boardNotEmpty';
 
 /** 아직 행렬을 맡지 않은 마부 */
-function freeCarter(state: EconomyState): number | null {
-  const p = state.player;
+function freeCarter(p: PlayerState): number | null {
   const busy = p.caravan?.carter;
   return p.hires.find((h) => h.role === 'carter' && h.id !== busy)?.id ?? null;
 }
 
 /** 내 말 수 (두 행렬 합). 한 사람 최대 2필 */
-export function ownedHorses(state: EconomyState): number {
-  const p = state.player;
+export function ownedHorses(p: PlayerState): number {
   return p.horses.length + (p.caravan?.horses.length ?? 0);
 }
 
@@ -31,11 +29,10 @@ export function ownedHorses(state: EconomyState): number {
  * 두 번째 행렬을 꾸린다: 고용한 마부, 내 말 중 일부, 이 마을 수레방에서 새로 사거나 빌린 수레 (0.0.9: rent면 빌린다).
  * 내 행렬은 남은 말로 움직일 수 있어야 하고(마차는 2필), 새 수레도 행렬 말로 움직일 수 있어야 한다
  */
-export function formCaravan(state: EconomyState, map: WorldMap, horseIds: readonly number[], cart: CartType, rent = false): Err | null {
-  const p = state.player;
+export function formCaravan(state: EconomyState, p: PlayerState, map: WorldMap, horseIds: readonly number[], cart: CartType, rent = false): Err | null {
   if (p.travel) return 'traveling';
   if (p.caravan) return 'haveCaravan';
-  const carter = freeCarter(state);
+  const carter = freeCarter(p);
   if (carter === null) return 'noCarter';
   if (!hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
   if (!CART_TYPES.includes(cart) || (rent && CART.rentPerDay[cart] <= 0)) return 'badPlan';
@@ -67,8 +64,8 @@ export function formCaravan(state: EconomyState, map: WorldMap, horseIds: readon
 }
 
 /** 지시서를 보낸다. 다음 장날부터 첫 마을로 간다 */
-export function setCaravanPlan(state: EconomyState, plan: CaravanPlan): Err | null {
-  const c = state.player.caravan;
+export function setCaravanPlan(state: EconomyState, p: PlayerState, plan: CaravanPlan): Err | null {
+  const c = p.caravan;
   if (!c) return 'noCaravan';
   const okStop = (s: CaravanPlan['stops'][number]) =>
     Number.isInteger(s.town) &&
@@ -85,8 +82,8 @@ export function setCaravanPlan(state: EconomyState, plan: CaravanPlan): Err | nu
 }
 
 /** 행렬을 불러들인다: 지시서를 멈추고 내가 있는 마을로 온다 */
-export function recallCaravan(state: EconomyState): Err | null {
-  const c = state.player.caravan;
+export function recallCaravan(p: PlayerState): Err | null {
+  const c = p.caravan;
   if (!c) return 'noCaravan';
   c.plan = null;
   c.recalled = true;
@@ -98,8 +95,7 @@ export function recallCaravan(state: EconomyState): Err | null {
  * 말은 내 행렬로 돌아오고, 산 수레는 쓰던 수레 값으로 판다. 빌린 수레는 밀린 값을 다 내고 돌려준다
  * (어느 마을에서나, 0.0.9). 마부는 고용된 채로 남는다
  */
-export function disbandCaravan(state: EconomyState): Err | null {
-  const p = state.player;
+export function disbandCaravan(state: EconomyState, p: PlayerState): Err | null {
   const c = p.caravan;
   if (!c) return 'noCaravan';
   if (p.travel || c.travel || c.town !== p.town) return 'caravanAway';
@@ -126,8 +122,7 @@ export function disbandCaravan(state: EconomyState): Err | null {
  * 밤에: 빌린 수레 값 (0.0.9). 하루 값을 더하고, 낼 돈이 있으면 밀린 것까지 빌린 수레방 마을에 낸다.
  * 못 내면 밀린다 (행렬을 풀 때 다 내야 한다)
  */
-export function caravanRentNight(state: EconomyState): void {
-  const p = state.player;
+export function caravanRentNight(state: EconomyState, p: PlayerState): void {
   const r = p.caravan?.rent;
   if (!r) return;
   r.owed += r.perDay;

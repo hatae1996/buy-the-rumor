@@ -19,8 +19,8 @@ let g: GrowthMind;
 
 /** 봇이 고른 명령 하나를 보내고 돌려준다 */
 const step = (growth = casual): Command | null => {
-  const c = growthStep(playerView(s, map), growth, g, (x) => x);
-  if (c) expect(applyCommand(s, map, c)).toEqual(expect.objectContaining({ ok: true }));
+  const c = growthStep(playerView(s, map, 'me'), growth, g, (x) => x);
+  if (c) expect(applyCommand(s, map, 'me', c)).toEqual(expect.objectContaining({ ok: true }));
   return c;
 };
 
@@ -34,9 +34,9 @@ function shopTown(st: EconomyState): number {
 
 beforeEach(() => {
   s = createEconomy(map, SEED, { warmupDays: 20 });
-  s.player.town = shopTown(s);
-  s.player.gold = 3000;
-  s.player.cart = createCart('handcart');
+  s.players.me!.town = shopTown(s);
+  s.players.me!.gold = 3000;
+  s.players.me!.cart = createCart('handcart');
   s.horses.stables.forEach((st) => (st.stock = { pony: 0, draft: 0, swift: 0 }));
   g = createGrowthMind();
 });
@@ -58,7 +58,7 @@ describe('셈이 맞을 때만 산다', () => {
     // 시즌이 없는 테스트 세계라 마구간을 직접 연다
     const town = stableTowns(map)[0]!;
     s.horses.stables.push({ town, stock: { pony: 2, draft: 1, swift: 0 } });
-    s.player.town = town;
+    s.players.me!.town = town;
     g.lost = [{ day: s.day - 1, value: 400 }];
     // 조랑말(60)은 손수레(70)보다 못 끈다
     expect(step()).toEqual({ type: 'buyHorse', kind: 'draft' });
@@ -77,7 +77,7 @@ describe('줄이기', () => {
     g.hauls = [80, 80, 80];
     step();
     step();
-    const id = s.player.hires.find((h) => h.role === 'gatherer')!.id;
+    const id = s.players.me!.hires.find((h) => h.role === 'gatherer')!.id;
     g.hiredOn[id] = s.day - 11;
     g.gathered = [{ day: s.day - 1, value: 5 }];
     g.hauls = [];
@@ -87,8 +87,8 @@ describe('줄이기', () => {
   it('돈이 비상금 절반 아래로 떨어지면 일꾼부터 내보낸다', () => {
     g.lost = [{ day: s.day - 1, value: 200 }];
     step();
-    s.player.gold = 10;
-    const id = s.player.hires[0]!.id;
+    s.players.me!.gold = 10;
+    const id = s.players.me!.hires[0]!.id;
     expect(step()).toEqual({ type: 'dismissHire', hireId: id });
   });
 });
@@ -98,7 +98,7 @@ describe('시즌을 돌려도', () => {
     const seed = SEED;
     const run = (withGrowth: boolean) => {
       const st = createEconomy(map, seed, { warmupDays: 20 });
-      st.player.cart = createCart('handcart');
+      st.players.me!.cart = createCart('handcart');
       // 짐꾼만 본다 (시간차 장사는 seasonal.test.ts)
       const p = { ...botProfile('trader'), growth: { ...botProfile('trader').growth!, timeShift: false } };
       return runBotOn(st, map, withGrowth ? p : { ...p, growth: null }, { days: CYCLE_DAYS });

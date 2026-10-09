@@ -36,10 +36,10 @@ function atStable(seed = 20261008): { map: WorldMap; state: EconomyState; town: 
   const state = createEconomy(map, seed);
   horseMorning(state, map);
   const town = stableTowns(map)[0]!;
-  state.player.town = town;
+  state.players.me!.town = town;
   const stable = stableAt(state, town)!;
   stable.stock = { pony: 3, draft: 3, swift: 3 };
-  state.player.gold = 2000;
+  state.players.me!.gold = 2000;
   return { map, state, town };
 }
 
@@ -139,25 +139,25 @@ describe('마구간 거래', () => {
     const stable = stableAt(state, town)!;
     const price = buyPrice(stable, 'swift')!;
     const treasury = state.towns[town]!.treasury;
-    expect(applyCommand(state, map, { type: 'buyHorse', kind: 'swift' }).ok).toBe(true);
-    expect(state.player.gold).toBe(2000 - price);
+    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'swift' }).ok).toBe(true);
+    expect(state.players.me!.gold).toBe(2000 - price);
     expect(stable.stock.swift).toBe(2);
     expect(state.towns[town]!.treasury).toBe(treasury + price);
-    expect(state.player.horses[0]).toMatchObject({ kind: 'swift', price, home: town });
-    expect(applyCommand(state, map, { type: 'sellHorse', horseId: state.player.horses[0]!.id }).ok).toBe(true);
+    expect(state.players.me!.horses[0]).toMatchObject({ kind: 'swift', price, home: town });
+    expect(applyCommand(state, map, 'me', { type: 'sellHorse', horseId: state.players.me!.horses[0]!.id }).ok).toBe(true);
     expect(stable.stock.swift).toBe(3);
-    expect(state.player.horses).toEqual([]);
+    expect(state.players.me!.horses).toEqual([]);
   });
 
   it('한 사람 최대 2필, 마구간이 없는 마을에서는 살 수 없다', () => {
     const { map, state } = atStable();
-    expect(applyCommand(state, map, { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
-    expect(applyCommand(state, map, { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
-    expect(applyCommand(state, map, { type: 'buyHorse', kind: 'pony' })).toEqual({ ok: false, error: 'tooManyHorses' });
+    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
+    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
+    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' })).toEqual({ ok: false, error: 'tooManyHorses' });
     const other = map.towns.find((t) => !stableTowns(map).includes(t.id))!;
-    state.player.town = other.id;
-    state.player.horses = [];
-    expect(applyCommand(state, map, { type: 'buyHorse', kind: 'pony' })).toEqual({ ok: false, error: 'noStable' });
+    state.players.me!.town = other.id;
+    state.players.me!.horses = [];
+    expect(applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' })).toEqual({ ok: false, error: 'noStable' });
   });
 
   it('NPC 상단도 같은 재고에서 사고, 돈이 떨어지면 되판다', () => {
@@ -181,11 +181,11 @@ describe('마구간 거래', () => {
 describe('먹이와 체력', () => {
   it('마을에서는 마구간에서 먹이고, 그 곡물을 다음 장날 주민이 사 온다', () => {
     const { map, state, town } = atStable();
-    applyCommand(state, map, { type: 'buyHorse', kind: 'draft' });
-    const gold = state.player.gold;
+    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'draft' });
+    const gold = state.players.me!.gold;
     advanceDay(state, map);
-    expect(state.player.gold).toBeLessThan(gold);
-    expect(state.player.ledger.some((e) => e.kind === 'horseFeed' && e.fee > 0)).toBe(true);
+    expect(state.players.me!.gold).toBeLessThan(gold);
+    expect(state.players.me!.ledger.some((e) => e.kind === 'horseFeed' && e.fee > 0)).toBe(true);
     const t = state.towns[town]!;
     expect(t.stableGrain).toBe(HORSES.kinds.draft.feed);
     const season = seasonOfDay(state.day, state.startSeason);
@@ -207,61 +207,61 @@ describe('먹이와 체력', () => {
   it('길 위에서는 수레 곡물을 먹고, 없으면 굶다가 마구간으로 돌아가 버린다', () => {
     const { map, state, town } = atStable();
     stableAt(state, town)!.stock.draft = 3;
-    applyCommand(state, map, { type: 'buyHorse', kind: 'draft' });
-    state.player.travel = { from: town, to: town, days: 99, daysLeft: 99 };
-    loadGoods(state.player.cart, 'grain', 1);
+    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'draft' });
+    state.players.me!.travel = { from: town, to: town, days: 99, daysLeft: 99 };
+    loadGoods(state.players.me!.cart, 'grain', 1);
     advanceDay(state, map);
-    expect(state.player.horses[0]!.hungry).toBe(0);
+    expect(state.players.me!.horses[0]!.hungry).toBe(0);
     for (let d = 0; d < HORSES.runAwayAfterHungryDays; d++) advanceDay(state, map);
-    expect(state.player.horses).toEqual([]);
+    expect(state.players.me!.horses).toEqual([]);
     expect(stableAt(state, town)!.stock.draft).toBe(3);
-    expect(state.player.ledger.some((e) => e.kind === 'horse' && e.what === 'lost')).toBe(true);
+    expect(state.players.me!.ledger.some((e) => e.kind === 'horse' && e.what === 'lost')).toBe(true);
   });
 
   it('길을 가면 지치고, 마구간에서 쉬게 하면 낫는다 (하루 한 번)', () => {
     const { map, state, town } = atStable();
-    applyCommand(state, map, { type: 'buyHorse', kind: 'pony' });
+    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'pony' });
     const to = map.towns.find((t) => t.id !== town)!.id;
-    expect(applyCommand(state, map, { type: 'travel', to }).ok).toBe(true);
-    const tired = state.player.horses[0]!.fatigue;
+    expect(applyCommand(state, map, 'me', { type: 'travel', to }).ok).toBe(true);
+    const tired = state.players.me!.horses[0]!.fatigue;
     expect(tired).toBeGreaterThan(0);
-    state.player.travel = null;
-    expect(applyCommand(state, map, { type: 'restHorses' }).ok).toBe(true);
-    expect(state.player.horses[0]!.fatigue).toBeLessThan(tired);
-    expect(applyCommand(state, map, { type: 'restHorses' })).toEqual({ ok: false, error: 'alreadyRestedHorses' });
+    state.players.me!.travel = null;
+    expect(applyCommand(state, map, 'me', { type: 'restHorses' }).ok).toBe(true);
+    expect(state.players.me!.horses[0]!.fatigue).toBeLessThan(tired);
+    expect(applyCommand(state, map, 'me', { type: 'restHorses' })).toEqual({ ok: false, error: 'alreadyRestedHorses' });
   });
 });
 
 describe('수레 바꾸기와 이동', () => {
   it('쓰던 수레를 쳐 주고 바꾸며, 짐은 옮겨 싣는다', () => {
     const { map, state } = atStable();
-    loadGoods(state.player.cart, 'ore', 4);
-    const gold = state.player.gold;
-    expect(applyCommand(state, map, { type: 'buyCart', cart: 'wagon' }).ok).toBe(true);
-    expect(state.player.cart.type).toBe('wagon');
-    expect(state.player.gold).toBe(gold - (CART.types.wagon.price - Math.round(CART.types.pack.price * CART.tradeIn)));
-    expect(state.player.cart.pieces.reduce((s, p) => s + p.lots.reduce((a, l) => a + l.qty, 0), 0)).toBe(4);
+    loadGoods(state.players.me!.cart, 'ore', 4);
+    const gold = state.players.me!.gold;
+    expect(applyCommand(state, map, 'me', { type: 'buyCart', cart: 'wagon' }).ok).toBe(true);
+    expect(state.players.me!.cart.type).toBe('wagon');
+    expect(state.players.me!.gold).toBe(gold - (CART.types.wagon.price - Math.round(CART.types.pack.price * CART.tradeIn)));
+    expect(state.players.me!.cart.pieces.reduce((s, p) => s + p.lots.reduce((a, l) => a + l.qty, 0), 0)).toBe(4);
   });
 
   it('짐이 다 안 들어가면 작은 수레로 바꿀 수 없다', () => {
     const { map, state } = atStable();
-    state.player.cart = createCart('wagon');
-    loadGoods(state.player.cart, 'grain', 6);
-    expect(applyCommand(state, map, { type: 'buyCart', cart: 'pack' })).toEqual({ ok: false, error: 'noRoom' });
-    expect(state.player.cart.type).toBe('wagon');
+    state.players.me!.cart = createCart('wagon');
+    loadGoods(state.players.me!.cart, 'grain', 6);
+    expect(applyCommand(state, map, 'me', { type: 'buyCart', cart: 'pack' })).toEqual({ ok: false, error: 'noRoom' });
+    expect(state.players.me!.cart.type).toBe('wagon');
   });
 
   it('짐수레는 말 없이 떠날 수 없고, 빠른 말이면 덜 걸린다', () => {
     const { map, state, town } = atStable();
     // 걸어서 가장 오래 걸리는 마을
-    const walk = playerTravelDays(state, map);
+    const walk = playerTravelDays(state, state.players.me!, map);
     const to = map.towns.filter((t) => t.id !== town).sort((a, b) => walk[b.id]! - walk[a.id]!)[0]!.id;
-    state.player.cart = createCart('wagon');
-    expect(applyCommand(state, map, { type: 'travel', to })).toEqual({ ok: false, error: 'needHorse' });
-    applyCommand(state, map, { type: 'buyHorse', kind: 'swift' });
-    expect(applyCommand(state, map, { type: 'travel', to }).ok).toBe(true);
-    expect(state.player.travel!.days).toBe(horseDays(walk[to]!, [horse('swift')]));
-    if (walk[to]! >= 2) expect(state.player.travel!.days).toBeLessThan(walk[to]!);
+    state.players.me!.cart = createCart('wagon');
+    expect(applyCommand(state, map, 'me', { type: 'travel', to })).toEqual({ ok: false, error: 'needHorse' });
+    applyCommand(state, map, 'me', { type: 'buyHorse', kind: 'swift' });
+    expect(applyCommand(state, map, 'me', { type: 'travel', to }).ok).toBe(true);
+    expect(state.players.me!.travel!.days).toBe(horseDays(walk[to]!, [horse('swift')]));
+    if (walk[to]! >= 2) expect(state.players.me!.travel!.days).toBeLessThan(walk[to]!);
   });
 });
 
@@ -277,7 +277,7 @@ describe('말 입고 소문', () => {
     state.rumorMill.gossipSeason = state.season!.number;
     state.day += 1; // 노인은 하루 늦게 안다
     advanceDay(state, map);
-    const note = state.player.rumors.find((h) => h.claim?.kind === 'horse')!;
+    const note = state.players.me!.rumors.find((h) => h.claim?.kind === 'horse')!;
     expect(note.text).toContain('짐말');
     expect(note.text).toContain('모레');
     // 입고 날까지 마구간 마을에 머문다

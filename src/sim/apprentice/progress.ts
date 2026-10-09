@@ -5,7 +5,7 @@ import { cartLots, createCart, loadGoods } from '../cart';
 import { ECONOMY } from '../constants';
 import type { Command } from '../economy/commands';
 import { hasExpeditions } from '../economy/player';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { activate } from '../events/active';
 import { eventDef } from '../events/defs';
 import type { Rng } from '../rng';
@@ -23,8 +23,7 @@ export const ALL_UNLOCKS: readonly UnlockId[] = ['ledger', 'news', 'map', 'memor
  * 견습을 시작한다: 자원지가 있는 생산 마을에서, 빈 등짐과 금화 50으로.
  * 졸업하고 갈 마을은 길로 가장 가까운 마을이다
  */
-export function startApprentice(state: EconomyState, map: WorldMap, rng: Rng): void {
-  const p = state.player;
+export function startApprentice(state: EconomyState, p: PlayerState, map: WorldMap, rng: Rng): void {
   const producers = state.towns.filter((t) => hasExpeditions(t) && t.nodes.some((n) => n.kind === 'forest'));
   const pool = producers.length ? producers : state.towns.filter(hasExpeditions);
   const town = pool.some((t) => t.id === p.town) ? p.town : pool[rng.int(0, pool.length - 1)]!.id;
@@ -43,29 +42,29 @@ export function startApprentice(state: EconomyState, map: WorldMap, rng: Rng): v
   p.apprentice = { scene: 'start', town, destination, sceneDay: state.day };
 }
 
-export function inApprentice(state: EconomyState): boolean {
-  return state.player.apprentice !== null;
+export function inApprentice(p: PlayerState): boolean {
+  return p.apprentice !== null;
 }
 
-function unlock(state: EconomyState, id: UnlockId): void {
-  state.player.unlocks[id] ??= state.day;
+function unlock(state: EconomyState, p: PlayerState, id: UnlockId): void {
+  p.unlocks[id] ??= state.day;
 }
 
 /** 다음 장면으로. 장면에 들어올 때 열리는 것을 열고, 일어날 일을 일으킨다 */
-function advance(state: EconomyState, map: WorldMap): void {
-  const ap = state.player.apprentice!;
+function advance(state: EconomyState, p: PlayerState, map: WorldMap): void {
+  const ap = p.apprentice!;
   const next = nextScene(ap.scene);
   if (!next) return;
   ap.scene = next;
   ap.sceneDay = state.day;
-  for (const id of sceneDef(next).unlocks) unlock(state, id);
-  if (next === 'firstNews') firstNews(state, map);
-  if (next === 'graduation') graduationGift(state);
+  for (const id of sceneDef(next).unlocks) unlock(state, p, id);
+  if (next === 'firstNews') firstNews(state, p, map);
+  if (next === 'graduation') graduationGift(p);
 }
 
 /** 첫 신문: 졸업하고 갈 마을에 조선소 대형 상선 (목재 수요가 는다). 견습 동안 신문은 무료다 */
-function firstNews(state: EconomyState, map: WorldMap): void {
-  const ap = state.player.apprentice!;
+function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
+  const ap = p.apprentice!;
   const def = eventDef('shipyard');
   const days = typeof def.days === 'number' ? def.days : 5;
   // 졸업하고 도착할 때까지 이어지도록 길 위의 날만큼 더 둔다
@@ -75,8 +74,7 @@ function firstNews(state: EconomyState, map: WorldMap): void {
 }
 
 /** 졸업 선물: 손수레. 짐은 그대로 옮겨 싣는다 */
-function graduationGift(state: EconomyState): void {
-  const p = state.player;
+function graduationGift(p: PlayerState): void {
   if (p.cart.type !== 'pack') return;
   const next = createCart('handcart');
   for (const lot of cartLots(p.cart)) loadGoods(next, lot.good, lot.qty, lot.age);
@@ -84,30 +82,30 @@ function graduationGift(state: EconomyState): void {
 }
 
 /** 명령이 성공한 뒤 부른다 */
-export function apprenticeAfterCommand(state: EconomyState, map: WorldMap, cmd: Command): void {
-  const ap = state.player.apprentice;
+export function apprenticeAfterCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Command): void {
+  const ap = p.apprentice;
   if (!ap) return;
   const is = (scene: SceneId) => ap.scene === scene;
-  if (is('start') && cmd.type === 'startExpedition') advance(state, map);
-  else if (is('firstExpedition') && !state.player.expedition) advance(state, map);
+  if (is('start') && cmd.type === 'startExpedition') advance(state, p, map);
+  else if (is('firstExpedition') && !p.expedition) advance(state, p, map);
   else if (
     is('firstLoad') &&
     (cmd.type === 'moveCartPiece' || cmd.type === 'rotateCartPiece' || cmd.type === 'packCart' || cmd.type === 'arrangeCart')
   ) {
-    advance(state, map);
+    advance(state, p, map);
   }
-  else if (is('firstNews') && cmd.type === 'readNews') advance(state, map);
+  else if (is('firstNews') && cmd.type === 'readNews') advance(state, p, map);
   else if (is('graduation') && cmd.type === 'travel') {
     // 첫 출발: 견습을 마치고 공유 시장으로 들어간다
-    state.player.apprentice = null;
+    p.apprentice = null;
   }
 }
 
 /** 장날이 지난 뒤 부른다: 첫 판매와 첫 구매는 장날을 겪어야 끝난다 */
-export function apprenticeAfterDay(state: EconomyState, map: WorldMap, day: number): void {
-  const ap = state.player.apprentice;
+export function apprenticeAfterDay(state: EconomyState, p: PlayerState, map: WorldMap, day: number): void {
+  const ap = p.apprentice;
   if (!ap) return;
-  const traded = (kind: 'buy' | 'sell') => state.player.ledger.some((e) => e.kind === kind && e.day === day);
-  if (ap.scene === 'firstSale' && traded('sell')) advance(state, map);
-  else if (ap.scene === 'firstBuy' && traded('buy')) advance(state, map);
+  const traded = (kind: 'buy' | 'sell') => p.ledger.some((e) => e.kind === kind && e.day === day);
+  if (ap.scene === 'firstSale' && traded('sell')) advance(state, p, map);
+  else if (ap.scene === 'firstBuy' && traded('buy')) advance(state, p, map);
 }

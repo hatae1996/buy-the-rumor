@@ -4,7 +4,7 @@ import { cartCount, cartLots, cartWeight, loadGoods, roomFor, takeGoods, unitWei
 import { CART } from '../constants';
 import { maxWeight } from '../horses/pull';
 import type { GoodId } from '../economy/goods';
-import type { EconomyState, PlayerState } from '../economy/state';
+import type { PlayerState } from '../economy/state';
 
 /** 판 이름: 'cart', 'porter:<일꾼 번호>', 'warehouse'(지금 마을 창고), 'caravan'(같은 마을에 와 있는 두 번째 행렬) */
 export type BoardRef = 'cart' | 'warehouse' | 'caravan' | `porter:${number}`;
@@ -12,8 +12,7 @@ export type BoardRef = 'cart' | 'warehouse' | 'caravan' | `porter:${number}`;
 export type BoardError = 'noBoard' | 'warehouseOwed';
 
 /** 판 찾기. 창고는 지금 마을에 있을 때만, 짐꾼은 따라다니므로 늘 */
-export function resolveBoard(state: EconomyState, ref: BoardRef): Board | BoardError {
-  const p = state.player;
+export function resolveBoard(p: PlayerState, ref: BoardRef): Board | BoardError {
   if (ref === 'cart') return p.cart;
   if (ref === 'caravan') {
     const c = p.caravan;
@@ -50,20 +49,20 @@ export function moveBetween(from: Board, to: Board, good: GoodId, qty: number): 
 }
 
 export function transferGoods(
-  state: EconomyState,
+  p: PlayerState,
   from: BoardRef,
   to: BoardRef,
   good: GoodId,
   qty: number,
 ): BoardError | 'noRoom' | 'notEnoughGoods' | 'badQty' | null {
   if (!Number.isInteger(qty) || qty <= 0) return 'badQty';
-  const a = resolveBoard(state, from);
-  const b = resolveBoard(state, to);
+  const a = resolveBoard(p, from);
+  const b = resolveBoard(p, to);
   if (typeof a === 'string') return a;
   if (typeof b === 'string') return b;
   if (a === b) return 'noBoard';
   // 보관료가 밀린 창고에서는 꺼낼 수 없다
-  if (from === 'warehouse' && state.player.warehouses.find((w) => w.board === a)!.owed > 0) return 'warehouseOwed';
+  if (from === 'warehouse' && p.warehouses.find((w) => w.board === a)!.owed > 0) return 'warehouseOwed';
   if (cartCount(a, good) < qty) return 'notEnoughGoods';
   return moveBetween(a, b, good, qty);
 }

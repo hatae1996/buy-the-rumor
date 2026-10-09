@@ -26,8 +26,8 @@ function world(seed = SEED): { map: WorldMap; state: EconomyState } {
   return { map, state: createEconomy(map, seed, { warmupDays: 10 }) };
 }
 
-function hear(state: EconomyState, claim: Claim, town = state.player.town): HeardRumor {
-  return addNote(state, { town, text: '"시험"', via: 'gossip', from: '우물가 마르타', gossip: 1, rumor: null, importance: 1, claim });
+function hear(state: EconomyState, claim: Claim, town = state.players.me!.town): HeardRumor {
+  return addNote(state, state.players.me!, { town, text: '"시험"', via: 'gossip', from: '우물가 마르타', gossip: 1, rumor: null, importance: 1, claim });
 }
 
 function addRumor(state: EconomyState, map: WorldMap, fact: RumorFact, origin: number): WorldRumor {
@@ -64,7 +64,7 @@ describe('시세 도장', () => {
 
   it('그 마을에 가서 시세를 보면 찍고, 다른 마을에서는 찍지 않는다', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const other = townLinks(map)[here]![0]!;
     logMarkets(state);
     const asOf = state.day;
@@ -72,7 +72,7 @@ describe('시세 도장', () => {
     const right = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual, bound: 'about', asOf });
     const wrong = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual * 3 + 10, bound: 'about', asOf });
     const away = hear(state, { kind: 'price', town: other, good: 'ore', dir: 'high', price: 1, bound: 'about', asOf });
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     expect(right.stamp).toBe('right');
     expect(wrong.stamp).toBe('wrong');
     expect(away.stamp).toBeNull();
@@ -81,32 +81,32 @@ describe('시세 도장', () => {
 
   it('늦게 가서 값이 바뀌었어도, 이야기가 생긴 날 맞았으면 맞았다 (0.0.6)', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     logMarkets(state);
     const asOf = state.day;
     const actual = Math.round(state.towns[here]!.refPrice.ore);
     // 이야기는 마을 밖에서 들었다
-    state.player.travel = { from: here, to: here, days: 3, daysLeft: 3 };
+    state.players.me!.travel = { from: here, to: here, days: 3, daysLeft: 3 };
     const h = hear(state, { kind: 'price', town: here, good: 'ore', dir: 'high', price: actual, bound: 'about', asOf });
     state.day += 3;
     state.towns[here]!.refPrice.ore = actual * 4 + 20;
     logMarkets(state);
-    state.player.travel = null;
-    verifyNotebook(state, map);
+    state.players.me!.travel = null;
+    verifyNotebook(state, state.players.me!, map);
     expect(h.stamp).toBe('right');
   });
 
   it('기한 안에 그 마을에 못 가면 도장 없이 "확인 못 함"이고, 새 도장으로 세지 않는다 (0.0.6)', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const other = townLinks(map)[here]![0]!;
     logMarkets(state);
     const h = hear(state, { kind: 'price', town: other, good: 'ore', dir: 'high', price: 1, bound: 'about', asOf: state.day });
     state.day += RUMORS.verify.priceDays;
-    expect(verifyNotebook(state, map)).toBe(0);
+    expect(verifyNotebook(state, state.players.me!, map)).toBe(0);
     expect(h.stamp).toBeNull();
     state.day += 1;
-    expect(verifyNotebook(state, map)).toBe(0);
+    expect(verifyNotebook(state, state.players.me!, map)).toBe(0);
     expect(h.stamp).toBe('unchecked');
     expect(h.stampDay).toBe(state.day);
   });
@@ -119,11 +119,11 @@ describe('징조 도장 (신문)', () => {
     const real = hear(state, { kind: 'omen', event: 'wolves', town: 1, from: state.day, until: state.day + 5 });
     const fake = hear(state, { kind: 'omen', event: 'storm', town: 2, from: state.day, until: state.day + 1 });
     season.log.push({ event: 'wolves', town: 1, day: state.day + 1, end: state.day + 3, omenDay: state.day });
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     expect(real.stamp).toBe('right');
     expect(fake.stamp).toBeNull();
     state.day += 2;
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     expect(fake.stamp).toBe('wrong');
   });
 });
@@ -131,13 +131,13 @@ describe('징조 도장 (신문)', () => {
 describe('특색과 자원지 도장 (직접 가 봄)', () => {
   it('그 마을에 있으면 특색 소문에 도장을 찍는다', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const near = new Set(tagsNearTown(map)[here]);
     const absent = REGION_TAGS.find((t) => !near.has(t.id))!;
     const wrong = hear(state, { kind: 'trait', town: here, tag: absent.id });
     const present = [...near][0];
     const right = present ? hear(state, { kind: 'trait', town: here, tag: present }) : null;
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     expect(wrong.stamp).toBe('wrong');
     if (right) expect(right.stamp).toBe('right');
   });
@@ -149,7 +149,7 @@ describe('특색과 자원지 도장 (직접 가 봄)', () => {
     node.amount = node.capacity * 0.1;
     const low = hear(state, { kind: 'node', town: town.id, resource: 'forest', level: 'low' }, town.id);
     const high = hear(state, { kind: 'node', town: town.id, resource: 'forest', level: 'high' }, town.id);
-    expect(verifyByExpedition(state, town.id)).toBe(2);
+    expect(verifyByExpedition(state, state.players.me!, town.id)).toBe(2);
     expect(low.stamp).toBe('right');
     expect(high.stamp).toBe('wrong');
   });
@@ -158,19 +158,19 @@ describe('특색과 자원지 도장 (직접 가 봄)', () => {
 describe('장날 신청 현황 도장', () => {
   it('들은 뒤 그 마을 장날을 겪으면 찍는다', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     // 이야기가 생긴 날의 장: 곡물 사려는 사람이 많았다
     state.towns[here]!.lastMarket.grain = { ...state.towns[here]!.lastMarket.grain, demand: 20, supply: 5 };
     logMarkets(state);
     const h = hear(state, { kind: 'orders', town: here, good: 'grain', side: 'buy', qty: null, asOf: state.day });
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     // 같은 날에는 아직 장날을 겪지 않았다
     expect(h.stamp).toBeNull();
     state.day += 1;
     // 다음 날 장이 바뀌어도 이야기가 생긴 날의 사실로 견준다
     state.towns[here]!.lastMarket.grain = { ...state.towns[here]!.lastMarket.grain, demand: 2, supply: 30 };
     logMarkets(state);
-    verifyNotebook(state, map);
+    verifyNotebook(state, state.players.me!, map);
     expect(h.stamp).toBe('right');
   });
 });
@@ -179,60 +179,60 @@ describe('여관에서 술 한 잔', () => {
   it('들려줄 게 없으면 돈을 받지 않는다', () => {
     const { map, state } = world();
     state.rumorMill.live = [];
-    const gold = state.player.gold;
-    expect(applyCommand(state, map, { type: 'buyDrink' })).toEqual({ ok: false, error: 'noRumor' });
-    expect(state.player.gold).toBe(gold);
+    const gold = state.players.me!.gold;
+    expect(applyCommand(state, map, 'me', { type: 'buyDrink' })).toEqual({ ok: false, error: 'noRumor' });
+    expect(state.players.me!.gold).toBe(gold);
   });
 
   it('이웃 마을에 닿은 먼 소문을 듣고, 하루 한 번만 살 수 있다', () => {
     const { map, state } = world();
     state.rumorMill.live = [];
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const other = townLinks(map)[here]![0]!;
     const r = addRumor(state, map, { kind: 'node', town: other, resource: 'ore', level: 'low' }, other);
-    const gold = state.player.gold;
-    expect(applyCommand(state, map, { type: 'buyDrink' }).ok).toBe(true);
-    expect(state.player.gold).toBe(gold - drinkFee(state, here));
-    const note = state.player.rumors.at(-1)!;
+    const gold = state.players.me!.gold;
+    expect(applyCommand(state, map, 'me', { type: 'buyDrink' }).ok).toBe(true);
+    expect(state.players.me!.gold).toBe(gold - drinkFee(state, here));
+    const note = state.players.me!.rumors.at(-1)!;
     expect(note).toMatchObject({ via: 'inn', from: '여관 손님', rumor: r.id, town: here });
-    expect(applyCommand(state, map, { type: 'buyDrink' })).toEqual({ ok: false, error: 'alreadyDrank' });
+    expect(applyCommand(state, map, 'me', { type: 'buyDrink' })).toEqual({ ok: false, error: 'alreadyDrank' });
     advanceDay(state, map);
-    expect(state.player.drankToday).toBe(false);
+    expect(state.players.me!.drankToday).toBe(false);
   });
 });
 
 describe('전서구', () => {
   it('다음 날 그 마을 시세가 기억과 수첩에 적힌다', () => {
     const { map, state } = world();
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const to = map.towns.find((t) => t.id !== here)!.id;
-    expect(applyCommand(state, map, { type: 'sendPigeon', to: here })).toEqual({ ok: false, error: 'sameTown' });
-    const gold = state.player.gold;
-    expect(applyCommand(state, map, { type: 'sendPigeon', to }).ok).toBe(true);
-    expect(state.player.gold).toBe(gold - RUMORS.pigeonFee);
+    expect(applyCommand(state, map, 'me', { type: 'sendPigeon', to: here })).toEqual({ ok: false, error: 'sameTown' });
+    const gold = state.players.me!.gold;
+    expect(applyCommand(state, map, 'me', { type: 'sendPigeon', to }).ok).toBe(true);
+    expect(state.players.me!.gold).toBe(gold - RUMORS.pigeonFee);
     const sentDay = state.day;
     const report = advanceDay(state, map);
-    expect(state.player.memory[to]!.day).toBe(sentDay);
-    expect(state.player.memory[to]!.prices.ore).toBe(Math.round(state.towns[to]!.refPrice.ore));
-    expect(report.heard.some((h) => h.via === 'pigeon' && h.town === to)).toBe(true);
-    expect(state.player.pigeons).toEqual([]);
+    expect(state.players.me!.memory[to]!.day).toBe(sentDay);
+    expect(state.players.me!.memory[to]!.prices.ore).toBe(Math.round(state.towns[to]!.refPrice.ore));
+    expect(report.players.me!.heard.some((h) => h.via === 'pigeon' && h.town === to)).toBe(true);
+    expect(state.players.me!.pigeons).toEqual([]);
   });
 });
 
 describe('정보원 (구조만, 화면 없음)', () => {
   it('매일 품삯을 받고 그 마을 시세와 신청 현황을 보내고, 품삯을 못 받으면 떠난다', () => {
     const { map, state } = world();
-    const here = state.player.town;
-    expect(applyCommand(state, map, { type: 'hireInformant' }).ok).toBe(true);
-    expect(applyCommand(state, map, { type: 'hireInformant' })).toEqual({ ok: false, error: 'alreadyInformant' });
-    const gold = state.player.gold;
+    const here = state.players.me!.town;
+    expect(applyCommand(state, map, 'me', { type: 'hireInformant' }).ok).toBe(true);
+    expect(applyCommand(state, map, 'me', { type: 'hireInformant' })).toEqual({ ok: false, error: 'alreadyInformant' });
+    const gold = state.players.me!.gold;
     const r = advanceDay(state, map);
-    expect(state.player.gold).toBe(gold - GROWTH.hire.informant.wage);
-    expect(r.heard.some((h) => h.via === 'informant' && h.text.includes('장날'))).toBe(true);
-    state.player.gold = 0;
+    expect(state.players.me!.gold).toBe(gold - GROWTH.hire.informant.wage);
+    expect(r.players.me!.heard.some((h) => h.via === 'informant' && h.text.includes('장날'))).toBe(true);
+    state.players.me!.gold = 0;
     advanceDay(state, map);
-    expect(state.player.informants).toEqual([]);
-    expect(applyCommand(state, map, { type: 'dismissInformant', town: here })).toEqual({ ok: false, error: 'noInformant' });
+    expect(state.players.me!.informants).toEqual([]);
+    expect(applyCommand(state, map, 'me', { type: 'dismissInformant', town: here })).toEqual({ ok: false, error: 'noInformant' });
   });
 });
 
@@ -240,6 +240,6 @@ describe('수첩', () => {
   it('너무 길어지면 오래된 줄부터 지운다', () => {
     const { state } = world();
     for (let i = 0; i < RUMORS.notebookMax + 10; i++) hear(state, { kind: 'trait', town: 0, tag: 'bears' });
-    expect(state.player.rumors).toHaveLength(RUMORS.notebookMax);
+    expect(state.players.me!.rumors).toHaveLength(RUMORS.notebookMax);
   });
 });

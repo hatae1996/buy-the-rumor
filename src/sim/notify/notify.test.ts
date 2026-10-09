@@ -17,45 +17,45 @@ describe('종류와 처음 설정', () => {
 
   it('설정은 명령으로 바꾸고, 견습 졸업 때 허락을 물은 날을 적는다', () => {
     const st = createEconomy(map, 1);
-    expect(applyCommand(st, map, { type: 'setNotify', enabled: { newspaper: true }, dailyCap: 3, asked: true }).ok).toBe(true);
-    expect(st.player.notify.enabled.newspaper).toBe(true);
-    expect(st.player.notify.dailyCap).toBe(3);
-    expect(st.player.notify.askedDay).toBe(st.day);
-    expect(applyCommand(st, map, { type: 'setNotify', quietStart: 24 })).toEqual({ ok: false, error: 'badQty' });
+    expect(applyCommand(st, map, 'me', { type: 'setNotify', enabled: { newspaper: true }, dailyCap: 3, asked: true }).ok).toBe(true);
+    expect(st.players.me!.notify.enabled.newspaper).toBe(true);
+    expect(st.players.me!.notify.dailyCap).toBe(3);
+    expect(st.players.me!.notify.askedDay).toBe(st.day);
+    expect(applyCommand(st, map, 'me', { type: 'setNotify', quietStart: 24 })).toEqual({ ok: false, error: 'badQty' });
   });
 });
 
 describe('하루마다 만드는 사건', () => {
   it('장날 결과는 마을마다 사실만: "○○ 장날: 소금 3개 팔림, +n"', () => {
     const st = createEconomy(map, 20261008, { warmupDays: 20 });
-    st.player.cart = createCart('handcart');
-    loadGoods(st.player.cart, 'salt', 3);
-    applyCommand(st, map, { type: 'placeSellOrder', good: 'salt', qty: 3, minPrice: 1 });
+    st.players.me!.cart = createCart('handcart');
+    loadGoods(st.players.me!.cart, 'salt', 3);
+    applyCommand(st, map, 'me', { type: 'placeSellOrder', good: 'salt', qty: 3, minPrice: 1 });
     const r = advanceDay(st, map);
-    const market = r.notices.filter((n) => n.kind === 'market');
-    if (st.player.ledger.some((e) => e.kind === 'sell')) {
+    const market = r.players.me!.notices.filter((n) => n.kind === 'market');
+    if (st.players.me!.ledger.some((e) => e.kind === 'sell')) {
       expect(market).toHaveLength(1);
       expect(market[0]!.text).toMatch(/장날: 소금 \d+개 팔림, \+\d+/);
     }
-    for (const n of r.notices) expect(isFactual(n.text)).toBe(true);
+    for (const n of r.players.me!.notices) expect(isFactual(n.text)).toBe(true);
   });
 
   it('도착하면 알린다', () => {
     const st = createEconomy(map, 20261008);
-    const to = map.towns.find((t) => t.id !== st.player.town)!.id;
-    applyCommand(st, map, { type: 'travel', to });
+    const to = map.towns.find((t) => t.id !== st.players.me!.town)!.id;
+    applyCommand(st, map, 'me', { type: 'travel', to });
     let arrived = false;
-    for (let d = 0; d < 10 && !arrived; d++) arrived = advanceDay(st, map).notices.some((n) => n.kind === 'arrival');
+    for (let d = 0; d < 10 && !arrived; d++) arrived = advanceDay(st, map).players.me!.notices.some((n) => n.kind === 'arrival');
     expect(arrived).toBe(true);
   });
 
   it('내일 상할 음식이 있으면 알린다', () => {
     const st = createEconomy(map, 20261008);
-    st.player.cart = createCart('handcart');
-    loadGoods(st.player.cart, 'fish', 2, 2);
+    st.players.me!.cart = createCart('handcart');
+    loadGoods(st.players.me!.cart, 'fish', 2, 2);
     const r = advanceDay(st, map);
     // 하룻밤 지나 생선이 상하기 직전이거나 이미 상했다
-    expect(r.notices.some((n) => n.kind === 'spoiling') || st.player.ledger.some((e) => e.kind === 'spoil')).toBe(true);
+    expect(r.players.me!.notices.some((n) => n.kind === 'spoiling') || st.players.me!.ledger.some((e) => e.kind === 'spoil')).toBe(true);
   });
 });
 

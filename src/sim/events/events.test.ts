@@ -159,15 +159,15 @@ describe('사건 효과 (가격은 직접 바꾸지 않고 시뮬 숫자만)', (
 
   it('산적: 그 마을로 가는 여비에 통행세가 붙는다 (경제에서 빠져나간다)', () => {
     const { map, state } = world(20261008);
-    const here = state.player.town;
+    const here = state.players.me!.town;
     const to = state.towns.find((t) => t.id !== here)!.id;
     activate(state, map, 'bandits', to, state.day + 3);
     expect(tollAt(state, to)).toBe(10);
-    const gold = state.player.gold;
-    expect(applyCommand(state, map, { type: 'travel', to }).ok).toBe(true);
-    const travel = state.player.ledger.find((e) => e.kind === 'travel')!;
-    expect(travel.kind === 'travel' && gold - state.player.gold).toBe(travel.kind === 'travel' ? travel.fee + 10 : 0);
-    expect(state.player.ledger.some((e) => e.kind === 'toll' && e.gold === 10)).toBe(true);
+    const gold = state.players.me!.gold;
+    expect(applyCommand(state, map, 'me', { type: 'travel', to }).ok).toBe(true);
+    const travel = state.players.me!.ledger.find((e) => e.kind === 'travel')!;
+    expect(travel.kind === 'travel' && gold - state.players.me!.gold).toBe(travel.kind === 'travel' ? travel.fee + 10 : 0);
+    expect(state.players.me!.ledger.some((e) => e.kind === 'toll' && e.gold === 10)).toBe(true);
   });
 
   it('다리 붕괴·산사태: 길 칸이 막히고 이동 일수는 같거나 늘어난다', () => {
@@ -217,19 +217,19 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
     const seed = SEEDS[0]!;
     const { map, state } = world(seed);
     for (let d = 0; d < 10; d++) advanceDay(state, map);
-    const town = state.player.town;
+    const town = state.players.me!.town;
     const ev = activate(state, map, 'shipyard', town, state.day + 7);
     expect(ev.orders).toEqual([{ good: 'wood', left: 200, price: Math.round(basePrice('wood') * 1.6) }]);
     // 다른 큰 주문이 일정대로 함께 열려 있을 수 있어 이 사건 것만 본다
     expect(bigOrdersToday(state).filter((x) => x.event === ev).map((x) => x.order.good)).toEqual(['wood']);
     // 플레이어가 목재를 내면 큰 주문 값에 가깝게 팔린다
-    state.player.cart = createCart('wagon');
-    state.player.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
-    const n = loadGoods(state.player.cart, 'wood', 20);
-    expect(applyCommand(state, map, { type: 'placeSellOrder', good: 'wood', qty: n, minPrice: basePrice('wood') })).toEqual(expect.objectContaining({ ok: true }));
+    state.players.me!.cart = createCart('wagon');
+    state.players.me!.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
+    const n = loadGoods(state.players.me!.cart, 'wood', 20);
+    expect(applyCommand(state, map, 'me', { type: 'placeSellOrder', good: 'wood', qty: n, minPrice: basePrice('wood') })).toEqual(expect.objectContaining({ ok: true }));
     const money = moneySupply(state);
     const r = advanceDay(state, map);
-    const sold = state.player.ledger.filter((e) => e.kind === 'sell' && e.good === 'wood');
+    const sold = state.players.me!.ledger.filter((e) => e.kind === 'sell' && e.good === 'wood');
     expect(sold.reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0)).toBe(n);
     expect(sold[0]!.kind === 'sell' && sold[0]!.price).toBeGreaterThan(basePrice('wood') * 1.2);
     // 큰 주문이 낸 돈은 바깥에서 들어온 돈이다
@@ -245,7 +245,7 @@ describe('큰 주문 (0.0.7 "큰 벌이는 사건에서")', () => {
   it('봄 구휼이 사들인 곡물은 그 마을 일꾼에게 나눠 준다 (먹을 것이 적은 일꾼부터, 0.0.9)', async () => {
     const { count } = await import('../economy/inventory');
     const { map, state } = world(SEEDS[0]!);
-    const town = state.player.town;
+    const town = state.players.me!.town;
     const ev = activate(state, map, 'relief', town, state.day + 7);
     const workers = state.workers.filter((w) => w.town === town);
     const before = workers.map((w) => count(w.inv, 'grain'));

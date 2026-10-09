@@ -51,7 +51,8 @@ import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type Carava
 import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
 import { dismiss, hire, porterBoards, resolveBoard, splitBuy, splitSell, transferGoods, type BoardError, type BoardRef, type HireError, type HireRole } from '../hire';
 import { releaseWarehouse, rentWarehouse, retrieveGoods, storeGoods, warehouseAt, type WarehouseError } from '../warehouse/warehouse';
-import type { EconomyState } from './state';
+import { getPlayer, ownedBy } from './players';
+import type { EconomyState, PlayerId, PlayerState } from './state';
 
 export type Command =
   | { type: 'placeBuyOrder'; good: GoodId; qty: number; maxPrice: number }
@@ -158,21 +159,22 @@ export type CommandResult = { ok: true; orderId?: number } | { ok: false; error:
 const fail = (error: CommandError): CommandResult => ({ ok: false, error });
 const done = (error: CommandError | null): CommandResult => (error ? fail(error) : { ok: true });
 
-export function applyCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandResult {
-  const result = runCommand(state, map, cmd);
+/** 플레이어 하나의 명령. 서버에서는 인증된 계정이 playerId다 */
+export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
+  const p = getPlayer(state, playerId);
+  const result = runCommand(state, p, map, cmd);
   if (result.ok) {
     // 견습 장면을 넘기고, 조건이 맞으면 하나씩 연다
-    apprenticeAfterCommand(state, map, cmd);
-    updateUnlocks(state);
-    checkBadges(state);
+    apprenticeAfterCommand(state, p, map, cmd);
+    updateUnlocks(state, p);
+    checkBadges(state, p);
   }
   return result;
 }
 
-function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandResult {
-  const p = state.player;
+function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Command): CommandResult {
   const accounts = new Accounts(state);
-  const owner = { kind: 'player' } as const;
+  const owner = { kind: 'player', pid: p.id } as const;
 
   switch (cmd.type) {
     case 'placeBuyOrder': {
@@ -186,7 +188,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       if (!parts) return fail('noRoom');
       let first: number | null = null;
       for (const part of parts) {
-        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', porter: part.porter }, p.town, cmd.good, 'buy', part.qty, cmd.maxPrice);
+        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', pid: p.id, porter: part.porter }, p.town, cmd.good, 'buy', part.qty, cmd.maxPrice);
         if (!o) return fail('noRoom');
         state.orders.push(o);
         first ??= o.id;
@@ -207,7 +209,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       if (!parts) return fail('spoiling');
       let first: number | null = null;
       for (const part of parts) {
-        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', porter: part.porter }, p.town, cmd.good, 'sell', part.qty, cmd.minPrice);
+        const o = accounts.place(part.porter === undefined ? owner : { kind: 'player', pid: p.id, porter: part.porter }, p.town, cmd.good, 'sell', part.qty, cmd.minPrice);
         if (!o) continue;
         state.orders.push(o);
         first ??= o.id;
@@ -215,7 +217,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return { ok: true, orderId: first! };
     }
     case 'cancelOrder': {
-      const i = state.orders.findIndex((o) => o.id === cmd.orderId);
+      const i = state.orders.findIndex((o) => o.id === cmd.orderId && ownedBy(o.owner, p.id));
       if (i < 0) return fail('noOrder');
       accounts.cancel(state.orders[i]!);
       state.orders.splice(i, 1);
@@ -229,7 +231,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       // 짐수레는 말 한 필, 마차는 두 필이 있어야 움직인다
       if (lacksHorses(p.cart, p.horses)) return fail('needHorse');
       // 사건으로 막힌 길은 돌아가고, 말이 있으면 빨리 간다
-      const days = playerTravelDays(state, map)[cmd.to]!;
+      const days = playerTravelDays(state, p, map)[cmd.to]!;
       if (!Number.isFinite(days)) return fail('noRoute');
       // 산적 통행세: 떠나는 마을과 가는 마을 길목
       const toll = tollAt(state, p.town) + tollAt(state, cmd.to);
@@ -237,14 +239,15 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       if (p.gold < fee) return fail('notEnoughGold');
       // 무게를 넘으면 출발할 수 없다. 팔려고 내놓은 짐도 떠나면 돌아오므로 같이 센다
       const selling = state.orders
-        .filter((o) => o.side === 'sell')
+        .filter((o) => o.side === 'sell' && o.owner.kind === 'player' && o.owner.pid === p.id)
         .reduce((s, o) => s + o.lots.reduce((a, l) => a + l.qty * unitWeight(l.good), 0), 0);
       if (cartWeight(p.cart) + selling > maxWeight(p.cart, p.horses)) return fail('overweight');
       // 짐꾼은 손수레를 사람 힘으로 끈다
       if (porterBoards(p).some((b) => cartWeight(b) > CART.types.handcart.humanPull)) return fail('overweight');
       // 떠나면 이 마을에 수레 짐으로 낸 신청은 거둔다 (창고 짐 신청은 남는다)
-      for (const o of state.orders) if (o.owner.kind === 'player') accounts.cancel(o);
-      state.orders = state.orders.filter((o) => o.owner.kind !== 'player');
+      const mine = (o: (typeof state.orders)[number]) => o.owner.kind === 'player' && o.owner.pid === p.id;
+      for (const o of state.orders) if (mine(o)) accounts.cancel(o);
+      state.orders = state.orders.filter((o) => !mine(o));
       p.gold -= fee;
       // 이동비는 마을 금고로, 통행세는 산적이 가져간다 (경제에서 빠져나간다)
       state.towns[p.town]!.treasury += fee - toll;
@@ -258,9 +261,9 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return { ok: true };
     }
     case 'eat':
-      return eat(state, cmd.good);
+      return eat(state, p, cmd.good);
     case 'restAtInn':
-      return restAtInn(state);
+      return restAtInn(state, p);
     case 'moveCartPiece':
       if (!p.cart.pieces.some((q) => q.id === cmd.pieceId)) return fail('noPiece');
       return movePiece(p.cart, cmd.pieceId, cmd.x, cmd.y, cmd.rot) ? { ok: true } : fail('cantPlace');
@@ -270,58 +273,58 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
     case 'packCart':
       return packCart(p.cart) ? { ok: true } : fail('cantPlace');
     case 'arrangeCart': {
-      const board = resolveBoard(state, cmd.board ?? 'cart');
+      const board = resolveBoard(p, cmd.board ?? 'cart');
       if (typeof board === 'string') return fail(board);
       return done(arrangeBoard(board, cmd.pieces));
     }
     case 'startExpedition':
-      return done(startExpedition(state, map));
+      return done(startExpedition(state, p, map));
     case 'chooseExpeditionCard':
-      return done(chooseExpeditionCard(state, map, cmd.choice));
+      return done(chooseExpeditionCard(state, p, map, cmd.choice));
     case 'endExpedition':
-      return done(finishExpedition(state));
+      return done(finishExpedition(state, p));
     case 'buyDrink':
       if (p.expedition) return fail('inExpedition');
-      return done(buyDrink(state, map));
+      return done(buyDrink(state, p, map));
     case 'sendPigeon':
-      return done(sendPigeon(state, cmd.to));
+      return done(sendPigeon(state, p, cmd.to));
     case 'hireInformant':
-      return done(hireInformant(state));
+      return done(hireInformant(state, p));
     case 'dismissInformant':
-      return done(dismissInformant(state, cmd.town));
+      return done(dismissInformant(p, cmd.town));
     case 'buyHorse':
       if (!HORSE_KINDS.includes(cmd.kind)) return fail('noHorseLeft');
-      return done(buyHorse(state, cmd.kind));
+      return done(buyHorse(state, p, cmd.kind));
     case 'sellHorse':
-      return done(sellHorse(state, cmd.horseId));
+      return done(sellHorse(state, p, cmd.horseId));
     case 'restHorses':
-      return done(restHorses(state));
+      return done(restHorses(state, p));
     case 'buyGear':
       if (!GEAR_KINDS.includes(cmd.gear)) return fail('needGear');
-      return done(buyGear(state, cmd.gear));
+      return done(buyGear(state, p, cmd.gear));
     case 'repairGear':
       if (!GEAR_KINDS.includes(cmd.gear)) return fail('needGear');
-      return done(repairGear(state, cmd.gear));
+      return done(repairGear(state, p, cmd.gear));
     case 'hireGuide':
-      return done(hireGuide(state));
+      return done(hireGuide(state, p));
     case 'readNews':
       p.newsReadDay = state.day;
       return { ok: true };
     case 'rentWarehouse':
-      return done(rentWarehouse(state, map));
+      return done(rentWarehouse(state, p, map));
     case 'releaseWarehouse':
-      return done(releaseWarehouse(state, cmd.town));
+      return done(releaseWarehouse(state, p, cmd.town));
     case 'storeGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
-      return done(storeGoods(state, cmd.good, cmd.qty));
+      return done(storeGoods(p, cmd.good, cmd.qty));
     case 'retrieveGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
-      return done(retrieveGoods(state, cmd.good, cmd.qty));
+      return done(retrieveGoods(p, cmd.good, cmd.qty));
     case 'hire':
       if (!['porter', 'gatherer', 'carter'].includes(cmd.role)) return fail('noWorker');
-      return done(hire(state, map, cmd.role));
+      return done(hire(state, p, map, cmd.role));
     case 'dismissHire':
-      return done(dismiss(state, cmd.hireId));
+      return done(dismiss(state, p, cmd.hireId));
     case 'setNotify': {
       const n = p.notify;
       const hour = (h: number | undefined) => h === undefined || (Number.isInteger(h) && h >= 0 && h <= 23);
@@ -336,16 +339,16 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       return { ok: true };
     }
     case 'formCaravan':
-      return done(formCaravan(state, map, cmd.horseIds, cmd.cart, cmd.rent === true));
+      return done(formCaravan(state, p, map, cmd.horseIds, cmd.cart, cmd.rent === true));
     case 'setCaravanPlan':
-      return done(setCaravanPlan(state, cmd.plan));
+      return done(setCaravanPlan(state, p, cmd.plan));
     case 'recallCaravan':
-      return done(recallCaravan(state));
+      return done(recallCaravan(p));
     case 'disbandCaravan':
-      return done(disbandCaravan(state));
+      return done(disbandCaravan(state, p));
     case 'transferGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
-      return done(transferGoods(state, cmd.from, cmd.to, cmd.good, cmd.qty));
+      return done(transferGoods(p, cmd.from, cmd.to, cmd.good, cmd.qty));
     case 'placeStoreSellOrder': {
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       if (!isCount(cmd.qty)) return fail('badQty');
@@ -356,14 +359,14 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
       if (cartCount(w.board, cmd.good) < cmd.qty) return fail('notEnoughGoods');
       const rate = ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)];
       if (sellableCount(cartLots(w.board), cmd.good, rate) < cmd.qty) return fail('spoiling');
-      const o = accounts.place({ kind: 'store', town: cmd.town }, cmd.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
+      const o = accounts.place({ kind: 'store', pid: p.id, town: cmd.town }, cmd.town, cmd.good, 'sell', cmd.qty, cmd.minPrice)!;
       state.orders.push(o);
       return { ok: true, orderId: o.id };
     }
     case 'buyCart':
       if (!CART_TYPES.includes(cmd.cart)) return fail('sameCart');
       if (p.expedition) return fail('inExpedition');
-      return done(buyCart(state, map, cmd.cart));
+      return done(buyCart(state, p, map, cmd.cart));
     case 'discardCartPiece': {
       const piece = p.cart.pieces.find((q) => q.id === cmd.pieceId);
       if (!piece) return fail('noPiece');
@@ -376,8 +379,7 @@ function runCommand(state: EconomyState, map: WorldMap, cmd: Command): CommandRe
   }
 }
 
-function eat(state: EconomyState, good: GoodId): CommandResult {
-  const p = state.player;
+function eat(state: EconomyState, p: PlayerState, good: GoodId): CommandResult {
   if (p.fatigue <= 0) return fail('notTired');
   if (p.mealsToday >= ECONOMY.fatigue.mealsPerDay) return fail('tooManyMeals');
   const lot = pickMeal(p, good);
@@ -391,8 +393,7 @@ function eat(state: EconomyState, good: GoodId): CommandResult {
   return { ok: true };
 }
 
-function restAtInn(state: EconomyState): CommandResult {
-  const p = state.player;
+function restAtInn(state: EconomyState, p: PlayerState): CommandResult {
   if (p.travel) return fail('traveling');
   if (p.restedToday) return fail('alreadyRested');
   // 묵으면 말도 쉰다 (0.0.5 시안): 나나 말이 지쳤으면 묵을 수 있다

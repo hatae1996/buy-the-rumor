@@ -15,8 +15,7 @@ export function hasExpeditions(town: TownEconomy): boolean {
 }
 
 /** 밤마다: 저절로 조금 회복하고, 머무는 마을에 원정 기회가 하나 쌓인다 (길 위면 없다) */
-export function playerNight(state: EconomyState): void {
-  const p = state.player;
+export function playerNight(state: EconomyState, p: PlayerState): void {
   p.fatigue = Math.max(0, p.fatigue - F.nightlyRecovery);
   p.mealsToday = 0;
   p.restedToday = false;

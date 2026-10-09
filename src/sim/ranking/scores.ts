@@ -3,7 +3,7 @@
 // Buy the Rumor: 징조 소문을 듣고 신문 전에 산 물품을 신문 뒤에 판 이익의 합. 물품왕: 물품마다 판 양.
 import { ECONOMY } from '../constants';
 import { GOODS, type GoodId } from '../economy/goods';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { eventDef } from '../events/defs';
 import type { EventId } from '../events/types';
 import type { SeasonRecord, TradeRecord } from './types';
@@ -102,10 +102,10 @@ export function buyTheRumorProfit(state: EconomyState, record: SeasonRecord): nu
   return total;
 }
 
-export function seasonScores(state: EconomyState): SeasonScores | null {
-  const record = state.player.record;
+export function seasonScores(state: EconomyState, p: PlayerState): SeasonScores | null {
+  const record = p.record;
   if (!record) return null;
-  const bigShot = netWorth(state);
+  const bigShot = netWorth(state, p);
   const played = state.day - record.joinedDay;
   const goodsKing = Object.fromEntries(GOODS.map((g) => [g, 0])) as Record<GoodId, number>;
   for (const t of record.trades) if (t.side === 'sell') goodsKing[t.good] += t.qty;

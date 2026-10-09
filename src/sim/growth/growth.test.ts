@@ -35,10 +35,10 @@ describe('마을 건물', () => {
       const s = createEconomy(map, seed);
       const none = map.towns.find((t) => !townBuildings(s, map, t.id).includes('cartShop'));
       if (!none) continue;
-      s.player.town = none.id;
-      s.player.gold = 1000;
-      expect(applyCommand(s, map, { type: 'buyCart', cart: 'handcart' })).toEqual({ ok: false, error: 'noCartShop' });
-      expect(playerView(s, map).carts).toEqual([]);
+      s.players.me!.town = none.id;
+      s.players.me!.gold = 1000;
+      expect(applyCommand(s, map, 'me', { type: 'buyCart', cart: 'handcart' })).toEqual({ ok: false, error: 'noCartShop' });
+      expect(playerView(s, map, 'me').carts).toEqual([]);
       return;
     }
     throw new Error('수레방이 없는 마을이 있는 시드가 없다');
@@ -48,13 +48,13 @@ describe('마을 건물', () => {
     const map = generateWorld(SEEDS[0]!);
     const s = createEconomy(map, SEEDS[0]!);
     const town = map.towns.find((t) => hasExpeditions(s.towns[t.id]!))!.id;
-    s.player.town = town;
-    s.player.expeditionChances = ECONOMY.expedition.maxChances;
-    s.player.gear.torch = 0;
-    const a = buildingAlerts(s, map);
+    s.players.me!.town = town;
+    s.players.me!.expeditionChances = ECONOMY.expedition.maxChances;
+    s.players.me!.gear.torch = 0;
+    const a = buildingAlerts(s, s.players.me!, map);
     expect(a.outside).toBeDefined();
     expect(a.store).toBeDefined();
-    expect(playerView(s, map).buildings.find((b) => b.id === 'outside')?.alert).toBe(a.outside);
+    expect(playerView(s, map, 'me').buildings.find((b) => b.id === 'outside')?.alert).toBe(a.outside);
   });
 });
 

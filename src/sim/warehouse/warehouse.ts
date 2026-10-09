@@ -36,8 +36,7 @@ export function warehouseAt(p: PlayerState, town: number): Warehouse | null {
 }
 
 /** 지금 마을 창고를 빌린다 (보증금 겸 첫날 값) */
-export function rentWarehouse(state: EconomyState, map: WorldMap): Err | null {
-  const p = state.player;
+export function rentWarehouse(state: EconomyState, p: PlayerState, map: WorldMap): Err | null {
   if (p.travel) return 'traveling';
   if (!hasBuilding(state, map, p.town, 'warehouse')) return 'noWarehouse';
   if (warehouseAt(p, p.town)) return 'haveWarehouse';
@@ -50,19 +49,17 @@ export function rentWarehouse(state: EconomyState, map: WorldMap): Err | null {
 }
 
 /** 빈 창고를 돌려준다 (밀린 값을 다 냈을 때) */
-export function releaseWarehouse(state: EconomyState, town: number): Err | null {
-  const p = state.player;
+export function releaseWarehouse(state: EconomyState, p: PlayerState, town: number): Err | null {
   const w = warehouseAt(p, town);
   if (!w) return 'noWarehouse';
   if (w.owed > 0) return 'warehouseOwed';
-  if (w.board.pieces.length > 0 || state.orders.some((o) => o.owner.kind === 'store' && o.owner.town === town)) return 'warehouseNotEmpty';
+  if (w.board.pieces.length > 0 || state.orders.some((o) => o.owner.kind === 'store' && o.owner.pid === p.id && o.owner.town === town)) return 'warehouseNotEmpty';
   p.warehouses = p.warehouses.filter((x) => x !== w);
   return null;
 }
 
 /** 수레 짐을 지금 마을 창고에 넣는다 */
-export function storeGoods(state: EconomyState, good: GoodId, qty: number): Err | null {
-  const p = state.player;
+export function storeGoods(p: PlayerState, good: GoodId, qty: number): Err | null {
   if (p.travel) return 'traveling';
   const w = warehouseAt(p, p.town);
   if (!w) return 'noWarehouse';
@@ -72,8 +69,7 @@ export function storeGoods(state: EconomyState, good: GoodId, qty: number): Err 
 }
 
 /** 지금 마을 창고 짐을 수레로 꺼낸다 (보관료가 밀리면 못 꺼낸다) */
-export function retrieveGoods(state: EconomyState, good: GoodId, qty: number): Err | null {
-  const p = state.player;
+export function retrieveGoods(p: PlayerState, good: GoodId, qty: number): Err | null {
   if (p.travel) return 'traveling';
   const w = warehouseAt(p, p.town);
   if (!w) return 'noWarehouse';
@@ -84,8 +80,7 @@ export function retrieveGoods(state: EconomyState, good: GoodId, qty: number): E
 }
 
 /** 밤에: 보관료를 낸다. 못 내면 밀리고, 너무 오래 밀리면 창고지기가 짐을 거둬 가고 창고가 끝난다 */
-export function warehouseNight(state: EconomyState): void {
-  const p = state.player;
+export function warehouseNight(state: EconomyState, p: PlayerState): void {
   const keep: Warehouse[] = [];
   for (const w of p.warehouses) {
     w.owed += warehouseFeeOf(w);

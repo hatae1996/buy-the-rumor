@@ -44,24 +44,24 @@ const sell = (day: number, good: TradeRecord['good'], qty: number, price: number
 
 describe('순자산 (현금 + 예금 − 빚 + (짐과 말) × 절반)', () => {
   it('짐은 모든 마을 마지막 장날 값의 평균, 말은 구입가로, 절반만 친다 (0.0.6)', () => {
-    const p = s.player;
+    const p = s.players.me!;
     p.gold = 100;
     p.cart = createCart('wagon');
     loadGoods(p.cart, 'ore', 4);
     p.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
     const ore = s.towns.reduce((sum, t) => sum + lastMarketPrice(s, t.id, 'ore'), 0) / s.towns.length;
     expect(holdingPrice(s, 'ore')).toBe(ore);
-    expect(netWorth(s)).toBe(Math.round(100 + (4 * ore + 220) * HOLDINGS_SHARE));
+    expect(netWorth(s, s.players.me!)).toBe(Math.round(100 + (4 * ore + 220) * HOLDINGS_SHARE));
     // 어느 마을에 서 있든 같다
-    const before = netWorth(s);
+    const before = netWorth(s, s.players.me!);
     p.town = s.towns.find((t) => t.id !== p.town)!.id;
-    expect(netWorth(s)).toBe(before);
+    expect(netWorth(s, s.players.me!)).toBe(before);
   });
 
   it('장날을 기다리는 신청에 맡긴 돈과 짐도 센다', () => {
-    const before = netWorth(s);
-    expect(applyCommand(s, map, { type: 'placeBuyOrder', good: 'salt', qty: 2, maxPrice: 10 })).toEqual({ ok: true, orderId: expect.any(Number) });
-    expect(netWorth(s)).toBe(before);
+    const before = netWorth(s, s.players.me!);
+    expect(applyCommand(s, map, 'me', { type: 'placeBuyOrder', good: 'salt', qty: 2, maxPrice: 10 })).toEqual({ ok: true, orderId: expect.any(Number) });
+    expect(netWorth(s, s.players.me!)).toBe(before);
   });
 });
 
@@ -80,7 +80,7 @@ describe('부문 점수', () => {
   });
 
   it('Buy the Rumor: 징조를 들은 다음 날부터 신문 전날까지 사서, 신문 뒤에 판 이익만', () => {
-    const record = s.player.record!;
+    const record = s.players.me!.record!;
     const town = 1;
     s.season!.log.push({ event: 'landslide', town, day: 10, end: 11, omenDay: 8 });
     record.heardOmens.push({ event: 'landslide', town, day: 8 });
@@ -97,7 +97,7 @@ describe('부문 점수', () => {
   });
 
   it('헛징조(신문에 안 난 사건)나 듣지 않은 사건은 세지 않는다', () => {
-    const record = s.player.record!;
+    const record = s.players.me!.record!;
     s.season!.log.push({ event: 'mineCollapse', town: 2, day: 10, end: 12, omenDay: null });
     record.heardOmens.push({ event: 'wolves', town: 2, day: 8 });
     record.trades.push(buy(9, 'ore', 4, 10), sell(12, 'ore', 4, 18));
@@ -105,12 +105,12 @@ describe('부문 점수', () => {
   });
 
   it('물품왕은 판 양, 수완가는 충분히 한 뒤에만', () => {
-    s.player.record!.trades.push(sell(1, 'salt', 7, 10), sell(2, 'salt', 3, 10));
-    const sc = seasonScores(s)!;
+    s.players.me!.record!.trades.push(sell(1, 'salt', 7, 10), sell(2, 'salt', 3, 10));
+    const sc = seasonScores(s, s.players.me!)!;
     expect(sc.goodsKing.salt).toBe(10);
     expect(sc.multiplier).toBeNull();
     s.day += ECONOMY.ranking.multiplierMinDays;
-    expect(seasonScores(s)!.multiplier).toBeCloseTo(netWorth(s) / s.player.record!.startWorth);
+    expect(seasonScores(s, s.players.me!)!.multiplier).toBeCloseTo(netWorth(s, s.players.me!) / s.players.me!.record!.startWorth);
   });
 
   it('부문은 큰손, 수완가, 한 방, Buy the Rumor, 물품왕 9개', () => {
@@ -160,24 +160,24 @@ describe('길드 의뢰와 시즌 테마', () => {
   it('판 양으로 의뢰를 재고, 문턱을 넘으면 그 단계 인장을 찍는다 (단계가 오르면 그 줄을 고친다)', () => {
     s.season!.theme = 'bountySea';
     const salt = THEMES.find((t) => t.id === 'bountySea')!.quests.find((q) => q.id === 'saltMagnate')!;
-    s.player.record!.trades.push(sell(s.day, 'salt', salt.tiers[0], 10));
-    expect(questProgress(s, salt)).toBe(salt.tiers[0]);
+    s.players.me!.record!.trades.push(sell(s.day, 'salt', salt.tiers[0], 10));
+    expect(questProgress(s, s.players.me!, salt)).toBe(salt.tiers[0]);
     expect(questTier(salt, salt.tiers[0])).toBe('bronze');
-    checkBadges(s);
-    expect(s.player.certificate.badges.filter((b) => b.badge === 'quest-saltMagnate')).toEqual([
+    checkBadges(s, s.players.me!);
+    expect(s.players.me!.certificate.badges.filter((b) => b.badge === 'quest-saltMagnate')).toEqual([
       expect.objectContaining({ tier: 'bronze' }),
     ]);
-    s.player.record!.trades.push(sell(s.day, 'salt', salt.tiers[2], 10));
-    checkBadges(s);
-    expect(s.player.certificate.badges.filter((b) => b.badge === 'quest-saltMagnate')).toEqual([expect.objectContaining({ tier: 'gold' })]);
+    s.players.me!.record!.trades.push(sell(s.day, 'salt', salt.tiers[2], 10));
+    checkBadges(s, s.players.me!);
+    expect(s.players.me!.certificate.badges.filter((b) => b.badge === 'quest-saltMagnate')).toEqual([expect.objectContaining({ tier: 'gold' })]);
   });
 
   it('계절과 마을 규모를 정한 의뢰는 그때·그곳 판 것만 센다', () => {
     const tower = THEMES.find((t) => t.id === 'frost')!.quests.find((q) => q.id === 'towerFire')!;
     const city = map.towns.find((t) => t.tier === 'city')!.id;
     const town = map.towns.find((t) => t.tier === 'town')!.id;
-    s.player.record!.trades.push(sell(1, 'wood', 7, 5, city), sell(1, 'wood', 9, 5, town));
-    expect(questProgress(s, tower)).toBe(7);
+    s.players.me!.record!.trades.push(sell(1, 'wood', 7, 5, city), sell(1, 'wood', 9, 5, town));
+    expect(questProgress(s, s.players.me!, tower)).toBe(7);
   });
 });
 
@@ -185,17 +185,17 @@ describe('인장', () => {
   it('업적 인장: 처음 말을 사면 "첫 말"', () => {
     horseMorning(s, map);
     const town = stableTowns(map)[0]!;
-    s.player.town = town;
-    s.player.gold = 1000;
+    s.players.me!.town = town;
+    s.players.me!.gold = 1000;
     stableAt(s, town)!.stock.pony = 2;
-    expect(applyCommand(s, map, { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
-    expect(s.player.certificate.badges.map((b) => b.badge)).toContain('firstHorse');
+    expect(applyCommand(s, map, 'me', { type: 'buyHorse', kind: 'pony' }).ok).toBe(true);
+    expect(s.players.me!.certificate.badges.map((b) => b.badge)).toContain('firstHorse');
   });
 
   it('업적 인장: 원정에서 횃불로 곰을 쫓으면 "곰 쫓는 상인"', () => {
-    s.player.gear.torch = 4;
-    s.player.expedition = {
-      town: s.player.town,
+    s.players.me!.gear.torch = 4;
+    s.players.me!.expedition = {
+      town: s.players.me!.town,
       rng: 1,
       deck: ['log'],
       card: 'bear',
@@ -207,23 +207,23 @@ describe('인장', () => {
       guide: false,
       markDays: {},
     };
-    expect(applyCommand(s, map, { type: 'chooseExpeditionCard', choice: 2 }).ok).toBe(true);
-    expect(s.player.certificate.badges.map((b) => b.badge)).toContain('bearChaser');
+    expect(applyCommand(s, map, 'me', { type: 'chooseExpeditionCard', choice: 2 }).ok).toBe(true);
+    expect(s.players.me!.certificate.badges.map((b) => b.badge)).toContain('bearChaser');
   });
 
   it('오뚝이: 순자산이 시작의 절반 아래로 떨어졌다가 시작보다 위로 돌아오면', () => {
-    const r = s.player.record!;
+    const r = s.players.me!.record!;
     r.minWorth = r.startWorth * 0.4;
-    s.player.gold += 1000;
-    checkBadges(s);
-    expect(s.player.certificate.badges.map((b) => b.badge)).toContain('comeback');
+    s.players.me!.gold += 1000;
+    checkBadges(s, s.players.me!);
+    expect(s.players.me!.certificate.badges.map((b) => b.badge)).toContain('comeback');
   });
 
   it('업적은 한 번만 찍고, 숨김 업적이 4개 있다 (시안의 ???)', () => {
-    s.player.record!.moments.push({ id: 'firstHorse', day: 1 }, { id: 'firstHorse', day: 2 });
-    checkBadges(s);
-    checkBadges(s);
-    expect(s.player.certificate.badges.filter((b) => b.badge === 'firstHorse')).toHaveLength(1);
+    s.players.me!.record!.moments.push({ id: 'firstHorse', day: 1 }, { id: 'firstHorse', day: 2 });
+    checkBadges(s, s.players.me!);
+    checkBadges(s, s.players.me!);
+    expect(s.players.me!.certificate.badges.filter((b) => b.badge === 'firstHorse')).toHaveLength(1);
     expect(ACHIEVEMENTS.filter((a) => a.hidden)).toHaveLength(4);
   });
 
@@ -242,15 +242,15 @@ describe('시즌 마감과 상인 증서', () => {
     for (let d = 0; d < len; d++) advanceDay(s, map);
     advanceDay(s, map);
     expect(s.season!.number).toBe(2);
-    expect(s.player.record!.season).toBe(2);
-    expect(s.player.certificate.seasonsCompleted).toBe(1);
-    expect(s.player.certificate.badges.map((b) => b.badge)).toContain('season-1');
+    expect(s.players.me!.record!.season).toBe(2);
+    expect(s.players.me!.certificate.seasonsCompleted).toBe(1);
+    expect(s.players.me!.certificate.badges.map((b) => b.badge)).toContain('season-1');
   });
 
   it('증서는 순자산을 담지 않고, 앞면 인장은 4개까지, 연차에 따라 종이가 바뀐다', () => {
-    const c = s.player.certificate;
-    s.player.record!.moments.push({ id: 'firstHorse', day: 1 }, { id: 'bearTorch', day: 1 });
-    checkBadges(s);
+    const c = s.players.me!.certificate;
+    s.players.me!.record!.moments.push({ id: 'firstHorse', day: 1 }, { id: 'bearTorch', day: 1 });
+    checkBadges(s, s.players.me!);
     pinBadges(c, [0, 1, 1, 7, 9]);
     expect(c.pinned).toEqual([0, 1]);
     const v = certificateView(c);

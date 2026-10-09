@@ -6,7 +6,7 @@
 import { RUMORS } from '../constants';
 import { basePrice, GOODS, type GoodId } from '../economy/goods';
 import { findNode } from '../economy/nodes';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import type { WorldMap } from '../worldgen';
 import { tagsNearTown } from './facts';
 import { noteMoment } from '../ranking/record';
@@ -14,12 +14,12 @@ import type { Claim, HeardRumor, MarketLogDay, Stamp } from './types';
 
 const V = RUMORS.verify;
 
-function stamp(state: EconomyState, h: HeardRumor, result: boolean | 'unchecked'): void {
+function stamp(state: EconomyState, p: PlayerState, h: HeardRumor, result: boolean | 'unchecked'): void {
   const s: Stamp = result === 'unchecked' ? 'unchecked' : result ? 'right' : 'wrong';
   h.stamp = s;
   h.stampDay = state.day;
   // 업적 "귀가 밝은 상인"이 센다
-  if (s === 'right') noteMoment(state, 'rumorRight');
+  if (s === 'right') noteMoment(state, p, 'rumorRight');
 }
 
 /** 하루 끝에 마을마다 시세와 신청 현황을 적어 둔다 (소문이 생기기 전에 부른다) */
@@ -61,8 +61,7 @@ function deadline(h: HeardRumor, c: Claim): number | null {
 }
 
 /** 장날이 끝난 뒤: 신문과 지금 있는 마을에서 본 것으로 도장을 찍는다. 새로 찍은 줄 수를 돌려준다 */
-export function verifyNotebook(state: EconomyState, map: WorldMap): number {
-  const p = state.player;
+export function verifyNotebook(state: EconomyState, p: PlayerState, map: WorldMap): number {
   const here = p.travel ? null : p.town;
   const day = state.day;
   let n = 0;
@@ -71,13 +70,13 @@ export function verifyNotebook(state: EconomyState, map: WorldMap): number {
     const c = h.claim;
     const result = check(state, map, h, c, here, day);
     if (result !== null) {
-      stamp(state, h, result);
+      stamp(state, p, h, result);
       n++;
       continue;
     }
     // 기한이 지나도록 확인하지 못했다: 도장 없음 (새 도장으로 세지 않는다)
     const until = deadline(h, c);
-    if (until !== null && day > until) stamp(state, h, 'unchecked');
+    if (until !== null && day > until) stamp(state, p, h, 'unchecked');
   }
   return n;
 }
@@ -131,15 +130,15 @@ export function priceRight(c: Extract<Claim, { kind: 'price' }>, actual: number)
 }
 
 /** 원정을 나가 자원지를 직접 보면, 그 마을 자원지 소문에 도장을 찍는다 */
-export function verifyByExpedition(state: EconomyState, town: number): number {
+export function verifyByExpedition(state: EconomyState, p: PlayerState, town: number): number {
   let n = 0;
-  for (const h of state.player.rumors) {
+  for (const h of p.rumors) {
     const c = h.claim;
     if (h.stamp || !c || c.kind !== 'node' || c.town !== town || state.day - h.day > V.nodeDays) continue;
     const node = findNode(state.towns[town]!, c.resource);
     if (!node || node.capacity <= 0) continue;
     const ratio = node.amount / node.capacity;
-    stamp(state, h, c.level === 'low' ? ratio < 0.5 : ratio >= 0.5);
+    stamp(state, p, h, c.level === 'low' ? ratio < 0.5 : ratio >= 0.5);
     n++;
   }
   return n;

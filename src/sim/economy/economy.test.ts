@@ -179,7 +179,7 @@ describe('시작 계절 정하기 (0.0.8 시험용)', () => {
   });
 
   it('계절 말고는 같은 시드의 시작 (시작 마을이 같다)', () => {
-    const towns = [SPRING, SUMMER, AUTUMN, WINTER].map((season) => createEconomy(map, 777, { startSeason: season }).player.town);
+    const towns = [SPRING, SUMMER, AUTUMN, WINTER].map((season) => createEconomy(map, 777, { startSeason: season }).players.me!.town);
     expect(new Set(towns).size).toBe(1);
   });
 });
@@ -195,13 +195,13 @@ describe('장의 깊이 (0.0.6 "벌이의 균형")', () => {
       for (let d = 0; d < 60; d++) advanceDay(s, map);
       const city = s.towns.find((t) => t.tier === 'city')!;
       const ref = city.refPrice.leather;
-      s.player.town = city.id;
-      s.player.cart = createCart('wagon');
-      s.player.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
-      loadGoods(s.player.cart, 'leather', 30);
-      expect(applyCommand(s, map, { type: 'placeSellOrder', good: 'leather', qty: 30, minPrice: Math.round(ref * 0.8) }).ok).toBe(true);
+      s.players.me!.town = city.id;
+      s.players.me!.cart = createCart('wagon');
+      s.players.me!.horses = [{ id: 1, kind: 'draft', fatigue: 0, hungry: 0, price: 220, home: 0 }];
+      loadGoods(s.players.me!.cart, 'leather', 30);
+      expect(applyCommand(s, map, 'me', { type: 'placeSellOrder', good: 'leather', qty: 30, minPrice: Math.round(ref * 0.8) }).ok).toBe(true);
       advanceDay(s, map);
-      const sold = s.player.ledger.filter((e) => e.kind === 'sell' && e.good === 'leather').reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0);
+      const sold = s.players.me!.ledger.filter((e) => e.kind === 'sell' && e.good === 'leather').reduce((a, e) => a + (e.kind === 'sell' ? e.qty : 0), 0);
       expect(sold, `시드 ${seed}`).toBeGreaterThanOrEqual(15);
     }
   });

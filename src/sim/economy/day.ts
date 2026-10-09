@@ -34,10 +34,21 @@ import { warehouseNight } from '../warehouse/warehouse';
 import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
 import { dayNotices, type NotifyEvent } from '../notify';
-import type { EconomyState, MarketResult, Order } from './state';
+import { getPlayer, isPlayerOwner, playerOrder } from './players';
+import type { EconomyState, MarketResult, Order, PlayerId } from './state';
 import { traderDay, traderOrders } from './traders';
 import { arrivals, workerDay, workerOrders, type WorkerEvent } from './workers';
 import { workshopDay, workshopOrders } from './workshop';
+
+/** 플레이어 한 사람의 하루 */
+export interface PlayerDayReport {
+  /** 오늘 밤 수첩에 새로 적힌 줄 */
+  heard: HeardRumor[];
+  /** 오늘 밤 새로 찍힌 도장 수 */
+  stamped: number;
+  /** 알림을 보낼 사건 (켜고 끄기, 묶기, 상한은 받는 쪽이 planDelivery로) */
+  notices: NotifyEvent[];
+}
 
 export interface DayReport {
   day: number;
@@ -56,12 +67,8 @@ export interface DayReport {
   spoiled: number;
   workerEvents: WorkerEvent[];
   news: string[];
-  /** 오늘 밤 수첩에 새로 적힌 줄 */
-  heard: HeardRumor[];
-  /** 오늘 밤 새로 찍힌 도장 수 */
-  stamped: number;
-  /** 알림을 보낼 사건 (켜고 끄기, 묶기, 상한은 받는 쪽이 planDelivery로) */
-  notices: NotifyEvent[];
+  /** 플레이어마다 */
+  players: Record<PlayerId, PlayerDayReport>;
 }
 
 export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
@@ -69,6 +76,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const season = seasonOfDay(state.day, state.startSeason);
   const news: string[] = [];
   const name = (town: number) => map.towns[town]!.name;
+  // 플레이어 차례가 결과를 바꾸는 곳(밤 처리)은 오늘 차례로. 세계의 난수는 쓰지 않는다
+  const turn = playerOrder(state);
 
   // 0. 시즌과 사건: 시즌이 끝났으면 새로 짜고, 오늘 일정의 사건을 시작한다 (신문은 사실만)
   news.push(...startDay(state, map));
@@ -81,10 +90,11 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const accounts = new Accounts(state);
 
   // 견습 마을 손님: 견습 동안 플레이어 신청은 장날에 따로, 반드시 다 맞춘다
-  const apprenticeFills = settleApprenticeOrders(state, accounts);
-  for (const f of apprenticeFills) {
-    state.player.ledger.push({ day: state.day, kind: f.side, town: state.player.town, good: f.good, qty: f.qty, price: f.price });
-    noteTrade(state, tradeRecord(state.day, f.side, state.player.town, f.good, f.qty, f.price));
+  for (const p of turn) {
+    for (const f of settleApprenticeOrders(state, p, accounts)) {
+      p.ledger.push({ day: state.day, kind: f.side, town: p.town, good: f.good, qty: f.qty, price: f.price });
+      noteTrade(p, tradeRecord(state.day, f.side, p.town, f.good, f.qty, f.price));
+    }
   }
 
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
@@ -98,7 +108,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const town of state.towns) town.stableGrain = 0;
   for (const town of state.towns) byTown[town.id]!.push(...workshopOrders(town, accounts));
   // 두 번째 행렬: 지시서 마을에 와 있으면 지시대로 신청한다
-  for (const o of caravanOrders(state, accounts)) byTown[o.town]!.push(o);
+  for (const p of turn) for (const o of caravanOrders(state, p, accounts)) byTown[o.town]!.push(o);
   // 대상단: 그날 장에서 한 물품을 한꺼번에 사거나 판다 (마을 금고를 거쳐 돈이 새지 않는다)
   for (const b of bulkTradesToday(state)) {
     const o = bulkOrder(state, accounts, b);
@@ -112,8 +122,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const buyerFills: { event: number; good: GoodId; qty: number; price: number }[] = [];
 
   // 2. 장날 정산
-  const offered = state.orders.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
-  let sold = 0;
+  // 플레이어마다 수레 짐으로 내놓은 양과 판 양 (첫 장날 실패를 본다)
+  const offered = new Map<PlayerId, number>();
+  const sold = new Map<PlayerId, number>();
+  for (const o of state.orders) {
+    if (o.side === 'sell' && o.owner.kind === 'player') offered.set(o.owner.pid, (offered.get(o.owner.pid) ?? 0) + o.qty);
+  }
   const playerBuys: Partial<Record<GoodId, number>>[] = state.towns.map(() => ({}));
   const markets = state.towns.map((town) => {
     const { results, fills } = runMarket(town, byTown[town.id]!, accounts, rng, {
@@ -124,12 +138,13 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     for (const f of fills) if (f.owner.kind === 'buyer' && f.side === 'buy') buyerFills.push({ event: f.owner.event, good: f.good, qty: f.qty, price: f.price });
     for (const f of fills) {
       // 수레 짐, 창고 짐, 두 번째 행렬 모두 플레이어 거래다
-      if (f.owner.kind !== 'player' && f.owner.kind !== 'store' && f.owner.kind !== 'caravan') continue;
+      if (!isPlayerOwner(f.owner)) continue;
+      const p = getPlayer(state, f.owner.pid);
       const by = f.owner.kind === 'player' ? undefined : f.owner.kind;
-      if (f.side === 'sell' && f.owner.kind === 'player') sold += f.qty;
+      if (f.side === 'sell' && f.owner.kind === 'player') sold.set(p.id, (sold.get(p.id) ?? 0) + f.qty);
       if (f.side === 'buy') playerBuys[town.id]![f.good] = (playerBuys[town.id]![f.good] ?? 0) + f.qty;
-      state.player.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price, ...(by ? { by } : {}) });
-      noteTrade(state, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
+      p.ledger.push({ day: state.day, kind: f.side, town: town.id, good: f.good, qty: f.qty, price: f.price, ...(by ? { by } : {}) });
+      noteTrade(p, tradeRecord(state.day, f.side, town.id, f.good, f.qty, f.price));
       if (f.qty * f.price >= ECONOMY.player.bigTradeNews) {
         const verb = f.side === 'buy' ? '사들였습니다' : '팔았습니다';
         news.push(`어느 상단이 ${name(town.id)}에서 ${GOOD_NAME[f.good]} ${f.qty}개를 한꺼번에 ${verb}.`);
@@ -142,9 +157,9 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   const outsideGold = settleBigOrders(state, buyerFills);
   // 봄 구휼: 영주가 사들인 곡물은 그 마을 일꾼에게 나눠 준다
   giveOutBigOrders(state, buyerFills);
-  noteUnsold(state, offered, sold);
-  const p = state.player;
-  if (!p.travel) {
+  for (const p of turn) {
+    noteUnsold(state, p, offered.get(p.id) ?? 0, sold.get(p.id) ?? 0);
+    if (p.travel) continue;
     const t = state.towns[p.town]!;
     const prices = {} as Record<GoodId, number>;
     for (const g of GOODS) prices[g] = Math.round(t.refPrice[g]);
@@ -189,18 +204,21 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     traderDay(t, state, days, rng);
     traderHorsesNight(state, t);
   }
-  let arrived: number | null = null;
-  if (p.travel && --p.travel.daysLeft <= 0) {
-    p.town = p.travel.to;
-    p.travel = null;
-    arrived = p.town;
-    if (!p.visited.includes(p.town)) p.visited.push(p.town);
+  // 플레이어 밤: 오늘 차례대로 (마구간 먹이, 채집꾼이 거두는 자원지처럼 나눠 쓰는 것이 있다)
+  const arrived = new Map<PlayerId, number>();
+  for (const p of turn) {
+    if (p.travel && --p.travel.daysLeft <= 0) {
+      p.town = p.travel.to;
+      p.travel = null;
+      arrived.set(p.id, p.town);
+      if (!p.visited.includes(p.town)) p.visited.push(p.town);
+    }
+    playerNight(state, p);
+    playerHorsesNight(state, p);
+    hireNight(state, p);
+    caravanNight(state, p, map);
+    warehouseNight(state, p);
   }
-  playerNight(state);
-  playerHorsesNight(state);
-  hireNight(state);
-  caravanNight(state, map);
-  warehouseNight(state);
 
   // 하루가 지나 음식이 상한다
   let spoiled = 0;
@@ -209,10 +227,12 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   for (const t of state.traders) spoiled += sum(ageAndSpoil(t.inv, rate));
   for (const t of state.towns) if (t.workshop) spoiled += sum(ageAndSpoil(t.workshop, rate));
   // 수레와 창고: 음식은 창고에서도 상한다
-  for (const board of [p.cart, ...porterBoards(p), ...(p.caravan ? [p.caravan.cart] : []), ...p.warehouses.map((w) => w.board)]) {
-    for (const [good, qty] of Object.entries(ageCart(board, rate)) as [GoodId, number][]) {
-      spoiled += qty;
-      p.ledger.push({ day: state.day, kind: 'spoil', good, qty });
+  for (const p of turn) {
+    for (const board of [p.cart, ...porterBoards(p), ...(p.caravan ? [p.caravan.cart] : []), ...p.warehouses.map((w) => w.board)]) {
+      for (const [good, qty] of Object.entries(ageCart(board, rate)) as [GoodId, number][]) {
+        spoiled += qty;
+        p.ledger.push({ day: state.day, kind: 'spoil', good, qty });
+      }
     }
   }
 
@@ -237,16 +257,23 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     spoiled,
     workerEvents,
     news,
-    heard: rumors.heard,
-    stamped: rumors.stamped,
-    notices: dayNotices(state, map, state.day, news, arrived),
+    players: {},
   };
-  // 견습 장면과 하나씩 열리는 것
-  apprenticeAfterDay(state, map, state.day);
-  updateUnlocks(state);
-  // 랭킹: 시즌 동안 가장 낮았던 순자산, 업적과 의뢰 인장
-  trackWorth(state);
-  checkBadges(state);
+  for (const p of turn) {
+    report.players[p.id] = {
+      heard: rumors[p.id]?.heard ?? [],
+      stamped: rumors[p.id]?.stamped ?? 0,
+      notices: dayNotices(state, p, map, state.day, news, arrived.get(p.id) ?? null),
+    };
+  }
+  for (const p of turn) {
+    // 견습 장면과 하나씩 열리는 것
+    apprenticeAfterDay(state, p, map, state.day);
+    updateUnlocks(state, p);
+    // 랭킹: 시즌 동안 가장 낮았던 순자산, 업적과 의뢰 인장
+    trackWorth(state, p);
+    checkBadges(state, p);
+  }
   state.day++;
   state.rng = rng.state();
   return report;

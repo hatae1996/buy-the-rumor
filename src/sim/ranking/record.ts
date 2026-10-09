@@ -3,7 +3,8 @@
 // 랭킹 인장과 공동 의뢰 인장은 서버 시즌 결산에서 (멀티플레이 버전).
 import { ECONOMY } from '../constants';
 import type { GoodId } from '../economy/goods';
-import type { EconomyState } from '../economy/state';
+import { playerList } from '../economy/players';
+import type { EconomyState, PlayerState } from '../economy/state';
 import type { ScheduledEventId } from '../events/types';
 import { seasonOfDay } from '../season';
 import { ACHIEVEMENTS, memorialBadge } from './badges';
@@ -14,47 +15,50 @@ import { netWorth } from './worth';
 
 const TIERS: readonly Tier[] = ['bronze', 'silver', 'gold'];
 
-/** 시즌이 바뀌었으면 지난 시즌을 마감하고 새 기록을 연다. 하루를 시작할 때와 새 판에서 부른다 */
+/** 시즌이 바뀌었으면 플레이어마다 지난 시즌을 마감하고 새 기록을 연다. 하루를 시작할 때와 새 판에서 부른다 */
 export function ensureRecord(state: EconomyState): void {
+  for (const p of playerList(state)) ensurePlayerRecord(state, p);
+}
+
+export function ensurePlayerRecord(state: EconomyState, p: PlayerState): void {
   const season = state.season;
   if (!season) return;
-  const p = state.player;
   if (p.record?.season === season.number) return;
-  if (p.record) finishSeason(state, p.record);
-  const worth = netWorth(state);
+  if (p.record) finishSeason(state, p, p.record);
+  const worth = netWorth(state, p);
   p.record = { season: season.number, joinedDay: state.day, startWorth: worth, minWorth: worth, trades: [], heardOmens: [], moments: [] };
 }
 
 /** 지난 시즌 마감: 시즌을 끝까지 했으면 완주 기념 인장과 연차 */
-function finishSeason(state: EconomyState, record: SeasonRecord): void {
-  const c = state.player.certificate;
+function finishSeason(state: EconomyState, p: PlayerState, record: SeasonRecord): void {
+  const c = p.certificate;
   c.seasonsCompleted++;
-  award(state, memorialBadge(record.season).id, null, record.season);
+  award(state, p, memorialBadge(record.season).id, null, record.season);
 }
 
-export function noteTrade(state: EconomyState, t: TradeRecord): void {
-  state.player.record?.trades.push(t);
+export function noteTrade(p: PlayerState, t: TradeRecord): void {
+  p.record?.trades.push(t);
 }
 
-export function noteOmenHeard(state: EconomyState, event: ScheduledEventId, town: number): void {
-  state.player.record?.heardOmens.push({ event, town, day: state.day });
+export function noteOmenHeard(state: EconomyState, p: PlayerState, event: ScheduledEventId, town: number): void {
+  p.record?.heardOmens.push({ event, town, day: state.day });
 }
 
-export function noteMoment(state: EconomyState, id: MomentId): void {
-  state.player.record?.moments.push({ id, day: state.day });
+export function noteMoment(state: EconomyState, p: PlayerState, id: MomentId): void {
+  p.record?.moments.push({ id, day: state.day });
 }
 
 export const momentCount = (record: SeasonRecord, id: MomentId): number => record.moments.filter((m) => m.id === id).length;
 
 /** 밤에: 시즌 동안 가장 낮았던 순자산을 기억한다 (오뚝이) */
-export function trackWorth(state: EconomyState): void {
-  const r = state.player.record;
-  if (r) r.minWorth = Math.min(r.minWorth, netWorth(state));
+export function trackWorth(state: EconomyState, p: PlayerState): void {
+  const r = p.record;
+  if (r) r.minWorth = Math.min(r.minWorth, netWorth(state, p));
 }
 
 /** 증서에 인장을 찍는다. 의뢰 인장은 단계가 오르면 그 줄을 고친다 */
-function award(state: EconomyState, badge: string, tier: Tier | null, season = state.season?.number ?? 0): EarnedBadge | null {
-  const c = state.player.certificate;
+function award(state: EconomyState, p: PlayerState, badge: string, tier: Tier | null, season = state.season?.number ?? 0): EarnedBadge | null {
+  const c = p.certificate;
   const same = c.badges.find((b) => b.badge === badge && (tier === null ? true : b.season === season));
   if (same) {
     if (tier && same.tier && TIERS.indexOf(tier) > TIERS.indexOf(same.tier)) {
@@ -70,8 +74,8 @@ function award(state: EconomyState, badge: string, tier: Tier | null, season = s
 }
 
 /** 길드 의뢰가 잰 값 (이번 시즌, 로컬에서는 공동 의뢰도 내 기여만) */
-export function questProgress(state: EconomyState, quest: QuestDef): number {
-  const r = state.player.record;
+export function questProgress(state: EconomyState, p: PlayerState, quest: QuestDef): number {
+  const r = p.record;
   if (!r) return 0;
   const m = quest.measure;
   if (m.kind === 'moment') return momentCount(r, m.moment);
@@ -92,27 +96,27 @@ export function questTier(quest: QuestDef, value: number): Tier | null {
 }
 
 /** 명령 뒤와 장날 뒤에: 업적 인장과 이번 시즌 테마의 개인 의뢰 인장을 찍는다. 새로 찍힌 인장을 돌려준다 */
-export function checkBadges(state: EconomyState): EarnedBadge[] {
-  const r = state.player.record;
+export function checkBadges(state: EconomyState, p: PlayerState): EarnedBadge[] {
+  const r = p.record;
   if (!r) return [];
   const out: EarnedBadge[] = [];
   const push = (e: EarnedBadge | null) => e && out.push(e);
-  const worth = netWorth(state);
+  const worth = netWorth(state, p);
   for (const a of ACHIEVEMENTS) {
     // 업적은 언제 얻었든 한 번만
-    if (state.player.certificate.badges.some((b) => b.badge === a.id)) continue;
+    if (p.certificate.badges.some((b) => b.badge === a.id)) continue;
     const ok =
       (a.moment && momentCount(r, a.moment.id) >= a.moment.count) ||
       (a.comeback && r.minWorth <= r.startWorth * ECONOMY.ranking.comebackBelow && worth >= r.startWorth) ||
       (a.rumorProfit && buyTheRumorProfit(state, r) > 0);
-    if (ok) push(award(state, a.id, null));
+    if (ok) push(award(state, p, a.id, null));
   }
   const theme = themeDef(state.season?.theme ?? '');
   for (const q of theme?.quests ?? []) {
     // 공동 의뢰는 서버 전체 합으로 시즌 결산 때 (멀티플레이 버전)
     if (q.scope !== 'personal') continue;
-    const tier = questTier(q, questProgress(state, q));
-    if (tier) push(award(state, `quest-${q.id}`, tier));
+    const tier = questTier(q, questProgress(state, p, q));
+    if (tier) push(award(state, p, `quest-${q.id}`, tier));
   }
   return out;
 }

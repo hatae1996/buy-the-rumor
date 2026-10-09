@@ -6,7 +6,8 @@ import { ECONOMY, GROWTH } from '../constants';
 import type { GoodId } from '../economy/goods';
 import { JOB_RESOURCE, type GatherJob } from '../economy/jobs';
 import { depletes, findNode, nodeYield } from '../economy/nodes';
-import type { EconomyState } from '../economy/state';
+import { playerSeed } from '../economy/players';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { produceFactor } from '../events/active';
 import { createRng, mixSeed, stochasticRound, type Rng } from '../rng';
 import { seasonOfDay } from '../season';
@@ -34,17 +35,16 @@ export function gathererYield(state: EconomyState, h: Hire, rng: Rng): { good: G
 }
 
 /** 밤에: 일당, 채집꾼 일. 하루 일당 합을 장부에 한 줄로 */
-export function hireNight(state: EconomyState): void {
-  const p = state.player;
+export function hireNight(state: EconomyState, p: PlayerState): void {
   if (!p.hires.length) return;
-  const rng = createRng(mixSeed(state.seed, 0x41e3, state.day));
+  const rng = createRng(playerSeed(mixSeed(state.seed, 0x41e3, state.day), p));
   let paid = 0;
   for (const h of [...p.hires]) {
     // 일당을 못 받으면 떠난다 (빚이 되지 않는다). 짐꾼 수레의 짐은 내 수레로 옮기고, 못 실으면 길에 두고 간다
-    const wage = wageToday(state, h);
+    const wage = wageToday(state, p, h);
     if (p.gold < wage) {
       if (h.board) for (const l of cartLots(h.board)) loadGoods(p.cart, l.good, l.qty, l.age);
-      release(state, h);
+      release(state, p, h);
       p.ledger.push({ day: state.day, kind: 'hire', what: 'quit', role: h.role, name: h.name, town: h.town, fee: 0 });
       continue;
     }

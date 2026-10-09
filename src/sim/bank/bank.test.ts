@@ -18,10 +18,10 @@ describe('은행', () => {
   it('순자산의 예금 − 빚은 계좌를 본다', () => {
     const map = generateWorld(3);
     const s = createEconomy(map, 3);
-    const base = netWorth(s);
-    s.player.bank.deposit = 100;
-    s.player.bank.loan = 30;
-    expect(netWorth(s)).toBe(base + 70);
+    const base = netWorth(s, s.players.me!);
+    s.players.me!.bank.deposit = 100;
+    s.players.me!.bank.loan = 30;
+    expect(netWorth(s, s.players.me!)).toBe(base + 70);
   });
 
   it('이자는 시즌 한 바퀴 기준 비율을 날로 나눈 단리, 대출 한도는 순자산 × 신용', () => {

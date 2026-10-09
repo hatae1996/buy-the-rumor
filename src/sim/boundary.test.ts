@@ -12,7 +12,7 @@ describe('플레이어에게 보내는 정보에는 숨겨진 숫자가 없다',
     const map = generateWorld(20261008);
     const s = createEconomy(map, 20261008, { warmupDays: 20 });
     for (let d = 0; d < 20; d++) advanceDay(s, map);
-    const json = JSON.stringify(playerView(s, map));
+    const json = JSON.stringify(playerView(s, map, 'me'));
     for (const key of ['"workers"', '"treasury"', '"amount"', '"capacity"', '"truth"', '"personality"', '"schedule"', '"fakeOmens"', '"rumorMill"', '"refPrice"', '"stables"']) {
       expect(json, key).not.toContain(key);
     }
@@ -21,11 +21,11 @@ describe('플레이어에게 보내는 정보에는 숨겨진 숫자가 없다',
   it('가 본 마을을 따로 기억한다 (서버가 이 경계로 보낸다)', () => {
     const map = generateWorld(20261008);
     const s = createEconomy(map, 20261008);
-    expect(playerView(s, map).visited).toEqual([s.player.town]);
-    const to = map.towns.find((t) => t.id !== s.player.town)!.id;
-    applyCommand(s, map, { type: 'travel', to });
-    while (s.player.travel) advanceDay(s, map);
-    expect(playerView(s, map).visited).toContain(to);
+    expect(playerView(s, map, 'me').visited).toEqual([s.players.me!.town]);
+    const to = map.towns.find((t) => t.id !== s.players.me!.town)!.id;
+    applyCommand(s, map, 'me', { type: 'travel', to });
+    while (s.players.me!.travel) advanceDay(s, map);
+    expect(playerView(s, map, 'me').visited).toContain(to);
   });
 });
 
@@ -34,13 +34,13 @@ describe('수레 최종 배치 명령', () => {
 
   it('맞는 배치는 그대로 받고, 무게와 짐 수는 바뀌지 않는다', () => {
     const s = createEconomy(map, 3);
-    s.player.cart = createCart('pack');
-    loadGoods(s.player.cart, 'ore', 3);
-    loadGoods(s.player.cart, 'wood', 1);
-    const w = cartWeight(s.player.cart);
-    const [ore, wood] = s.player.cart.pieces;
+    s.players.me!.cart = createCart('pack');
+    loadGoods(s.players.me!.cart, 'ore', 3);
+    loadGoods(s.players.me!.cart, 'wood', 1);
+    const w = cartWeight(s.players.me!.cart);
+    const [ore, wood] = s.players.me!.cart.pieces;
     // 목재(1×3)를 세로로 세우고 광석을 오른쪽 위로
-    const r = applyCommand(s, map, {
+    const r = applyCommand(s, map, 'me', {
       type: 'arrangeCart',
       pieces: [
         { id: wood!.id, x: 0, y: 0, rot: 1 },
@@ -48,17 +48,17 @@ describe('수레 최종 배치 명령', () => {
       ],
     });
     expect(r.ok).toBe(true);
-    expect(cartWeight(s.player.cart)).toBe(w);
-    expect(cartCount(s.player.cart, 'ore')).toBe(3);
+    expect(cartWeight(s.players.me!.cart)).toBe(w);
+    expect(cartCount(s.players.me!.cart, 'ore')).toBe(3);
   });
 
   it('겹치거나, 칸 밖이거나, 조각이 빠지면 아무것도 바꾸지 않는다', () => {
     const s = createEconomy(map, 3);
-    s.player.cart = createCart('pack');
-    loadGoods(s.player.cart, 'ore', 3);
-    loadGoods(s.player.cart, 'wood', 1);
-    const before = JSON.stringify(s.player.cart);
-    const [ore, wood] = s.player.cart.pieces;
+    s.players.me!.cart = createCart('pack');
+    loadGoods(s.players.me!.cart, 'ore', 3);
+    loadGoods(s.players.me!.cart, 'wood', 1);
+    const before = JSON.stringify(s.players.me!.cart);
+    const [ore, wood] = s.players.me!.cart.pieces;
     const bad = [
       [{ id: wood!.id, x: 0, y: 0, rot: 0 }, { id: ore!.id, x: 1, y: 0, rot: 0 }],
       [{ id: wood!.id, x: 1, y: 0, rot: 0 }, { id: ore!.id, x: 0, y: 2, rot: 0 }],
@@ -66,8 +66,8 @@ describe('수레 최종 배치 명령', () => {
       [{ id: wood!.id, x: 0, y: 1, rot: 0 }, { id: 9999, x: 0, y: 0, rot: 0 }],
     ];
     for (const pieces of bad) {
-      expect(applyCommand(s, map, { type: 'arrangeCart', pieces })).toEqual({ ok: false, error: 'badArrangement' });
-      expect(JSON.stringify(s.player.cart)).toBe(before);
+      expect(applyCommand(s, map, 'me', { type: 'arrangeCart', pieces })).toEqual({ ok: false, error: 'badArrangement' });
+      expect(JSON.stringify(s.players.me!.cart)).toBe(before);
     }
   });
 });

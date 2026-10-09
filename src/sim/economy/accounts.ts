@@ -5,7 +5,8 @@ import { seasonOfDay } from '../season';
 import { loadGoods, reserveRoom, settleIncoming, takeGoods, type Board } from '../cart';
 import { shelfLife } from './goods';
 import { addLot, takeSellable, type Inventory, type Lot } from './inventory';
-import type { EconomyState, Order, OrderOwner, Trader, Worker } from './state';
+import { getPlayer, isPlayerOwner } from './players';
+import type { EconomyState, Order, OrderOwner, PlayerOwner, PlayerState, Trader, Worker } from './state';
 
 export class Accounts {
   private readonly workers: Map<number, Worker>;
@@ -25,7 +26,7 @@ export class Accounts {
       case 'player':
       case 'store':
       case 'caravan':
-        return this.state.player.gold;
+        return this.player(owner).gold;
       case 'worker':
         return this.workers.get(owner.id)!.gold;
       case 'trader':
@@ -44,7 +45,7 @@ export class Accounts {
       case 'player':
       case 'store':
       case 'caravan':
-        this.state.player.gold += amount;
+        this.player(owner).gold += amount;
         break;
       case 'worker':
         this.workers.get(owner.id)!.gold += amount;
@@ -83,7 +84,7 @@ export class Accounts {
 
   /** 정산 뒤 물건을 넘긴다. 플레이어는 그 신청으로 잡아 둔 수레 자리에 넣고 자리를 푼다 */
   receive(owner: OrderOwner, lots: readonly Lot[], orderId?: number): void {
-    if (owner.kind === 'player' || owner.kind === 'store' || owner.kind === 'caravan') {
+    if (isPlayerOwner(owner)) {
       // 창고를 그새 잃었으면(보관료가 너무 밀림) 돌아갈 곳이 없다
       const board = this.boardOf(owner);
       if (!board) return;
@@ -115,7 +116,7 @@ export class Accounts {
       this.addGold(owner, -cost);
       order.reserved = cost;
     } else {
-      if (owner.kind === 'player' || owner.kind === 'store' || owner.kind === 'caravan') {
+      if (isPlayerOwner(owner)) {
         // 수레(창고)에서 꺼내되, 안 팔리면 돌아올 자리는 남겨 둔다
         const board = this.boardOf(owner);
         if (!board) return null;
@@ -135,13 +136,19 @@ export class Accounts {
 
   /** 플레이어 짐을 싣는 판: 수레, 또는 그 마을 창고 */
   private boardOf(owner: OrderOwner): Board | null {
+    if (!isPlayerOwner(owner)) return null;
+    const p = this.player(owner);
     if (owner.kind === 'player') {
-      if (owner.porter === undefined) return this.state.player.cart;
-      return this.state.player.hires.find((h) => h.id === owner.porter)?.board ?? null;
+      if (owner.porter === undefined) return p.cart;
+      return p.hires.find((h) => h.id === owner.porter)?.board ?? null;
     }
-    if (owner.kind === 'store') return this.state.player.warehouses.find((w) => w.town === owner.town)?.board ?? null;
-    if (owner.kind === 'caravan') return this.state.player.caravan?.cart ?? null;
-    return null;
+    if (owner.kind === 'store') return p.warehouses.find((w) => w.town === owner.town)?.board ?? null;
+    return p.caravan?.cart ?? null;
+  }
+
+  /** 신청 주인 플레이어 */
+  private player(owner: PlayerOwner): PlayerState {
+    return getPlayer(this.state, owner.pid);
   }
 
   /** 정산하지 않고 맡긴 것을 그대로 돌려준다 */

@@ -3,7 +3,7 @@
 // 길 위에서는 수레에 실은 곡물을 먹는다. 연달아 굶으면 말이 마구간으로 돌아가 버린다.
 import { HORSES } from '../constants';
 import { cartCount, takeGoods, type Board } from '../cart';
-import type { EconomyState, Trader } from '../economy/state';
+import type { EconomyState, PlayerState, Trader } from '../economy/state';
 import { grainToday } from './pull';
 import { buyPrice, returnHorse, sellPrice, takeHorse } from './stable';
 import { stableAt } from './supply';
@@ -42,8 +42,7 @@ function afterMeal(h: Horse, fed: boolean, resting: boolean): boolean {
  * 플레이어 쪽 말 무리를 먹이고 쉬게 한다 (내 행렬, 두 번째 행렬). 남은 말을 돌려준다.
  * town이 null이면 길 위: 그 행렬 수레(board)에 실은 곡물을 먹는다
  */
-export function feedHorses(state: EconomyState, horses: readonly Horse[], town: number | null, board: Board, resting = town !== null): Horse[] {
-  const p = state.player;
+export function feedHorses(state: EconomyState, p: PlayerState, horses: readonly Horse[], town: number | null, board: Board, resting = town !== null): Horse[] {
   let fee = 0;
   let fedAtStable = 0;
   const keep: Horse[] = [];
@@ -76,11 +75,10 @@ export function feedHorses(state: EconomyState, horses: readonly Horse[], town: 
 }
 
 /** 밤에: 플레이어 말을 먹이고 쉬게 한다 */
-export function playerHorsesNight(state: EconomyState): void {
-  const p = state.player;
+export function playerHorsesNight(state: EconomyState, p: PlayerState): void {
   p.horsesRested = false;
   if (!p.horses.length) return;
-  p.horses = feedHorses(state, p.horses, p.travel ? null : p.town, p.cart);
+  p.horses = feedHorses(state, p, p.horses, p.travel ? null : p.town, p.cart);
 }
 
 /** 밤에: NPC 상단 말. 상단은 지치지 않고, 있는 마을(길 위면 가는 마을) 마구간 값으로 먹인다 */

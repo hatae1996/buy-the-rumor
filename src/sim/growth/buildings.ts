@@ -7,7 +7,7 @@ import { ECONOMY } from '../constants';
 import { shelfLife } from '../economy/goods';
 import { seasonOfDay } from '../season';
 import { hasExpeditions } from '../economy/player';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { stableAt } from '../horses/supply';
 import { innRumor } from '../rumors/hear';
 import type { WorldMap } from '../worldgen';
@@ -63,12 +63,11 @@ export function hasBuilding(state: EconomyState, map: WorldMap, town: number, id
 }
 
 /** 건물에 찍을 도장(!)과 그 까닭. 지금 있는 마을에서만 본다 */
-export function buildingAlerts(state: EconomyState, map: WorldMap): Partial<Record<BuildingId, string>> {
-  const p = state.player;
+export function buildingAlerts(state: EconomyState, p: PlayerState, map: WorldMap): Partial<Record<BuildingId, string>> {
   if (p.travel) return {};
   const town = p.town;
   const out: Partial<Record<BuildingId, string>> = {};
-  if (!p.drankToday && innRumor(state, map)) out.inn = '새 소문';
+  if (!p.drankToday && innRumor(state, p, map)) out.inn = '새 소문';
   if (hasExpeditions(state.towns[town]!) && p.expeditionChances >= ECONOMY.expedition.maxChances) out.outside = '기회 가득';
   if (Object.values(p.gear).some((n) => n === 0)) out.store = '장비 수리';
   // 창고: 내일이면 상할 음식이 있다

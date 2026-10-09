@@ -6,7 +6,8 @@ import type { EconomyState } from './state';
 
 /** 세상에 있는 돈 전부 (신청에 맡겨 둔 돈 포함) */
 export function moneySupply(state: EconomyState): number {
-  let m = state.player.gold;
+  let m = 0;
+  for (const p of Object.values(state.players)) m += p.gold;
   for (const w of state.workers) m += w.gold;
   for (const t of state.traders) m += t.gold;
   for (const t of state.towns) m += t.treasury;

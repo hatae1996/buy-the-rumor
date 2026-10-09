@@ -42,9 +42,12 @@ import type {
   MarketResult,
   NewsItem,
   Order,
+  PlayerId,
+  PlayerState,
   PriceMemory,
 } from './state';
 import { drinkFee, type HeardRumor } from '../rumors';
+import { getPlayer, ownedBy } from './players';
 
 export type PlayerLocation =
   | { kind: 'town'; town: number }
@@ -351,9 +354,9 @@ export interface ExpeditionView {
 }
 
 /** 수첩의 특색 소문 → 마을마다 들은 특색 */
-function knownTraits(state: EconomyState): Record<number, { name: string; confirmed: boolean }[]> {
+function knownTraits(p: PlayerState): Record<number, { name: string; confirmed: boolean }[]> {
   const out: Record<number, { name: string; confirmed: boolean }[]> = {};
-  for (const h of state.player.rumors) {
+  for (const h of p.rumors) {
     const c = h.claim;
     if (!c || c.kind !== 'trait' || h.stamp === 'wrong') continue;
     const list = (out[c.town] ??= []);
@@ -365,11 +368,10 @@ function knownTraits(state: EconomyState): Record<number, { name: string; confir
   return out;
 }
 
-function upkeepView(state: EconomyState): PlayerView['upkeep'] {
-  const p = state.player;
+function upkeepView(state: EconomyState, p: PlayerState): PlayerView['upkeep'] {
   const parts: { what: string; perDay: number }[] = [];
   // 마부는 쉬는 날 적게 받는다 (0.0.9): 오늘 밤 줄 일당으로 센다
-  const wages = p.hires.reduce((s, h) => s + wageToday(state, h), 0);
+  const wages = p.hires.reduce((s, h) => s + wageToday(state, p, h), 0);
   if (wages) parts.push({ what: '일꾼 일당', perDay: wages });
   if (p.caravan?.rent) parts.push({ what: '빌린 수레', perDay: p.caravan.rent.perDay });
   if (p.informants.length) parts.push({ what: '정보원', perDay: p.informants.length * GROWTH.hire.informant.wage });
@@ -382,19 +384,18 @@ function upkeepView(state: EconomyState): PlayerView['upkeep'] {
   return { total: parts.reduce((s, x) => s + x.perDay, 0), parts };
 }
 
-function guildView(state: EconomyState): PlayerView['guild'] {
+function guildView(state: EconomyState, p: PlayerState): PlayerView['guild'] {
   const theme = themeDef(state.season?.theme ?? '');
   return {
     theme: theme?.name ?? null,
     quests: (theme?.quests ?? []).map((q) => {
-      const value = questProgress(state, q);
+      const value = questProgress(state, p, q);
       return { name: q.name, scope: q.scope, text: q.text, value, tiers: q.tiers, tier: questTier(q, value) };
     }),
   };
 }
 
-function caravanView(state: EconomyState): CaravanView | null {
-  const p = state.player;
+function caravanView(state: EconomyState, p: PlayerState): CaravanView | null {
   const c = p.caravan;
   if (!c) return null;
   return {
@@ -418,8 +419,8 @@ function caravanView(state: EconomyState): CaravanView | null {
   };
 }
 
-function apprenticeView(state: EconomyState, map: WorldMap): ApprenticeView | null {
-  const ap = state.player.apprentice;
+function apprenticeView(p: PlayerState, map: WorldMap): ApprenticeView | null {
+  const ap = p.apprentice;
   if (!ap) return null;
   const def = sceneDef(ap.scene);
   return {
@@ -440,8 +441,8 @@ const FLAG_TEXT: Record<ActiveExpedition['flags'][number], string> = {
   packHorse: '말에 실은 바구니: 얻는 것마다 +1',
 };
 
-function expeditionView(state: EconomyState): ExpeditionView | null {
-  const ex = state.player.expedition;
+function expeditionView(state: EconomyState, p: PlayerState): ExpeditionView | null {
+  const ex = p.expedition;
   if (!ex) return null;
   const card = cardById(ex.card);
   return {
@@ -451,14 +452,14 @@ function expeditionView(state: EconomyState): ExpeditionView | null {
       title: card.title,
       text: card.text,
       choices: card.choices.flatMap((c, index): ExpeditionChoiceView[] => {
-        const unmet = needsMet(state, c.needs);
+        const unmet = needsMet(p, c.needs);
         // 장비나 말이 여는 덧붙은 선택지(셋째부터)는 없으면 보이지 않는다. 왼쪽·오른쪽은 보이되 고를 수 없다
         if ((unmet === 'needGear' || unmet === 'noHorse') && index >= 2) return [];
         const f = choiceFatigue(c, ex);
         const parts = [f > 0 ? `피로 +${f}` : f < 0 ? `피로 −${-f}` : '피로 그대로'];
         if (c.chance) {
-          const p = chanceOf(c.chance, state, ex.town);
-          parts.push(p >= 0.7 ? '성공 가능성 높음' : p >= 0.45 ? '성공 가능성 반반' : '성공 가능성 낮음');
+          const odds = chanceOf(c.chance, state, p, ex.town);
+          parts.push(odds >= 0.7 ? '성공 가능성 높음' : odds >= 0.45 ? '성공 가능성 반반' : '성공 가능성 낮음');
         }
         if (c.needs?.tool) parts.push(`도구 ${c.needs.tool}개`);
         if (c.needs?.gear) parts.push(ECONOMY.expedition.gear[c.needs.gear].name);
@@ -552,7 +553,7 @@ function seasonDaysLeft(day: number, start: Season): number {
 }
 
 /** 장에서 사서 더 실을 수 있는 양: 내 수레(칸, 끄는 무게) + 짐꾼 수레 */
-function buyRoomView(p: EconomyState['player']): Record<GoodId, number> {
+function buyRoomView(p: PlayerState): Record<GoodId, number> {
   const free = maxWeight(p.cart, p.horses) - cartWeight(p.cart);
   return Object.fromEntries(
     GOODS.map((g) => [
@@ -562,8 +563,9 @@ function buyRoomView(p: EconomyState['player']): Record<GoodId, number> {
   ) as Record<GoodId, number>;
 }
 
-export function playerView(state: EconomyState, map: WorldMap): PlayerView {
-  const p = state.player;
+/** 플레이어 한 사람에게 보이는 것 */
+export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerId): PlayerView {
+  const p = getPlayer(state, playerId);
   const location: PlayerLocation = p.travel
     ? { kind: 'road', from: p.travel.from, to: p.travel.to, days: p.travel.days, daysLeft: p.travel.daysLeft }
     : { kind: 'town', town: p.town };
@@ -581,7 +583,9 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     };
   }
 
-  const orders: PendingOrder[] = state.orders.map((o) => ({
+  // 내 신청만 (다른 플레이어 신청은 보이지 않는다)
+  const mine = state.orders.filter((o) => ownedBy(o.owner, p.id));
+  const orders: PendingOrder[] = mine.map((o) => ({
     id: o.id,
     good: o.good,
     side: o.side,
@@ -592,10 +596,10 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
   }));
   // 마구간 남은 수는 그 마을에 있을 때만 보인다
   const stable = p.travel ? null : stableAt(state, p.town);
-  const alerts = buildingAlerts(state, map);
-  const reserved = state.orders.reduce((s, o) => s + o.reserved, 0);
+  const alerts = buildingAlerts(state, p, map);
+  const reserved = mine.reduce((s, o) => s + o.reserved, 0);
   // 수레 짐으로 낸 팔기만 (창고 짐 신청은 수레 밖이다)
-  const sellingQty = state.orders.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
+  const sellingQty = mine.filter((o) => o.side === 'sell' && o.owner.kind === 'player').reduce((s, o) => s + o.qty, 0);
 
   return {
     day: state.day,
@@ -627,7 +631,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     canExpedition: !p.travel && hasExpeditions(state.towns[p.town]!),
     mealsLeft: ECONOMY.fatigue.mealsPerDay - p.mealsToday,
     inn: p.travel ? null : { ...innOf(state.towns[p.town]!), rested: p.restedToday },
-    expedition: expeditionView(state),
+    expedition: expeditionView(state, p),
     lastExpedition: p.lastExpedition,
     rumors: p.rumors.map(noteView),
     drink: p.travel ? null : { fee: drinkFee(state, p.town), drank: p.drankToday },
@@ -643,7 +647,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       ),
     },
     travel: {
-      days: playerTravelDays(state, map),
+      days: playerTravelDays(state, p, map),
       usual: townTravelDays(map, seasonOfDay(state.day, state.startSeason))[p.travel ? p.travel.from : p.town]!.map((d) =>
         horseDays(d, p.horses),
       ),
@@ -664,7 +668,7 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
     })),
     tools: cartCount(p.cart, 'tools'),
     toolUsesLeft: cartCount(p.cart, 'tools') > 0 ? ECONOMY.expedition.usesPerTool - p.toolUses : 0,
-    apprentice: apprenticeView(state, map),
+    apprentice: apprenticeView(p, map),
     newsReadDay: p.newsReadDay,
     unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
     guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },
@@ -689,20 +693,20 @@ export function playerView(state: EconomyState, map: WorldMap): PlayerView {
       town: h.town,
       wage: h.wage,
       restWage: h.role === 'carter' ? restWage(h) : null,
-      wageToday: wageToday(state, h),
+      wageToday: wageToday(state, p, h),
       board: h.board
         ? { rows: CART.types.handcart.rows, pieces: piecesView(h.board, state.orders), weight: cartWeight(h.board), maxWeight: CART.types.handcart.humanPull }
         : null,
     })),
-    hireBoard: hireBoard(state, map),
-    caravan: caravanView(state),
+    hireBoard: hireBoard(state, p, map),
+    caravan: caravanView(state, p),
     visited: p.visited,
     knownBuildings: Object.fromEntries(
       p.visited.map((t) => [t, townBuildings(state, map, t).map((id) => ({ id, name: buildingDef(id).name }))]),
     ),
-    knownTraits: knownTraits(state),
-    upkeep: upkeepView(state),
-    guild: guildView(state),
+    knownTraits: knownTraits(p),
+    upkeep: upkeepView(state, p),
+    guild: guildView(state, p),
     certificate: certificateView(p.certificate),
     badgeBook: p.certificate.badges.map((b) => {
       const def = badgeDef(b.badge);

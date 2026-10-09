@@ -183,7 +183,13 @@ export interface ExpeditionResult {
   log: ExpeditionLogLine[];
 }
 
+/** 플레이어 id. 로컬 게임은 'me'와 봇 id, 서버에서는 계정 id */
+export type PlayerId = string;
+
 export interface PlayerState {
+  id: PlayerId;
+  /** 세계에 들어온 차례 (0부터). 첫 플레이어는 한 사람 세계와 같은 난수를 쓴다 (playerSeed) */
+  seq: number;
   gold: number;
   town: number;
   travel: Travel | null;
@@ -248,13 +254,17 @@ export interface PlayerState {
   visited: number[];
 }
 
-export type OrderOwner =
+/** 플레이어의 신청 (pid: 주인 플레이어) */
+export type PlayerOwner =
   /** 플레이어. porter가 있으면 그 짐꾼 손수레 짐으로 팔고, 산 것도 그 수레에 싣는다 (내 수레에 다 안 들어갈 때, 0.0.6) */
-  | { kind: 'player'; porter?: number }
+  | { kind: 'player'; pid: PlayerId; porter?: number }
   /** 플레이어 창고: 그 마을 창고 짐으로 낸 팔기 신청 (내가 없어도 장날에 맞춰진다). 돈은 플레이어에게 */
-  | { kind: 'store'; town: number }
+  | { kind: 'store'; pid: PlayerId; town: number }
   /** 두 번째 행렬: 행렬 수레 짐으로 팔고, 내 돈으로 사서 행렬 수레에 싣는다 */
-  | { kind: 'caravan' }
+  | { kind: 'caravan'; pid: PlayerId };
+
+export type OrderOwner =
+  | PlayerOwner
   | { kind: 'worker'; id: number }
   | { kind: 'trader'; id: number }
   | { kind: 'citizens'; town: number }
@@ -295,7 +305,8 @@ export interface EconomyState {
   towns: TownEconomy[];
   workers: Worker[];
   traders: Trader[];
-  player: PlayerState;
+  /** 이 세계의 플레이어 (사람과 봇). 차례가 결과를 바꾸는 곳은 playerOrder로 날마다 섞는다 */
+  players: Record<PlayerId, PlayerState>;
   /** 오늘 장날을 기다리는 플레이어 신청 */
   orders: Order[];
   news: NewsItem[];

@@ -1,7 +1,7 @@
 // 듣기 (기획서 "소문 - 듣는 방법"): 마을에 있으면 소문꾼에게 하루 2~3개를 공짜로 듣고,
 // 여관에서 술 한 잔을 사면 여행자에게 1개 더 듣는다. 중요한 소문(징조)이 먼저 나온다.
 import { RUMORS } from '../constants';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { mixSeed, shuffle, type Rng } from '../rng';
 import { townHops, type WorldMap } from '../worldgen';
 import { addNote } from './notebook';
@@ -27,8 +27,8 @@ function seenHere(f: RumorFact, here: number): boolean {
   return (f.kind === 'price' || f.kind === 'orders') && f.town === here;
 }
 
-function heardIds(state: EconomyState): Set<number> {
-  return new Set(state.player.rumors.map((h) => h.rumor).filter((id): id is number => id !== null));
+function heardIds(p: PlayerState): Set<number> {
+  return new Set(p.rumors.map((h) => h.rumor).filter((id): id is number => id !== null));
 }
 
 interface Option {
@@ -38,8 +38,7 @@ interface Option {
 }
 
 /** 밤에: 마을에 있으면 소문꾼에게 공짜로 듣는다 */
-export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): HeardRumor[] {
-  const p = state.player;
+export function hearFromGossips(state: EconomyState, p: PlayerState, map: WorldMap, rng: Rng): HeardRumor[] {
   if (p.travel) return [];
   const here = p.town;
   const day = state.day;
@@ -50,7 +49,7 @@ export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): H
     mill.gossips.filter((g) => g.town === here),
     rng,
   );
-  const heard = heardIds(state);
+  const heard = heardIds(p);
 
   const options: Option[] = [];
   for (const gossip of gossips) {
@@ -71,7 +70,7 @@ export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): H
     if (o.rumor) told.add(o.rumor.id);
     budget--;
     out.push(
-      addNote(state, {
+      addNote(state, p, {
         town: here,
         text: o.told.text,
         via: 'gossip',
@@ -103,11 +102,11 @@ export function hearFromGossips(state: EconomyState, map: WorldMap, rng: Rng): H
  * 여관 손님(여행자)이 아는 소문 하나. 이웃 마을에 이미 닿은 소문도 안다 (먼 마을 소문).
  * 들은 그대로 전한다. 들려줄 게 없으면 null
  */
-export function innRumor(state: EconomyState, map: WorldMap): { rumor: WorldRumor; told: Telling } | null {
-  const here = state.player.town;
+export function innRumor(state: EconomyState, p: PlayerState, map: WorldMap): { rumor: WorldRumor; told: Telling } | null {
+  const here = p.town;
   const day = state.day;
   const hops = townHops(map)[here]!;
-  const heard = heardIds(state);
+  const heard = heardIds(p);
   let best: { rumor: WorldRumor; copy: RumorCopy; score: number } | null = null;
   for (const rumor of state.rumorMill.live) {
     if (day > rumor.expires || heard.has(rumor.id) || seenHere(rumor.fact, here)) continue;

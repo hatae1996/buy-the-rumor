@@ -21,9 +21,8 @@ export function hasGear(p: PlayerState, gear: GearKind): boolean {
 }
 
 /** 이 선택지를 지금 고를 수 있나. 못 고르면 이유 */
-export function needsMet(state: EconomyState, needs: ChoiceNeeds | undefined): GearError | 'noHorse' | null {
+export function needsMet(p: PlayerState, needs: ChoiceNeeds | undefined): GearError | 'noHorse' | null {
   if (!needs) return null;
-  const p = state.player;
   if (needs.gear && !hasGear(p, needs.gear)) return 'needGear';
   if (needs.horse && p.horses.length === 0) return 'noHorse';
   if (needs.tool && cartCount(p.cart, 'tools') < needs.tool) return 'needTool';
@@ -50,8 +49,7 @@ export function useTool(p: PlayerState, n: number): number {
 }
 
 /** 잡화점에서 장비를 산다 (어느 마을이나). 값은 그 마을 금고로 */
-export function buyGear(state: EconomyState, gear: GearKind): Err | null {
-  const p = state.player;
+export function buyGear(state: EconomyState, p: PlayerState, gear: GearKind): Err | null {
   if (p.travel) return 'traveling';
   if (hasGear(p, gear)) return 'haveGear';
   const price = X.gear[gear].price;
@@ -64,8 +62,7 @@ export function buyGear(state: EconomyState, gear: GearKind): Err | null {
 }
 
 /** 닳거나 망가진 장비를 수레의 도구 하나로 고친다 */
-export function repairGear(state: EconomyState, gear: GearKind): Err | null {
-  const p = state.player;
+export function repairGear(state: EconomyState, p: PlayerState, gear: GearKind): Err | null {
   if (p.expedition) return 'inExpedition';
   const left = p.gear[gear];
   if (left === undefined) return 'needGear';
@@ -82,8 +79,7 @@ export function guideFee(state: EconomyState, town: number): number {
 }
 
 /** 여관에서 안내인을 고용한다. 여관비처럼 경제에서 빠져나간다 */
-export function hireGuide(state: EconomyState): Err | null {
-  const p = state.player;
+export function hireGuide(state: EconomyState, p: PlayerState): Err | null {
   if (p.travel) return 'traveling';
   if (!hasExpeditions(state.towns[p.town]!)) return 'noExpedition';
   if (p.guide) return 'alreadyGuide';

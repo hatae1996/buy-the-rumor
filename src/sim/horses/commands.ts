@@ -1,7 +1,7 @@
 // 말과 수레 명령: 마구간에서 말 사고팔기, 말 쉬게 하기, 수레방에서 수레 바꾸기.
 import { cartLots, createCart, loadGoods, type CartType } from '../cart';
 import { CART, HORSES } from '../constants';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { buyPrice, sellPrice, takeHorse, returnHorse } from './stable';
 import { lacksHorses } from './pull';
 import { stableAt } from './supply';
@@ -25,8 +25,7 @@ export type HorseError =
 type Err = HorseError | 'traveling' | 'notEnoughGold' | 'noRoom';
 
 /** 지금 마을 마구간에서 말을 산다 */
-export function buyHorse(state: EconomyState, kind: HorseKind): Err | null {
-  const p = state.player;
+export function buyHorse(state: EconomyState, p: PlayerState, kind: HorseKind): Err | null {
   if (p.travel) return 'traveling';
   const stable = stableAt(state, p.town);
   if (!stable) return 'noStable';
@@ -39,13 +38,12 @@ export function buyHorse(state: EconomyState, kind: HorseKind): Err | null {
   p.gold -= h.price;
   p.horses.push(h);
   p.ledger.push({ day: state.day, kind: 'horse', what: 'buy', town: p.town, horse: kind, price: h.price });
-  noteMoment(state, 'firstHorse');
+  noteMoment(state, p, 'firstHorse');
   return null;
 }
 
 /** 지금 마을 마구간에 말을 되판다. 그 마구간 재고로 돌아간다 */
-export function sellHorse(state: EconomyState, horseId: number): Err | null {
-  const p = state.player;
+export function sellHorse(state: EconomyState, p: PlayerState, horseId: number): Err | null {
   if (p.travel) return 'traveling';
   const stable = stableAt(state, p.town);
   if (!stable) return 'noStable';
@@ -64,8 +62,7 @@ export function sellHorse(state: EconomyState, horseId: number): Err | null {
 }
 
 /** 마구간에서 말을 쉬게 한다 (하루 한 번, 말마다 값). 값은 여관비처럼 경제에서 빠져나간다 */
-export function restHorses(state: EconomyState): Err | null {
-  const p = state.player;
+export function restHorses(state: EconomyState, p: PlayerState): Err | null {
   if (p.travel) return 'traveling';
   if (!p.horses.length) return 'noHorse';
   if (p.horsesRested) return 'alreadyRestedHorses';
@@ -88,15 +85,14 @@ export function cartCost(from: CartType, to: CartType): number {
  * 수레를 바꾼다. 짐은 새 수레에 옮겨 싣고, 다 못 실으면 바꾸지 않는다.
  * 장날 신청이 걸려 있으면 잡아 둔 자리 때문에 바꿀 수 없다
  */
-export function buyCart(state: EconomyState, map: WorldMap, type: CartType): Err | null {
-  const p = state.player;
+export function buyCart(state: EconomyState, p: PlayerState, map: WorldMap, type: CartType): Err | null {
   if (p.travel) return 'traveling';
   // 수레방은 목재 마을과 도시에만 있다 (0.0.5). 다만 말이 모자라 수레가 움직이지 않으면
   // 어느 마을에서나 손수레로 바꿀 수 있다 (말을 잃고 갇히지 않게, 0.0.7)
   const stuck = type === 'handcart' && lacksHorses(p.cart, p.horses);
   if (!stuck && !hasBuilding(state, map, p.town, 'cartShop')) return 'noCartShop';
   if (p.cart.type === type) return 'sameCart';
-  if (state.orders.some((o) => o.owner.kind === 'player')) return 'ordersPending';
+  if (state.orders.some((o) => o.owner.kind === 'player' && o.owner.pid === p.id)) return 'ordersPending';
   const cost = cartCost(p.cart.type, type);
   if (p.gold < cost) return 'notEnoughGold';
   const next = createCart(type);

@@ -5,6 +5,8 @@ import {
   advanceDay,
   applyCommand,
   createEconomy,
+  getPlayer,
+  LOCAL_PLAYER,
   noteView,
   playerView,
   type Command,
@@ -13,6 +15,7 @@ import {
   type LedgerEntry,
   type NewsItem,
   type NoteView,
+  type PlayerState,
   type PlayerView,
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
@@ -25,9 +28,9 @@ export const DAY_MS = 2.5 * 60 * 60 * 1000;
 const MAX_CATCH_UP_DAYS = 45;
 /**
  * 저장 칸. 상태 모양이 바뀌면 숫자를 올려 예전 저장을 쓰지 않는다
- * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일)
+ * (v2: 0.0.3 수레, 피로, 원정이 들어감 / v5: 0.0.4 소문 / v6: 0.0.4 말 / v7: 0.0.4 원정 장비 / v8: 0.0.4 견습 / v9: 0.0.4 랭킹 기록 / v10: 0.0.5 창고 / v11: 0.0.5 일꾼 / v12: 0.0.5 두 번째 행렬 / v13: 0.0.5 은행 계좌 / v14: 0.0.5 알림 설정 / v15: 0.0.5 가 본 마을 / v19: 0.0.9 시즌 125일 / v20: 0.1.0 여러 플레이어)
  */
-const SAVE_KEY = 'buy-the-rumor/save/v19';
+const SAVE_KEY = 'buy-the-rumor/save/v20';
 
 interface SaveData {
   version: 1;
@@ -56,6 +59,8 @@ export interface AwaySummary {
 
 export class Game {
   private listeners = new Set<() => void>();
+  /** 이 폰의 플레이어 (서버에서는 로그인한 계정) */
+  readonly playerId = LOCAL_PLAYER;
 
   private constructor(
     readonly map: WorldMap,
@@ -83,11 +88,11 @@ export class Game {
   }
 
   view(): PlayerView {
-    return playerView(this.state, this.map);
+    return playerView(this.state, this.map, this.playerId);
   }
 
   dispatch(cmd: Command): CommandResult {
-    const result = applyCommand(this.state, this.map, cmd);
+    const result = applyCommand(this.state, this.map, this.playerId, cmd);
     if (result.ok) this.changed();
     return result;
   }
@@ -99,7 +104,11 @@ export class Game {
 
   /** 견습 중인가. 견습 마을은 혼자 쓰는 마을이라 실제 시간이 흐르지 않는다 */
   get inApprentice(): boolean {
-    return this.state.player.apprentice !== null;
+    return this.me.apprentice !== null;
+  }
+
+  private get me(): PlayerState {
+    return getPlayer(this.state, this.playerId);
   }
 
   /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null. 견습 중에는 시간이 멈춰 있다 */
@@ -139,26 +148,28 @@ export class Game {
 
   private advance(days: number): AwaySummary {
     const fromDay = this.state.day;
-    const wasOnRoad = this.state.player.travel !== null;
-    const ledgerFrom = this.state.player.ledger.length;
+    const me = this.me;
+    const wasOnRoad = me.travel !== null;
+    const ledgerFrom = me.ledger.length;
     const newsFrom = this.state.news.length;
     const heard: NoteView[] = [];
     const notices: NotifyEvent[] = [];
     let stamped = 0;
     for (let i = 0; i < days; i++) {
-      const r = advanceDay(this.state, this.map);
+      const r = advanceDay(this.state, this.map).players[this.playerId];
+      if (!r) continue;
       heard.push(...r.heard.map(noteView));
       notices.push(...r.notices);
       stamped += r.stamped;
     }
-    const arrived = wasOnRoad && this.state.player.travel === null;
+    const arrived = wasOnRoad && me.travel === null;
     return {
       days,
       fromDay,
       toDay: this.state.day,
-      ledger: this.state.player.ledger.slice(ledgerFrom),
+      ledger: me.ledger.slice(ledgerFrom),
       news: this.state.news.slice(newsFrom),
-      arrivedAt: arrived ? this.state.player.town : null,
+      arrivedAt: arrived ? me.town : null,
       heard,
       stamped,
       notices,

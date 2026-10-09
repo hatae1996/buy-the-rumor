@@ -18,29 +18,29 @@ let s: EconomyState;
 
 function setup(town: number): EconomyState {
   const st = createEconomy(map, 20261008);
-  st.player.town = town;
-  st.player.expeditionChances = 6;
-  st.player.cart = createCart('wagon');
+  st.players.me!.town = town;
+  st.players.me!.expeditionChances = 6;
+  st.players.me!.cart = createCart('wagon');
   return st;
 }
 
 /** 고를 수 있는 선택지 중 want에 가장 가까운 것 (도구·장비·말이 없으면 못 고르는 선택지가 있다) */
 function allowed(st: EconomyState, want: number): number {
-  const card = cardById(st.player.expedition!.card);
-  const ok = card.choices.map((c, i) => (needsMet(st, c.needs) ? -1 : i)).filter((i) => i >= 0);
+  const card = cardById(st.players.me!.expedition!.card);
+  const ok = card.choices.map((c, i) => (needsMet(st.players.me!, c.needs) ? -1 : i)).filter((i) => i >= 0);
   return ok.includes(want) ? want : ok[0]!;
 }
 
 /** 원정을 끝까지: 늘 고른 쪽(0 또는 1)을 고른다 (못 고르면 고를 수 있는 것) */
 function runExpedition(st: EconomyState, pick: (i: number) => number = () => 0): void {
-  expect(applyCommand(st, map, { type: 'startExpedition' }).ok).toBe(true);
-  for (let i = 0; st.player.expedition && i < 20; i++) {
-    expect(applyCommand(st, map, { type: 'chooseExpeditionCard', choice: allowed(st, pick(i)) }).ok).toBe(true);
+  expect(applyCommand(st, map, 'me', { type: 'startExpedition' }).ok).toBe(true);
+  for (let i = 0; st.players.me!.expedition && i < 20; i++) {
+    expect(applyCommand(st, map, 'me', { type: 'chooseExpeditionCard', choice: allowed(st, pick(i)) }).ok).toBe(true);
   }
-  expect(st.player.expedition).toBeNull();
+  expect(st.players.me!.expedition).toBeNull();
 }
 
-const deckOf = (st: EconomyState, id: number, seed = 1) => buildDeck(st, map, id, createRng(seed)).deck;
+const deckOf = (st: EconomyState, id: number, seed = 1) => buildDeck(st, st.players.me!, map, id, createRng(seed)).deck;
 
 beforeEach(() => {
   s = setup(producers[0]!);
@@ -84,7 +84,7 @@ describe('마을마다 다른 덱', () => {
     for (const id of producers) {
       const st = setup(id);
       const tags = new Set(tagsNearTown(map, id));
-      const pool = deckPools(st, map, id).tag;
+      const pool = deckPools(st, st.players.me!, map, id).tag;
       for (const cardId of pool) {
         expect(cardById(cardId).sources.some((x) => x.kind === 'tag' && tags.has(x.tag)), cardId).toBe(true);
       }
@@ -99,7 +99,7 @@ describe('마을마다 다른 덱', () => {
     for (const id of producers) {
       for (let seed = 1; seed <= 20; seed++) {
         const st = setup(id);
-        const pools = deckPools(st, map, id);
+        const pools = deckPools(st, st.players.me!, map, id);
         const deck = deckOf(st, id, seed);
         const terrain = deck.filter((c) => pools.terrain.includes(c)).length;
         const season = deck.filter((c) => pools.season.includes(c)).length;
@@ -129,11 +129,11 @@ describe('마을마다 다른 덱', () => {
 
   it('남겨 둔 카드는 다음 원정 덱에 한 번 들어가고, 남긴 날을 기억한다', () => {
     const id = producers[0]!;
-    s.player.marks = [{ town: id, card: 'checkTrap', day: s.day - 2 }];
-    const built = buildDeck(s, map, id, createRng(1));
+    s.players.me!.marks = [{ town: id, card: 'checkTrap', day: s.day - 2 }];
+    const built = buildDeck(s, s.players.me!, map, id, createRng(1));
     expect(built.deck).toContain('checkTrap');
     expect(built.markDays.checkTrap).toBe(s.day - 2);
-    expect(s.player.marks).toEqual([]);
+    expect(s.players.me!.marks).toEqual([]);
   });
 
   it('연결 카드와 말 카드는 (말 없이) 덱에 바로 들어가지 않는다', () => {
@@ -149,12 +149,12 @@ describe('마을마다 다른 덱', () => {
 describe('원정 진행', () => {
   it('기회 하나를 쓰고, 3~4장 고르면 끝나고, 얻은 것을 수레에 싣는다', () => {
     runExpedition(s);
-    expect(s.player.expeditionChances).toBe(5);
-    const r = s.player.lastExpedition!;
+    expect(s.players.me!.expeditionChances).toBe(5);
+    const r = s.players.me!.lastExpedition!;
     expect(r.log.length).toBeGreaterThanOrEqual(1);
     expect(r.log.length).toBeLessThanOrEqual(6);
-    for (const g of r.loaded) expect(cartCount(s.player.cart, g.good)).toBeGreaterThanOrEqual(g.qty);
-    expect(s.player.ledger.at(-1)!.kind).toBe('expedition');
+    for (const g of r.loaded) expect(cartCount(s.players.me!.cart, g.good)).toBeGreaterThanOrEqual(g.qty);
+    expect(s.players.me!.ledger.at(-1)!.kind).toBe('expedition');
   });
 
   it('같은 세계에서 같은 선택을 하면 결과가 똑같다 (서버가 다시 계산할 수 있다)', () => {
@@ -162,40 +162,40 @@ describe('원정 진행', () => {
     const b = setup(producers[1]!);
     runExpedition(a, (i) => i % 2);
     runExpedition(b, (i) => i % 2);
-    expect(b.player.lastExpedition).toEqual(a.player.lastExpedition);
-    expect(b.player.fatigue).toBe(a.player.fatigue);
+    expect(b.players.me!.lastExpedition).toEqual(a.players.me!.lastExpedition);
+    expect(b.players.me!.fatigue).toBe(a.players.me!.fatigue);
   });
 
   it('피로가 쌓이고, 다 차면 그 자리에서 돌아온다', () => {
-    s.player.fatigue = ECONOMY.fatigue.max - 1;
-    applyCommand(s, map, { type: 'startExpedition' });
+    s.players.me!.fatigue = ECONOMY.fatigue.max - 1;
+    applyCommand(s, map, 'me', { type: 'startExpedition' });
     // 피로가 드는 선택을 찾아 고른다
-    for (let i = 0; s.player.expedition && i < 10; i++) {
-      const card = cardById(s.player.expedition.card);
+    for (let i = 0; s.players.me!.expedition && i < 10; i++) {
+      const card = cardById(s.players.me!.expedition.card);
       const tiring = card.choices.findIndex((c) => c.fatigue > 0);
-      applyCommand(s, map, { type: 'chooseExpeditionCard', choice: tiring < 0 ? 0 : tiring });
+      applyCommand(s, map, 'me', { type: 'chooseExpeditionCard', choice: tiring < 0 ? 0 : tiring });
     }
-    expect(s.player.expedition).toBeNull();
-    expect(s.player.fatigue).toBeLessThanOrEqual(ECONOMY.fatigue.max);
+    expect(s.players.me!.expedition).toBeNull();
+    expect(s.players.me!.fatigue).toBeLessThanOrEqual(ECONOMY.fatigue.max);
   });
 
   it('기회가 없거나, 너무 지쳤거나, 도시거나, 길 위면 나갈 수 없다', () => {
-    s.player.expeditionChances = 0;
-    expect(applyCommand(s, map, { type: 'startExpedition' })).toEqual({ ok: false, error: 'noChances' });
-    s.player.expeditionChances = 1;
-    s.player.fatigue = ECONOMY.fatigue.max;
-    expect(applyCommand(s, map, { type: 'startExpedition' })).toEqual({ ok: false, error: 'tooTired' });
+    s.players.me!.expeditionChances = 0;
+    expect(applyCommand(s, map, 'me', { type: 'startExpedition' })).toEqual({ ok: false, error: 'noChances' });
+    s.players.me!.expeditionChances = 1;
+    s.players.me!.fatigue = ECONOMY.fatigue.max;
+    expect(applyCommand(s, map, 'me', { type: 'startExpedition' })).toEqual({ ok: false, error: 'tooTired' });
     const c = setup(city);
-    expect(applyCommand(c, map, { type: 'startExpedition' })).toEqual({ ok: false, error: 'noExpedition' });
+    expect(applyCommand(c, map, 'me', { type: 'startExpedition' })).toEqual({ ok: false, error: 'noExpedition' });
   });
 
   it('원정 중에는 다른 마을로 떠날 수 없고, 그만두면 모은 것을 싣고 돌아온다', () => {
-    applyCommand(s, map, { type: 'startExpedition' });
-    const to = map.towns.find((t) => t.id !== s.player.town)!.id;
-    expect(applyCommand(s, map, { type: 'travel', to })).toEqual({ ok: false, error: 'inExpedition' });
-    expect(applyCommand(s, map, { type: 'endExpedition' }).ok).toBe(true);
-    expect(s.player.expedition).toBeNull();
-    expect(applyCommand(s, map, { type: 'chooseExpeditionCard', choice: 0 })).toEqual({ ok: false, error: 'notInExpedition' });
+    applyCommand(s, map, 'me', { type: 'startExpedition' });
+    const to = map.towns.find((t) => t.id !== s.players.me!.town)!.id;
+    expect(applyCommand(s, map, 'me', { type: 'travel', to })).toEqual({ ok: false, error: 'inExpedition' });
+    expect(applyCommand(s, map, 'me', { type: 'endExpedition' }).ok).toBe(true);
+    expect(s.players.me!.expedition).toBeNull();
+    expect(applyCommand(s, map, 'me', { type: 'chooseExpeditionCard', choice: 0 })).toEqual({ ok: false, error: 'notInExpedition' });
   });
 
   it('잡은 만큼 숲(자원지)이 준다: 결과가 세계 상태를 따른다', () => {
@@ -204,11 +204,11 @@ describe('원정 진행', () => {
     const st = setup(forestTown);
     const node = findNode(st.towns[forestTown]!, 'forest')!;
     const before = node.amount;
-    for (let n = 0; n < 6 && st.player.expeditionChances > 0; n++) {
-      st.player.fatigue = 0;
+    for (let n = 0; n < 6 && st.players.me!.expeditionChances > 0; n++) {
+      st.players.me!.fatigue = 0;
       runExpedition(st);
     }
-    const gathered = st.player.ledger
+    const gathered = st.players.me!.ledger
       .filter((e) => e.kind === 'expedition')
       .flatMap((e) => (e.kind === 'expedition' ? e.goods : []))
       .filter((g) => g.good === 'meat' || g.good === 'wood')
@@ -217,31 +217,31 @@ describe('원정 진행', () => {
   });
 
   it('수레에 자리가 없으면 얻은 것을 두고 온다', () => {
-    s.player.cart = createCart('pack');
-    loadGoods(s.player.cart, 'salt', 27);
-    for (let n = 0; n < 6 && s.player.expeditionChances > 0; n++) {
-      s.player.fatigue = 0;
+    s.players.me!.cart = createCart('pack');
+    loadGoods(s.players.me!.cart, 'salt', 27);
+    for (let n = 0; n < 6 && s.players.me!.expeditionChances > 0; n++) {
+      s.players.me!.fatigue = 0;
       runExpedition(s);
-      const r = s.player.lastExpedition!;
+      const r = s.players.me!.lastExpedition!;
       expect(r.loaded).toEqual([]);
     }
   });
 
   it('원정에서 본 것은 수첩에 "직접 봄"으로 날짜와 마을과 함께 적힌다', () => {
-    for (let n = 0; n < 6 && s.player.expeditionChances > 0; n++) {
-      s.player.fatigue = 0;
+    for (let n = 0; n < 6 && s.players.me!.expeditionChances > 0; n++) {
+      s.players.me!.fatigue = 0;
       // 말 걸기처럼 이야기를 듣는 선택을 고른다
-      applyCommand(s, map, { type: 'startExpedition' });
-      while (s.player.expedition) {
-        const card = cardById(s.player.expedition.card);
+      applyCommand(s, map, 'me', { type: 'startExpedition' });
+      while (s.players.me!.expedition) {
+        const card = cardById(s.players.me!.expedition.card);
         const talk = card.choices.findIndex((c) => c.success.some((e) => e.kind === 'rumor'));
-        applyCommand(s, map, { type: 'chooseExpeditionCard', choice: talk < 0 ? 1 : talk });
+        applyCommand(s, map, 'me', { type: 'chooseExpeditionCard', choice: talk < 0 ? 1 : talk });
       }
     }
-    const seen = s.player.rumors.filter((r) => r.via === 'seen');
+    const seen = s.players.me!.rumors.filter((r) => r.via === 'seen');
     expect(seen.length).toBeGreaterThan(0);
     for (const r of seen) {
-      expect(r.town).toBe(s.player.town);
+      expect(r.town).toBe(s.players.me!.town);
       expect(r.text.length).toBeGreaterThan(5);
       expect(r.from).toBe('원정에서 직접 봄');
     }

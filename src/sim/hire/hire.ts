@@ -5,7 +5,7 @@
 import { createCart, type Cart } from '../cart';
 import { GROWTH } from '../constants';
 import { isGatherJob, JOB_NAME, JOB_RESOURCE, JOBS, type JobId } from '../economy/jobs';
-import type { EconomyState, Worker } from '../economy/state';
+import type { EconomyState, PlayerState, Worker } from '../economy/state';
 import { hasBuilding } from '../growth/buildings';
 import { mixSeed } from '../rng';
 import type { WorldMap } from '../worldgen';
@@ -88,8 +88,7 @@ export interface HireOffer {
 }
 
 /** 지금 마을 게시판 (여관이 있는 마을에서만) */
-export function hireBoard(state: EconomyState, map: WorldMap): HireOffer[] {
-  const p = state.player;
+export function hireBoard(state: EconomyState, p: PlayerState, map: WorldMap): HireOffer[] {
   if (p.travel || !hasBuilding(state, map, p.town, 'inn')) return [];
   const out: HireOffer[] = [];
   for (const role of ['porter', 'gatherer', 'carter'] as const) {
@@ -102,8 +101,7 @@ export function hireBoard(state: EconomyState, map: WorldMap): HireOffer[] {
 }
 
 /** 게시판에서 고용한다. 하루치 일당을 먼저 준다 */
-export function hire(state: EconomyState, map: WorldMap, role: HireRole): Err | null {
-  const p = state.player;
+export function hire(state: EconomyState, p: PlayerState, map: WorldMap, role: HireRole): Err | null {
   if (p.travel) return 'traveling';
   if (!hasBuilding(state, map, p.town, 'inn')) return 'noInn';
   const w = candidate(state, p.town, role);
@@ -131,19 +129,17 @@ export function hire(state: EconomyState, map: WorldMap, role: HireRole): Err | 
 }
 
 /** 일꾼을 내보낸다. 짐꾼 수레에 짐이 있으면 먼저 옮겨야 한다 */
-export function dismiss(state: EconomyState, hireId: number): Err | 'boardNotEmpty' | null {
-  const p = state.player;
+export function dismiss(state: EconomyState, p: PlayerState, hireId: number): Err | 'boardNotEmpty' | null {
   const h = p.hires.find((x) => x.id === hireId);
   if (!h) return 'noHire';
   if (h.board && h.board.pieces.length) return 'boardNotEmpty';
-  release(state, h);
+  release(state, p, h);
   p.ledger.push({ day: state.day, kind: 'hire', what: 'dismiss', role: h.role, name: h.name, town: h.town, fee: 0 });
   return null;
 }
 
 /** 일꾼을 그 마을 일꾼으로 돌려놓는다 */
-export function release(state: EconomyState, h: Hire): void {
-  const p = state.player;
+export function release(state: EconomyState, p: PlayerState, h: Hire): void {
   p.hires = p.hires.filter((x) => x !== h);
   state.workers.push({ ...h.worker, town: h.town });
 }

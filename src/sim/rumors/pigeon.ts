@@ -3,31 +3,29 @@
 // 정보원은 한 마을에 심어 두면 매일 그 마을 시세와 장날 신청 현황을 보내 준다 (여관 고용 게시판에서 고용).
 import { GROWTH } from '../constants';
 import { GOOD_NAME, GOODS, type GoodId } from '../economy/goods';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { iGa } from '../josa';
 import type { WorldMap } from '../worldgen';
 import { addNote } from './notebook';
 import type { HeardRumor } from './types';
 
 /** 그 마을 오늘 시세를 플레이어 기억에 적는다 (마지막으로 본 날과 함께) */
-function rememberPrices(state: EconomyState, town: number): Record<GoodId, number> {
+function rememberPrices(state: EconomyState, p: PlayerState, town: number): Record<GoodId, number> {
   const t = state.towns[town]!;
   const prices = {} as Record<GoodId, number>;
   for (const g of GOODS) prices[g] = Math.round(t.refPrice[g]);
-  const p = state.player;
   p.memory[town] = { day: state.day, prices, previous: p.memory[town]?.prices ?? null };
   return prices;
 }
 
 /** 장날이 끝난 뒤: 보낸 전서구가 그 마을 오늘 시세를 갖고 온다 (플레이어는 다음 날 아침에 본다) */
-export function deliverPigeons(state: EconomyState, map: WorldMap): HeardRumor[] {
-  const p = state.player;
+export function deliverPigeons(state: EconomyState, p: PlayerState, map: WorldMap): HeardRumor[] {
   const out: HeardRumor[] = [];
   for (const pg of p.pigeons) {
-    const prices = rememberPrices(state, pg.town);
+    const prices = rememberPrices(state, p, pg.town);
     const list = GOODS.map((g) => `${GOOD_NAME[g]} ${prices[g]}`).join(' · ');
     out.push(
-      addNote(state, {
+      addNote(state, p, {
         town: pg.town,
         text: `${map.towns[pg.town]!.name} 시세: ${list}`,
         via: 'pigeon',
@@ -44,26 +42,25 @@ export function deliverPigeons(state: EconomyState, map: WorldMap): HeardRumor[]
 }
 
 /** 장날이 끝난 뒤: 정보원이 품삯을 받고 그 마을 시세와 신청 현황을 보낸다. 품삯을 못 주면 떠난다 */
-export function informantReports(state: EconomyState, map: WorldMap): HeardRumor[] {
-  const p = state.player;
+export function informantReports(state: EconomyState, p: PlayerState, map: WorldMap): HeardRumor[] {
   const out: HeardRumor[] = [];
   const stay: number[] = [];
   for (const town of p.informants) {
     const name = map.towns[town]!.name;
     const wage = GROWTH.hire.informant.wage;
     if (p.gold < wage) {
-      out.push(addNote(state, { town, text: `품삯을 못 받은 ${iGa(name)} 정보원이 일을 그만뒀어요.`, via: 'informant', from: '정보원', gossip: null, rumor: null, importance: 3, claim: null }));
+      out.push(addNote(state, p, { town, text: `품삯을 못 받은 ${iGa(name)} 정보원이 일을 그만뒀어요.`, via: 'informant', from: '정보원', gossip: null, rumor: null, importance: 3, claim: null }));
       continue;
     }
     p.gold -= wage;
     p.ledger.push({ day: state.day, kind: 'info', what: 'informant', town, fee: wage });
     stay.push(town);
-    rememberPrices(state, town);
+    rememberPrices(state, p, town);
     const m = state.towns[town]!.lastMarket;
     const short = GOODS.filter((g) => m[g].demand > m[g].supply).map((g) => `${GOOD_NAME[g]} ${m[g].demand - m[g].supply}`);
     const extra = GOODS.filter((g) => m[g].supply > m[g].demand).map((g) => `${GOOD_NAME[g]} ${m[g].supply - m[g].demand}`);
     const text = `${name} 장날: 모자란 것 ${short.join(', ') || '없음'} / 남는 것 ${extra.join(', ') || '없음'}`;
-    out.push(addNote(state, { town, text, via: 'informant', from: '정보원', gossip: null, rumor: null, importance: 4, claim: null }));
+    out.push(addNote(state, p, { town, text, via: 'informant', from: '정보원', gossip: null, rumor: null, importance: 4, claim: null }));
   }
   p.informants = stay;
   return out;

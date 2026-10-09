@@ -5,7 +5,8 @@
 import { cartLots } from '../cart';
 import { porterBoards } from '../hire/boards';
 import { GOODS, type GoodId } from '../economy/goods';
-import type { EconomyState } from '../economy/state';
+import { ownedBy } from '../economy/players';
+import type { EconomyState, PlayerState } from '../economy/state';
 
 /** 짐과 말은 값의 이만큼만 친다 */
 export const HOLDINGS_SHARE = 0.5;
@@ -32,8 +33,7 @@ export interface WorthParts {
   total: number;
 }
 
-export function worthParts(state: EconomyState): WorthParts {
-  const p = state.player;
+export function worthParts(state: EconomyState, p: PlayerState): WorthParts {
   const qty = Object.fromEntries(GOODS.map((g) => [g, 0])) as Record<GoodId, number>;
   // 수레와 창고 짐
   const boards = [p.cart, ...porterBoards(p), ...(p.caravan ? [p.caravan.cart] : []), ...p.warehouses.map((w) => w.board)];
@@ -41,6 +41,7 @@ export function worthParts(state: EconomyState): WorthParts {
   // 장날을 기다리는 신청: 팔려고 맡긴 짐과 사려고 맡긴 돈
   let reserved = 0;
   for (const o of state.orders) {
+    if (!ownedBy(o.owner, p.id)) continue;
     reserved += o.reserved;
     for (const l of o.lots) qty[l.good] += l.qty;
   }
@@ -53,6 +54,6 @@ export function worthParts(state: EconomyState): WorthParts {
   return { cash, deposit, debt, goods, horses, total: Math.round(cash + deposit - debt + (goods + horses) * HOLDINGS_SHARE) };
 }
 
-export function netWorth(state: EconomyState): number {
-  return worthParts(state).total;
+export function netWorth(state: EconomyState, p: PlayerState): number {
+  return worthParts(state, p).total;
 }

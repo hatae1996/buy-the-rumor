@@ -4,18 +4,20 @@
 import { ECONOMY } from '../constants';
 import type { Accounts } from '../economy/accounts';
 import type { Fill } from '../economy/market';
-import type { EconomyState } from '../economy/state';
+import { ownedBy } from '../economy/players';
+import type { EconomyState, PlayerState } from '../economy/state';
 
 const A = ECONOMY.apprentice;
 
-/** 장날에: 견습 마을에 낸 플레이어 신청을 모두 맞추고 신청 목록에서 뺀다. 맞춘 결과를 돌려준다 */
-export function settleApprenticeOrders(state: EconomyState, accounts: Accounts): Fill[] {
-  const ap = state.player.apprentice;
+/** 장날에: 견습 마을에 낸 이 플레이어 신청을 모두 맞추고 신청 목록에서 뺀다. 맞춘 결과를 돌려준다 */
+export function settleApprenticeOrders(state: EconomyState, p: PlayerState, accounts: Accounts): Fill[] {
+  const ap = p.apprentice;
   if (!ap) return [];
   const town = state.towns[ap.town]!;
-  const owner = { kind: 'player' } as const;
+  const owner = { kind: 'player', pid: p.id } as const;
   const fills: Fill[] = [];
-  for (const o of state.orders.filter((x) => x.town === ap.town)) {
+  const mine = (x: (typeof state.orders)[number]) => x.town === ap.town && ownedBy(x.owner, p.id);
+  for (const o of state.orders.filter(mine)) {
     const ref = Math.round(town.refPrice[o.good]);
     if (o.side === 'sell') {
       const price = Math.max(o.limit, Math.round(ref * A.buyMarkup));
@@ -35,6 +37,6 @@ export function settleApprenticeOrders(state: EconomyState, accounts: Accounts):
       fills.push({ owner, good: o.good, side: 'buy', qty: o.qty, price });
     }
   }
-  state.orders = state.orders.filter((x) => x.town !== ap.town);
+  state.orders = state.orders.filter((x) => !mine(x));
   return fills;
 }

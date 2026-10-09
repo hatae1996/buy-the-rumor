@@ -37,17 +37,17 @@ describe('봇의 시간차 장사', () => {
     const seed = 20261008;
     const map = generateWorld(seed);
     const s = createEconomy(map, seed, { warmupDays: 20 });
-    s.player.gold = 1000;
-    s.player.cart = createCart('handcart');
+    s.players.me!.gold = 1000;
+    s.players.me!.cart = createCart('handcart');
     // 소금이 싼 여름 날로 맞추고, 이 마을 소금 값을 싸게 둔다
-    while (playerView(s, map).season !== SUMMER) s.day++;
-    const here = s.player.town;
+    while (playerView(s, map, 'me').season !== SUMMER) s.day++;
+    const here = s.players.me!.town;
     s.towns[here]!.refPrice.salt = 3;
     s.towns[here]!.lastMarket.salt = { ...s.towns[here]!.lastMarket.salt, supply: 50 };
     const g = createGrowthMind();
     const step = (): Command | null => {
-      const c = timeShiftStep(playerView(s, map), 100, g, (x) => x);
-      if (c) expect(applyCommand(s, map, c)).toEqual(expect.objectContaining({ ok: true }));
+      const c = timeShiftStep(playerView(s, map, 'me'), 100, g, (x) => x);
+      if (c) expect(applyCommand(s, map, 'me', c)).toEqual(expect.objectContaining({ ok: true }));
       return c;
     };
     expect(step()).toEqual({ type: 'rentWarehouse' });
@@ -56,24 +56,24 @@ describe('봇의 시간차 장사', () => {
     expect(buy!.type === 'placeBuyOrder' && buy!.qty * buy!.maxPrice).toBeLessThanOrEqual(1000 * 0.4 + 1);
     // 산 소금이 수레에 오면 창고에 넣는다
     // 신청을 거두고(잡아 둔 수레 자리를 푼다) 산 것처럼 수레에 싣는다
-    for (const o of [...s.orders]) expect(applyCommand(s, map, { type: 'cancelOrder', orderId: o.id }).ok).toBe(true);
-    loadGoods(s.player.cart, 'salt', 20);
+    for (const o of [...s.orders]) expect(applyCommand(s, map, 'me', { type: 'cancelOrder', orderId: o.id }).ok).toBe(true);
+    loadGoods(s.players.me!.cart, 'salt', 20);
     expect(step()).toEqual({ type: 'storeGoods', good: 'salt', qty: 20 });
-    expect(cartCount(s.player.warehouses[0]!.board, 'salt')).toBe(20);
+    expect(cartCount(s.players.me!.warehouses[0]!.board, 'salt')).toBe(20);
   });
 
   it('비싼 철에 산 값보다 충분히 오르면 창고 짐을 장에 낸다', () => {
     const seed = 20261008;
     const map = generateWorld(seed);
     const s = createEconomy(map, seed, { warmupDays: 20 });
-    s.player.gold = 1000;
-    expect(applyCommand(s, map, { type: 'rentWarehouse' }).ok).toBe(true);
-    loadGoods(s.player.warehouses[0]!.board, 'salt', 30);
-    while (playerView(s, map).season !== WINTER) s.day++;
-    s.towns[s.player.town]!.refPrice.salt = 9;
+    s.players.me!.gold = 1000;
+    expect(applyCommand(s, map, 'me', { type: 'rentWarehouse' }).ok).toBe(true);
+    loadGoods(s.players.me!.warehouses[0]!.board, 'salt', 30);
+    while (playerView(s, map, 'me').season !== WINTER) s.day++;
+    s.towns[s.players.me!.town]!.refPrice.salt = 9;
     const g = createGrowthMind();
     g.shiftCost.salt = 3;
-    const c = timeShiftStep(playerView(s, map), 100, g, (x) => x);
+    const c = timeShiftStep(playerView(s, map, 'me'), 100, g, (x) => x);
     expect(c).toEqual(expect.objectContaining({ type: 'placeStoreSellOrder', good: 'salt', qty: 30 }));
   });
 });

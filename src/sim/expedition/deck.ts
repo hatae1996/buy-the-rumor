@@ -1,7 +1,7 @@
 // 원정 덱 만들기 (기획서 "마을마다 다른 덱", "덱 짜기와 결과 규칙").
 // 원정 한 번의 덱: 지형 6장 + 지역 특색 2장 + 계절 1~2장 + 사건 0~2장 + 내 카드 0~2장. 여기서 3~4장을 뽑는다.
 import { ECONOMY, WORLDGEN } from '../constants';
-import type { EconomyState } from '../economy/state';
+import type { EconomyState, PlayerState } from '../economy/state';
 import { shuffle, type Rng } from '../rng';
 import { seasonOfDay } from '../season';
 import { buildNeighbors, cellsAround, type RegionTagId, type WorldMap } from '../worldgen';
@@ -23,13 +23,13 @@ export function tagsNearTown(map: WorldMap, townId: number): RegionTagId[] {
 type Bucket = 'terrain' | 'tag' | 'season' | 'event';
 
 /** 이 마을, 오늘 덱에 들어올 수 있는 카드 묶음 (카드는 copies만큼 들어 있다) */
-export function deckPools(state: EconomyState, map: WorldMap, townId: number): Record<Bucket, string[]> {
+export function deckPools(state: EconomyState, p: PlayerState, map: WorldMap, townId: number): Record<Bucket, string[]> {
   const town = state.towns[townId]!;
   const resources = new Set(town.nodes.map((n) => n.kind));
   const tags = new Set(tagsNearTown(map, townId));
   const season = seasonOfDay(state.day, state.startSeason);
   const events = new Set(town.recentEvents.filter((e) => state.day - e.day <= EVENT_MEMORY_DAYS).map((e) => e.kind));
-  const horse = state.player.horses.length > 0;
+  const horse = p.horses.length > 0;
   const matches = (s: CardSource): Bucket | null => {
     switch (s.kind) {
       case 'terrain':
@@ -87,9 +87,8 @@ export interface BuiltDeck {
  * 이 마을 원정 덱. 내가 남긴 카드는 덱에 넣으면서 남긴 표시를 지운다 (2장까지, 나머지는 다음에).
  * 말과 함께 가면 말 카드가 내 카드 자리에 들어온다
  */
-export function buildDeck(state: EconomyState, map: WorldMap, townId: number, rng: Rng): BuiltDeck {
-  const p = state.player;
-  const pools = deckPools(state, map, townId);
+export function buildDeck(state: EconomyState, p: PlayerState, map: WorldMap, townId: number, rng: Rng): BuiltDeck {
+  const pools = deckPools(state, p, map, townId);
   const parts: string[] = [
     ...take(pools.terrain, D.terrain, rng),
     ...take(pools.tag, D.tag, rng),

@@ -180,7 +180,7 @@ export function mountEconomyPanel(root: HTMLElement): EconomyPanel {
       .join('');
     $('[data-horses]').innerHTML =
       (stock || '<tr><td class="dev-mono">시즌 시작 전</td></tr>') + next + traders +
-      `<tr><td colspan="3" class="dev-mono">지금까지 풀린 말 ${m.arrived.reduce((s, a) => s + a.count, 0)}마리 · 플레이어 말 ${state.player.horses.length}필</td></tr>`;
+      `<tr><td colspan="3" class="dev-mono">지금까지 풀린 말 ${m.arrived.reduce((s, a) => s + a.count, 0)}마리 · 플레이어 말 ${Object.values(state.players).reduce((s, p) => s + p.horses.length, 0)}필</td></tr>`;
   }
 
   function renderRumors() {

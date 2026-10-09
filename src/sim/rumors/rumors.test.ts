@@ -61,7 +61,7 @@ const gossip = (town: number, personality: Gossip['personality'], good: Gossip['
 
 /** 플레이어가 머무는 마을과 그 이웃 하나 */
 function hereAndNeighbor(map: WorldMap, state: EconomyState): { here: number; other: number } {
-  const here = state.player.town;
+  const here = state.players.me!.town;
   return { here, other: townLinks(map)[here]![0]! };
 }
 
@@ -197,7 +197,7 @@ describe('듣기', () => {
     addRumor(state, map, { kind: 'trait', town: here, tag: 'bears' });
     addRumor(state, map, { kind: 'node', town: here, resource: 'forest', level: 'low' });
     const omen = addRumor(state, map, { kind: 'omen', event: 'landslide', town: here, eventDay: state.day + 2 });
-    const heard = hearFromGossips(state, map, createRng(9));
+    const heard = hearFromGossips(state, state.players.me!, map, createRng(9));
     expect(heard).toHaveLength(RUMORS.personality.braggart.talk);
     expect(heard[0]!.rumor).toBe(omen.id);
     expect(heard[0]!.from).toBe('우물가 마르타');
@@ -210,9 +210,9 @@ describe('듣기', () => {
     state.rumorMill.gossips = [gossip(here, 'braggart'), gossip(here, 'coward', null, 2)];
     addRumor(state, map, { kind: 'price', town: here, good: 'ore', dir: 'high', price: 30 });
     const node = addRumor(state, map, { kind: 'node', town: here, resource: 'ore', level: 'high' });
-    const first = hearFromGossips(state, map, createRng(1));
+    const first = hearFromGossips(state, state.players.me!, map, createRng(1));
     expect(first.map((h) => h.rumor)).toEqual([node.id]);
-    expect(hearFromGossips(state, map, createRng(2))).toEqual([]);
+    expect(hearFromGossips(state, state.players.me!, map, createRng(2))).toEqual([]);
   });
 
   it('길 위에서는 듣지 않는다', () => {
@@ -220,8 +220,8 @@ describe('듣기', () => {
     const { here, other } = hereAndNeighbor(map, state);
     state.rumorMill.gossips = [gossip(here, 'braggart')];
     addRumor(state, map, { kind: 'trait', town: here, tag: 'bears' });
-    state.player.travel = { from: here, to: other, days: 2, daysLeft: 2 };
-    expect(hearFromGossips(state, map, createRng(1))).toEqual([]);
+    state.players.me!.travel = { from: here, to: other, days: 2, daysLeft: 2 };
+    expect(hearFromGossips(state, state.players.me!, map, createRng(1))).toEqual([]);
   });
 });
 
@@ -232,7 +232,7 @@ describe('한 시즌 돌려 보기 (시드 6개)', () => {
     let maxLive = 0;
     for (let d = 0; d < state.season!.length; d++) {
       const r = advanceDay(state, map);
-      perDay.push(r.heard.length);
+      perDay.push(r.players.me!.heard.length);
       maxLive = Math.max(maxLive, state.rumorMill.live.length);
     }
     return { map, state, perDay, maxLive };
@@ -248,9 +248,9 @@ describe('한 시즌 돌려 보기 (시드 6개)', () => {
 
   it('같은 소문을 두 번 듣지 않고, 지금 마을 시세는 소문으로 듣지 않는다', () => {
     for (const { state } of runs) {
-      const ids = state.player.rumors.map((h) => h.rumor).filter((id) => id !== null);
+      const ids = state.players.me!.rumors.map((h) => h.rumor).filter((id) => id !== null);
       expect(new Set(ids).size).toBe(ids.length);
-      for (const h of state.player.rumors) {
+      for (const h of state.players.me!.rumors) {
         if (h.claim && (h.claim.kind === 'price' || h.claim.kind === 'orders') && h.gossip !== null) {
           // 장사꾼 자랑은 늘 다른 마을 이야기다
           expect(h.claim.town).not.toBe(h.town);
@@ -264,12 +264,12 @@ describe('한 시즌 돌려 보기 (시드 6개)', () => {
   });
 
   it('여러 출처에서 소문이 생긴다', () => {
-    const kinds = new Set(runs.flatMap(({ state }) => state.player.rumors.map((h) => h.claim?.kind)));
+    const kinds = new Set(runs.flatMap(({ state }) => state.players.me!.rumors.map((h) => h.claim?.kind)));
     for (const k of ['omen', 'node', 'price', 'trait']) expect(kinds).toContain(k);
   });
 
   it('도장이 찍힌다 (맞았다와 틀렸다가 모두 나온다)', () => {
-    const stamps = runs.flatMap(({ state }) => state.player.rumors.map((h) => h.stamp));
+    const stamps = runs.flatMap(({ state }) => state.players.me!.rumors.map((h) => h.stamp));
     expect(stamps).toContain('right');
     expect(stamps).toContain('wrong');
   });
@@ -284,7 +284,7 @@ describe('같은 시드면 같은 소문, 소문은 경제를 바꾸지 않는�
       advanceDay(b.state, b.map);
     }
     expect(JSON.stringify(a.state.rumorMill)).toBe(JSON.stringify(b.state.rumorMill));
-    expect(JSON.stringify(a.state.player.rumors)).toBe(JSON.stringify(b.state.player.rumors));
+    expect(JSON.stringify(a.state.players.me!.rumors)).toBe(JSON.stringify(b.state.players.me!.rumors));
   });
 
   it('소문 밤은 경제 난수, 번호, 마을 상태를 건드리지 않는다', () => {
