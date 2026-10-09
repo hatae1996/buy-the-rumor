@@ -28,6 +28,8 @@ export interface NotifyEvent {
   /** 사실만: "벨헤이븐 장날: 소금 20개 팔림, +312" */
   text: string;
   target: NotifyTarget;
+  /** 말·일꾼 추첨 결과 (0.1.0). 급한 일이 아니라 보고로 보여 준다 */
+  draw?: true;
 }
 
 export interface NotifySettings {

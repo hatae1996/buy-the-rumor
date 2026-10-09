@@ -60,9 +60,9 @@ export function dayNotices(state: EconomyState, p: PlayerState, map: WorldMap, d
     if (e.kind === 'hire' && e.what === 'quit') out.push({ kind: 'people', day, text: `${iGa(e.name ?? '일꾼')} 일당을 못 받아 ${euro(name(e.town))} 돌아갔어요.`, target: { tab: 'ledger' } });
     if (e.kind === 'horse' && e.what === 'lost') out.push({ kind: 'people', day, text: `굶은 말이 ${name(e.town)} 마구간으로 돌아갔어요.`, target: { tab: 'ledger' } });
     // 말·일꾼 추첨 결과 (0.1.0): 뽑히면 산 줄이, 떨어지면 추첨 줄이 장부에 있다
-    if (e.kind === 'horse' && e.what === 'buy') out.push({ kind: 'people', day, text: `${name(e.town)} 마구간 추첨에 뽑혀 ${eulReul(HORSES.kinds[e.horse].name)} 샀어요.`, target: { tab: 'town' } });
-    if (e.kind === 'hire' && e.what === 'hire' && e.role) out.push({ kind: 'people', day, text: `${name(e.town)} 여관 추첨에 뽑혀 ${eulReul(`${GROWTH.hire[e.role].name} ${e.name ?? ''}`.trim())} 고용했어요.`, target: { tab: 'town' } });
-    if (e.kind === 'draw') out.push({ kind: 'people', day, text: `${name(e.town)} ${e.what === 'horse' ? '마구간' : '여관'} 추첨에서 뽑히지 않았어요. 맡긴 돈은 돌려받았어요.`, target: { tab: 'ledger' } });
+    if (e.kind === 'horse' && e.what === 'buy') out.push({ kind: 'people', day, text: `${name(e.town)} 마구간 추첨에 뽑혀 ${eulReul(HORSES.kinds[e.horse].name)} 샀어요.`, target: { tab: 'town' }, draw: true });
+    if (e.kind === 'hire' && e.what === 'hire' && e.role) out.push({ kind: 'people', day, text: `${name(e.town)} 여관 추첨에 뽑혀 ${eulReul(`${GROWTH.hire[e.role].name} ${e.name ?? ''}`.trim())} 고용했어요.`, target: { tab: 'town' }, draw: true });
+    if (e.kind === 'draw') out.push({ kind: 'people', day, text: `${name(e.town)} ${e.what === 'horse' ? '마구간' : '여관'} 추첨에서 뽑히지 않았어요. 맡긴 돈은 돌려받았어요.`, target: { tab: 'ledger' }, draw: true });
   }
   const hungry = [...p.horses, ...(p.caravan?.horses ?? [])].filter((h) => h.hungry > 0).length;
   if (hungry) out.push({ kind: 'people', day, text: `말 ${hungry}필이 굶었어요. 먹이를 챙겨 주세요.`, target: { tab: 'ledger' } });

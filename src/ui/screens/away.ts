@@ -1,5 +1,5 @@
 // 자리를 비운 사이 (기획서 "화면 구성", 0.0.5): 카드는 많아야 5장.
-// 중요한 순서: 장날 결과 → 급한 일(일당 부족, 곧 상할 짐, 말 먹이) → 신문 머리기사 → 일꾼·마부 보고 → 새 소문.
+// 중요한 순서: 장날 결과 → 급한 일(일당 부족, 곧 상할 짐, 말 먹이) → 신문 머리기사 → 보고(도착, 말·일꾼 추첨, 일꾼·마부) → 새 소문.
 // 나머지는 소식 탭 보고에 쌓인다.
 import merchant from '../../../assets/ui/merchant.png';
 import { RUMORS } from '../../sim/constants';
@@ -28,7 +28,7 @@ export function showAwaySummary(game: Game, s: AwaySummary): void {
   } else cards.push({ title: '장날 결과', html: '<p class="muted">장날에 맞춰진 신청이 없었어요.</p>' });
 
   // 2. 급한 일: 사람과 말, 곧 상할 짐, 상한 짐
-  const urgent = s.notices.filter((n) => n.kind === 'people' || n.kind === 'spoiling').map((n) => n.text);
+  const urgent = s.notices.filter((n) => (n.kind === 'people' || n.kind === 'spoiling') && !n.draw).map((n) => n.text);
   for (const e of s.ledger) if (e.kind === 'spoil') urgent.push(`${goodName(e.good)} ${e.qty}개가 상했어요.`);
   if (urgent.length) cards.push({ title: '급한 일', html: `<ul class="list">${[...new Set(urgent)].slice(0, 5).map((t) => `<li>${t}</li>`).join('')}</ul>` });
 
@@ -42,8 +42,9 @@ export function showAwaySummary(game: Game, s: AwaySummary): void {
     });
   }
 
-  // 4. 보고: 도착, 채집꾼, 두 번째 행렬
+  // 4. 보고: 도착, 말·일꾼 추첨, 채집꾼, 두 번째 행렬
   const reports = [
+    ...s.notices.filter((n) => n.draw).map((n) => n.text),
     ...(s.arrivedAt !== null ? [`<b>${townName(s.arrivedAt)}</b>에 도착했어요.`] : []),
     ...s.notices.filter((n) => n.kind === 'arrival' && !n.text.startsWith(`${townName(s.arrivedAt ?? -1)}에`)).map((n) => n.text),
     ...s.ledger.filter((e) => e.kind === 'gathered').map((e) => ledgerLine(e, townName).text),
