@@ -5,6 +5,7 @@ import { mountEconomyPanel } from './economyPanel';
 import {
   checkWorldRules,
   generateWorld,
+  WORLD_TOWN_COUNTS,
   hexToXY,
   RESOURCE_NAME,
   townTravelDays,
@@ -39,7 +40,8 @@ export function mountWorldgenView(root: HTMLElement): void {
   const params = new URLSearchParams(location.search);
   let seed = Number(params.get('seed') ?? 20261008) >>> 0;
   let season: Season = 2;
-  let map: WorldMap = generateWorld(seed);
+  let towns = WORLD_TOWN_COUNTS.includes(Number(params.get('towns'))) ? Number(params.get('towns')) : 4;
+  let map: WorldMap = generateWorld(seed, { towns });
 
   root.innerHTML = `
     <div class="dev">
@@ -48,6 +50,9 @@ export function mountWorldgenView(root: HTMLElement): void {
         <input type="number" inputmode="numeric" aria-label="시드" data-seed />
         <button type="button" class="dev-btn alt" data-go>이 시드로</button>
         <button type="button" class="dev-btn" data-new>새 맵</button>
+      </div>
+      <div class="dev-bar" role="group" aria-label="마을 수">
+        ${WORLD_TOWN_COUNTS.map((n) => `<button type="button" class="dev-btn alt" data-towns="${n}">마을 ${n}곳</button>`).join('')}
       </div>
       <div class="dev-bar" role="group" aria-label="계절">
         ${([0, 1, 2, 3] as Season[])
@@ -75,14 +80,20 @@ export function mountWorldgenView(root: HTMLElement): void {
 
   const rebuild = (nextSeed: number) => {
     seed = nextSeed >>> 0;
-    map = generateWorld(seed);
-    history.replaceState(null, '', `?seed=${seed}`);
+    map = generateWorld(seed, { towns });
+    history.replaceState(null, '', `?seed=${seed}&towns=${towns}`);
     render();
   };
 
   $('[data-go]').addEventListener('click', () => rebuild(Number(seedInput.value)));
   // 화면 쪽이라 Math.random을 써도 된다. 시뮬레이션에는 시드만 넘어간다.
   $('[data-new]').addEventListener('click', () => rebuild(Math.floor(Math.random() * 1e9)));
+  root.querySelectorAll<HTMLButtonElement>('[data-towns]').forEach((b) =>
+    b.addEventListener('click', () => {
+      towns = Number(b.dataset.towns);
+      rebuild(seed);
+    }),
+  );
   root.querySelectorAll<HTMLButtonElement>('[data-season]').forEach((b) =>
     b.addEventListener('click', () => {
       season = Number(b.dataset.season) as Season;

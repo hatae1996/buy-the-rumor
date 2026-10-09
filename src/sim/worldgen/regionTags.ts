@@ -53,6 +53,7 @@ export function tagRegions(
   roadLinks: readonly number[][],
   producerTiles: readonly number[],
   rng: Rng,
+  ranchTowns: number,
 ): TaggedRegion[] {
   const { regionTagChance, regionMinTiles } = WORLDGEN;
   const out: TaggedRegion[] = [];
@@ -88,12 +89,12 @@ export function tagRegions(
   });
 
   for (const link of roadLinks) pick('road', [...link]);
-  ensureRanch(tiles, neighbors, producerTiles, out, plainRegions);
+  ensureRanch(tiles, neighbors, producerTiles, out, plainRegions, ranchTowns);
   return out;
 }
 
 /**
- * 목장 특색이 근처(특색 범위 안)에 있는 생산 마을이 WORLDGEN.ranchTowns곳이 되게 한다 (0.0.7: 마구간 마을은 맵마다 2곳).
+ * 목장 특색이 근처(특색 범위 안)에 있는 생산 마을이 ranchTowns곳이 되게 한다 (0.0.7: 마구간 마을은 마을 4곳 맵에 2곳, 크기별 수는 WORLDGEN.sizes).
  * 모자라면 아직 목장이 없는 생산 마을마다, 그 마을 근처 들판 덩어리를 목장으로 만든다 (없으면 바로 옆 땅)
  */
 function ensureRanch(
@@ -102,6 +103,7 @@ function ensureRanch(
   producerTiles: readonly number[],
   out: TaggedRegion[],
   plains: readonly number[][],
+  ranchTowns: number,
 ): void {
   const area = (t: number) => new Set([t, ...cellsAround(neighbors, t, WORLDGEN.specialtyRange)]);
   const served = (t: number) => {
@@ -111,7 +113,7 @@ function ensureRanch(
   // 태그가 없는 들판 덩어리 먼저, 그다음 큰 것
   const tagged = (region: readonly number[]) => out.findIndex((r) => r.tiles[0] === region[0] && r.tiles.length === region.length);
   for (const town of producerTiles) {
-    if (producerTiles.filter(served).length >= WORLDGEN.ranchTowns) return;
+    if (producerTiles.filter(served).length >= ranchTowns) return;
     if (served(town)) continue;
     const near = area(town);
     const candidates = plains

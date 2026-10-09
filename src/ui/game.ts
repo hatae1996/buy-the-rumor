@@ -21,7 +21,7 @@ import {
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
 import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
-import { generateWorld, type WorldMap } from '../sim/worldgen';
+import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
 import { mixSeed } from '../sim/rng';
 import { createCart } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
@@ -78,17 +78,17 @@ export class Game {
   /** 저장된 판이 있으면 이어서, 없으면 새 판 */
   static start(now: number): Game {
     const saved = load();
-    if (saved) return new Game(generateWorld(saved.seed), saved.state, saved.crew, saved.dayStartedAt);
+    if (saved) return new Game(generateWorld(saved.seed, { towns: saved.state.towns.length }), saved.state, saved.crew, saved.dayStartedAt);
     return Game.fresh(now, now % 1_000_000_007);
   }
 
   /**
    * 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다.
-   * 같은 시장에 봇 상인이 함께 앉는다 (기본 10명, 개발용 0~20)
+   * 같은 시장에 봇 상인이 함께 앉는다 (기본 10명, 개발용 0~20). 마을 수는 사람 수로 정한다 (0.1.1, 나 + 봇 10명이면 6곳)
    */
-  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number; seasonDays?: number } = {}): Game {
-    const map = generateWorld(seed);
+  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number; seasonDays?: number; towns?: number } = {}): Game {
     const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
+    const map = generateWorld(seed, { towns: opt.towns ?? townsForPlayers(1 + bots) });
     const specs = botSpecs(map.seed, bots);
     const state = createEconomy(map, map.seed, {
       warmupDays: ECONOMY.warmupDays,
@@ -152,7 +152,7 @@ export class Game {
   startNextSeason(now: number): Game | null {
     if (!this.seasonOver) return null;
     const seed = mixSeed(this.state.seed, 0x5ea5, this.state.settlement!.season) % 1_000_000_007;
-    const map = generateWorld(seed);
+    const map = generateWorld(seed, { towns: this.map.towns.length });
     const state = nextSeasonEconomy(this.state, map, map.seed, { warmupDays: ECONOMY.warmupDays });
     const bots = this.crew.map((b) => b.pid);
     for (const id of bots) getPlayer(state, id).cart = createCart('handcart');

@@ -124,6 +124,8 @@ export class MapView {
 
   setWorld(map: WorldMap): void {
     this.map = map;
+    this.cam.setMapRadius(map.radius);
+    this.snow.fit(map.radius);
     this.mover = null;
     this.rebuild();
     this.labels.set(

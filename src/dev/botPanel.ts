@@ -16,7 +16,7 @@ import {
   type GrowthKind,
   type MarketRun,
 } from '../sim/bot';
-import { generateWorld, type WorldMap } from '../sim/worldgen';
+import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
 import { GOOD_NAME } from '../sim/economy';
 import { renderLineChart, SERIES_COLORS } from './lineChart';
 
@@ -97,10 +97,14 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     }),
   );
   let marketRunning = false;
+  let marketMap: WorldMap | null = null;
   $('[data-market-run]').addEventListener('click', () => {
     if (!map || marketRunning) return;
     marketRunning = true;
-    const m = startBots(map.requestedSeed, marketN, { days: CYCLE_DAYS, startSeason }, map);
+    // 사람 수에 맞는 마을 수로 (0.1.1). 지금 보는 맵이 그 크기면 그대로, 아니면 같은 시드로 그 크기 맵을 만든다
+    const towns = townsForPlayers(marketN);
+    marketMap = map.towns.length === towns ? map : generateWorld(map.requestedSeed, { towns });
+    const m = startBots(map.requestedSeed, marketN, { days: CYCLE_DAYS, startSeason }, marketMap);
     const table = $('[data-market-table]');
     const t0 = performance.now();
     // 며칠씩 쉬어 가며 돌린다 (화면이 멈추지 않게)
@@ -140,11 +144,11 @@ export function mountBotPanel(root: HTMLElement): BotPanel {
     $('[data-market-table]').innerHTML =
       '<tr><th>성향</th><th>몇 명</th><th>시즌 평균 하루 벌이</th><th>끝 순자산</th></tr>' +
       groups.map((g) => `<tr><th>${g.p.name}</th><td>${prof[g.p.id]!.count}</td><td>${Math.round(prof[g.p.id]!.income)}</td><td>${prof[g.p.id]!.endWorth}</td></tr>`).join('') +
-      `<tr><td colspan="4" class="dev-mono">${run.n}명 ${run.daily.length}일 · ${seconds.toFixed(1)}초. 보통 사람 목표: 시즌 평균 20~30</td></tr>`;
+      `<tr><td colspan="4" class="dev-mono">${run.n}명 마을 ${marketMap?.towns.length ?? '-'}곳 ${run.daily.length}일 · ${seconds.toFixed(1)}초. 보통 사람 목표: 시즌 평균 20~30</td></tr>`;
     const s = run.stats;
     const bad = marketProblems(run);
     const mark = (problem: boolean) => `<span class="${problem ? 'dev-no' : 'dev-ok'}">${problem ? '문제' : '통과'}</span>`;
-    const name = (id: number) => map?.towns[id]?.name ?? String(id);
+    const name = (id: number) => marketMap?.towns[id]?.name ?? String(id);
     const pct = (x: number) => `${Math.round(x * 100)}%`;
     $('[data-market-stats]').innerHTML = `<ul>
       <li><span>독점</span> ${mark(bad.monopoly)} 상위 1명이 그날 판매의 절반을 넘은 날이 가장 많은 곳: ${s.monopolyAt ? `${name(s.monopolyAt.town)} ${GOOD_NAME[s.monopolyAt.good]}` : '-'} ${s.monopolyDays}일 / ${run.daily.length}일 (같은 한 사람이 쥔 날은 많아야 ${s.soleDays}일). 시즌 판매 중 상위 1명 몫 ${pct(s.top1Share)}, 상위 10% ${pct(s.top10Share)}</li>

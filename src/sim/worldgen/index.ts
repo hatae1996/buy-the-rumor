@@ -1,5 +1,6 @@
 export * from './types';
-export { generateWorld, resourceTilesAround } from './generate';
+export { generateWorld, resourceTilesAround, type WorldOptions } from './generate';
+export { townsForPlayers, townScale, worldSize, minTownsPerResource, WORLD_TOWN_COUNTS, type WorldSize } from './size';
 export { REGION_TAGS, regionTag, terrainRegionKind, townsNearTag, type RegionKind, type RegionTagDef } from './regionTags';
 export { checkWorldRules, type RuleCheck } from './rules';
 export { townTravelDays, nearestTownDays } from './days';

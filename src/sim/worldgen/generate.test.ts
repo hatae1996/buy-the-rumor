@@ -8,6 +8,8 @@ import { regionTag, terrainRegionKind } from './regionTags';
 import { checkWorldRules } from './rules';
 import { isTownTerrain, townSpecialties } from './towns';
 import { worldFingerprint as fingerprint } from './fingerprint';
+import { stableTowns } from '../horses/supply';
+import { townsForPlayers, worldSize, WORLD_TOWN_COUNTS } from './size';
 import { RESOURCE_KINDS } from './types';
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => 1 + i * 104729);
@@ -133,7 +135,8 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
 
   it('마을은 4곳, 땅 위에, 생산 마을끼리 5칸·도시와 4칸 이상 떨어져 있고, 이름이 겹치지 않는다', () => {
     for (const map of maps) {
-      expect(map.towns).toHaveLength(WORLDGEN.productionTowns + WORLDGEN.cities);
+      expect(map.towns).toHaveLength(4);
+      expect(map.towns.filter((t) => t.tier === 'city')).toHaveLength(worldSize(4).cities);
       expect(new Set(map.towns.map((t) => t.name)).size).toBe(map.towns.length);
       for (const a of map.towns) {
         expect(isTownTerrain(map.tiles[a.tile]!)).toBe(true);
@@ -197,5 +200,94 @@ describe(`생성 규칙 (${SEEDS.length}개 시드)`, () => {
     // 도시 조건이 붙어 평균 1.9번쯤이다 (시드 400개). 숫자를 바꿔 이 값이 크게 늘면 규칙이 너무 빡빡한 것
     const avg = maps.reduce((s, m) => s + m.tries, 0) / maps.length;
     expect(avg).toBeLessThan(3);
+  });
+});
+
+describe('플레이어 수에 맞춘 세계 크기 (0.1.1 표준 세계)', () => {
+  it('인원 → 마을 수: 1~5명 4곳, 6~14명 6곳, 15~30명 8곳, 31~50명 12곳, 그 넘으면 가장 큰 세계', () => {
+    const at = (n: number) => townsForPlayers(n);
+    expect([1, 5, 6, 11, 14, 15, 20, 30, 31, 35, 50, 80].map(at)).toEqual([4, 4, 6, 6, 6, 8, 8, 8, 12, 12, 12, 12]);
+  });
+
+  it('도시는 마을 8~10곳까지 1곳, 12곳 이상이면 2곳. 맵은 마을이 많을수록 크다', () => {
+    expect(WORLD_TOWN_COUNTS.map((n) => worldSize(n).cities)).toEqual([1, 1, 1, 2]);
+    const radii = WORLD_TOWN_COUNTS.map((n) => worldSize(n).radius);
+    expect([...radii].sort((a, b) => a - b)).toEqual(radii);
+    expect(() => worldSize(5)).toThrow();
+  });
+
+  // 12곳 맵은 하나에 0.5초쯤 걸려 시드를 적게 쓴다
+  const SIZED = [
+    { towns: 6, seeds: 30 },
+    { towns: 8, seeds: 30 },
+    { towns: 12, seeds: 8 },
+  ];
+  for (const { towns, seeds } of SIZED) {
+    const size = worldSize(towns);
+    const sized = SEEDS.slice(0, seeds).map((s) => generateWorld(s, { towns }));
+
+    it(`마을 ${towns}곳 (${seeds}개 시드): 규칙을 모두 통과하고, 생산 마을 ${size.producers}곳과 도시 ${size.cities}곳, 도시는 맨 뒤 번호`, () => {
+      for (const map of sized) {
+        expect(checkWorldRules(map).filter((r) => !r.ok), `시드 ${map.requestedSeed}`).toEqual([]);
+        expect(map.radius).toBe(size.radius);
+        expect(map.towns.map((t) => t.tier)).toEqual([...Array<string>(size.producers).fill('town'), ...Array<string>(size.cities).fill('city')]);
+        expect(map.towns.map((t) => t.id)).toEqual(map.towns.map((_, i) => i));
+      }
+    });
+
+    it(`마을 ${towns}곳: 땅 위에 떨어져 있고, 이름이 겹치지 않고, 마구간 마을이 ${size.ranchTowns}곳`, () => {
+      for (const map of sized) {
+        expect(new Set(map.towns.map((t) => t.name)).size).toBe(towns);
+        for (const a of map.towns) {
+          expect(isTownTerrain(map.tiles[a.tile]!)).toBe(true);
+          for (const b of map.towns) {
+            if (a === b) continue;
+            const minDist =
+              a.tier === 'city' && b.tier === 'city'
+                ? WORLDGEN.cityCityMinDistance
+                : a.tier === 'city' || b.tier === 'city'
+                  ? WORLDGEN.cityMinDistance
+                  : WORLDGEN.townMinDistance;
+            expect(hexDistance(map.tiles[a.tile]!, map.tiles[b.tile]!)).toBeGreaterThanOrEqual(minDist);
+          }
+        }
+        expect(stableTowns(map)).toHaveLength(size.ranchTowns);
+      }
+    });
+  }
+
+  it('같은 시드와 마을 수면 같은 맵, 마을 수가 다르면 다른 맵', () => {
+    expect(generateWorld(20261008, { towns: 8 })).toEqual(generateWorld(20261008, { towns: 8 }));
+    expect(fingerprint(generateWorld(20261008, { towns: 8 }))).not.toBe(fingerprint(generateWorld(20261008, { towns: 6 })));
+  });
+
+  it('마을 수를 주지 않으면 개발 테스트용 4곳 맵 (예전 맵 그대로)', () => {
+    expect(generateWorld(20261008, { towns: 4 })).toEqual(generateWorld(20261008));
+  });
+
+  it('시드 20261008의 마을 8곳 맵 (표준 세계. 생성 규칙이나 숫자를 바꾸면 이 값도 바뀐다)', () => {
+    const map = generateWorld(20261008, { towns: 8 });
+    expect({
+      seed: map.seed,
+      tries: map.tries,
+      fingerprint: fingerprint(map),
+      towns: map.towns.map((t) => `${t.name} ${t.tier} ${t.specialties.join(',')}`),
+    }).toMatchInlineSnapshot(`
+      {
+        "fingerprint": "25b4587e",
+        "seed": 20261008,
+        "towns": [
+          "시브리즈 town forest,ore",
+          "스톤힐 town fish,forest",
+          "오크우드 town fish,forest",
+          "그레이록 town forest,fish",
+          "윈드홀 town field,forest",
+          "솔트미어 town fish,field",
+          "골든베일 town field,salt",
+          "밀브룩 city ",
+        ],
+        "tries": 1,
+      }
+    `);
   });
 });

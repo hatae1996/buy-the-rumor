@@ -4,7 +4,7 @@ import { ECONOMY } from '../constants';
 import type { EconomyState } from '../economy/state';
 import { createRng, mixSeed, shuffle, type Rng } from '../rng';
 import { CYCLE_DAYS, seasonOfDay } from '../season';
-import { buildNeighbors, cellsAround, townsNearTag, type WorldMap } from '../worldgen';
+import { buildNeighbors, cellsAround, townScale, townsNearTag, type WorldMap } from '../worldgen';
 import { badGoods, SCHEDULED_DEFS } from './defs';
 import { pickTheme } from '../ranking/quests';
 import type { EventDef, FakeOmen, ScheduledEvent, ScheduledEventId, SeasonState } from './types';
@@ -18,7 +18,9 @@ export function createSeason(state: EconomyState, map: WorldMap, number: number,
   const last = startDay + length - 1 - E.quietLastDays;
   const nbs = buildNeighbors(map.tiles);
 
-  const count = rng.int(E.perSeason[0], E.perSeason[1]);
+  // 마을 4곳 맵의 수. 마을이 늘면 같은 비율로 (0.1.1: 마을마다 사건이 드물어지지 않게)
+  const scale = townScale(map.towns.length);
+  const count = rng.int(Math.round(E.perSeason[0] * scale), Math.round(E.perSeason[1] * scale));
   const days = shuffle(
     Array.from({ length: last - first + 1 }, (_, i) => first + i),
     rng,
@@ -34,7 +36,7 @@ export function createSeason(state: EconomyState, map: WorldMap, number: number,
     const options = SCHEDULED_DEFS.flatMap((def) =>
       eligibleTowns(def, state, map, nbs, day)
         .filter((town) => !(def.days === 'season' && longOnce.has(`${def.id}:${town}`)))
-        .map((town) => ({ def, town, weight: weightOf(def, state, day) })),
+        .map((town) => ({ def, town, weight: weightOf(def, state, map, day) })),
     ).filter((o) => o.weight > 0 && !badGoods(o.def).some((g) => lastBad.includes(g)));
     const pick = weightedPick(options, rng);
     if (!pick) continue;
@@ -53,7 +55,7 @@ export function createSeason(state: EconomyState, map: WorldMap, number: number,
 
   // 헛징조: 소문은 돌지만 사건은 일어나지 않는다
   const fakeOmens: FakeOmen[] = [];
-  const fakes = rng.int(E.fakeOmens[0], E.fakeOmens[1]);
+  const fakes = rng.int(Math.round(E.fakeOmens[0] * scale), Math.round(E.fakeOmens[1] * scale));
   for (let i = 0; i < fakes; i++) {
     const day = rng.int(startDay, last);
     const options = SCHEDULED_DEFS.filter((d) => d.omen).flatMap((def) =>
@@ -86,9 +88,14 @@ export function eligibleTowns(def: EventDef, state: EconomyState, map: WorldMap,
     .map((t) => t.id);
 }
 
-function weightOf(def: EventDef, state: EconomyState, day: number): number {
+function weightOf(def: EventDef, state: EconomyState, map: WorldMap, day: number): number {
   const w = def.weight ?? 1;
-  return typeof w === 'number' ? w : w[seasonOfDay(day, state.startSeason)];
+  const base = typeof w === 'number' ? w : w[seasonOfDay(day, state.startSeason)];
+  // 도시에서만 나는 사건의 무게는 생산 마을 3곳·도시 1곳 맵에 맞췄다. 도시 하나가 맡는 생산 마을 수에 맞춰 키운다
+  if (def.needs?.tier !== 'city') return base;
+  const cities = map.towns.filter((t) => t.tier === 'city').length;
+  const producersPerCity = (map.towns.length - cities) / cities;
+  return producersPerCity === 3 ? base : (base * producersPerCity) / 3;
 }
 
 function roadTilesNear(map: WorldMap, nbs: readonly number[][], town: number, terrain: 'highland' | 'any'): number[] {

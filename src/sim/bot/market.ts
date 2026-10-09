@@ -3,7 +3,7 @@
 import { createCart } from '../cart';
 import { advanceDay, createEconomy, getPlayer, isPlayerOwner, playerOrder, type EconomyState, type GoodId, type PlayerId } from '../economy';
 import { eventDef } from '../events';
-import { generateWorld, type WorldMap } from '../worldgen';
+import { generateWorld, townsForPlayers, type WorldMap } from '../worldgen';
 import type { Season } from '../season';
 import { botProfile, type BotProfile } from './profiles';
 import { createSeat, finishSeat, seasonIncome, seatDay, seatRecord, type BotRun, type BotSeat } from './run';
@@ -67,7 +67,8 @@ export interface MarketStepper {
 }
 
 export function startBots(seed: number, n: number, opt: MarketRunOptions, world?: WorldMap, mix: readonly BotProfile[] = MARKET_MIX): MarketStepper {
-  const map = world ?? generateWorld(seed);
+  // 맵을 주지 않으면 봇 수에 맞는 마을 수로 (0.1.1)
+  const map = world ?? generateWorld(seed, { towns: townsForPlayers(n) });
   const ids = Array.from({ length: n }, (_, i) => `bot${i + 1}`);
   const state = createEconomy(map, seed, { warmupDays: opt.warmupDays ?? 20, startSeason: opt.startSeason, players: ids.map((id) => ({ id })) });
   // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레

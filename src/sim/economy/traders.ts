@@ -12,7 +12,25 @@ import type { EconomyState, Order, Trader } from './state';
 
 const T = ECONOMY.traders;
 
-export const TRADER_NAMES = ['바렌 상단', '미라 상단', '토르 상단', '엘사 상단', '하늘 상단', '보리 상단'];
+export const TRADER_NAMES = [
+  '바렌 상단',
+  '미라 상단',
+  '토르 상단',
+  '엘사 상단',
+  '하늘 상단',
+  '보리 상단',
+  // 마을이 늘면 상단도 는다 (0.1.1, 마을 12곳이면 15상단)
+  '카람 상단',
+  '루벤 상단',
+  '세라 상단',
+  '도윈 상단',
+  '이솔 상단',
+  '마르코 상단',
+  '한별 상단',
+  '그림 상단',
+  '노아 상단',
+  '벨라 상단',
+];
 
 /** days[a][b]: 오늘 계절의 마을 사이 이동 일수 */
 export function traderOrders(trader: Trader, state: EconomyState, days: number[][], accounts: Accounts): Order[] {

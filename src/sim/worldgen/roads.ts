@@ -1,5 +1,5 @@
-// 길: 마을끼리 지형 비용 최단 경로를 구하고, 최소 신장 트리에 짧은 추가 연결 하나를 더한다.
-// 고리가 하나 생겨 길 하나가 막혀도 돌아갈 수 있는 경우가 많다.
+// 길: 마을끼리 지형 비용 최단 경로를 구하고, 최소 신장 트리에 짧은 추가 연결을 몇 개 더한다 (마을 4곳이면 하나).
+// 고리가 생겨 길 하나가 막혀도 돌아갈 수 있는 경우가 많다.
 import { WORLDGEN } from '../constants';
 import { AUTUMN } from '../season';
 import { pathTo, shortestPaths, terrainCost } from './travel';
@@ -24,6 +24,7 @@ export function planRoads(
   tiles: readonly Tile[],
   neighbors: readonly number[][],
   townTiles: readonly number[],
+  extraRoads = 1,
 ): RoadPlan | null {
   const n = townTiles.length;
   const links: Link[] = [];
@@ -41,19 +42,20 @@ export function planRoads(
   const parent = Array.from({ length: n }, (_, i) => i);
   const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x]!)));
   const used: Link[] = [];
-  let extra: Link | null = null;
+  const extras: Link[] = [];
   for (const link of links) {
     const ra = find(link.a);
     const rb = find(link.b);
     if (ra !== rb) {
       parent[ra] = rb;
       used.push(link);
-    } else if (!extra) {
-      extra = link;
+    } else if (extras.length < extraRoads) {
+      extras.push(link);
     }
   }
   if (used.length < n - 1) return null;
-  if (extra && extra.cost < used[used.length - 1]!.cost * WORLDGEN.extraRoadFactor) used.push(extra);
+  const longest = used[used.length - 1]!.cost;
+  for (const extra of extras) if (extra.cost < longest * WORLDGEN.extraRoadFactor) used.push(extra);
 
   return {
     tiles: new Set(used.flatMap((l) => l.path)),

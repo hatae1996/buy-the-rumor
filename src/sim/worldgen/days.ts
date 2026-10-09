@@ -40,3 +40,18 @@ export function travelDaysBetween(
 export function nearestTownDays(days: readonly number[][]): number[] {
   return days.map((row, a) => Math.min(...row.filter((_, b) => b !== a)));
 }
+
+/**
+ * 도시가 교통 요지인가. 마을마다 가장 가까운 도시(같으면 앞 번호)의 몫으로 나누고,
+ * 도시마다 자기 몫 마을까지 걸리는 날 합이 그 몫의 어느 마을보다도 작아야 한다.
+ * 도시가 하나면 "다른 곳까지 걸리는 날 합이 가장 작다"와 같다
+ */
+export function citiesAreHubs(days: readonly number[][], cities: readonly number[]): boolean {
+  const owner = days.map((row, a) => (cities.includes(a) ? a : cities.reduce((best, c) => (row[c]! < row[best]! ? c : best), cities[0]!)));
+  return cities.every((c) => {
+    const group = owner.flatMap((o, i) => (o === c ? [i] : []));
+    const sum = (a: number) => group.reduce((s, b) => s + days[a]![b]!, 0);
+    const mine = sum(c);
+    return group.every((i) => mine <= sum(i));
+  });
+}

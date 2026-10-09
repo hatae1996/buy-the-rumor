@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 
 const COUNT = 420;
+/** 맵 반지름 7 판에 맞춘 넓이. 큰 맵은 fit으로 옆으로 늘린다 */
 const RADIUS = 13;
 const TOP = 9;
 const BOTTOM = -0.5;
@@ -31,6 +32,12 @@ export class Snowfall {
     const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.9, depthWrite: false });
     this.points = new THREE.Points(geo, mat);
     this.points.frustumCulled = false;
+  }
+
+  /** 맵 크기에 맞춰 눈 내리는 넓이를 옆으로 늘린다 (마을 8~12곳 맵, 0.1.1) */
+  fit(mapRadius: number): void {
+    const k = Math.max(1, (Math.sqrt(3) * mapRadius + 0.9) / RADIUS);
+    this.points.scale.set(k, 1, k);
   }
 
   step(dt: number): void {

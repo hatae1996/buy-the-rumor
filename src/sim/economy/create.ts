@@ -3,7 +3,7 @@ import { createCart } from '../cart';
 import { CART, ECONOMY } from '../constants';
 import { createRng, mixSeed, type Rng } from '../rng';
 import { seasonOfDay, WINTER, type Season } from '../season';
-import type { WorldMap } from '../worldgen';
+import { townScale, type WorldMap } from '../worldgen';
 import { basePrice, emptyGoodMap, GOODS, type GoodId } from './goods';
 import { addGoods } from './inventory';
 import { CRAFT_JOBS, GATHER_JOBS, JOB_RESOURCE, type JobId } from './jobs';
@@ -53,7 +53,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   const drawnSeason = rng.int(0, 3) as Season;
   const specs = opt.players ?? [{ id: LOCAL_PLAYER, apprentice: opt.apprentice }];
   if (new Set(specs.map((s) => s.id)).size !== specs.length) throw new Error('플레이어 id가 겹친다');
-  // 시작 마을은 마을 4곳에 고르게 랜덤 (기획서 "시작 조건"). 첫 플레이어는 세계의 난수로, 나머지는 따로 둔 난수로
+  // 시작 마을은 모든 마을에 고르게 랜덤 (기획서 "시작 조건"). 첫 플레이어는 세계의 난수로, 나머지는 따로 둔 난수로
   const firstTown = rng.int(0, map.towns.length - 1);
   const startTown = (seq: number) => (seq === 0 ? firstTown : createRng(mixSeed(seed, 0x57a7, seq)).int(0, map.towns.length - 1));
   const state: EconomyState = {
@@ -100,7 +100,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     for (const w of state.workers) addGoods(w.inv, 'grain', ECONOMY.worker.winterReserveDays * ECONOMY.worker.foodPerDay);
   }
 
-  for (let i = 0; i < ECONOMY.traders.count; i++) {
+  const traders = Math.round(ECONOMY.traders.count * townScale(map.towns.length));
+  for (let i = 0; i < traders; i++) {
     state.traders.push({
       id: state.nextId++,
       name: TRADER_NAMES[i % TRADER_NAMES.length]!,

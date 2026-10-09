@@ -10,8 +10,8 @@ export interface TerrainResult {
   neighbors: number[][];
 }
 
-export function generateTerrain(seed: number, rng: Rng): TerrainResult {
-  const { radius, noise, terrain: th, resource: rc } = WORLDGEN;
+export function generateTerrain(seed: number, rng: Rng, radius: number): TerrainResult {
+  const { noise, terrain: th, resource: rc } = WORLDGEN;
   const ox = rng.next() * 100;
   const oy = rng.next() * 100;
   const mx = rng.next() * 100;

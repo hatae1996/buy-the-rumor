@@ -1,12 +1,12 @@
 // 말은 시즌마다 정해진 수만 있다 (기획서 "말"): 시즌 시작 때 총수와 입고 일정을 시드로 정하고,
 // 목장 마을 마구간에 며칠 간격으로 몇 마리씩 푼다. 봄에는 망아지가 조금 더 나온다.
 // 목장 화재 같은 사건이 있는 동안은 입고가 미뤄진다.
-import { HORSES, WORLDGEN } from '../constants';
+import { HORSES } from '../constants';
 import type { EconomyState } from '../economy/state';
 import { horseDelayAt } from '../events/active';
 import { createRng, mixSeed, type Rng } from '../rng';
 import { SPRING, seasonOfDay } from '../season';
-import { buildNeighbors, townsNearTag, type WorldMap } from '../worldgen';
+import { buildNeighbors, townsNearTag, worldSize, type WorldMap } from '../worldgen';
 import type { HorseArrival, HorseKind, HorseMarket, Stable } from './types';
 
 export const HORSE_KINDS = Object.keys(HORSES.kinds) as HorseKind[];
@@ -21,13 +21,13 @@ export function emptyHorseMarket(): HorseMarket {
 
 const stableCache = new WeakMap<WorldMap, number[]>();
 
-/** 마구간이 있는 마을: 목장 특색 근처의 생산 마을, 맵마다 WORLDGEN.ranchTowns곳 (맵 생성이 보장한다) */
+/** 마구간이 있는 마을: 목장 특색 근처의 생산 마을, 맵 크기마다 정한 수 (WORLDGEN.sizes의 ranchTowns, 맵 생성이 보장한다) */
 export function stableTowns(map: WorldMap): number[] {
   let towns = stableCache.get(map);
   if (towns) return towns;
   const near = townsNearTag(map, buildNeighbors(map.tiles), 'ranch');
   const producers = near.filter((id) => map.towns[id]!.tier === 'town');
-  towns = (producers.length ? producers : near).slice(0, WORLDGEN.ranchTowns);
+  towns = (producers.length ? producers : near).slice(0, worldSize(map.towns.length).ranchTowns);
   stableCache.set(map, towns);
   return towns;
 }

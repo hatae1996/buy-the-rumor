@@ -42,7 +42,7 @@ const RUSH_PLACE: Record<JobId, string> = {
 const BIG_ORDER_WEIGHT = [0.6, 1, 1, 2.6] as const;
 /** 군대 보급은 겨울에 몰린다 */
 const ARMY_WEIGHT = [0.5, 0.8, 0.8, 4] as const;
-/** 도시 하나에서만 나는 축제는 마을 넷에서 나는 사건과 비슷하게 뽑히도록 무게를 키운다 */
+/** 도시 하나에서만 나는 축제는 생산 마을 셋에서 나는 사건과 비슷하게 뽑히도록 무게를 키운다 (큰 맵은 schedule.ts의 weightOf가 도시 하나가 맡는 생산 마을 수로 다시 맞춘다) */
 const CITY_FESTIVAL_WEIGHT = 2.5;
 const WINTER_FESTIVAL_WEIGHT = 8;
 /** 봄 구휼 (0.0.9): 마을 하나 몫의 무게. 시즌 절반쯤에 한 번 (시드 40개 × 시작 계절 4개에서 시즌 0.53번) */

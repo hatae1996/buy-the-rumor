@@ -1,15 +1,36 @@
 // 조정할 숫자는 모두 여기에 모은다. 기획서의 "초안" 값이며 시뮬레이션을 돌려 고친다.
 
 export const WORLDGEN = {
-  /** 맵 반지름 (칸). 반지름 7이면 169칸 */
-  radius: 7,
-  /** 테스트 버전: 생산 마을 3 + 도시 1 (기획서 "직업") */
-  productionTowns: 3,
-  cities: 1,
+  /**
+   * 플레이어 수 → 마을 수 (0.1.1 표준 세계: 20명에 마을 8곳, 35~50명은 12곳). [이 인원까지, 마을 수].
+   * 마을이 늘면 그 마을의 일꾼, 주민 수요, 금고, 자원지가 함께 생겨 나눌 파이가 커진다. 초안
+   */
+  townsByPlayers: [
+    [5, 4],
+    [14, 6],
+    [30, 8],
+    [50, 12],
+  ],
+  /** 인원을 따로 정하지 않은 맵 (개발 테스트용 마을 4곳) */
+  defaultTowns: 4,
+  /**
+   * 마을 수별 맵 (초안). radius: 맵 반지름(칸, 7이면 169칸), cities: 도시 수(기획서: 8~10곳이면 1, 12곳 이상이면 2),
+   * ranchTowns: 목장 특색이 근처에 있는 생산 마을 수 = 마구간 마을 수, extraRoads: 최소 신장 트리 밖의 추가 길 수
+   */
+  sizes: {
+    4: { radius: 7, cities: 1, ranchTowns: 2, extraRoads: 1 },
+    6: { radius: 8, cities: 1, ranchTowns: 2, extraRoads: 1 },
+    8: { radius: 9, cities: 1, ranchTowns: 3, extraRoads: 2 },
+    12: { radius: 12, cities: 2, ranchTowns: 4, extraRoads: 3 },
+  } as Record<number, { radius: number; cities: number; ranchTowns: number; extraRoads: number }>,
   /** 마을끼리 떨어져야 하는 최소 칸 수 */
   townMinDistance: 5,
   /** 도시는 생산 마을과 이만큼은 떨어진다 (칸) */
   cityMinDistance: 4,
+  /** 도시가 둘 이상이면 도시끼리 이만큼은 떨어진다 (칸) */
+  cityCityMinDistance: 7,
+  /** 자원지 한 종을 특색으로 가진 생산 마을이 최소 몇 곳인가: 생산 마을 이만큼마다 1곳 (최소 1곳) */
+  producersPerResource: 4,
   /** 도시 주변 두 칸 안 자원지 칸이 이보다 많으면 도시로 쓰지 않는다 ("자원지가 거의 없다") */
   cityMaxResourceTiles: 5,
   /** 지역 특색 태그: 덩어리마다 붙을 확률, 붙으려면 덩어리가 이만큼은 커야 한다 */
@@ -17,8 +38,6 @@ export const WORLDGEN = {
   regionMinTiles: 3,
   /** 마을 특색을 셀 때 보는 범위 (칸) */
   specialtyRange: 2,
-  /** 목장 특색이 근처에 있는 생산 마을 수 = 마구간 마을 수 (0.0.7: 맵마다 꼭 2곳) */
-  ranchTowns: 2,
   /** 특색이 되려면 범위 안에 같은 자원지가 몇 칸 있어야 하나 */
   specialtyMinCount: 2,
   maxSpecialties: 2,
@@ -28,7 +47,7 @@ export const WORLDGEN = {
   townAttempts: 120,
   /** 규칙을 못 맞추면 시드를 1씩 올려 다시 만든다. 그 최대 횟수 */
   terrainAttempts: 60,
-  /** 최소 신장 트리 밖의 추가 길: 트리에서 가장 긴 길의 몇 배까지 허용하나 */
+  /** 최소 신장 트리 밖의 추가 길: 트리에서 가장 긴 길의 몇 배까지 허용하나 (몇 개인지는 sizes.extraRoads) */
   extraRoadFactor: 1.6,
 
   noise: {
@@ -259,6 +278,7 @@ export const ECONOMY = {
 
   /** NPC 상단 */
   traders: {
+    /** 마을 4곳 맵에서 몇 상단. 마을이 늘면 같은 비율로 는다 (0.1.1) */
     count: 5,
     startGold: 300,
     capacity: 40,
