@@ -1,67 +1,76 @@
-// 직업별 파츠 범위 (기획서 "NPC 외모": 완전 랜덤이 아니라 직업에 맞는 파츠와 색 안에서 뽑는다).
-// 얼굴만 보고 누군지 짐작할 수 있게: 어부는 두건과 쪽빛, 광부는 가죽 조끼와 어두운 색, 여관 주인은 앞치마, 도시 상인은 진한 색과 모자.
-// 0.1.5 상의 4종(어부 스웨터, 도시 상인 털깃 겉옷, 농부 튜닉과 멜빵, 대장장이 가죽 앞치마)은 기존 범위에 더하고, 그 직업의 표시가 되게 두 번 넣었다.
-// 목록에 같은 것을 여러 번 넣으면 그만큼 자주 나온다. null은 그 레이어를 비운다. 목록은 초안이다.
+// 직업별 파츠 범위 (기획서 "NPC 외모", 0.1.6 인수인계의 표): 얼굴이 하나라 상의와 옷 색이 직업을 알려 준다.
+// 상의 목록의 한 칸은 파츠 id 하나, 또는 ['top_13', 'top_05']처럼 "앞의 것이 없으면 뒤의 것" 차례다.
+// 같은 것을 여러 번 넣으면 그만큼 자주 나온다. 목록과 확률은 초안이다.
 import type { JobId } from '../economy/jobs';
-import { HAIR_STYLES } from './catalog';
-import type { ClothColorId, HairColorId, HairStyleId, LayerId, LookRole, SkinId } from './types';
+import { ANY_CLOTH, BEARD_RATE, DEEP_CLOTH, MALE_RATE } from './catalog';
+import type { ClothColorId, LookRole } from './types';
 
-/** 직업 하나가 고르는 범위. 적지 않은 레이어와 색은 COMMON에서 */
-/** 머리 레이어는 머리 모양(hairStyle)으로 한 벌씩 고른다 */
-export type HairLayer = 'frontHair' | 'backHair';
-export type PartLayer = Exclude<LayerId, HairLayer>;
+/** 상의 한 칸: 파츠 id, 또는 앞에서부터 그림이 있는 첫 파츠 */
+export type PartChoice = string | readonly string[];
 
 export interface RoleRange {
-  parts?: Partial<Record<PartLayer, readonly (string | null)[]>>;
-  hairStyle?: readonly HairStyleId[];
-  cloth?: readonly ClothColorId[];
-  hatColor?: readonly ClothColorId[];
-  hair?: readonly HairColorId[];
-  skin?: readonly SkinId[];
+  tops: readonly PartChoice[];
+  /** 상의의 주 색 영역(main)에 입히는 직업 색 */
+  cloth: readonly ClothColorId[];
+  /** 남자 중 수염 비율. 없으면 BEARD_RATE */
+  beardRate?: number;
+  /** 수염 모양. 없으면 COMMON_BEARDS */
+  beards?: readonly PartChoice[];
+  /** 남자 비율. 없으면 MALE_RATE */
+  maleRate?: number;
+  /** 머리 모양. 없으면 COMMON_HAIR (노인은 COMMON_OLD_HAIR) */
+  hair?: readonly PartChoice[];
+  /** 언제나 노인 (노상인) */
+  alwaysOld?: boolean;
 }
 
-const NATURAL: readonly ClothColorId[] = ['indigo', 'madder', 'ochre', 'olive', 'linen'];
-const DEEP: readonly ClothColorId[] = ['deepIndigo', 'deepMadder', 'deepOlive'];
+/** 아무 직업이나 입는 상의: 직업 상의가 이 사람(여자·남자)에게 맞지 않거나 그림이 없을 때 */
+export const COMMON_TOPS: readonly PartChoice[] = ['top_03', 'top_07'];
 
-/** 모든 직업의 기본 범위 */
-export const COMMON: Required<RoleRange> & { parts: Record<PartLayer, readonly (string | null)[]> } = {
-  parts: {
-    face: ['round', 'oval', 'square'],
-    top: ['tunic'],
-    brows: ['soft', 'thick', 'arched'],
-    beard: [null, null, null, 'stubble', 'mustache', 'full'],
-    freckles: [null, null, null, 'freckles'],
-    wrinkles: [null, null, null, 'lines'],
-    hat: [null],
-  },
-  // 정수리가 빠진 머리는 드물게 (노상인은 자주)
-  hairStyle: ['curly', 'cropped', 'cropped', 'bun', 'braid', 'long', 'long', 'ponytail', 'ponytail', 'balding'],
-  cloth: NATURAL,
-  hatColor: NATURAL,
-  hair: ['black', 'brown', 'brown', 'auburn', 'gray'],
-  skin: ['skin1', 'skin2', 'skin3', 'skin4'],
+/**
+ * 머리 모양. 직업으로 나누지 않는다 (일꾼이 일을 바꿔도 머리는 그대로).
+ * 얼굴이 하나라 여자·남자는 머리로 가장 잘 드러난다: 누구나 쓰는 머리(hair_01 짧은 머리, hair_02 생머리)도
+ * 남자는 짧은 머리, 여자는 생머리를 자주 고른다
+ */
+export const COMMON_HAIR: Record<'male' | 'female', readonly PartChoice[]> = {
+  male: ['hair_01', 'hair_01', 'hair_01', 'hair_02', 'hair_04', 'hair_04', 'hair_07'],
+  female: ['hair_02', 'hair_02', 'hair_02', 'hair_01', 'hair_05', 'hair_05', 'hair_06', 'hair_06', 'hair_07'],
 };
+/** 노인 머리: 남자는 옆머리만 남은 대머리가 잦다 */
+export const COMMON_OLD_HAIR: Record<'male' | 'female', readonly PartChoice[]> = {
+  male: ['hair_03', 'hair_03', 'hair_01', 'hair_01', 'hair_02', 'hair_04'],
+  female: ['hair_02', 'hair_02', 'hair_01', 'hair_05', 'hair_05', 'hair_06'],
+};
+export const COMMON_BEARDS: readonly PartChoice[] = ['beard_01', 'beard_02'];
+
+/** 어부·대장장이·광부의 수염 비율 (도시 상인 0.3, 나머지는 BEARD_RATE) */
+const BEARDY = 0.5;
+
+const FIELD: RoleRange = { tops: ['top_07', 'top_03'], cloth: ['linen', 'ochre'] };
 
 export const ROLE_RANGES: Record<LookRole, RoleRange> = {
-  fisher: { parts: { top: ['tunic', 'shawl', 'sweater', 'sweater'], hat: ['hood', 'hood', 'kerchief'] }, cloth: ['indigo', 'indigo', 'linen'], hatColor: ['indigo', 'linen'] },
-  hunter: { parts: { top: ['cloak', 'leatherVest'], hat: ['hood', null] }, cloth: ['olive', 'ochre', 'deepOlive'], hatColor: ['olive', 'deepOlive'] },
-  farmer: { parts: { top: ['tunic', 'pinafore', 'braces', 'braces'], hat: ['feltHat', 'kerchief', null] }, cloth: ['ochre', 'linen', 'olive'], hatColor: ['ochre', 'linen'] },
-  woodcutter: { parts: { top: ['tunic', 'leatherVest'], hat: ['cap', null] }, cloth: ['madder', 'olive', 'ochre'], hatColor: ['madder', 'olive'] },
-  miner: { parts: { top: ['leatherVest'], hat: ['cap', 'hood'] }, cloth: DEEP, hatColor: DEEP },
-  salter: { parts: { top: ['tunic', 'apron'], hat: ['kerchief', null] }, cloth: ['linen', 'linen', 'indigo'], hatColor: ['linen'] },
-  curer: { parts: { top: ['apron'], hat: ['kerchief', 'cap'] }, cloth: ['madder', 'linen'], hatColor: ['linen', 'madder'] },
-  smith: { parts: { top: ['leatherVest', 'apron', 'leatherApron', 'leatherApron'], hat: [null, 'cap'] }, cloth: DEEP, hatColor: DEEP },
-  innkeeper: { parts: { top: ['apron'], hat: ['kerchief', null] }, cloth: ['linen', 'madder', 'ochre'], hatColor: ['linen'] },
-  merchant: { parts: { top: ['tunic', 'shawl', 'pinafore'], hat: ['feltHat', null] }, cloth: ['madder', 'ochre', 'indigo'], hatColor: ['ochre', 'madder'] },
-  cityMerchant: { parts: { top: ['cloak', 'shawl', 'furCoat', 'furCoat'], hat: ['feltHat'] }, cloth: DEEP, hatColor: DEEP },
-  villager: { parts: { top: ['tunic', 'pinafore', 'shawl', 'apron'], hat: [null, null, 'kerchief', 'hood'] } },
-  // 노상인: 여관의 늙은 상인
+  fisher: { tops: [['top_13', 'top_05'], 'top_03'], cloth: ['indigo', 'deepIndigo'], beardRate: BEARDY, beards: ['beard_01'] },
+  miner: { tops: ['top_09', 'top_07'], cloth: DEEP_CLOTH, beardRate: BEARDY, beards: ['beard_01'] },
+  hunter: { tops: ['top_09'], cloth: ['olive', 'brown'] },
+  farmer: FIELD,
+  woodcutter: FIELD,
+  curer: FIELD,
+  // 염전 일꾼은 표에 없어 농부·나무꾼·염장꾼과 같게 둔다
+  salter: FIELD,
+  innkeeper: { tops: [['top_10', 'top_04']], cloth: ['cream', 'ochre'] },
+  smith: { tops: [['top_11', 'top_09']], cloth: ['deepBrown'], beardRate: BEARDY, beards: ['beard_01'] },
+  cityMerchant: { tops: ['top_08', 'top_06'], cloth: ['madder', ...DEEP_CLOTH], beardRate: 0.3, beards: ['beard_02', 'beard_01'] },
+  // 장 상인은 표에 없어 도시 상인보다 수수하게 둔다
+  merchant: { tops: ['top_08', 'top_03', 'top_04'], cloth: ['madder', 'ochre', 'indigo', 'olive'] },
+  villager: { tops: ['top_03', 'top_04', 'top_07', 'top_12'], cloth: ANY_CLOTH },
+  // 노상인: 여관의 늙은 상인. 언제나 노인, 옆머리만 남은 대머리가 잦다
   elder: {
-    parts: { top: ['cloak'], hat: ['feltHat'], wrinkles: ['lines'], beard: ['full', 'mustache', null] },
-    hairStyle: ['balding', 'balding', 'cropped', 'bun'],
-    cloth: ['deepMadder', 'deepIndigo'],
-    hatColor: ['deepMadder', 'deepIndigo', 'deepOlive'],
-    hair: ['gray'],
+    tops: ['top_06', 'top_08'],
+    cloth: ['madder', 'deepMadder', 'deepIndigo', 'deepGreen'],
+    alwaysOld: true,
+    maleRate: 1,
+    hair: ['hair_03', 'hair_03', 'hair_03', 'hair_01', 'hair_02'],
+    beards: ['beard_02', 'beard_01'],
   },
 };
 
@@ -70,26 +79,5 @@ export function workerRole(job: JobId): LookRole {
   return job;
 }
 
-/** 머리 모양의 범위 */
-export function hairStyleRange(role: LookRole): readonly HairStyleId[] {
-  return ROLE_RANGES[role].hairStyle ?? COMMON.hairStyle;
-}
-
-/** 레이어 하나의 범위. 머리 레이어는 머리 모양 범위에서 나올 수 있는 파츠 */
-export function partRange(role: LookRole, layer: LayerId): readonly (string | null)[] {
-  if (layer === 'frontHair' || layer === 'backHair') {
-    const side = layer === 'frontHair' ? 'front' : 'back';
-    return [...new Set(hairStyleRange(role).map((h) => HAIR_STYLES[h][side]))];
-  }
-  return ROLE_RANGES[role].parts?.[layer] ?? COMMON.parts[layer];
-}
-
-export function colorRange(role: LookRole) {
-  const r = ROLE_RANGES[role];
-  return {
-    cloth: r.cloth ?? COMMON.cloth,
-    hatColor: r.hatColor ?? COMMON.hatColor,
-    hair: r.hair ?? COMMON.hair,
-    skin: r.skin ?? COMMON.skin,
-  };
-}
+export const maleRate = (role: LookRole): number => ROLE_RANGES[role].maleRate ?? MALE_RATE;
+export const beardRate = (role: LookRole): number => ROLE_RANGES[role].beardRate ?? BEARD_RATE;

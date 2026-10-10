@@ -1,7 +1,7 @@
-// NPC 얼굴 모음 (0.1.4): 이 맵 세계의 얼굴 있는 NPC를 직업별로 모아 보여 준다. 직업마다 얼굴만 보고 짐작할 수 있는지 본다.
+// NPC 얼굴 모음 (0.1.4, 0.1.6 아바타 키트): 이 맵 세계의 얼굴 있는 NPC를 직업별로 모아 보여 준다. 직업마다 옷만 보고 짐작할 수 있는지 본다.
 // 시즌 id를 바꾸면 같은 세계의 얼굴이 새로 뽑힌다 (시즌 시드 + NPC 번호).
 import { advanceDay, createEconomy, JOB_NAME, type EconomyState } from '../sim/economy';
-import { lookKey, worldLooks, worldNpcs, type LookRole } from '../sim/looks';
+import { AVAILABLE_PARTS, CLOTH_COLORS, HAIR_COLORS, PARTS, lookKey, worldLooks, worldNpcs, type Look, type LookRole } from '../sim/looks';
 import type { WorldMap } from '../sim/worldgen';
 import { portraitHtml } from '../ui/portrait/portrait';
 
@@ -17,12 +17,29 @@ const ROLE_NAME: Record<LookRole, string> = {
 /** 직업마다 몇 명까지 보여 주나 */
 const PER_ROLE = 12;
 
+/** 얼굴에 마우스를 올리면(길게 누르면) 보이는 조합 */
+function lookTitle(look: Look): string {
+  const cloth = Object.entries(look.cloth)
+    .map(([code, c]) => `${code}:${CLOTH_COLORS[c].name}`)
+    .join(' ');
+  return [
+    `${look.male ? '남' : '여'}${look.old ? ' 노인' : ''} · ${look.skin}`,
+    `머리 ${look.hair ?? '-'} ${HAIR_COLORS[look.hairColor].name}`,
+    `상의 ${look.top} (${cloth})`,
+    look.beard ? `수염 ${look.beard}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function mountFacesPanel(root: HTMLElement): { reset(map: WorldMap): void } {
   let map: WorldMap | null = null;
   let season = 1;
+  const missing = Object.keys(PARTS).filter((id) => !AVAILABLE_PARTS.has(id));
   root.innerHTML = `
-    <h2>NPC 얼굴 (파츠 조합)</h2>
-    <p class="dev-note">그림이 없는 파츠는 단색 자리표시. 그림은 assets/portrait/&lt;레이어&gt;/&lt;파츠&gt;.png에 넣으면 바로 쓰인다.</p>
+    <h2>NPC 얼굴 (아바타 키트)</h2>
+    <p class="dev-note">그림이 있는 파츠만 뽑는다. 아직 그림이 없는 파츠: ${missing.join(', ') || '없음'}.
+      키트(assets-src/portrait/avatar-kit/parts)에 넣고 <code>npm run portraits</code>를 돌리면 다음 빌드부터 쓰인다.</p>
     <div class="dev-bar">
       <button type="button" class="dev-btn alt" data-prev>앞 시즌</button>
       <span data-season></span>
@@ -46,7 +63,10 @@ export function mountFacesPanel(root: HTMLElement): { reset(map: WorldMap): void
         const of = npcs.filter((n) => n.role === role);
         const faces = of
           .slice(0, PER_ROLE)
-          .map((n) => portraitHtml(looks.get(`${n.kind}:${n.id}`), 64, `${ROLE_NAME[role]} ${n.id}`))
+          .map((n) => {
+            const look = looks.get(`${n.kind}:${n.id}`)!;
+            return `<span title="${lookTitle(look)}">${portraitHtml(look, 64, `${ROLE_NAME[role]} ${n.id}`)}</span>`;
+          })
           .join('');
         return `<div class="dev-faces"><b>${ROLE_NAME[role]} <small>${of.length}명</small></b><div>${faces}</div></div>`;
       })

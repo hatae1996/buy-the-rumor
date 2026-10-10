@@ -1,109 +1,112 @@
-// 초상 파츠 목록과 팔레트 (기획서 "NPC 외모", 0.1.4). 색 값과 파츠 목록은 초안이다. 기획자가 그림을 만들며 고친다.
-// 그림 파일은 assets/portrait/<레이어>/<파츠 id>.png. 모두 같은 크기 캔버스에 같은 위치로 그린 투명 PNG다.
-// 옷과 머리 파츠는 회색조로 그리고, 화면이 팔레트 색을 곱한다. 얼굴·목 파츠에는 피부색을 곱한다.
-import type { ClothColorId, HairColorId, HairStyleId, LayerId, SkinId, TintId } from './types';
+// 초상 파츠 목록과 팔레트 (기획서 "NPC 외모", 0.1.6 아바타 키트). 확률과 옷 색은 초안이다. 기획자가 그림을 보며 고친다.
+// 원본은 assets-src/portrait/avatar-kit/, 게임용 그림은 npm run portraits가 assets/portrait/에 만든다.
+// 파츠 id는 키트 파일 이름 그대로. 목록에 있어도 그림이 없으면(kitParts.ts에 없으면) 뽑지 않는다.
+import { KIT_PARTS } from './kitParts';
+import type { ClothColorId, HairColorId, PartKind, PartWho, RegionCode, RegionKind, SkinId } from './types';
 
-/** 기획자가 그리는 캔버스 크기 (px). 원본은 assets-src/portrait/에 두고, 게임에는 PORTRAIT_GAME 크기로 줄여 넣는다 (답 113) */
+/** 키트 원본 캔버스 크기 (px). 게임에는 PORTRAIT_GAME 크기로 줄여 넣는다 */
 export const PORTRAIT_CANVAS = 1254;
 export const PORTRAIT_GAME = 512;
 
-/** 아래에서 위로 그리는 순서와 곱할 색 */
-export const LAYERS: readonly { id: LayerId; name: string; tint: TintId | null }[] = [
-  { id: 'backHair', name: '뒷머리', tint: 'hair' },
-  { id: 'face', name: '얼굴·목', tint: 'skin' },
-  { id: 'top', name: '상의', tint: 'cloth' },
-  { id: 'brows', name: '눈썹', tint: 'hair' },
-  { id: 'beard', name: '수염', tint: 'hair' },
-  { id: 'freckles', name: '주근깨', tint: null },
-  { id: 'wrinkles', name: '주름', tint: null },
-  { id: 'frontHair', name: '앞머리·옆머리', tint: 'hair' },
-  { id: 'hat', name: '모자·두건', tint: 'hat' },
-];
+export type Rgb = readonly [number, number, number];
 
-/** 레이어마다 있는 파츠 (id → 이름). 그림이 아직 없으면 화면이 단색 자리표시로 그린다. 그림 프롬프트와의 대응표는 docs/reference/npc-prompts.md */
-export const PARTS: Record<LayerId, Record<string, string>> = {
-  // 뒷머리는 머리 모양(HAIR_STYLES)의 짝으로만 나온다
-  backHair: { long: '어깨까지 오는 생머리(뒤)', ponytail: '꽁지머리(뒤)' },
-  face: { round: '둥근 얼굴', oval: '갸름한 얼굴', square: '각진 얼굴' },
-  // 시대에 맞는 옷만: 단추 셔츠, 블레이저 같은 현대 옷은 없다. 뒤 넷은 0.1.5
-  top: {
-    tunic: '끈 튜닉',
-    pinafore: '조끼 드레스',
-    apron: '앞치마',
-    shawl: '숄',
-    cloak: '망토',
-    leatherVest: '가죽 조끼',
-    sweater: '털실 스웨터',
-    furCoat: '털깃 겉옷',
-    braces: '튜닉과 멜빵',
-    leatherApron: '가죽 앞치마',
-  },
-  brows: { soft: '옅은 눈썹', thick: '짙은 눈썹', arched: '둥근 눈썹' },
-  beard: { stubble: '거뭇한 수염', mustache: '콧수염', full: '덥수룩한 수염' },
-  freckles: { freckles: '주근깨' },
-  wrinkles: { lines: '주름' },
-  frontHair: {
-    curly: '짧은 곱슬머리',
-    cropped: '짧게 깎은 머리',
-    balding: '정수리가 빠진 머리',
-    bun: '쪽진 올림머리',
-    braid: '한쪽 어깨로 넘긴 땋은 머리',
-    long: '어깨까지 오는 생머리(앞)',
-    ponytail: '꽁지머리(앞)',
-  },
-  hat: { hood: '두건', kerchief: '머릿수건', feltHat: '펠트 모자', cap: '작업 모자' },
+/** 피부 (베이스에 곱하는 비율은 키트 render.py의 SKIN, 빌드 때 베이스 그림에 미리 들어간다) */
+export const SKINS: Record<SkinId, string> = {
+  light: '밝은 피부',
+  medium: '보통 피부',
+  deep: '짙은 피부',
 };
+
+/** 머리색: 키트 render.py의 HAIR_COLORS 6가지와 노인 흰머리(GRAY_HAIR) */
+export const HAIR_COLORS: Record<HairColorId, { name: string; rgb: Rgb }> = {
+  black: { name: '검은 머리', rgb: [40, 34, 32] },
+  brown: { name: '갈색 머리', rgb: [92, 60, 40] },
+  auburn: { name: '붉은 머리', rgb: [140, 62, 38] },
+  blond: { name: '금발', rgb: [205, 170, 110] },
+  ash: { name: '잿빛 갈색 머리', rgb: [120, 110, 100] },
+  darkBrown: { name: '짙은 갈색 머리', rgb: [60, 45, 35] },
+  gray: { name: '흰머리', rgb: [200, 200, 198] },
+};
+
+/** 젊은 사람이 고르는 머리색 (노인은 흰머리) */
+export const YOUNG_HAIR_COLORS: readonly HairColorId[] = ['black', 'brown', 'auburn', 'blond', 'ash', 'darkBrown'];
+
+/** 옷 색 (초안). 천연 염료는 키트 render.py의 CLOTH에서, 짙은 쪽빛·짙은 꼭두서니와 가죽·털 색은 더했다 */
+export const CLOTH_COLORS: Record<ClothColorId, { name: string; rgb: Rgb }> = {
+  indigo: { name: '쪽빛', rgb: [70, 80, 120] },
+  deepIndigo: { name: '짙은 쪽빛', rgb: [40, 48, 78] },
+  madder: { name: '꼭두서니', rgb: [110, 40, 40] },
+  deepMadder: { name: '짙은 꼭두서니', rgb: [72, 30, 34] },
+  ochre: { name: '황토', rgb: [150, 110, 50] },
+  olive: { name: '올리브', rgb: [60, 80, 55] },
+  deepGreen: { name: '짙은 녹색', rgb: [40, 70, 60] },
+  brown: { name: '갈색', rgb: [120, 90, 55] },
+  deepBrown: { name: '짙은 갈색', rgb: [90, 70, 50] },
+  dark: { name: '짙은 색', rgb: [70, 60, 55] },
+  cream: { name: '크림', rgb: [225, 215, 195] },
+  linen: { name: '표백 안 한 마', rgb: [190, 175, 145] },
+  leather: { name: '가죽', rgb: [107, 71, 44] },
+  fur: { name: '털', rgb: [122, 109, 87] },
+  darkFur: { name: '짙은 털', rgb: [80, 68, 56] },
+};
+
+/** "짙은 색" (광부, 도시 상인) */
+export const DEEP_CLOTH: readonly ClothColorId[] = ['deepIndigo', 'deepMadder', 'deepGreen', 'deepBrown', 'dark'];
+/** "아무 색" (소문꾼·마을 사람): 직업 색으로 쓰는 옷 색 모두 */
+export const ANY_CLOTH: readonly ClothColorId[] = ['indigo', 'deepIndigo', 'madder', 'deepMadder', 'ochre', 'olive', 'deepGreen', 'brown', 'deepBrown', 'dark', 'cream', 'linen'];
+
+/** 직업 색(main)이 아닌 영역이 고르는 색 */
+export const REGION_PALETTE: Record<Exclude<RegionKind, 'main' | 'hair'>, readonly ClothColorId[]> = {
+  under: ['cream', 'cream', 'linen'],
+  leather: ['leather', 'leather', 'deepBrown', 'dark'],
+  fur: ['fur', 'fur', 'darkFur', 'linen'],
+};
+
+export interface PartInfo {
+  kind: PartKind;
+  name: string;
+  who: PartWho;
+  /** 색 영역마다 무엇인가. 적지 않은 영역은 그림 색 그대로 (머리·수염은 1 = 머리색) */
+  regions: Partial<Record<RegionCode, RegionKind>>;
+}
+
+const HAIR_REGIONS = { 1: 'hair' } as const;
 
 /**
- * 머리 모양 (0.1.5): 앞머리·옆머리와 뒷머리를 한 벌로 뽑는다 (그림 프롬프트가 머리 모양마다 앞 장, 뒤 장으로 나뉜다).
- * 따로 뽑으면 꽁지머리 앞에 생머리 뒤 같은 조합이 나온다
+ * 파츠 목록 (docs/reference/npc-prompts.md의 표). 새로 뽑을 파츠(top_10~13, hair_04~07, beard_01~02)는
+ * 그림이 오면 그대로 쓰인다. 상의의 색 영역은 그림의 _reg.png를 보고 정한다: 새 상의는 그림이 오면 1 = 주 색만 두고 시작한다
  */
-export const HAIR_STYLES: Record<HairStyleId, { name: string; front: string; back: string | null }> = {
-  curly: { name: '짧은 곱슬머리', front: 'curly', back: null },
-  cropped: { name: '짧게 깎은 머리', front: 'cropped', back: null },
-  balding: { name: '정수리가 빠진 노인 머리', front: 'balding', back: null },
-  bun: { name: '쪽진 올림머리', front: 'bun', back: null },
-  braid: { name: '한쪽 어깨로 넘긴 땋은 머리', front: 'braid', back: null },
-  long: { name: '어깨까지 오는 생머리', front: 'long', back: 'long' },
-  ponytail: { name: '목 뒤로 묶은 꽁지머리', front: 'ponytail', back: 'ponytail' },
+export const PARTS: Record<string, PartInfo> = {
+  top_03: { kind: 'top', name: '끈 튜닉 + 크림 셔츠', who: 'any', regions: { 1: 'main', 2: 'under' } },
+  top_04: { kind: 'top', name: '끈 조끼 원피스 + 크림 블라우스', who: 'female', regions: { 1: 'under', 2: 'main' } },
+  top_05: { kind: 'top', name: '갈색 니트', who: 'any', regions: { 1: 'main' } },
+  top_06: { kind: 'top', name: '더블릿, 놋쇠 단추', who: 'any', regions: { 1: 'main', 2: 'under' } },
+  top_07: { kind: 'top', name: '농민 리넨 튜닉, 밧줄 매듭', who: 'any', regions: { 1: 'main' } },
+  top_08: { kind: 'top', name: '모피 깃 상인 겉옷', who: 'any', regions: { 1: 'main', 2: 'fur', 3: 'under' } },
+  top_09: { kind: 'top', name: '가죽 조끼 + 셔츠', who: 'any', regions: { 1: 'leather', 2: 'main' } },
+  top_10: { kind: 'top', name: '앞치마 두른 셔츠', who: 'any', regions: { 1: 'main' } },
+  top_11: { kind: 'top', name: '대장장이 가죽 앞치마', who: 'any', regions: { 1: 'main' } },
+  top_12: { kind: 'top', name: '숄을 두른 블라우스', who: 'female', regions: { 1: 'main' } },
+  top_13: { kind: 'top', name: '굵은 털실 스웨터', who: 'any', regions: { 1: 'main' } },
+  hair_01: { kind: 'hair', name: '짧은 부스스한 머리', who: 'any', regions: HAIR_REGIONS },
+  hair_02: { kind: 'hair', name: '어깨 길이 생머리', who: 'any', regions: HAIR_REGIONS },
+  hair_03: { kind: 'hair', name: '옆머리만 남은 대머리', who: 'male', regions: HAIR_REGIONS },
+  hair_04: { kind: 'hair', name: '짧게 깎은 머리', who: 'male', regions: HAIR_REGIONS },
+  hair_05: { kind: 'hair', name: '쪽진 올림머리', who: 'female', regions: HAIR_REGIONS },
+  hair_06: { kind: 'hair', name: '어깨 앞으로 넘긴 땋은 머리', who: 'female', regions: HAIR_REGIONS },
+  hair_07: { kind: 'hair', name: '목 뒤로 묶은 꽁지머리', who: 'any', regions: HAIR_REGIONS },
+  beard_01: { kind: 'beard', name: '짧은 턱수염', who: 'male', regions: HAIR_REGIONS },
+  beard_02: { kind: 'beard', name: '콧수염', who: 'male', regions: HAIR_REGIONS },
 };
 
-/** 옷 색: 천연 염료 (초안). 짙은 색은 광부·대장장이·도시 상인 */
-export const CLOTH_COLORS: Record<ClothColorId, { name: string; hex: string }> = {
-  indigo: { name: '쪽빛', hex: '#4a6688' },
-  madder: { name: '꼭두서니 빨강', hex: '#a84a3c' },
-  ochre: { name: '황토', hex: '#c4903f' },
-  olive: { name: '올리브', hex: '#7d7c46' },
-  linen: { name: '표백 안 한 마', hex: '#ddd0b2' },
-  deepIndigo: { name: '짙은 쪽빛', hex: '#2c3d56' },
-  deepMadder: { name: '짙은 꼭두서니', hex: '#6c2e27' },
-  deepOlive: { name: '짙은 올리브', hex: '#4b4c2d' },
-};
+/** 그림이 있는 파츠 (목록에 있고 키트에도 있는 것). 시뮬레이션은 이 안에서만 뽑는다 */
+export const AVAILABLE_PARTS: ReadonlySet<string> = new Set(KIT_PARTS.filter((id) => id in PARTS));
 
-export const SKIN_COLORS: Record<SkinId, { name: string; hex: string }> = {
-  skin1: { name: '밝은 피부', hex: '#f2d5ba' },
-  skin2: { name: '보통 피부', hex: '#dcac85' },
-  skin3: { name: '그을린 피부', hex: '#b27c54' },
-  skin4: { name: '짙은 피부', hex: '#7c5438' },
-};
+// ── 확률 (초안) ──
 
-export const HAIR_COLORS: Record<HairColorId, { name: string; hex: string }> = {
-  black: { name: '검은 머리', hex: '#2e2622' },
-  brown: { name: '갈색 머리', hex: '#5c3c24' },
-  auburn: { name: '밤색 머리', hex: '#9c6634' },
-  gray: { name: '흰머리', hex: '#c8c1b3' },
-};
-
-/** 곱할 색의 값 (화면이 쓴다) */
-export function tintHex(tint: TintId, look: { skin: SkinId; hair: HairColorId; cloth: ClothColorId; hatColor: ClothColorId }): string {
-  switch (tint) {
-    case 'skin':
-      return SKIN_COLORS[look.skin].hex;
-    case 'hair':
-      return HAIR_COLORS[look.hair].hex;
-    case 'cloth':
-      return CLOTH_COLORS[look.cloth].hex;
-    case 'hat':
-      return CLOTH_COLORS[look.hatColor].hex;
-  }
-}
+/** 노인 비율 (노상인은 항상 노인) */
+export const OLD_RATE = 0.25;
+/** 남자 비율 (직업마다 roles.ts에서 바꿀 수 있다) */
+export const MALE_RATE = 0.5;
+/** 수염 비율 (남자 중에서, 직업마다 roles.ts에서 바꾼다) */
+export const BEARD_RATE = 0.15;
