@@ -8,7 +8,7 @@ import wheelImg from '../../../assets/ui/cartshop_wheel.png';
 import coinsImg from '../../../assets/ui/coins_stack.png';
 import infoImg from '../../../assets/ui/icon_info.png';
 import { CART_IMG } from '../cartBoard';
-import { bindHorseNaming, horseNameHtml, horsePicHtml } from '../horseArt';
+import { bindHorses, horseNameHtml, horsePicHtml } from '../horseArt';
 import { openLivePage } from '../livePage';
 import type { HorseKindInfo, HorseView } from '../../sim/economy';
 import { HORSES } from '../../sim/constants';
@@ -118,7 +118,7 @@ export function openStableSheet(game: Game): void {
         if (!page.send({ type: 'sellHorse', horseId: Number(b.dataset.sell) })) done = '';
       }),
     );
-    bindHorseNaming(body, game);
+    bindHorses(body, game);
   });
 }
 

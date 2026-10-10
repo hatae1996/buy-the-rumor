@@ -8,7 +8,7 @@ import type { Game } from '../game';
 import { portraitHtml } from '../portrait/portrait';
 import { openInn } from './buildings/inn';
 import { horseFatigue, openStableSheet, speedWord } from './horseSheet';
-import { bindHorseNaming, horseNameHtml, horsePicHtml } from '../horseArt';
+import { bindHorses, horseNameHtml, horsePicHtml } from '../horseArt';
 
 const won = (n: number) => `${money(n)}골드`;
 
@@ -74,5 +74,5 @@ export function peopleHtml(game: Game, v: PlayerView): string {
 export function bindPeople(el: HTMLElement, game: Game): void {
   el.querySelectorAll('[data-people-inn]').forEach((b) => b.addEventListener('click', () => openInn(game, 'hire')));
   el.querySelectorAll('[data-people-stable]').forEach((b) => b.addEventListener('click', () => openStableSheet(game)));
-  bindHorseNaming(el, game);
+  bindHorses(el, game);
 }

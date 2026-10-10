@@ -397,3 +397,9 @@
 .shop-card .pick-preview {
   --pick-bg: var(--town-card);
 }
+
+.horse-art {
+  width: 100%;
+  height: auto;
+  align-self: center;
+}
