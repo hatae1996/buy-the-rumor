@@ -84,6 +84,7 @@ export function travelHtml(game: Game, v: PlayerView, now: number, sectionExtra:
     <div class="trip-scene" aria-hidden="true">
       <div class="trip-stage">
         <img class="trip-road" src="${ROAD[v.season]}" alt="" />
+        <span class="trip-dust"><i></i><i></i><i></i></span>
         <img class="trip-wagon" src="${horseWagon}" alt="" />
       </div>
     </div>
