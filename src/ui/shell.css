@@ -55,6 +55,22 @@
   white-space: nowrap;
 }
 
+/* 모래시계·빵 아이콘 옆 숫자 (0.1.6) */
+.status-market,
+.status-fatigue {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-market img,
+.status-fatigue img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .status-day {
   flex: 1;
   min-width: 0;

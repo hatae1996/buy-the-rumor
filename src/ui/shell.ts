@@ -1,13 +1,15 @@
 // 앱 틀 (기획서 "화면 구성", 0.1.2): 위쪽 줄(내 문장, 날짜·계절, 장날까지, 소지금, 피로), 가운데 화면, 아래 탭 5개.
 // 탭마다 질문 하나: 마을 = 여기서 무엇을, 지도 = 어디로, 짐칸 = 무엇을 실었나, 장부 = 돈과 약속, 소식 = 들어오는 것.
+// 아이콘은 0.1.6 로우폴리 그림판에서 잘랐다 (scripts/ui/cut_sheets.py)
 import coin from '../../assets/ui/coin.png';
+import hourglass from '../../assets/ui/icon_hourglass.png';
+import bread from '../../assets/ui/icon_bread.png';
 import seal from '../../assets/ui/seal_small.png';
+import tabCart from '../../assets/ui/tab_cart.png';
 import tabLedger from '../../assets/ui/tab_ledger.png';
 import tabMap from '../../assets/ui/tab_map.png';
 import tabNews from '../../assets/ui/tab_news.png';
 import tabTown from '../../assets/ui/tab_town.png';
-// 짐칸 탭 그림이 오기 전까지 임시 아이콘
-import tabCart from './icons/tab_cart.svg';
 import { clockText, dayText, money } from './format';
 import type { AwaySummary, Game } from './game';
 import type { MapScreen } from './mapScreen';
@@ -38,8 +40,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
       <header class="status-bar">
         <button type="button" class="status-crest" data-crest aria-label="상인 증서"><img src="${seal}" alt="" /></button>
         <span class="status-day" data-day></span>
-        <span class="status-market" data-market></span>
-        <span class="status-fatigue" data-fatigue></span>
+        <span class="status-market"><img src="${hourglass}" alt="" /><span data-market></span></span>
+        <span class="status-fatigue" aria-label="피로"><img src="${bread}" alt="" /><span data-fatigue></span></span>
         <span class="status-gold"><img src="${coin}" alt="돈" /><b data-gold></b></span>
       </header>
       <main class="shell-body">
@@ -83,8 +85,11 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
-    $('[data-market]').textContent = v.settlement ? '시즌 결산' : v.apprentice ? '견습 중' : `장날까지 ${clockText(game.msUntilMarket(now()))}`;
-    $('[data-fatigue]').textContent = `피로 ${v.fatigue}/${v.fatigueMax}`;
+    // 모래시계 옆은 장날까지 남은 시간 (견습과 결산은 글로)
+    const market = $('[data-market]');
+    market.textContent = v.settlement ? '시즌 결산' : v.apprentice ? '견습 중' : clockText(game.msUntilMarket(now()));
+    market.parentElement!.setAttribute('aria-label', v.settlement || v.apprentice ? '' : '장날까지');
+    $('[data-fatigue]').textContent = `${v.fatigue}/${v.fatigueMax}`;
     // 탭은 하나씩 열린다 (견습: 마을 → 짐칸 → 장부 → 소식 → 지도)
     buttons.forEach((b) => {
       const id = b.dataset.tab as TabId;

@@ -44,9 +44,7 @@ export function renderCart(el: HTMLElement, game: Game, v: PlayerView): void {
   ].join('');
 
   el.innerHTML = `
-    <section class="card">
-      <div data-cart></div>
-    </section>
+    <div class="hold" data-cart></div>
     <section class="card">
       <h2>실은 물건</h2>
       <ul class="list">${cargo}</ul>

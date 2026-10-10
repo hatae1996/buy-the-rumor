@@ -1,5 +1,7 @@
 // 짐칸 판 (0.1.2, 기획서 "수레 인벤토리 - 짐칸 화면", 참고 목업 docs/reference/cart-inventory-mockup.png, 게임 DREDGE의 배 짐칸).
 // 위쪽 무게 막대, 수레 모양 칸 위의 짐 조각(구석에 묶음 수), 누르면 아래 정보판, 망가진 칸은 X.
+// 0.1.6 목업(docs/reference/cart-tab-mockup-0.1.6.png): 제목과 무게 카드, 칸 안에 물품 그림, 고른 짐은 청록 테두리, 그림 칸이 있는 정보판.
+// 마차 그림은 다시 그려 받는 중이라, 판 틀은 그때까지 나무색 테두리다.
 // 창고가 있는 마을에서는 창고 판과 수레 판을 위아래로 두고 끌어서 옮긴다.
 // 처음 톡 누르면 고르고(정보판), 고른 짐을 한 번 더 누르면 돌린다. 끌어서 놓으면 옮긴다.
 // 판은 화면 쪽이라 픽셀을 다루지만, 놓을 수 있는지는 시뮬레이션과 같은 모양 함수로 계산한다.
@@ -9,8 +11,9 @@ import type { CartPieceView, Command, PlayerView } from '../sim/economy';
 import { eulReul } from '../sim/josa';
 import { agoText, ERROR_TEXT, freshness, goodName, money } from './format';
 import type { Game } from './game';
+import { itemArt } from './itemArt';
 
-/** 물품 색 (화면 팔레트). 그림이 오면 그림으로 바꾼다 */
+/** 물품 색 (화면 팔레트). 그림이 없는 짐(장비, 여행 식량)은 이 색 조각으로 그린다 */
 const GOOD_COLOR: Record<ItemId, string> = {
   fish: '#2E9C98',
   meat: '#D2594B',
@@ -30,6 +33,9 @@ const GOOD_COLOR: Record<ItemId, string> = {
 };
 
 const TAP_SLOP = 6;
+
+/** 제목 양옆 잎 가지 (목업) */
+const SPRIG = `<svg viewBox="0 0 48 48" width="40" height="40"><path d="M10 44 C16 34 20 24 22 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="22" cy="10" rx="5" ry="10" transform="rotate(18 22 10)" fill="currentColor"/><ellipse cx="11" cy="25" rx="4.5" ry="9.5" transform="rotate(-52 11 25)" fill="currentColor"/><ellipse cx="30" cy="25" rx="4.5" ry="9.5" transform="rotate(48 30 25)" fill="currentColor"/></svg>`;
 
 type BoardId = 'cart' | 'warehouse';
 
@@ -94,10 +100,11 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
       const pieces = b.pieces
         .map((p) => {
           const isSel = selected?.board === b.id && selected.piece === p.id;
+          const art = itemArt(p.good);
           const blocks = p.cells
             .map(
               ([cx, cy]) =>
-                `<div class="cart-block${p.qty === 0 ? ' ghost' : ''}${isSel ? ' selected' : ''}${p.uses?.left === 0 ? ' worn' : ''}" data-piece="${p.id}" data-board="${b.id}"
+                `<div class="cart-block${art ? ' has-art' : ''}${p.qty === 0 ? ' ghost' : ''}${isSel ? ' selected' : ''}${p.uses?.left === 0 ? ' worn' : ''}" data-piece="${p.id}" data-board="${b.id}"
                   style="left:${cx * cell}px;top:${cy * cell}px;width:${cell}px;height:${cell}px;--c:${GOOD_COLOR[p.good]}"></div>`,
             )
             .join('');
@@ -108,7 +115,13 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
           const name =
             p.qty === 0 ? (p.pending === 'buy' ? '살 자리' : '팔러 냄') : goodName(p.good);
           const badge = p.uses ? `${p.uses.left}회` : p.qty > 1 || p.incoming ? `${p.qty}${p.incoming ? `+${p.incoming}` : ''}` : '';
-          return `${blocks}<div class="cart-name" style="left:${x0 * cell}px;top:${y0 * cell}px;width:${(x1 - x0) * cell}px;height:${(y1 - y0) * cell}px"><span>${name}</span>${badge ? `<b class="cart-qty">${badge}</b>` : ''}</div>`;
+          // 그림이 있으면 그림 하나 (이름은 읽어 주는 글로만), 없으면 이름 글자.
+          // 네모가 아닌 짐(ㄱ자 등)은 자기 칸 안의 가장 큰 네모에만 그려 옆 짐과 겹치지 않게 한다
+          const label = art ? `<img class="cart-art" src="${art}" alt="${name}" draggable="false" />` : `<span>${name}</span>`;
+          const [ax, ay, aw, ah] = art ? largestRect(p.cells) : [x0, y0, x1 - x0, y1 - y0];
+          const box = (x: number, y: number, w: number, h: number) => `left:${x * cell}px;top:${y * cell}px;width:${w * cell}px;height:${h * cell}px`;
+          const outline = isSel && art ? `<div class="cart-outline" style="${box(x0, y0, x1 - x0, y1 - y0)}"></div>` : '';
+          return `${blocks}${outline}<div class="cart-name${art ? ' has-art' : ''}${isSel && !art ? ' selected' : ''}${p.qty === 0 ? ' ghost' : ''}" style="${box(ax, ay, aw, ah)}">${label}${badge ? `<b class="cart-qty">${badge}</b>` : ''}</div>`;
         })
         .join('');
       const w = Math.max(...b.rows.map((r) => r.length));
@@ -129,10 +142,14 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
           : ''
       }
       <section class="hold-board">
-        <header class="hold-head"><h3>짐 · ${cartBoard.title}</h3></header>
-        <div class="weight ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
-          <i style="width:${weightPct}%"></i>
-          <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 ${cart.weight} / ${cart.maxWeight}`}</span>
+        <header class="hold-title">
+          <span class="hold-sprig" aria-hidden="true">${SPRIG}</span>
+          <div><h2>짐칸</h2><p>${cartBoard.title}</p></div>
+          <span class="hold-sprig flip" aria-hidden="true">${SPRIG}</span>
+        </header>
+        <div class="weight-card ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
+          <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 <b>${cart.weight}</b> / ${cart.maxWeight}`}</span>
+          <div class="weight-bar"><i style="width:${weightPct}%"></i></div>
         </div>
         <p class="hold-food muted">식량 ${v.food.have}${v.food.perDay ? ` · 길에서 하루 ${v.food.perDay}씩 먹어요` : ''}</p>
         ${noHorse ? `<p class="warn">${cart.name}는 말이 ${cart.horsesNeeded}필 있어야 움직여요. 목장 마을 마구간에서 말을 사세요.</p>` : ''}
@@ -142,8 +159,8 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
       </section>
       ${sel && selBoard ? infoPanel(v, selBoard.id, sel) : ''}
       ${message ? `<p class="error">${message}</p>` : ''}
-      <p class="muted cart-hint">끌어서 옮기기 · 고른 짐을 한 번 더 누르면 돌리기 · 같은 물건 위에 놓으면 합치기</p>
-      <div class="btn-row"><button type="button" class="secondary-btn" data-pack>빈칸 정리<small>짐을 위·왼쪽으로 모아 붙여요</small></button></div>`;
+      <p class="cart-hint">끌어서 옮기기 · 고른 짐을 한 번 더 누르면 돌리기 · 같은 물건 위에 놓으면 합치기</p>
+      <button type="button" class="pack-btn" data-pack>빈칸 정리<small>짐을 위·왼쪽으로 모아 붙여요</small></button>`;
 
     const grids = new Map(boards.map((b) => [b.id, host.querySelector<HTMLElement>(`[data-grid="${b.id}"]`)!] as const));
     const model = (id: BoardId) => boards.find((b) => b.id === id)!;
@@ -282,14 +299,36 @@ function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView): string {
       if (mem) rows.push(`${agoText(v.day, mem.day)} 본 시세 ${money(mem.prices[good])}`);
     }
   }
+  // 목업처럼 왼쪽 그림 칸, 오른쪽 이름과 칸·무게, 줄을 긋고 나머지
+  const art = itemArt(p.good);
+  const [first, ...rest] = rows;
   return `<div class="hold-info">
-    <div class="hold-swatch" style="--c:${GOOD_COLOR[p.good]}"></div>
-    <div>
+    <div class="hold-pic">${art ? `<img src="${art}" alt="" />` : `<i style="--c:${GOOD_COLOR[p.good]}"></i>`}</div>
+    <div class="hold-detail">
       <h3>${goodName(p.good)}${p.incoming ? ` <small class="muted">장날 신청 자리 ${p.incoming}</small>` : ''}</h3>
-      ${rows.map((r) => `<div>${r}</div>`).join('')}
+      <div>${first}</div>
+      ${rest.length ? `<hr />${rest.map((r) => `<div>${r}</div>`).join('')}` : ''}
     </div>
     ${board === 'cart' ? `<button type="button" class="link-btn" data-discard ${p.incoming ? 'disabled' : ''}>버리기</button>` : ''}
   </div>`;
+}
+
+/** 조각 칸들 안에 들어가는 가장 큰 네모 [x, y, 너비, 높이]. 넓이가 같으면 먼저 찾은 것 (위·왼쪽) */
+export function largestRect(cells: readonly (readonly [number, number])[]): [number, number, number, number] {
+  const has = new Set(cells.map(([x, y]) => `${x},${y}`));
+  const xs = cells.map((c) => c[0]);
+  const ys = cells.map((c) => c[1]);
+  const [x0, y0, x1, y1] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  let best: [number, number, number, number] = [cells[0]![0], cells[0]![1], 1, 1];
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++)
+      for (let h = 1; y + h - 1 <= y1; h++)
+        for (let w = 1; x + w - 1 <= x1; w++) {
+          let full = true;
+          for (let dy = 0; dy < h && full; dy++) for (let dx = 0; dx < w && full; dx++) full = has.has(`${x + dx},${y + dy}`);
+          if (full && w * h > best[2] * best[3]) best = [x, y, w, h];
+        }
+  return best;
 }
 
 /** 놓으려는 칸 위에 같은 물품 조각이 있나 (합치기) */
