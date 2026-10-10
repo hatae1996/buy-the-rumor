@@ -55,6 +55,21 @@ describe('견습 세계', () => {
     expect(getPlayer(blob.state, ME).certificate.merchantNo).toBe(7);
   });
 
+  it('상인 번호마다 견습 마을이 갈린다 (모두 같은 마을에서 시작하지 않게)', () => {
+    const map = seasonMap(SEASON);
+    const towns = new Set(
+      Array.from({ length: 12 }, (_, i) => {
+        const b = openApprentice(map, { seasonId: SEASON, spec: { id: ME, name: '소금 상단', merchantNo: i + 1 }, warmupDays: 0 });
+        return getPlayer(b.state, ME).apprentice!.town;
+      }),
+    );
+    expect(towns.size).toBeGreaterThan(1);
+    // 같은 번호면 같은 마을
+    const again = openApprentice(map, { seasonId: SEASON, spec: { id: ME, name: '소금 상단', merchantNo: 3 }, warmupDays: 0 });
+    const first = openApprentice(map, { seasonId: SEASON, spec: { id: ME, name: '소금 상단', merchantNo: 3 }, warmupDays: 0 });
+    expect(getPlayer(again.state, ME).apprentice).toEqual(getPlayer(first.state, ME).apprentice);
+  });
+
   it('일곱 장면을 장날 두 번으로 지난다 (길어도 한두 시간)', async () => {
     const { blob } = apprentice();
     const r = await graduateIn(blob);

@@ -9,6 +9,7 @@ import { openWorld, seasonMap, SIM_VERSION, type WorldBlob } from '../../src/sim
 import { generateWorld } from '../../src/sim/worldgen';
 import { foundCompany, redeemInvite } from '../../src/server/account';
 import type { Db } from '../../src/server/db';
+import { adminRequest } from '../../src/server/admin';
 import { commandFor, viewFor } from '../../src/server/game';
 import { DAY_MS } from '../../src/server/schedule';
 import { seasonRows } from '../../src/server/settle';
@@ -155,11 +156,23 @@ describe('시즌 결산', () => {
     expect((await tickDue(db, { now: at(LENGTH + 10) })).worlds).toEqual([]);
   });
 
-  it('예행연습은 개척 상인 없이, 시험 시즌은 아무것도 남기지 않는다', async () => {
+  it('예행연습은 증서·인장을 남기지 않고, 운영자가 지운다 (의견·기록 사건은 남김)', async () => {
     await setup('rehearsal');
-    await tickDue(db, { now: at(LENGTH + 2) });
-    expect((await cert(A)).badges.map((b) => b.badge)).not.toContain('pioneer');
-    expect((await cert(A)).seasonsCompleted).toBe(1);
+    const before = await cert(A);
+    const r = await tickDue(db, { now: at(LENGTH + 2) });
+    expect(r.settled[0]).toMatchObject({ trial: true, certificates: 0, pioneers: 0, hallOfFame: 0 });
+    expect(await cert(A)).toEqual(before);
+    await db.query(`insert into public.feedback (account_id, body, screen, season_id) values ($1, '좋아요', 'town', $2)`, [A, SEASON]);
+    expect((await adminRequest(db, { action: 'deleteSeason', seasonId: SEASON })).body).toEqual({ ok: true });
+    for (const t of ['seasons', 'worlds', 'members', 'score_rows', 'day_reports', 'commands']) {
+      expect(await db.query(`select 1 from public.${t}`), t).toEqual([]);
+    }
+    expect(await db.query('select body from public.feedback')).toEqual([{ body: '좋아요' }]);
+  });
+
+  it('예행연습이 아닌 시즌은 지우지 않는다', async () => {
+    await setup('closed_test');
+    expect((await adminRequest(db, { action: 'deleteSeason', seasonId: SEASON })).body).toEqual({ ok: false, error: 'notRehearsal' });
   });
 
   it('시험 시즌: 결산 화면은 보이되 증서·결과·명예의 전당은 그대로', async () => {

@@ -13,7 +13,8 @@
     "portraits": "python scripts/portrait/build.py",
     "parts": "python scripts/parts/build.py",
     "build:server": "vite build --config vite.server.config.ts",
-    "test:deno": "npm run build:server && vitest run --config vitest.deno.config.ts"
+    "test:deno": "npm run build:server && vitest run --config vitest.deno.config.ts",
+    "measure:server": "vitest run --config vitest.measure.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.2",

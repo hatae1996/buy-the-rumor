@@ -1,4 +1,4 @@
-// 운영자 함수 (작업목록-0.2.0 8·12번): 시즌 열기, 세계 더 열기, 세계 상태 보기, 기록 표, 멈춘 세계 풀기.
+// 운영자 함수 (작업목록-0.2.0 8·12번): 시즌 열기, 세계 더 열기, 세계 상태 보기, 기록 표, 멈춘 세계 풀기, 예행연습 지우기.
 // 비밀 값(ADMIN_SECRET)을 아는 사람만 부른다.
 // 쓰는 법은 supabase/README.md "시즌 열기".
 import type { Db } from './db';
@@ -41,6 +41,16 @@ export async function adminRequest(db: Db, body: unknown): Promise<{ status: num
       if (typeof req.seasonId !== 'string') return bad();
       const t = await metricsTable(db, req.seasonId);
       return { status: 200, body: { ok: true, ...t, csv: metricsCsv(t.rows) } };
+    }
+    case 'deleteSeason': {
+      // 예행연습을 비공개 테스트 전에 지운다 (handoff 0.2.0 2번): 세계·견습·명령·점수 줄·그날 요약·시즌 결과까지.
+      // 의견과 기록 사건은 남긴다(예행연습에서 나온 의견을 고칠 때 본다). 예행연습만 지울 수 있다
+      if (typeof req.seasonId !== 'string') return bad();
+      const [s] = await db.query<{ kind: string }>('select kind from public.seasons where id = $1', [req.seasonId]);
+      if (!s) return { status: 400, body: { ok: false, error: 'noSeason' } };
+      if (s.kind !== 'rehearsal') return { status: 400, body: { ok: false, error: 'notRehearsal' } };
+      await db.query('delete from public.seasons where id = $1', [req.seasonId]);
+      return { status: 200, body: { ok: true } };
     }
     case 'unhalt': {
       // 맞는 번들을 다시 올린 뒤 멈춘 세계를 푼다 (handoff 0.2.0 3번)

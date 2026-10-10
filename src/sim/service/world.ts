@@ -81,8 +81,8 @@ export const BOT_FILL_TO = 12;
  */
 export function fillBots(blob: WorldBlob, map: WorldMap, target = BOT_FILL_TO): number {
   assertSimVersion(blob);
-  if (blob.crew.length) return 0;
   const players = playerList(blob.state);
+  if (players.some((p) => p.bot)) return 0;
   const n = Math.max(0, target - players.length);
   if (!n) return 0;
   const specs = botSpecs(map.seed, n, players.map((p) => p.certificate.name));

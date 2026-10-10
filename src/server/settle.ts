@@ -3,7 +3,8 @@
 //   모든 세계의 마지막 장날 점수 줄을 모아 세계마다 결산한다: 인장·칭호·상위 10%는 시즌 전체 순위(사람만)로.
 // - 결산 뒤 증서(certificates)에 인장·칭호·연차를 옮기고, 시즌 결과(season_results)와 명예의 전당(부문 1위, 사람만)을 남긴다.
 // - 비공개 테스트 시즌이면 들어온 사람 모두에게 "개척 상인" 인장.
-// - 시험 시즌(trial)은 결산 화면만 보이고 아무것도 남기지 않는다.
+// - 시험 시즌(trial)과 예행연습(rehearsal)은 결산 화면만 보이고 아무것도 남기지 않는다(예행연습은 비공개 테스트 전에 지운다,
+//   handoff 0.2.0 2번: 증서·인장도 남기지 않는다).
 // - 장날마다의 시즌 전체 순위는 저장하지 않고 화면 데이터를 만들 때 다른 세계의 최신 점수 줄로 매긴다(seasonRows).
 import { playerList } from '../sim/economy';
 import { CATEGORIES, PIONEER_BADGE, type ScoreRow } from '../sim/ranking';
@@ -49,10 +50,11 @@ export async function seasonRows(db: Db, seasonId: string, except: string | null
 export interface SeasonSettleSummary {
   seasonId: string;
   worlds: string[];
-  /** 증서를 고친 사람 수 (시험 시즌이면 0) */
+  /** 증서를 고친 사람 수 (시험 시즌·예행연습이면 0) */
   certificates: number;
   pioneers: number;
   hallOfFame: number;
+  /** 남기지 않는 결산 (시험 시즌 또는 예행연습) */
   trial: boolean;
 }
 
@@ -71,7 +73,7 @@ export async function settleSeasonAll(db: Db, seasonId: string): Promise<SeasonS
     const blobs = worlds.map((w) => ({ id: w.id, blob: JSON.parse(w.state) as WorldBlob }));
     const lastDay = Math.max(...blobs.map((b) => b.blob.state.day - 1));
     const all = await seasonRows(tx, seasonId, null, lastDay);
-    const keep = !season.trial;
+    const keep = !season.trial && season.kind !== 'rehearsal';
     let certificates = 0;
     const firsts = new Map<string, { id: string; name: string; score: number }>();
     const humans: string[] = [];
@@ -146,9 +148,9 @@ export async function settleSeasonAll(db: Db, seasonId: string): Promise<SeasonS
     await tx.query(`update public.seasons set status = 'ended' where id = $1`, [seasonId]);
     await tx.query('insert into public.ops_log (level, message, data) values ($1, $2, $3::text::json)', [
       'info',
-      season.trial ? '시험 시즌을 결산했다 (남기지 않음)' : '시즌을 결산했다',
+      keep ? '시즌을 결산했다' : '시즌을 결산했다 (시험 시즌·예행연습: 남기지 않음)',
       JSON.stringify({ seasonId, worlds: blobs.length, certificates, pioneers, hallOfFame }),
     ]);
-    return { seasonId, worlds: blobs.map((b) => b.id), certificates, pioneers, hallOfFame, trial: season.trial };
+    return { seasonId, worlds: blobs.map((b) => b.id), certificates, pioneers, hallOfFame, trial: !keep };
   });
 }
