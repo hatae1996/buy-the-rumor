@@ -168,7 +168,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
           // 고른 짐: 네모 짐은 조각 둘레를, 네모가 아닌 짐은 칸마다 청록 테두리
           const rect = p.cells.length === (x1 - x0) * (y1 - y0);
           const outline = isSel && rect ? `<div class="cart-outline" style="${box(x0, y0, x1 - x0, y1 - y0)}"></div>` : '';
-          return `${blocks}${outline}<div class="cart-name has-art${p.qty === 0 ? ' ghost' : ''}" style="${artStyle}"><img class="cart-art" src="${art}" alt="${name}" draggable="false" /></div>${
+          return `${blocks}${outline}<div class="cart-name has-art${p.qty === 0 ? ' ghost' : ''}${p.uses?.left === 0 ? ' worn' : ''}" style="${artStyle}"><img class="cart-art" src="${art}" alt="${name}" draggable="false" /></div>${
             badge ? `<div class="cart-badge" style="${box(qx, qy, 1, 1)}"><b class="cart-qty">${badge}</b></div>` : ''
           }`;
         })

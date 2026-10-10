@@ -1088,6 +1088,12 @@
   opacity: 0.45;
 }
 
+/* 망가진 장비: 그림을 회색으로 */
+.cart-name.worn .cart-art {
+  filter: grayscale(0.85) drop-shadow(0 2px 1px rgba(0, 0, 0, 0.25));
+  opacity: 0.75;
+}
+
 /* 고른 짐: 조각 전체를 청록 테두리로 */
 .cart-outline {
   position: absolute;

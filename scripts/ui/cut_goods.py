@@ -1,8 +1,8 @@
-"""물품 그림(assets-src/ui/goods/<물품>.png, 분홍 배경)을 잘라 assets/ui/goods/ 에 투명 PNG로 넣는다.
+"""짐 그림(물품, 장비, 여행 식량. assets-src/ui/goods/<짐>.png, 분홍 배경)을 잘라 assets/ui/goods/ 에 투명 PNG로 넣는다.
 
 python scripts/ui/cut_goods.py   (numpy, pillow, scipy)
 그림은 짐 모양(돌리지 않은 모양, src/sim/constants.ts CART.goods shape)의 비율로 그린다: 생선·가죽 2:1, 고기 1:2, 목재 3:1,
-곡물·소금·광석 1:1, 염장 식품·도구는 ㄴ자(왼쪽 위 한 칸 + 아래 두 칸). 화면이 조각 크기에 맞춰 늘이고 짐을 돌리면 같이 돌린다.
+곡물·소금·광석 1:1, 염장 식품·도구는 ㄴ자(왼쪽 위 한 칸 + 아래 두 칸), 활 1:2, 그물 2:2, 덫·횃불·여행 식량 1:1. 화면이 조각 크기에 맞춰 늘이고 짐을 돌리면 같이 돌린다.
 """
 import os
 import sys
@@ -28,6 +28,12 @@ CELLS = {
     'salt': (1, 1),
     'salted': (2, 2),
     'tools': (2, 2),
+    # 장비와 여행 식량 (CART.items)
+    'bow': (1, 2),
+    'net': (2, 2),
+    'trap': (1, 1),
+    'torch': (1, 1),
+    'rations': (1, 1),
 }
 # 한 칸에 이만큼(px). 화면 칸은 많아야 64px, 레티나 2배
 CELL_PX = 128
@@ -36,7 +42,13 @@ CELL_PX = 128
 def cut(name: str) -> None:
     src = np.asarray(Image.open(os.path.join(SRC, f'{name}.png')).convert('RGB')).astype(float)
     alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    # 그물 구멍처럼 배경이 비쳐 분홍빛이 남는 곳: 짐 그림에는 분홍·보라가 없으니, 빨강·파랑이 초록보다 넘치는 만큼 투명하게
+    excess = (np.minimum(src[..., 0], src[..., 2]) - src[..., 1]) / 255
+    alpha = alpha * np.clip(1 - (excess - 0.04) * 6, 0, 1)
     rgb = despill_magenta(src, alpha)
+    g = rgb[..., 1]
+    for c in (0, 2):
+        rgb[..., c] = np.minimum(rgb[..., c], np.maximum(g + 30, rgb[..., c] * (excess < 0.04)))
     ys, xs = np.where(alpha > 0.5)
     x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
     im = Image.fromarray(np.dstack([rgb, alpha * 255])[y0:y1, x0:x1].astype('uint8'), 'RGBA')

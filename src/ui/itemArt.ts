@@ -1,4 +1,4 @@
-// 짐 그림 (assets/ui/goods/<물품>.png). 그림이 있는 물품만, 없으면 null (장비와 여행 식량은 색 조각으로 그린다).
+// 짐 그림 (assets/ui/goods/<짐>.png): 물품 9, 장비 4, 여행 식량. 그림이 없으면 null (색 조각과 이름으로 그린다).
 // 물품 그림은 로우폴리 그림을 짐 모양 비율로 잘랐다 (scripts/ui/cut_goods.py, 원본 assets-src/ui/goods/).
 import type { ItemId } from '../sim/cart';
 
