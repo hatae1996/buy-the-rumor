@@ -2,7 +2,7 @@
 // 짐은 그 물품의 모든 마을 마지막 장날 값의 평균(0.0.6), 말은 구입가로 친다. 막판에 물건을 사 두기만 하는 꼼수를 막는다.
 // 모든 마을 평균이라 어디에 서 있는지, 어느 마을 창고에 두었는지가 순자산을 바꾸지 않는다.
 // 예금과 빚은 은행 계좌(src/sim/bank)를 본다.
-import { cartLots } from '../cart';
+import { cartLots, type Board } from '../cart';
 import { porterBoards } from '../hire/boards';
 import { GOODS, type GoodId } from '../economy/goods';
 import { ownedBy } from '../economy/players';
@@ -30,7 +30,16 @@ export interface WorthParts {
   goods: number;
   /** 말 구입가 합, 절반 치기 전 */
   horses: number;
+  /** 실은 여행 식량을 산 값 (순자산에는 넣지 않는다. 첫 5일 벌이를 잴 때만, 0.1.3) */
+  rations: number;
   total: number;
+}
+
+/** 판들에 실린 여행 식량을 산 값의 합 (산 값을 모르면 0) */
+export function rationsValue(boards: readonly Board[]): number {
+  let v = 0;
+  for (const b of boards) for (const piece of b.pieces) if (piece.good === 'rations') for (const l of piece.lots) v += l.qty * (l.cost ?? 0);
+  return v;
 }
 
 export function worthParts(state: EconomyState, p: PlayerState): WorthParts {
@@ -53,7 +62,7 @@ export function worthParts(state: EconomyState, p: PlayerState): WorthParts {
   // 은행 계좌 (도시 은행, 이번 버전은 구조만이라 늘 0)
   const deposit = p.bank.deposit;
   const debt = p.bank.loan;
-  return { cash, deposit, debt, goods, horses, total: Math.round(cash + deposit - debt + (goods + horses) * HOLDINGS_SHARE) };
+  return { cash, deposit, debt, goods, horses, rations: rationsValue(boards), total: Math.round(cash + deposit - debt + (goods + horses) * HOLDINGS_SHARE) };
 }
 
 export function netWorth(state: EconomyState, p: PlayerState): number {

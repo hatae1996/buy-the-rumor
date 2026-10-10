@@ -10,7 +10,7 @@ import { activate } from '../events/active';
 import { eventDef } from '../events/defs';
 import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
-import { AUTUMN } from '../season';
+import { AUTUMN, seasonOfDay } from '../season';
 import { nextScene, sceneDef } from './scenes';
 import type { SceneId, UnlockId } from './types';
 
@@ -59,7 +59,7 @@ function advance(state: EconomyState, p: PlayerState, map: WorldMap): void {
   ap.sceneDay = state.day;
   for (const id of sceneDef(next).unlocks) unlock(state, p, id);
   if (next === 'firstNews') firstNews(state, p, map);
-  if (next === 'graduation') graduationGift(p, map);
+  if (next === 'graduation') graduationGift(state, p, map);
 }
 
 /** 첫 신문: 졸업하고 갈 마을에 조선소 대형 상선 (목재 수요가 는다). 견습 동안 신문은 무료다 */
@@ -77,16 +77,27 @@ function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
   else state.news.splice(at, 0, item);
 }
 
-/** 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 첫 길에 먹을 여행 식량 (0.1.2 길의 식량) */
-function graduationGift(p: PlayerState, map: WorldMap): void {
+/**
+ * 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 여행 식량 (0.1.2 길의 식량).
+ * 식량은 첫 두 번의 이동에 넉넉하게 (0.1.3): 첫 길 + 도착 마을에서 가장 가까운 마을까지, 그 계절 길로 하루씩 올려 센다
+ */
+export function graduationRations(state: EconomyState, p: PlayerState, map: WorldMap): number {
   const ap = p.apprentice!;
+  const days = townTravelDays(map, seasonOfDay(state.day, state.startSeason));
+  const first = days[ap.town]![ap.destination]!;
+  if (!Number.isFinite(first)) return 0;
+  const next = Math.min(...map.towns.filter((t) => t.id !== ap.destination && t.id !== ap.town).map((t) => days[ap.destination]![t.id]!));
+  return (Math.ceil(first) + (Number.isFinite(next) ? Math.ceil(next) : 0)) * FOOD.perPersonPerDay;
+}
+
+function graduationGift(state: EconomyState, p: PlayerState, map: WorldMap): void {
   if (p.cart.type === 'pack') {
     const next = createCart('handcart');
     moveAll(p.cart, next);
     p.cart = next;
   }
-  const days = townTravelDays(map, AUTUMN)[ap.town]![ap.destination]!;
-  if (Number.isFinite(days)) loadGoods(p.cart, 'rations', Math.ceil(days) * FOOD.perPersonPerDay, 0, 0);
+  const n = graduationRations(state, p, map);
+  if (n > 0) loadGoods(p.cart, 'rations', n, 0, 0);
 }
 
 /** 명령이 성공한 뒤 부른다 */

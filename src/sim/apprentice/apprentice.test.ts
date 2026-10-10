@@ -1,10 +1,11 @@
 // 견습 (기획서 "첫 5분의 흐름"): 7장면을 명령으로 차례로 지나고, 첫 이익은 반드시 나고, 탭이 하나씩 열린다.
 import { describe, expect, it } from 'vitest';
-import { cartLots } from '../cart';
+import { cartCount, cartLots } from '../cart';
 import { ECONOMY } from '../constants';
 import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
 import { hasExpeditions } from '../economy/player';
-import { generateWorld, type WorldMap } from '../worldgen';
+import { generateWorld, townTravelDays, type WorldMap } from '../worldgen';
+import { seasonOfDay } from '../season';
 import { ALL_UNLOCKS, SCENES } from './index';
 
 const SEEDS = Array.from({ length: 15 }, (_, i) => i * 7919 + 3);
@@ -61,7 +62,11 @@ function graduate(state: EconomyState, map: WorldMap, picks = [1, 1, 0]): { firs
   // 7. 졸업: 손수레를 받고 첫 출발
   expect(scene()).toBe('graduation');
   expect(state.players.me!.cart.type).toBe('handcart');
-  ok(state, map, { type: 'travel', to: state.players.me!.apprentice!.destination });
+  // 졸업 식량은 첫 두 번의 이동에 넉넉하게: 첫 길보다 많이, 길 둘을 갈 만큼 (0.1.3)
+  const ap = state.players.me!.apprentice!;
+  const firstTrip = Math.ceil(townTravelDays(map, seasonOfDay(state.day, state.startSeason))[ap.town]![ap.destination]!);
+  expect(cartCount(state.players.me!.cart, 'rations')).toBeGreaterThan(firstTrip);
+  ok(state, map, { type: 'travel', to: ap.destination });
   expect(state.players.me!.apprentice).toBeNull();
   return { firstProfit };
 }

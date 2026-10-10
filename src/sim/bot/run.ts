@@ -18,7 +18,10 @@ export interface BotRun {
   startSeason: Season;
   /** 날마다 순자산 (기획서 랭킹 계산: 현금 + 맡긴 돈 + (짐과 말) × 절반, src/sim/ranking/worth.ts) */
   worth: number[];
-  /** 날마다 가진 것의 온값 (현금 + 예금 − 빚 + 짐 + 말). 하루 벌이는 이것의 변화로 잰다 (순자산은 짐을 절반만 쳐서 산 날 줄어 보인다) */
+  /**
+   * 날마다 가진 것의 온값 (현금 + 예금 − 빚 + 짐 + 말 + 여행 식량을 산 값). 하루 벌이는 이것의 변화로 잰다 (순자산은 짐을 절반만 쳐서 산 날 줄어 보인다).
+   * 여행 식량은 산 값으로 친다 (0.1.3): 식량을 사면 돈만 빠져 첫 5일이 마이너스로 보였다
+   */
   wealth: number[];
   /** 날마다 하루 유지비 (일당, 말 먹이, 보관료) */
   upkeep: number[];
@@ -185,7 +188,7 @@ export function seatRecord(state: EconomyState, seat: BotSeat, ledgerBefore: num
   run.trades += today.filter((e) => e.kind === 'buy' || e.kind === 'sell').length;
   run.worth.push(netWorth(state, p));
   const parts = worthParts(state, p);
-  run.wealth.push(Math.round(parts.cash + parts.deposit - parts.debt + parts.goods + parts.horses));
+  run.wealth.push(Math.round(parts.cash + parts.deposit - parts.debt + parts.goods + parts.horses + parts.rations));
   run.upkeep.push(upkeepTotal(state, seat.pid));
   run.gold.push(p.gold);
 }

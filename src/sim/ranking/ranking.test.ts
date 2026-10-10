@@ -28,6 +28,7 @@ import {
   standings,
   THEMES,
   tradeRecord,
+  worthParts,
   type TradeRecord,
 } from './index';
 
@@ -259,5 +260,18 @@ describe('시즌 마감과 상인 증서', () => {
     expect(JSON.stringify(v)).not.toMatch(/worth|gold/i);
     expect(v.pinned.map((b) => b.name).sort()).toEqual(['곰 쫓는 상인', '첫 말'].sort());
     expect([paperGrade(0), paperGrade(3), paperGrade(10)]).toEqual(['worn', 'parchment', 'gilded']);
+  });
+});
+
+describe('여행 식량의 값 (0.1.3 첫 5일 벌이)', () => {
+  it('실은 여행 식량은 산 값으로 따로 센다. 순자산에는 넣지 않는다', () => {
+    const me = s.players.me!;
+    me.cart = createCart('handcart');
+    const before = worthParts(s, me);
+    loadGoods(me.cart, 'rations', 3, 0, 5);
+    loadGoods(me.cart, 'rations', 1, 0, 0);
+    const after = worthParts(s, me);
+    expect(after.rations - before.rations).toBe(15);
+    expect(after.total).toBe(before.total);
   });
 });
