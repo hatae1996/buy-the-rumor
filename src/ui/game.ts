@@ -24,7 +24,7 @@ import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
 import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
 import { townFaces, type TownFaces } from '../sim/looks';
 import { mixSeed } from '../sim/rng';
-import { createCart } from '../sim/cart';
+import { createCart, refitBoards } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
 
 /** 게임 속 하루 = 실제 2시간 30분 */
@@ -269,7 +269,10 @@ function load(): SaveData | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    return data.version === 1 && data.state?.version === 1 && Array.isArray(data.crew) ? data : null;
+    if (!(data.version === 1 && data.state?.version === 1 && Array.isArray(data.crew))) return null;
+    // 0.1.6: 수레가 세로형으로 바뀌었다. 예전 자리에 있던 짐은 새 모양의 빈자리로 다시 놓는다
+    refitBoards(data.state);
+    return data;
   } catch {
     return null;
   }

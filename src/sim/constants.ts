@@ -698,10 +698,11 @@ export const CART = {
    * price: 수레방 값 (개발 초안). 바꿀 때 쓰던 수레는 tradeIn 비율로 쳐 준다
    */
   types: {
+    // 0.1.6: 폰 화면에 맞춘 세로형 (수레 그림 assets/ui/carts/). 칸 수는 그대로 9, 16, 26, 38
     pack: { name: '등짐', rows: ['###', '###', '###'], humanPull: 30, horses: 0, price: 0 },
-    handcart: { name: '손수레', rows: ['.####.', '######', '######'], humanPull: 70, horses: 0, price: 60 },
-    wagon: { name: '짐수레', rows: ['#######', '#######', '#######', '.#####.'], humanPull: 0, horses: 1, price: 180 },
-    carriage: { name: '마차', rows: ['.######.', '########', '########', '########', '########'], humanPull: 0, horses: 2, price: 420 },
+    handcart: { name: '손수레', rows: ['.#.', '###', '###', '###', '###', '###'], humanPull: 70, horses: 0, price: 60 },
+    wagon: { name: '짐수레', rows: ['####', '####', '####', '####', '####', '####', '.##.'], humanPull: 0, horses: 1, price: 180 },
+    carriage: { name: '마차', rows: ['.###.', '#####', '#####', '#####', '#####', '#####', '#####', '#####'], humanPull: 0, horses: 2, price: 420 },
   },
   tradeIn: 0.5,
   /**

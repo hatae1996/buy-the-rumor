@@ -1001,6 +1001,43 @@
   margin: 0;
 }
 
+/* 수레 그림 판 (0.1.6): 그림을 판 자리에 맞춰 줄이고, 그림 속 칸 자리에 격자를 겹친다 */
+.hold-frame.art {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  box-shadow: none;
+}
+
+.cart-art-board {
+  position: absolute;
+}
+
+.cart-art-board > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cart-art-grid {
+  position: absolute;
+}
+
+.cart-art-grid .cart-qty {
+  right: 4px;
+  bottom: 4px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--hold-badge);
+  font-family: var(--f-display);
+  font-size: 13px;
+  line-height: 20px;
+  color: #fff;
+}
+
 .hold-frame .cart-slot {
   border: 2px solid #f0e2c6;
   border-radius: 7px;
@@ -1075,7 +1112,7 @@
   display: flex;
   align-items: stretch;
   gap: 12px;
-  height: 116px;
+  height: 100px;
   overflow: hidden;
   padding: 10px 12px;
   border: 2px solid var(--hold-line);
@@ -1102,7 +1139,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 84px;
+  width: 76px;
   border-radius: 10px;
   background: #ece5d8;
 }

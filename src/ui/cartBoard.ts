@@ -1,7 +1,7 @@
 // 짐칸 판 (0.1.2, 기획서 "수레 인벤토리 - 짐칸 화면", 참고 목업 docs/reference/cart-inventory-mockup.png, 게임 DREDGE의 배 짐칸).
 // 위쪽 무게 막대, 수레 모양 칸 위의 짐 조각(구석에 묶음 수), 누르면 아래 정보판, 망가진 칸은 X.
 // 0.1.6 목업(docs/reference/cart-tab-mockup-0.1.6.png): 제목과 무게 카드, 칸 안에 물품 그림, 고른 짐은 청록 테두리, 그림 칸이 있는 정보판.
-// 마차 그림은 다시 그려 받는 중이라, 판 틀은 그때까지 나무색 테두리다.
+// 수레 판은 수레 그림(assets/ui/carts/) 위, 그림 속 칸 자리(cartArtLayout.ts)에 짐을 놓는다. 그림이 없는 판(창고)은 나무색 테두리.
 // 창고가 있는 마을에서는 창고 판과 수레 판을 위아래로 두고 끌어서 옮긴다.
 // 처음 톡 누르면 고르고(정보판), 고른 짐을 한 번 더 누르면 돌린다. 끌어서 놓으면 옮긴다.
 // 판은 화면 쪽이라 픽셀을 다루지만, 놓을 수 있는지는 시뮬레이션과 같은 모양 함수로 계산한다.
@@ -12,6 +12,14 @@ import { eulReul } from '../sim/josa';
 import { agoText, ERROR_TEXT, freshness, goodName, money } from './format';
 import type { Game } from './game';
 import { itemArt } from './itemArt';
+import { CART_ART_LAYOUT } from './cartArtLayout';
+import type { CartType } from '../sim/cart';
+
+const CART_IMG = new Map(
+  Object.entries(import.meta.glob<string>('../../assets/ui/carts/*.png', { eager: true, query: '?url', import: 'default' })).map(
+    ([path, url]) => [path.split('/').pop()!.replace(/\.png$/, ''), url],
+  ),
+);
 
 /** 물품 색 (화면 팔레트). 그림이 없는 짐(장비, 여행 식량)은 이 색 조각으로 그린다 */
 const GOOD_COLOR: Record<ItemId, string> = {
@@ -46,6 +54,13 @@ interface BoardModel {
   rows: readonly string[];
   pieces: CartPieceView[];
   broken: readonly (readonly [number, number])[];
+  /** 수레 그림 (그림 위 칸 자리에 짐을 놓는다). 창고는 없다 */
+  art: { src: string; layout: (typeof CART_ART_LAYOUT)[CartType] } | null;
+}
+
+function cartArt(type: CartType): BoardModel['art'] {
+  const src = CART_IMG.get(type);
+  return src ? { src, layout: CART_ART_LAYOUT[type] } : null;
 }
 
 // 화면이 다시 그려져도 고른 짐과 안내 문구는 남긴다
@@ -56,8 +71,8 @@ function boardsOf(v: PlayerView, townName: (id: number) => string): BoardModel[]
   const out: BoardModel[] = [];
   const here = v.location.kind === 'town' ? v.location.town : null;
   const w = here === null ? null : v.warehouses.find((x) => x.town === here);
-  if (w) out.push({ id: 'warehouse', title: `${townName(w.town)} 창고`, rows: w.rows, pieces: w.pieces, broken: [] });
-  out.push({ id: 'cart', title: v.cart.name, rows: v.cart.rows, pieces: v.cart.pieces, broken: v.cart.broken });
+  if (w) out.push({ id: 'warehouse', title: `${townName(w.town)} 창고`, rows: w.rows, pieces: w.pieces, broken: [], art: null });
+  out.push({ id: 'cart', title: v.cart.name, rows: v.cart.rows, pieces: v.cart.pieces, broken: v.cart.broken, art: cartArt(v.cart.type) });
   return out;
 }
 
@@ -71,6 +86,8 @@ export interface CartBoardOptions {
 /** 칸 크기 범위 (px). 화면에 다 들어가게 남은 자리에 맞추되 누르기 좋은 크기 아래로는 줄이지 않는다 */
 const MIN_CELL = 30;
 const MAX_CELL = 64;
+/** 수레 그림 판에서 바라는 칸 크기 (px). 그림 전체를 넣어 이보다 작으면 그림을 키운다 */
+const ART_CELL = 42;
 /** 판 틀 안쪽 여백 (px, 위아래·좌우 합) */
 const FRAME_PAD = 20;
 
@@ -94,8 +111,9 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     const v = game.view();
     const boards = boardsOf(v, (id) => game.map.towns[id]!.name);
     const cart = v.cart;
-    // 칸 크기는 화면을 그린 뒤 판 자리를 재서 정한다 (아래)
-    let cell = 40;
+    // 칸 크기는 화면을 그린 뒤 판 자리를 재서 판마다 정한다 (아래)
+    const cells = new Map<BoardId, number>();
+    const cellOf = (id: BoardId) => cells.get(id) ?? 40;
     // 짐수레·마차는 말이 모자라면 움직이지 못한다 (끄는 무게 0)
     const noHorse = v.horses.length < cart.horsesNeeded;
     const over = !noHorse && cart.weight > cart.maxWeight;
@@ -104,12 +122,15 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     if (!sel) selected = null;
 
     const grid = (b: BoardModel) => {
+      const cell = cellOf(b.id);
       const broken = new Set(b.broken.map(([x, y]) => `${x},${y}`));
       let slots = '';
       b.rows.forEach((row, y) => {
         for (let x = 0; x < row.length; x++) {
           if (row[x] !== '#') continue;
           const bad = broken.has(`${x},${y}`);
+          // 그림이 있으면 칸은 그림에 그려져 있어 망가진 칸만 덮는다
+          if (b.art && !bad) continue;
           slots += `<div class="cart-slot${bad ? ' broken' : ''}" style="left:${x * cell}px;top:${y * cell}px;width:${cell}px;height:${cell}px">${bad ? '<b aria-label="망가진 칸">✕</b>' : ''}</div>`;
         }
       });
@@ -172,22 +193,47 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
       </div>
       <div class="hold-boards">
         ${store ? `<div class="hold-frame store" data-frame="warehouse"><span class="hold-frame-label">${store.title} · 끌어서 수레로</span></div>` : ''}
-        <div class="hold-frame" data-frame="cart"></div>
+        <div class="hold-frame${cartBoard.art ? ' art' : ''}" data-frame="cart"></div>
       </div>
       ${sel && selBoard ? infoPanel(v, selBoard.id, sel) : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'}
       ${notice}
       <button type="button" class="pack-btn" data-pack title="짐을 위·왼쪽으로 모아 붙여요">빈칸 정리</button>`;
 
-    // 판 자리(남은 높이를 판들이 나눠 가진다)를 재서 칸 크기를 정하고, 두 판이 같은 칸 크기를 쓴다
+    // 판 자리(남은 높이를 판들이 나눠 가진다)를 재서 판마다 칸 크기를 정한다.
+    // 수레 그림이 있으면 그림을 판 자리에 맞춰 줄이고, 칸은 그림 속 칸 간격 그대로. 없으면 칸 수로 나눈다
     const frames = boards.map((b) => ({ b, el: host.querySelector<HTMLElement>(`[data-frame="${b.id}"]`)! }));
-    const fit = frames.map(({ b, el }) => {
+    for (const { b, el } of frames) {
+      const w = el.clientWidth;
+      const h = el.clientHeight - (b.id === 'warehouse' ? 18 : 0);
+      if (b.art) {
+        const L = b.art.layout;
+        const cols = Math.max(...b.rows.map((r) => r.length));
+        // 그림 전체가 들어가는 크기. 그러면 칸이 너무 작은 큰 수레는 칸이 ART_CELL이 될 때까지 키운다
+        // (격자는 늘 다 보이게, 덮개·바퀴는 판 자리 밖으로 조금 잘린다)
+        const whole = w > 0 && h > 0 ? Math.min(w / L.w, h / L.h) : 0.4;
+        const gridMax = w > 0 && h > 0 ? Math.min(w / (cols * L.pitch), h / (b.rows.length * L.pitch)) * 0.96 : whole;
+        const scale = Math.max(whole, Math.min(ART_CELL / L.pitch, gridMax));
+        const cell = L.pitch * scale;
+        cells.set(b.id, cell);
+        // 그림이 판 자리보다 크면 격자 가운데를 판 자리 가운데에 맞춘다
+        const aw = L.w * scale;
+        const ah = L.h * scale;
+        const left = aw > w ? w / 2 - (L.x + (cols * L.pitch) / 2) * scale : (w - aw) / 2;
+        const top = ah > h ? h / 2 - (L.y + (b.rows.length * L.pitch) / 2) * scale : (h - ah) / 2;
+        el.insertAdjacentHTML(
+          'beforeend',
+          `<div class="cart-art-board" style="width:${aw}px;height:${ah}px;left:${left}px;top:${top}px">
+            <img src="${b.art.src}" alt="" draggable="false" />
+            <div class="cart-art-grid" style="left:${L.x * scale}px;top:${L.y * scale}px">${grid(b)}</div>
+          </div>`,
+        );
+        continue;
+      }
       const cols = Math.max(...b.rows.map((r) => r.length));
-      const w = el.clientWidth - FRAME_PAD;
-      const h = el.clientHeight - FRAME_PAD - (b.id === 'warehouse' ? 18 : 0);
-      return w > 0 && h > 0 ? Math.floor(Math.min(w / cols, h / b.rows.length)) : 40;
-    });
-    cell = Math.max(MIN_CELL, Math.min(MAX_CELL, ...fit));
-    for (const { b, el } of frames) el.insertAdjacentHTML('beforeend', grid(b));
+      const fit = w > 0 && h > 0 ? Math.floor(Math.min((w - FRAME_PAD) / cols, (h - FRAME_PAD) / b.rows.length)) : 40;
+      cells.set(b.id, Math.max(MIN_CELL, Math.min(MAX_CELL, fit)));
+      el.insertAdjacentHTML('beforeend', grid(b));
+    }
     redraw = () => {
       if (host.isConnected && host.offsetParent !== null) render();
     };
@@ -216,7 +262,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
       for (const [id, el] of grids) {
         const r = el.getBoundingClientRect();
         if (e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom)
-          return { board: id, x: Math.floor((e.clientX - r.left) / cell), y: Math.floor((e.clientY - r.top) / cell) };
+          return { board: id, x: Math.floor((e.clientX - r.left) / cellOf(id)), y: Math.floor((e.clientY - r.top) / cellOf(id)) };
       }
       return null;
     };
@@ -232,6 +278,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
       const preview = grids.get(c.board)!.querySelector<HTMLElement>('.cart-preview')!;
       preview.hidden = false;
       preview.className = `cart-preview ${ok ? 'ok' : 'bad'}`;
+      const cell = cellOf(c.board);
       preview.innerHTML = shapeOf(drag.piece.good, drag.piece.rot)
         .map(([dx, dy]) => `<i style="left:${(x + dx) * cell}px;top:${(y + dy) * cell}px;width:${cell}px;height:${cell}px"></i>`)
         .join('');

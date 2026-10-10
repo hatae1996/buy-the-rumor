@@ -48,7 +48,8 @@ describe('싣기와 쌓기', () => {
   it('칸이 모자라면 들어가는 만큼만 싣는다 (3×3 등짐에 2×2 곡물은 하나뿐)', () => {
     const c = createCart('pack');
     expect(loadGoods(c, 'grain', 5)).toBe(1);
-    expect(loadGoods(createCart('handcart'), 'grain', 5)).toBe(3);
+    // 손수레(0.1.6 세로형 3칸 폭)에는 2×2가 두 개
+    expect(loadGoods(createCart('handcart'), 'grain', 5)).toBe(2);
   });
 
   it('조각은 수레 밖이나 다른 조각과 겹쳐 놓을 수 없다', () => {
@@ -132,8 +133,8 @@ describe('옮기기, 돌리기, 정리', () => {
     loadGoods(c, 'ore', 1);
     loadGoods(c, 'salt', 1);
     const salt = c.pieces.find((p) => p.good === 'salt')!;
-    expect(movePiece(c, salt.id, 3, 2, 0)).toBe(true);
-    expect(pieceCells(salt)).toEqual([[3, 2]]);
+    expect(movePiece(c, salt.id, 2, 4, 0)).toBe(true);
+    expect(pieceCells(salt)).toEqual([[2, 4]]);
     loadGoods(c, 'ore', 2);
     // ore는 한 조각에 3까지 쌓이므로 첫 조각이 이미 채워져 있다. 새로 하나 만들어 합쳐 본다
     const ores = c.pieces.filter((p) => p.good === 'ore');
@@ -165,16 +166,16 @@ describe('옮기기, 돌리기, 정리', () => {
     loadGoods(c, 'ore', 1);
     const wood = c.pieces.find((p) => p.good === 'wood')!;
     const ore = c.pieces.find((p) => p.good === 'ore')!;
-    // 목재를 세워 오른쪽 아래에, 광석을 가운데에 둔다
-    expect(movePiece(c, ore.id, 3, 2, 0)).toBe(true);
-    expect(movePiece(c, wood.id, 4, 0, 1)).toBe(true);
+    // 목재를 세워 오른쪽에, 광석을 왼쪽 아래에 둔다 (0.1.6 세로형 손수레: 맨 윗줄은 가운데 한 칸)
+    expect(movePiece(c, ore.id, 0, 3, 0)).toBe(true);
+    expect(movePiece(c, wood.id, 2, 1, 1)).toBe(true);
     expect(packCart(c)).toBe(true);
     const w = c.pieces.find((p) => p.good === 'wood')!;
     const o = c.pieces.find((p) => p.good === 'ore')!;
     // 목재가 먼저 놓여 있었으므로(위쪽 줄) 먼저 첫 자리로, 돌린 방향 그대로
     expect(w.rot).toBe(1);
     expect([w.x, w.y]).toEqual([1, 0]);
-    expect([o.x, o.y]).toEqual([2, 0]);
+    expect([o.x, o.y]).toEqual([0, 1]);
   });
 
   it('두 판 사이로 조각을 옮긴다: 맞는 자리면 조각째, 같은 물품 위면 합친다', () => {
