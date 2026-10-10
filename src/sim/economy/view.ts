@@ -50,7 +50,7 @@ import type {
 } from './state';
 import { drinkFee, freshGossip, type HeardRumor } from '../rumors';
 import { drawsOf } from '../draws';
-import { paperDelay, paperFree, paperOnSale, visibleNews } from '../news';
+import { paperDelay, paperFree, paperHeadline, paperOnSale, papersOnSale, visibleNews } from '../news';
 import type { Reservation } from '../reservations';
 import { getPlayer, ownedBy, playerList } from './players';
 
@@ -215,8 +215,11 @@ export interface PlayerView {
     free: boolean;
     /** 산 신문 (장날, 새것부터)과 읽었는지 */
     papers: { day: number; headline: string; read: boolean }[];
-    /** 지금 마을 신문팔이가 파는 신문의 날짜 (소식이 없는 날, 길 위면 null)와 샀는지, 하루 늦은 신문이 오는 마을인지 */
+    /** 지금 마을 신문팔이가 파는 오늘 신문의 날짜 (아직 신문이 없거나 길 위면 null)와 샀는지, 하루 늦은 신문이 오는 마을인지 */
     onSale: { day: number; bought: boolean } | null;
+    /** 지난 신문 (0.1.3): 오늘 신문 앞 며칠 치, 새것부터. 값은 backFee */
+    back: { day: number; fee: number; bought: boolean }[];
+    backFee: number;
     late: boolean;
   };
   fatigue: number;
@@ -756,12 +759,18 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
       free: paperFree(p),
       papers: [...p.newspapers]
         .sort((a, b) => b - a)
-        .map((day) => ({ day, headline: state.news.find((n) => n.day === day)?.text ?? '', read: p.papersRead.includes(day) })),
+        .map((day) => ({ day, headline: paperHeadline(state.news, day), read: p.papersRead.includes(day) })),
       onSale: (() => {
         if (p.travel) return null;
         const day = paperOnSale(state, map, p.town, p);
         return day === null ? null : { day, bought: p.newspapers.includes(day) };
       })(),
+      back: p.travel
+        ? []
+        : papersOnSale(state, map, p.town, p)
+            .filter((x) => !x.latest)
+            .map((x) => ({ day: x.day, fee: x.fee, bought: p.newspapers.includes(x.day) })),
+      backFee: paperFree(p) ? 0 : ECONOMY.newspaper.backFee,
       late: !p.travel && paperDelay(map, p.town) > 0,
     },
     fatigue: p.fatigue,

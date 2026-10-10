@@ -36,6 +36,7 @@ import { noteReservationFill, placeReservations } from '../reservations';
 import { hireNight, porterBoards } from '../hire';
 import { caravanNight, caravanOrders } from '../caravan';
 import { dayNotices, type NotifyEvent } from '../notify';
+import { dailyPaperLines } from '../news/daily';
 import { getPlayer, isPlayerOwner, playerOrder } from './players';
 import type { EconomyState, MarketResult, Order, PlayerId } from './state';
 import { traderDay, traderOrders } from './traders';
@@ -260,6 +261,8 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
     if (e.kind === 'leave') news.push(`굶주린 ${JOB_NAME[e.job]} 한 명이 ${eulReul(name(e.town))} 떠났습니다.`);
   }
   for (const text of news) state.news.push({ day: state.day, text });
+  // 신문은 매일 나온다: 큰 소식 다음에 날씨와 도시 시세 (0.1.3)
+  state.news.push(...dailyPaperLines(state, map, season));
 
   const report: DayReport = {
     day: state.day,

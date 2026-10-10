@@ -116,7 +116,8 @@ export type Command =
   | { type: 'readNews' }
   /** 그날 신문을 산다 (전문을 읽는다, 0.1.0). day: 그 신문이 나온 장날 */
   /** 마을 신문팔이에게서 그날 신문을 산다 (0.1.2: 길 위에서는 못 산다) */
-  | { type: 'buyNewspaper' }
+  /** 날을 주지 않으면 오늘 신문. 지난 신문은 그 날짜 (0.1.3) */
+  | { type: 'buyNewspaper'; day?: number }
   /** 산 신문 한 부를 읽는다 (안 읽음 표시를 지운다) */
   | { type: 'readPaper'; day: number }
   /** 지금 마을 창고를 빌린다 / 빈 창고를 돌려준다 */
@@ -367,7 +368,7 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
     case 'setTitle':
       return done(setTitle(p.certificate, cmd.title));
     case 'buyNewspaper':
-      return done(buyNewspaper(state, map, p));
+      return done(buyNewspaper(state, map, p, cmd.day));
     case 'readPaper':
       return done(readPaper(p, cmd.day));
     case 'readNews':

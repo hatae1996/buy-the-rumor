@@ -1,7 +1,8 @@
-// 신문 (기획서 "소식을 얻는 방법", 0.1.0 작업 4 → 0.1.2 "신문은 마을에서 산다").
-// 신문은 장날마다 한 부 나온다(그날 장날까지의 소식). 도시 신문사에서 찍어, 마을에 있을 때 신문팔이에게서 그날 신문을 산다.
+// 신문 (기획서 "소식을 얻는 방법", 0.1.0 작업 4 → 0.1.2 "신문은 마을에서 산다" → 0.1.3 매일 신문).
+// 신문은 장날마다 한 부 나온다(그날 장날까지의 소식, 큰 소식이 없는 날도 도시 시세와 날씨, src/sim/news/daily.ts).
+// 도시 신문사에서 찍어, 마을에 있을 때 신문팔이에게서 산다. 그날 신문은 정가, 지난 backIssues일 치는 backFee(답 96).
 // 길 위에서는 살 수 없다. 도시에서 하루 넘게 먼 마을에는 하루 늦은 신문이 온다(초안).
-// 산 신문은 날짜별로 보관하고 다시 읽는다. 사지 않은 날은 머리기사도 보이지 않는다(질문 96 기본안: 지난 신문은 팔지 않는다).
+// 산 신문은 날짜별로 보관하고 다시 읽는다. 사지 않은 날은 머리기사도 보이지 않는다.
 // 견습 동안은 무료. 신문값은 세계 밖으로 나가는 돈이다 (여관비처럼).
 import { ECONOMY } from '../constants';
 import type { EconomyState, NewsItem, PlayerState } from '../economy/state';
@@ -35,7 +36,7 @@ export function paperDelay(map: WorldMap, town: number): number {
 
 /**
  * 이 마을 신문팔이가 오늘 파는 신문의 날짜 (그날 장날까지의 소식). 오늘 밤 장날 소식은 아직 없으니 어제 신문이 가장 새것이다.
- * 소식이 하나도 없는 날이면 null
+ * 신문은 매일 나오지만, 아직 첫 장날이 지나지 않았으면(1일째) null
  */
 export function paperOnSale(state: EconomyState, map: WorldMap, town: number, p?: PlayerState): number | null {
   // 견습 마을은 혼자 쓰는 마을이라 신문이 늦게 오지 않는다 (첫 신문 장면의 소식을 바로 받는다)
@@ -43,13 +44,34 @@ export function paperOnSale(state: EconomyState, map: WorldMap, town: number, p?
   return state.news.some((n) => n.day === day) ? day : null;
 }
 
-/** 신문팔이에게서 오늘 신문을 산다. 마을에 있을 때만 */
-export function buyNewspaper(state: EconomyState, map: WorldMap, p: PlayerState): Err | null {
+export interface PaperForSale {
+  day: number;
+  fee: number;
+  /** 그날 신문이면 true, 지난 신문이면 false */
+  latest: boolean;
+}
+
+/** 이 마을 신문팔이가 파는 신문들: 오늘 신문(정가)과 그 앞 backIssues일 치(지난 신문 값). 새것부터 */
+export function papersOnSale(state: EconomyState, map: WorldMap, town: number, p?: PlayerState): PaperForSale[] {
+  const latest = paperOnSale(state, map, town, p);
+  if (latest === null) return [];
+  const free = p !== undefined && paperFree(p);
+  const out: PaperForSale[] = [{ day: latest, fee: free ? 0 : N.fee, latest: true }];
+  for (let day = latest - 1; day >= latest - N.backIssues && day >= 1; day--) {
+    if (state.news.some((n) => n.day === day)) out.push({ day, fee: free ? 0 : N.backFee, latest: false });
+  }
+  return out;
+}
+
+/** 신문팔이에게서 신문을 산다 (날을 주지 않으면 오늘 신문). 마을에 있을 때만 */
+export function buyNewspaper(state: EconomyState, map: WorldMap, p: PlayerState, want?: number): Err | null {
   if (p.travel) return 'traveling';
-  const day = paperOnSale(state, map, p.town, p);
-  if (day === null) return 'noPaper';
+  const sale = papersOnSale(state, map, p.town, p);
+  const paper = want === undefined ? sale[0] : sale.find((x) => x.day === want);
+  if (!paper) return 'noPaper';
+  const day = paper.day;
   if (p.newspapers.includes(day)) return 'alreadyBought';
-  const fee = paperFree(p) ? 0 : N.fee;
+  const fee = paper.fee;
   if (p.gold < fee) return 'notEnoughGold';
   p.gold -= fee;
   p.newspapers.push(day);

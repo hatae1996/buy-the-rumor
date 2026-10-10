@@ -526,6 +526,20 @@
   background: var(--coral);
 }
 
+/* 신문팔이의 지난 신문 (0.1.3): 날짜와 사기 단추 한 줄 */
+.paper-back {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--tap);
+}
+
+.paper-issue h4 {
+  margin: 12px 0 4px;
+  font-size: 0.95em;
+}
+
 /* 신문 한 부 */
 .paper-issue {
   position: relative;

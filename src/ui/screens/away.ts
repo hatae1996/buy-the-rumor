@@ -33,9 +33,9 @@ export function showAwaySummary(game: Game, s: AwaySummary, onClose?: () => void
   for (const e of s.ledger) if (e.kind === 'spoil') urgent.push(`${goodName(e.good)} ${e.qty}개가 상했어요.`);
   if (urgent.length) cards.push({ title: '급한 일', html: `<ul class="list">${[...new Set(urgent)].slice(0, 5).map((t) => `<li>${t}</li>`).join('')}</ul>` });
 
-  // 3. 신문 머리기사: 산 신문의 머리기사만 (0.1.2. 신문은 마을의 신문팔이에게서 산다)
+  // 3. 신문 머리기사: 산 신문의 큰 소식 머리기사만 (0.1.2. 신문은 마을의 신문팔이에게서 산다, 0.1.3 시세·날씨만 있는 날은 빼고)
   const heads: [number, string][] = [];
-  for (const n of s.news) if (!heads.some(([d]) => d === n.day)) heads.push([n.day, n.text]);
+  for (const n of s.news) if (!n.section && !heads.some(([d]) => d === n.day)) heads.push([n.day, n.text]);
   if (heads.length) {
     cards.push({
       title: '신문',

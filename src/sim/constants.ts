@@ -322,6 +322,11 @@ export const ECONOMY = {
      */
     lateAfterDays: 1,
     lateDays: 1,
+    /** 신문은 매일 나온다 (0.1.3): 신문팔이는 지난 신문도 이만큼(날) 판다, 값은 backFee */
+    backIssues: 3,
+    backFee: 1,
+    /** 큰 소식이 없는 날도 싣는 도시 시세: 도시마다 그날 많이 거래된 물품 이만큼 */
+    cityPriceGoods: 4,
   },
 
   /** 예약 주문 (0.1.0). 숫자는 초안 */

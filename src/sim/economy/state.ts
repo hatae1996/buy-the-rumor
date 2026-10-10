@@ -327,6 +327,8 @@ export interface Order {
 export interface NewsItem {
   day: number;
   text: string;
+  /** 신문 구역 (0.1.3 매일 신문): 없으면 큰 소식, 'prices'는 도시 시세, 'weather'는 날씨 */
+  section?: 'prices' | 'weather';
 }
 
 export interface EconomyState {
