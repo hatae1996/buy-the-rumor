@@ -89,16 +89,14 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
     const reports: unknown[] = [];
     try {
       for (let i = 0; i < due; i++) {
-        const r = tickWorld(blob, map);
+        const r = tickWorld(blob, map, members.map((m) => m.account_id));
         if (!r) break;
         const day = r.report.day;
         for (const s of r.rows) {
           scoreRows.push({ season_id: w.season_id, world_id: w.id, day, player_id: s.playerId, bot: bots.has(s.playerId), category: s.category, name: s.name, score: s.score });
         }
-        for (const m of members) {
-          const report = r.report.players[m.account_id];
-          if (report) reports.push({ season_id: w.season_id, account_id: m.account_id, day, report });
-        }
+        // 사람마다 하루치 기록 (PlayerDigest): "자리를 비운 사이"를 마지막으로 본 날부터 모은다
+        for (const [account_id, report] of Object.entries(r.digests)) reports.push({ season_id: w.season_id, account_id, day, report });
       }
     } catch (e) {
       if (!(e instanceof SimVersionMismatch)) throw e;

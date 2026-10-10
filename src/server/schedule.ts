@@ -21,3 +21,8 @@ export function daysBehind(opensAtMs: number, nowMs: number, worldDay: number): 
 export function marketAt(opensAtMs: number, day: number): number {
   return opensAtMs + day * DAY_MS;
 }
+
+/** 한국 시간(Asia/Seoul, 서머타임 없음)으로 몇 시인가 (0~23). 알림의 조용한 시간을 가른다 */
+export function kstHour(nowMs: number): number {
+  return (new Date(nowMs).getUTCHours() + 9) % 24;
+}

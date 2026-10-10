@@ -3,8 +3,8 @@
 export * from '../sim/service';
 export { parityRun, type ParityResult } from './parity';
 export { tickDue, type TickOptions, type TickSummary, type WorldTick } from './tick';
-export { DAY_MS, daysBehind, marketAt, marketsDue } from './schedule';
+export { DAY_MS, daysBehind, kstHour, marketAt, marketsDue } from './schedule';
 export type { Db } from './db';
 export { accountRequest, cleanInviteCode, type AccountError, type AccountRequest, type Me } from './account';
 export { bannedWordIn, nameKey } from './names';
-export { commandFor, gameRequest, viewFor, type CommandReply, type GameError, type Screen } from './game';
+export { commandFor, gameRequest, markSeen, viewFor, type Away, type CommandReply, type GameError, type Screen } from './game';

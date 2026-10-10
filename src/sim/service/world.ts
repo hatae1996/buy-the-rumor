@@ -22,6 +22,7 @@ import {
 import { townFaces, type TownFaces } from '../looks';
 import { scoreRows, type ScoreRow } from '../ranking';
 import { generateWorld, type WorldMap } from '../worldgen';
+import { digestAfter, markBefore, type PlayerDigest } from './away';
 import { SIM_VERSION } from './version';
 
 /** 서버 세계는 인원과 상관없이 늘 마을 6곳, 같은 시즌이면 같은 지도 (답 104·105) */
@@ -83,18 +84,24 @@ export interface TickResult {
   report: DayReport;
   /** 장날을 돌린 뒤의 점수 줄 (score_rows 표에) */
   rows: ScoreRow[];
+  /** watch로 넘긴 사람마다 하루치 기록 ("자리를 비운 사이", day_reports 표에) */
+  digests: Record<PlayerId, PlayerDigest>;
 }
 
 /**
  * 장날 하루: 봇이 먼저 오늘 할 일을 하고 장날을 연다 (로컬 Game.advance와 같은 차례).
  * 시즌이 끝나 결산 중이면 null
  */
-export function tickWorld(blob: WorldBlob, map: WorldMap): TickResult | null {
+export function tickWorld(blob: WorldBlob, map: WorldMap, watch: readonly PlayerId[] = []): TickResult | null {
   assertSimVersion(blob);
   if (blob.state.settlement) return null;
   crewDay(blob.state, map, blob.crew);
+  // 봇 판단은 사람의 짐과 장부를 건드리지 않으니, 사람의 "돌리기 전"은 봇 다음에 적어도 같다
+  const marks = watch.map((pid) => [pid, markBefore(blob.state, pid)] as const);
   const report = advanceDay(blob.state, map);
-  return { report, rows: scoreRows(blob.state) };
+  const digests: Record<PlayerId, PlayerDigest> = {};
+  for (const [pid, mark] of marks) digests[pid] = digestAfter(blob.state, pid, mark, report.day, report.players[pid]);
+  return { report, rows: scoreRows(blob.state), digests };
 }
 
 /** 사람의 명령 하나. 봇의 명령은 받지 않는다 */

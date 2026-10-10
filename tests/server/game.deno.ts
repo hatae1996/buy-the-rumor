@@ -70,6 +70,13 @@ describe('Edge Function game (Deno + withSupabase + postgres.js)', () => {
     expect(log).toEqual([{ cmd, error: null }]);
   });
 
+  it('자리를 비운 사이: 장날이 안 지났으면 없고, 본 날을 올릴 수 있다', async () => {
+    const r = await h.call({ action: 'view' }, await h.token(A));
+    expect(r.json).toMatchObject({ ok: true, away: null });
+    expect((await h.call({ action: 'seen', day: 1 }, await h.token(A))).json).toEqual({ ok: true, seenDay: 1 });
+    expect((await h.call({ action: 'seen', day: 'x' }, await h.token(A))).status).toBe(400);
+  });
+
   it('명령 모양이 아니면 400', async () => {
     expect((await h.call({ action: 'command', cmd: 'x' }, await h.token(A))).status).toBe(400);
   });

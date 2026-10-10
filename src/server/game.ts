@@ -3,12 +3,16 @@
 // - 세계 행을 잠그고(장날 tick과 같은 잠금) 적용하므로, 장날이 도는 동안 온 명령은 장날이 끝난 뒤 다음 날 신청이 된다.
 // - 받은 명령은 성공·실패 모두 commands 표에 남긴다(원인 찾기, 기록 표의 "시스템을 쓰는지").
 // - 증서를 바꾸는 명령(이름, 얼굴, 문장, 인장 달기, 칭호)은 certificates 표에도 옮긴다.
+// - 화면 데이터에는 "자리를 비운 사이"(마지막으로 본 날부터 장날 하루치 기록을 모은 것)를 붙인다 (6번).
+//   폰이 보여 준 뒤 seen으로 본 날을 올린다. 알림은 화면 안 알림만이고, 조용한 시간에 생긴 것은 띠로 띄우지 않는다.
 import { getPlayer, type Command, type CommandResult } from '../sim/economy';
-import { commandWorld, screenData, SimVersionMismatch, type ScreenData, type WorldBlob } from '../sim/service';
+import { planDelivery, type DeliveryPlan } from '../sim/notify';
+import { awaySummary, commandWorld, screenData, SimVersionMismatch, type AwaySummary, type PlayerDigest, type ScreenData, type WorldBlob } from '../sim/service';
 import { checkName, type AccountError } from './account';
 import type { Db } from './db';
 import { mapFor } from './maps';
 import { bannedWordIn, nameKey } from './names';
+import { kstHour } from './schedule';
 
 /** 폰이 보낸 명령 하나의 글자 수 상한 (수레 짐 다시 놓기가 가장 길다) */
 const MAX_COMMAND_CHARS = 20_000;
@@ -53,16 +57,60 @@ function screenOf(m: Membership, blob: WorldBlob, uid: string, halted: string | 
   return { seasonId: m.season_id, worldId: m.world_id, halted, ...screenData(blob, mapFor(m.season_id), uid) };
 }
 
-/** 화면 데이터. 잠그지 않고 읽는다 */
-export async function viewFor(db: Db, uid: string): Promise<{ ok: true; screen: Screen } | { ok: false; error: GameError }> {
+export interface Away {
+  summary: AwaySummary;
+  /**
+   * 화면 안 알림을 어떻게 보일지 (기획서 "알림", handoff 0.2.0 8번): send는 지금 띠로, later는 조용한 시간이라
+   * 띠 없이 요약에만, toSummary는 하루 상한을 넘어 요약에만. 켜 둔 종류만, 한국 시간으로
+   */
+  delivery: DeliveryPlan;
+}
+
+/** 화면 데이터와 자리를 비운 사이. 잠그지 않고 읽는다. now는 조용한 시간을 가를 실제 시각 */
+export async function viewFor(
+  db: Db,
+  uid: string,
+  now = Date.now(),
+): Promise<{ ok: true; screen: Screen; away: Away | null } | { ok: false; error: GameError }> {
   const m = await membership(db, uid);
   if (!m) return { ok: false, error: 'noWorld' };
-  const [w] = await db.query<{ state: string; halted: string | null }>('select state::text as state, halted from public.worlds where season_id = $1 and id = $2', [
-    m.season_id,
-    m.world_id,
-  ]);
+  const [w] = await db.query<{ state: string; halted: string | null; seen_day: number }>(
+    `select w.state::text as state, w.halted, m.seen_day from public.worlds w
+       join public.members m on m.season_id = w.season_id and m.world_id = w.id and m.account_id = $3
+      where w.season_id = $1 and w.id = $2`,
+    [m.season_id, m.world_id, uid],
+  );
   if (!w) return { ok: false, error: 'noWorld' };
-  return { ok: true, screen: screenOf(m, JSON.parse(w.state) as WorldBlob, uid, w.halted) };
+  const blob = JSON.parse(w.state) as WorldBlob;
+  return { ok: true, screen: screenOf(m, blob, uid, w.halted), away: await awayOf(db, m, blob, uid, w.seen_day, now) };
+}
+
+/** 마지막으로 본 날부터 돌린 장날이 있으면 모아 요약한다 */
+async function awayOf(db: Db, m: Membership, blob: WorldBlob, uid: string, seenDay: number, now: number): Promise<Away | null> {
+  if (blob.state.day <= seenDay) return null;
+  const rows = await db.query<{ report: string }>(
+    'select report::text as report from public.day_reports where season_id = $1 and account_id = $2 and day >= $3 order by day',
+    [m.season_id, uid, seenDay],
+  );
+  if (!rows.length) return null;
+  const digests = rows.map((r) => JSON.parse(r.report) as PlayerDigest);
+  const summary = awaySummary(blob.state, mapFor(m.season_id), uid, digests, seenDay);
+  return { summary, delivery: planDelivery(summary.notices, getPlayer(blob.state, uid).notify, kstHour(now), 0) };
+}
+
+/** "자리를 비운 사이"를 보여 주었다: 본 날을 올린다 (내려가지 않고, 세계의 오늘을 넘지 않는다) */
+export async function markSeen(db: Db, uid: string, day: unknown): Promise<{ ok: true; seenDay: number } | { ok: false; error: GameError }> {
+  if (!Number.isInteger(day)) return { ok: false, error: 'badRequest' };
+  const m = await membership(db, uid);
+  if (!m) return { ok: false, error: 'noWorld' };
+  const [r] = await db.query<{ seen_day: number }>(
+    `update public.members m set seen_day = greatest(m.seen_day, least($4::int, w.day))
+       from public.worlds w
+      where m.season_id = $1 and m.world_id = $2 and m.account_id = $3 and w.season_id = m.season_id and w.id = m.world_id
+      returning m.seen_day`,
+    [m.season_id, m.world_id, uid, day],
+  );
+  return r ? { ok: true, seenDay: r.seen_day } : { ok: false, error: 'noWorld' };
 }
 
 export type CommandReply =
@@ -154,6 +202,10 @@ export async function gameRequest(db: Db, uid: string, body: unknown): Promise<{
   switch (req?.action) {
     case 'view':
       return { status: 200, body: await viewFor(db, uid) };
+    case 'seen': {
+      const r = await markSeen(db, uid, (req as { day?: unknown }).day);
+      return { status: !r.ok && r.error === 'badRequest' ? 400 : 200, body: r };
+    }
     case 'command': {
       const r = await commandFor(db, uid, req.cmd);
       return { status: !r.ok && r.error === 'badRequest' ? 400 : 200, body: r };

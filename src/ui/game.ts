@@ -2,32 +2,29 @@
 // 실제 시간(Date.now)은 여기서만 쓴다. 시뮬레이션은 "하루 넘기기"만 안다.
 // 나중에 서버가 생기면 이 클래스가 서버와 이야기하는 자리가 된다.
 import {
-  advanceDay,
   applyCommand,
   createEconomy,
   getPlayer,
   nextSeasonEconomy,
   LOCAL_PLAYER,
-  noteView,
   playerView,
   type Command,
   type CommandResult,
   type EconomyState,
-  type LedgerEntry,
-  type NewsItem,
-  type NoteView,
   type PlayerState,
   type PlayerView,
 } from '../sim/economy';
 import { ECONOMY } from '../sim/constants';
-import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
+import { botSpecs, createCrew, type BotBrain } from '../sim/bot';
 import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
 import { hireFaces, townFaces, type Look, type TownFaces } from '../sim/looks';
 import { mixSeed } from '../sim/rng';
 import { createCart, refitBoards } from '../sim/cart';
 import { refitCertificates, type Emblem } from '../sim/ranking';
-import type { NotifyEvent } from '../sim/notify';
 import { seasonOfDay, type Season } from '../sim/season';
+import { awaySummary, SIM_VERSION, tickWorld, type AwaySummary, type PlayerDigest } from '../sim/service';
+
+export type { AwaySummary };
 
 /** 게임 속 하루 = 실제 2시간 30분 */
 export const DAY_MS = 2.5 * 60 * 60 * 1000;
@@ -47,25 +44,6 @@ interface SaveData {
   crew: BotBrain[];
   /** 오늘 장날이 시작된 실제 시각 (ms) */
   dayStartedAt: number;
-}
-
-/** 자리를 비운 사이 일어난 일 */
-export interface AwaySummary {
-  days: number;
-  fromDay: number;
-  toDay: number;
-  ledger: LedgerEntry[];
-  news: NewsItem[];
-  /** 그 사이 도착한 마을 */
-  arrivedAt: number | null;
-  /** 그 사이 수첩에 새로 적힌 이야기 */
-  heard: NoteView[];
-  /** 그 사이 새로 찍힌 도장 수 */
-  stamped: number;
-  /** 그 사이 알림을 보낼 만한 사건 (장날 결과, 급한 일, 도착 등) */
-  notices: NotifyEvent[];
-  /** 지금 마을 여관에 아직 못 들은 소문이 있다 (0.1.2: 자리를 비운 사이에는 표시만) */
-  innFresh: boolean;
 }
 
 export class Game {
@@ -230,41 +208,16 @@ export class Game {
     return () => this.listeners.delete(fn);
   }
 
+  /** 서버와 같은 하루(src/sim/service): 봇 먼저, 장날, 내 하루치 기록. 요약도 서버와 같은 함수로 */
   private advance(days: number): AwaySummary {
     const fromDay = this.state.day;
-    const me = this.me;
-    const wasOnRoad = me.travel !== null;
-    const ledgerFrom = me.ledger.length;
-    const heard: NoteView[] = [];
-    const notices: NotifyEvent[] = [];
-    let stamped = 0;
-    let done = 0;
-    for (let i = 0; i < days && !this.seasonOver; i++, done++) {
-      // 봇 상인은 장날 전에 오늘 할 일을 한다
-      crewDay(this.state, this.map, this.crew);
-      const r = advanceDay(this.state, this.map).players[this.playerId];
-      if (!r) continue;
-      heard.push(...r.heard.map(noteView));
-      notices.push(...r.notices);
-      stamped += r.stamped;
+    const blob = { simVersion: SIM_VERSION, state: this.state, crew: this.crew };
+    const digests: PlayerDigest[] = [];
+    for (let i = 0; i < days && !this.seasonOver; i++) {
+      const r = tickWorld(blob, this.map, [this.playerId]);
+      if (r) digests.push(r.digests[this.playerId]!);
     }
-    const arrived = wasOnRoad && me.travel === null;
-    return {
-      days: done,
-      fromDay,
-      toDay: this.state.day,
-      ledger: me.ledger.slice(ledgerFrom),
-      // 신문은 산 날만 전문, 아니면 머리기사만 (0.1.0)
-      news: this.view().news.filter((n) => n.day >= fromDay),
-      arrivedAt: arrived ? me.town : null,
-      heard,
-      stamped,
-      notices,
-      innFresh: (() => {
-        const g = this.view().gossip;
-        return g !== null && g.canListen && g.fresh > 0;
-      })(),
-    };
+    return awaySummary(this.state, this.map, this.playerId, digests, fromDay);
   }
 
   private changed(): void {
