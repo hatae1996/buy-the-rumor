@@ -1,9 +1,10 @@
 // 소문은 듣고 내가 적는다 (0.1.2, 60번 답을 바꿈): 여관 소문꾼 "듣기"로만 듣고, 적기 / 흘려듣기를 고른다.
-// 적은 것만 수첩과 도장, Buy the Rumor는 적은 날부터. 흘려들은 것은 며칠 뒤 사라진다. 봇은 밤마다 저절로 듣는다.
+// 적은 것만 수첩과 도장, Buy the Rumor는 들은 날부터(0.1.3). 흘려들은 것은 며칠 뒤 사라진다. 봇은 밤마다 저절로 듣는다.
 import { describe, expect, it } from 'vitest';
 import { RUMORS } from '../constants';
 import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
 import { generateWorld, type WorldMap } from '../worldgen';
+import { addNote } from './notebook';
 import type { HeardRumor } from './types';
 
 const SEED = 4242;
@@ -57,28 +58,24 @@ describe('여관에서 듣는다', () => {
     for (const h of s.players.me!.rumors) if (h.noted === false) expect(h.stamp).toBeNull();
   });
 
-  it('Buy the Rumor 랭킹은 징조를 수첩에 적은 날부터 센다 (질문 95 기본안)', () => {
+  it('Buy the Rumor 랭킹은 징조를 들은 날부터 센다. 흘려들어도 세고, 나중에 적어도 두 번 세지 않는다 (0.1.3, 답 95)', () => {
     const { map, s } = world();
     const me = s.players.me!;
-    // 징조 소문을 직접 넣고 들은 이야기로 둔다
-    me.rumors.push({
-      id: 999_001,
-      day: s.day,
-      town: me.town,
-      text: '조선소에 목수가 모인다더군',
-      via: 'gossip',
-      from: '시험',
-      gossip: null,
-      rumor: null,
-      importance: 5,
-      claim: { kind: 'omen', event: 'shipyard', town: me.town, from: s.day, until: s.day + 10 },
-      stamp: null,
-      stampDay: null,
-      noted: false,
-    });
-    const heardBefore = me.record?.heardOmens?.length ?? 0;
-    expect(applyCommand(s, map, 'me', { type: 'noteRumor', id: 999_001 }).ok).toBe(true);
-    expect((me.record?.heardOmens?.length ?? 0) - heardBefore).toBe(1);
+    const omen = (id: number) =>
+      addNote(
+        s,
+        me,
+        { town: me.town, text: `시험 징조 ${id}`, via: 'gossip', from: '시험', gossip: null, rumor: null, importance: 5, claim: { kind: 'omen', event: 'shipyard', town: me.town, from: s.day, until: s.day + 10 } },
+        { pending: true },
+      );
+    const before = me.record!.heardOmens.length;
+    const dropped = omen(1);
+    expect(me.record!.heardOmens.length - before).toBe(1);
+    expect(me.record!.heardOmens.at(-1)).toMatchObject({ event: 'shipyard', town: me.town, day: s.day });
+    expect(applyCommand(s, map, 'me', { type: 'dismissRumor', id: dropped.id }).ok).toBe(true);
+    const kept = omen(2);
+    expect(applyCommand(s, map, 'me', { type: 'noteRumor', id: kept.id }).ok).toBe(true);
+    expect(me.record!.heardOmens.length - before).toBe(2);
   });
 });
 

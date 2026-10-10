@@ -14,21 +14,20 @@ export function addNote(state: EconomyState, p: PlayerState, note: NoteInput, op
   const entry: HeardRumor = { id: state.rumorMill.nextId++, day: state.day, ...note, stamp: null, stampDay: null };
   if (opt.pending) entry.noted = false;
   p.rumors.push(entry);
-  // 랭킹 Buy the Rumor: 사건 징조를 언제 들었나 (적은 것만, 질문 95 기본안)
-  if (!opt.pending && note.claim?.kind === 'omen') noteOmenHeard(state, p, note.claim.event, note.claim.town);
+  // 랭킹 Buy the Rumor: 사건 징조를 언제 들었나. 적었든 흘려들었든 들은 날부터 센다 (0.1.3, 답 95)
+  if (note.claim?.kind === 'omen') noteOmenHeard(state, p, note.claim.event, note.claim.town);
   if (p.rumors.length > RUMORS.notebookMax) p.rumors.splice(0, p.rumors.length - RUMORS.notebookMax);
   return entry;
 }
 
 export type NoteError = 'noNote';
 
-/** 들은 이야기를 수첩에 적는다. 도장은 적은 것에만 찍히고, Buy the Rumor도 적은 날부터 센다 */
+/** 들은 이야기를 수첩에 적는다. 도장은 적은 것에만 찍힌다 (Buy the Rumor는 들을 때 이미 셌다) */
 export function noteRumor(state: EconomyState, p: PlayerState, id: number): NoteError | null {
   const h = p.rumors.find((x) => x.id === id && x.noted === false);
   if (!h) return 'noNote';
   h.noted = true;
   delete h.dismissed;
-  if (h.claim?.kind === 'omen') noteOmenHeard(state, p, h.claim.event, h.claim.town);
   return null;
 }
 
