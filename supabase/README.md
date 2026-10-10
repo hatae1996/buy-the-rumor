@@ -11,73 +11,46 @@
 
 ## 처음 한 번 (운영자)
 
-1. supabase.com에서 프로젝트를 만든다. 지역은 서울(Northeast Asia, Seoul).
-2. 터미널에서 로그인하고 이 폴더를 프로젝트에 잇는다.
+프로젝트: `znirrdzxsjxksfjibnnv` (서울). CLI는 개발 의존성(`supabase@2.118.0`)이라 `npx supabase`로 부른다. `supabase/config.toml`은 만들어 두었다(`init` 끝).
+
+비밀 값은 커밋하지 않는 파일에 만들어 두었다. 채팅이나 저장소에 붙이지 않는다.
+- `supabase/.env.secrets.local`: `TICK_SECRET`(장날), `ADMIN_SECRET`(운영자 함수, 관찰 화면에 넣는 값)
+- `supabase/vault-setup.sql.local`: 장날을 부를 주소와 `TICK_SECRET`을 Vault에 넣는 SQL
+- `.env.production.local`: 게임 빌드의 서버 주소와 공개 키
+
+1. 터미널에서 로그인(브라우저가 열린다)하고 이 폴더를 프로젝트에 잇는다(데이터베이스 비밀번호를 묻는다).
 
    ```bash
    npx supabase login
    ```
 
    ```bash
-   npx supabase init
+   npx supabase link --project-ref znirrdzxsjxksfjibnnv
    ```
 
-   ```bash
-   npx supabase link --project-ref <프로젝트 ref>
-   ```
+2. 대시보드 → SQL Editor에 `supabase/vault-setup.sql.local`의 내용을 붙여 넣고 실행한다(한 번만).
 
-3. 표를 올린다.
+3. 표를 올린다(5분마다 장날을 부르는 pg_cron도 같이).
 
    ```bash
    npx supabase db push
    ```
 
-4. tick 비밀 값을 정해 함수 환경과 Vault에 같이 넣는다. 값은 아무도 모르게 긴 글자(예: 비밀번호 관리자에서 만든 40자). 채팅이나 저장소에 붙이지 않는다.
+4. 함수 비밀 값을 넣는다.
 
    ```bash
-   npx supabase secrets set TICK_SECRET=<비밀 값>
+   npx supabase secrets set --env-file supabase/.env.secrets.local
    ```
 
-   운영자 함수용 비밀 값도 따로 하나(tick과 다른 값).
-
-   ```bash
-   npx supabase secrets set ADMIN_SECRET=<운영자 비밀 값>
-   ```
-
-   대시보드 SQL 편집기에서:
-
-   ```sql
-   select vault.create_secret('https://<프로젝트 ref>.supabase.co', 'project_url');
-   select vault.create_secret('<비밀 값>', 'tick_secret');
-   ```
-
-5. 함수를 올린다(번들을 먼저 만든다). tick은 로그인한 사람이 부르는 함수가 아니라 JWT 검사를 끈다.
+5. 함수를 올린다(번들을 먼저 만든다, Docker가 없어도 되게 `--use-api`로 서버 쪽에서 묶는다). `tick`과 `admin`은 `config.toml`대로 JWT 검사를 끄고, `account`와 `game`은 켠 채로 올라간다(함수 안에서 `@supabase/server`가 한 번 더 확인해 계정 id를 꺼낸다).
 
    ```bash
    npm run build:server
    ```
 
    ```bash
-   npx supabase functions deploy health
+   npx supabase functions deploy health tick admin account game --use-api
    ```
-
-   ```bash
-   npx supabase functions deploy tick --no-verify-jwt
-   ```
-
-   ```bash
-   npx supabase functions deploy admin --no-verify-jwt
-   ```
-
-   ```bash
-   npx supabase functions deploy account
-   ```
-
-   ```bash
-   npx supabase functions deploy game
-   ```
-
-   `account`와 `game`은 JWT 검사를 켠 채로 올린다(기본값). 함수 안에서 `@supabase/server`가 한 번 더 확인해 계정 id를 꺼낸다.
 
 6. `health`를 불러 로컬 값과 같은지 본다: `npm run test:deno`가 도는 소스의 `parityRun(3)`과 해시 셋이 같아야 한다.
 
