@@ -1,4 +1,4 @@
-"""수레 그림(assets-src/ui/carts/<수레>.png, 분홍 배경)을 잘라 assets/ui/carts/ 에 넣고, 그림 속 칸 자리를 재서
+"""수레·창고 그림(assets-src/ui/carts/<판>.png, 분홍 배경)을 잘라 assets/ui/carts/ 에 넣고, 그림 속 칸 자리를 재서
 src/ui/cartArtLayout.ts 로 쓴다 (화면이 그 자리에 짐을 놓는다).
 
 python scripts/ui/cut_carts.py   (numpy, pillow, scipy)
@@ -25,6 +25,8 @@ ROWS = {
     'handcart': ['.#.', '###', '###', '###', '###', '###'],
     'wagon': ['####', '####', '####', '####', '####', '####', '.##.'],
     'carriage': ['.###.', '#####', '#####', '#####', '#####', '#####', '#####', '#####'],
+    # 창고 판 (src/sim/constants.ts GROWTH.warehouse rows)
+    'warehouse': ['#####', '#####', '#####'],
 }
 # 사파리 메모리: 그림은 1024 이하로
 MAX_SIDE = 1024
@@ -81,6 +83,22 @@ def layout(name: str):
     rgb, alpha = rgb[y0:y1, x0:x1], alpha[y0:y1, x0:x1]
 
     cells = cells_of(rgb, alpha)
+    # 칸 간격이 가로세로 10% 넘게 다르면(창고 그림) 그림을 세로로 늘이거나 줄여 칸을 정사각형으로 맞춘다 (화면은 정사각형 칸을 그린다)
+    if len(cells) > 1:
+        side0 = float(np.median([min(w, h) for _, _, w, h in cells]))
+        def gaps(vals):
+            vals = sorted(vals)
+            d = [b - a for a, b in zip(vals, vals[1:]) if b - a > side0 * 0.5]
+            return float(np.median(d)) if d else None
+        gx = gaps([x + w / 2 for x, _, w, _ in cells])
+        gy = gaps([y + h / 2 for _, y, _, h in cells])
+        if gx and gy and abs(gx / gy - 1) > 0.1:
+            k = gx / gy
+            hh = round(rgb.shape[0] * k)
+            rgb = np.asarray(Image.fromarray(rgb.clip(0, 255).astype('uint8')).resize((rgb.shape[1], hh), Image.LANCZOS)).astype(float)
+            alpha = np.asarray(Image.fromarray((alpha * 255).clip(0, 255).astype('uint8')).resize((alpha.shape[1], hh), Image.LANCZOS)).astype(float) / 255
+            print(f'{name}: 칸 간격 가로 {gx:.0f} 세로 {gy:.0f} → 세로로 {k:.3f}배')
+            cells = cells_of(rgb, alpha)
     rows = ROWS[name]
     want = sum(row.count('#') for row in rows)
     if len(cells) != want:
@@ -132,10 +150,10 @@ def main() -> None:
     out = {name: layout(name) for name in ROWS}
     lines = [
         '// 자동 생성 (scripts/ui/cut_carts.py). 고치지 말고 스크립트를 다시 돌린다.',
-        '// 수레 그림(assets/ui/carts/<수레>.png) 크기와, 그림 속 칸 격자 (0, 0) 칸의 왼쪽 위·칸 간격 (그림 px)',
+        '// 수레·창고 그림(assets/ui/carts/<판>.png) 크기와, 그림 속 칸 격자 (0, 0) 칸의 왼쪽 위·칸 간격 (그림 px)',
         "import type { CartType } from '../sim/cart';",
         '',
-        'export const CART_ART_LAYOUT: Record<CartType, { w: number; h: number; x: number; y: number; pitch: number }> = {',
+        "export const CART_ART_LAYOUT: Record<CartType | 'warehouse', { w: number; h: number; x: number; y: number; pitch: number }> = {",
     ]
     for name, v in out.items():
         lines.append(f"  {name}: {{ w: {v['w']}, h: {v['h']}, x: {v['x']}, y: {v['y']}, pitch: {v['pitch']} }},")

@@ -5679,3 +5679,73 @@
   color: var(--cream-ink-soft);
   font-size: 12px;
 }
+
+/* 창고와 옮기기 (0.1.6 목업 docs/reference/warehouse-move-mockup-0.1.6.png): 판 머리, 판 사이 ⇅, 정보판의 옮기기 단추 */
+.hold-board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--cream-ink-soft);
+}
+
+.hold-board-head b {
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.hold-swap {
+  margin: -4px 0;
+  color: var(--cream-teal);
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  text-align: center;
+}
+
+.hold-acts {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.hold-move {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--cream-teal);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 #1f6b67;
+}
+
+.hold-move:disabled {
+  opacity: 0.45;
+}
+
+.hold-weight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hold-weight .weight-bar {
+  display: block;
+  flex: none;
+  width: 70px;
+  height: 8px;
+}
+
+.hold-board-head.over .hold-weight {
+  color: var(--coral-deep);
+}

@@ -2,7 +2,8 @@
 // 위쪽 무게 막대, 수레 모양 칸 위의 짐 조각(구석에 묶음 수), 누르면 아래 정보판, 망가진 칸은 X.
 // 0.1.6 목업(docs/reference/cart-tab-mockup-0.1.6.png): 제목과 무게 카드, 칸 안에 물품 그림, 고른 짐은 청록 테두리, 그림 칸이 있는 정보판.
 // 수레 판은 수레 그림(assets/ui/carts/) 위, 그림 속 칸 자리(cartArtLayout.ts)에 짐을 놓는다. 그림이 없는 판(창고)은 나무색 테두리.
-// 창고가 있는 마을에서는 창고 판과 수레 판을 위아래로 두고 끌어서 옮긴다.
+// 창고가 있는 마을에서는 "창고와 옮기기"(0.1.6 목업 docs/reference/warehouse-move-mockup-0.1.6.png): 창고 판 위, 수레 판 아래.
+// 끌어서 옮기거나, 짐을 골라 정보판의 "창고로 옮기기"로 빈자리에 넣는다. 창고가 없으면 수레 판만.
 // 처음 톡 누르면 고르고(정보판), 고른 짐을 한 번 더 누르면 돌린다. 끌어서 놓으면 옮긴다.
 // 판은 화면 쪽이라 픽셀을 다루지만, 놓을 수 있는지는 시뮬레이션과 같은 모양 함수로 계산한다.
 import { isGood, itemShelfLife, shapeOf, unitWeight, type ItemId } from '../sim/cart';
@@ -55,11 +56,11 @@ interface BoardModel {
   rows: readonly string[];
   pieces: CartPieceView[];
   broken: readonly (readonly [number, number])[];
-  /** 수레 그림 (그림 위 칸 자리에 짐을 놓는다). 창고는 없다 */
+  /** 판 그림 (그림 위 칸 자리에 짐을 놓는다). 그림이 없으면 나무색 테두리 */
   art: { src: string; layout: (typeof CART_ART_LAYOUT)[CartType] } | null;
 }
 
-function cartArt(type: CartType): BoardModel['art'] {
+function cartArt(type: CartType | 'warehouse'): BoardModel['art'] {
   const src = CART_IMG.get(type);
   return src ? { src, layout: CART_ART_LAYOUT[type] } : null;
 }
@@ -72,7 +73,7 @@ function boardsOf(v: PlayerView, townName: (id: number) => string): BoardModel[]
   const out: BoardModel[] = [];
   const here = v.location.kind === 'town' ? v.location.town : null;
   const w = here === null ? null : v.warehouses.find((x) => x.town === here);
-  if (w) out.push({ id: 'warehouse', title: `${townName(w.town)} 창고`, rows: w.rows, pieces: w.pieces, broken: [], art: null });
+  if (w) out.push({ id: 'warehouse', title: `${townName(w.town)} 창고`, rows: w.rows, pieces: w.pieces, broken: [], art: cartArt('warehouse') });
   out.push({ id: 'cart', title: v.cart.name, rows: v.cart.rows, pieces: v.cart.pieces, broken: v.cart.broken, art: cartArt(v.cart.type) });
   return out;
 }
@@ -191,24 +192,38 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
           ? '<p class="warn">너무 무거워 떠날 수 없어요. 팔거나 버려서 무게를 줄이세요.</p>'
           : cart.broken.length
             ? `<p class="warn">망가진 칸 ${cart.broken.length}개. 수레방에서 ${money(cart.repairCost)}에 고칠 수 있어요.</p>`
-            : '<p class="cart-hint">끌어서 이동 · 한 번 더 눌러 돌리기 · 같은 짐에 놓아 합치기</p>';
+            : store
+              ? ''
+              : '<p class="cart-hint">끌어서 이동 · 한 번 더 눌러 돌리기 · 같은 짐에 놓아 합치기</p>';
 
     host.innerHTML = `
       <header class="hold-title">
         <span class="hold-sprig" aria-hidden="true">${SPRIG}</span>
-        <div><h2>짐칸</h2><p>${cartBoard.title} · 식량 ${v.food.have}</p></div>
+        <div>${store ? `<h2>창고와 옮기기</h2><p>물품을 누르거나 끌어서 옮기세요.</p>` : `<h2>짐칸</h2><p>${cartBoard.title} · 식량 ${v.food.have}</p>`}</div>
         <span class="hold-sprig flip" aria-hidden="true">${SPRIG}</span>
         ${opts.others ? `<button type="button" class="hold-others" data-others>다른 짐칸 ${opts.others}</button>` : ''}
       </header>
-      <div class="weight-card ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
+      ${
+        // 창고가 있으면 무게는 "내 짐칸" 머리 줄로 (판에 자리를 더 준다)
+        store
+          ? ''
+          : `<div class="weight-card ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
         <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 <b>${cart.weight}</b> / ${cart.maxWeight}`}</span>
         <div class="weight-bar"><i style="width:${weightPct}%"></i></div>
-      </div>
+      </div>`
+      }
       <div class="hold-boards">
-        ${store ? `<div class="hold-frame store" data-frame="warehouse"><span class="hold-frame-label">${store.title} · 끌어서 수레로</span></div>` : ''}
+        ${
+          store
+            ? `<div class="hold-board-head"><b>${store.title}</b><span>${new Set(store.pieces.flatMap((p) => p.cells.map(([x, y]) => `${x},${y}`))).size} / ${store.rows.join('').split('#').length - 1}칸</span></div>
+               <div class="hold-frame store${store.art ? ' art' : ''}" data-frame="warehouse"></div>
+               <div class="hold-swap" aria-hidden="true">⇅</div>
+               <div class="hold-board-head${over || noHorse ? ' over' : ''}"><b>내 짐칸 · ${cartBoard.title}</b><span class="hold-weight">${noHorse ? `말 ${cart.horsesNeeded}필 필요` : `무게 ${cart.weight} / ${cart.maxWeight}`}<i class="weight-bar"><i style="width:${weightPct}%"></i></i></span></div>`
+            : ''
+        }
         <div class="hold-frame${cartBoard.art ? ' art' : ''}" data-frame="cart"></div>
       </div>
-      ${sel && selBoard ? infoPanel(v, selBoard.id, sel) : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'}
+      ${sel && selBoard ? infoPanel(v, selBoard.id, sel, store ? (selBoard.id === 'cart' ? '창고로 옮기기' : '수레로 옮기기') : null) : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'}
       ${notice}
       <button type="button" class="pack-btn" data-pack title="짐을 위·왼쪽으로 모아 붙여요">빈칸 정리</button>`;
 
@@ -217,7 +232,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     const frames = boards.map((b) => ({ b, el: host.querySelector<HTMLElement>(`[data-frame="${b.id}"]`)! }));
     for (const { b, el } of frames) {
       const w = el.clientWidth;
-      const h = el.clientHeight - (b.id === 'warehouse' ? 18 : 0);
+      const h = el.clientHeight;
       if (b.art) {
         const L = b.art.layout;
         const cols = Math.max(...b.rows.map((r) => r.length));
@@ -262,6 +277,19 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     };
 
     host.querySelector('[data-pack]')!.addEventListener('click', () => send({ type: 'packCart' }));
+    host.querySelector('[data-move]')?.addEventListener('click', () => {
+      if (!sel || !selected) return;
+      const from = selected.board;
+      const target = model(from === 'cart' ? 'warehouse' : 'cart');
+      const spot = spotFor(target, sel);
+      if (!spot) {
+        message = from === 'cart' ? '창고에 넣을 자리가 없어요.' : '수레에 넣을 자리가 없어요.';
+        render();
+        return;
+      }
+      selected = null;
+      send({ type: 'transferPiece', from, pieceId: sel.id, x: spot.x, y: spot.y, rot: spot.rot });
+    });
     host.querySelector('[data-others]')?.addEventListener('click', () => opts.openOthers());
     host.querySelector('[data-discard]')?.addEventListener('click', () => {
       if (!sel || selected?.board !== 'cart') return;
@@ -365,8 +393,28 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
   return { render };
 }
 
-/** 고른 짐 정보판: 이름, 칸·무게, 산 값, 남은 신선도, 내가 아는 이 마을 시세 (장비는 남은 횟수) */
-function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView): string {
+/** 다른 판에 놓을 자리: 같은 물품 조각 위(합치기)부터, 없으면 왼쪽 위부터 빈자리 (지금 방향, 그다음 돌려서) */
+function spotFor(board: BoardModel, piece: CartPieceView): { x: number; y: number; rot: number } | null {
+  for (const onto of board.pieces) {
+    if (onto.good !== piece.good) continue;
+    const [x, y] = onto.cells[0]!;
+    if (canDrop(board, piece, false, x, y, { x, y })) return { x, y, rot: piece.rot };
+  }
+  for (let k = 0; k < 4; k++) {
+    const rot = (piece.rot + k) % 4;
+    const turned = { ...piece, rot };
+    for (let y = 0; y < board.rows.length; y++)
+      for (let x = 0; x < board.rows[y]!.length; x++) {
+        // 빈자리만 (같은 물품 위는 위에서 봤다)
+        if (board.pieces.some((p) => p.cells.some(([cx, cy]) => cx === x && cy === y))) continue;
+        if (canDrop(board, turned, false, x, y, { x, y })) return { x, y, rot };
+      }
+  }
+  return null;
+}
+
+/** 고른 짐 정보판: 이름, 칸·무게, 산 값, 남은 신선도, 내가 아는 이 마을 시세 (장비는 남은 횟수). move: 창고와 옮기기 단추 글 */
+function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView, move: string | null): string {
   const rate = ECONOMY.spoilRate[v.season];
   const cells = p.cells.length;
   const weight = unitWeight(p.good) * Math.max(1, p.qty);
@@ -401,7 +449,10 @@ function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView): string {
       <div>${first}</div>
       ${rest.length ? `<hr />${rest.map((r) => `<div>${r}</div>`).join('')}` : ''}
     </div>
-    ${board === 'cart' ? `<button type="button" class="link-btn" data-discard ${p.incoming ? 'disabled' : ''}>버리기</button>` : ''}
+    <div class="hold-acts">
+      ${move ? `<button type="button" class="hold-move" data-move ${p.incoming || p.qty === 0 ? 'disabled' : ''}>${move}</button>` : ''}
+      ${board === 'cart' ? `<button type="button" class="link-btn" data-discard ${p.incoming ? 'disabled' : ''}>버리기</button>` : ''}
+    </div>
   </div>`;
 }
 
