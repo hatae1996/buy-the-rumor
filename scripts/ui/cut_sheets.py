@@ -1,7 +1,7 @@
 """UI 그림판을 잘라 assets/ui/ 에 투명 PNG로 넣는다.
 
 - assets-src/ui/cart-ui-sheet.png: 분홍(마젠타) 배경. 탭 아이콘 5, 모래시계·빵·동전 (0.1.6 짐칸 탭). 그림판의 마차는 쓰지 않는다
-- assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (로우폴리 물품 그림이 오기 전까지)
+- assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
 python scripts/ui/cut_sheets.py   (numpy, pillow, scipy)
 배경색 거리로 투명도를 만들고, 가장자리에 남은 배경색 기운을 빼고(despill), 덩어리마다 잘라 쓸 크기로 줄인다.
@@ -103,4 +103,4 @@ def goods_sheet() -> None:
 
 if __name__ == '__main__':
     cart_ui_sheet()
-    goods_sheet()
+    # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

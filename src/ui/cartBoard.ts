@@ -152,13 +152,25 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
           const name =
             p.qty === 0 ? (p.pending === 'buy' ? '살 자리' : '팔러 냄') : goodName(p.good);
           const badge = p.uses ? `${p.uses.left}회` : p.qty > 1 || p.incoming ? `${p.qty}${p.incoming ? `+${p.incoming}` : ''}` : '';
-          // 그림이 있으면 그림 하나 (이름은 읽어 주는 글로만), 없으면 이름 글자.
-          // 네모가 아닌 짐(ㄱ자 등)은 자기 칸 안의 가장 큰 네모에만 그려 옆 짐과 겹치지 않게 한다
-          const label = art ? `<img class="cart-art" src="${art}" alt="${name}" draggable="false" />` : `<span>${name}</span>`;
-          const [ax, ay, aw, ah] = art ? largestRect(p.cells) : [x0, y0, x1 - x0, y1 - y0];
           const box = (x: number, y: number, w: number, h: number) => `left:${x * cell}px;top:${y * cell}px;width:${w * cell}px;height:${h * cell}px`;
-          const outline = isSel && art ? `<div class="cart-outline" style="${box(x0, y0, x1 - x0, y1 - y0)}"></div>` : '';
-          return `${blocks}${outline}<div class="cart-name${art ? ' has-art' : ''}${isSel && !art ? ' selected' : ''}${p.qty === 0 ? ' ghost' : ''}" style="${box(ax, ay, aw, ah)}">${label}${badge ? `<b class="cart-qty">${badge}</b>` : ''}</div>`;
+          if (!art) {
+            return `${blocks}<div class="cart-name${isSel ? ' selected' : ''}${p.qty === 0 ? ' ghost' : ''}" style="${box(x0, y0, x1 - x0, y1 - y0)}"><span>${name}</span>${badge ? `<b class="cart-qty">${badge}</b>` : ''}</div>`;
+          }
+          // 그림은 돌리지 않은 짐 모양 비율로 그려져 있다: 그 크기로 조각 가운데에 놓고 짐 방향만큼 돌린다 (ㄴ자도 모양 그대로)
+          const base = shapeOf(p.good, 0);
+          const bw = Math.max(...base.map((c) => c[0])) + 1;
+          const bh = Math.max(...base.map((c) => c[1])) + 1;
+          const cx = ((x0 + x1) / 2) * cell;
+          const cy = ((y0 + y1) / 2) * cell;
+          const artStyle = `left:${cx - (bw * cell) / 2}px;top:${cy - (bh * cell) / 2}px;width:${bw * cell}px;height:${bh * cell}px;transform:rotate(${p.rot * 90}deg)`;
+          // 묶음 수는 돌리지 않고 짐의 오른쪽 아래 칸에
+          const [qx, qy] = p.cells.reduce((a, c) => (c[0] + c[1] > a[0] + a[1] || (c[0] + c[1] === a[0] + a[1] && c[1] > a[1]) ? c : a));
+          // 고른 짐: 네모 짐은 조각 둘레를, 네모가 아닌 짐은 칸마다 청록 테두리
+          const rect = p.cells.length === (x1 - x0) * (y1 - y0);
+          const outline = isSel && rect ? `<div class="cart-outline" style="${box(x0, y0, x1 - x0, y1 - y0)}"></div>` : '';
+          return `${blocks}${outline}<div class="cart-name has-art${p.qty === 0 ? ' ghost' : ''}" style="${artStyle}"><img class="cart-art" src="${art}" alt="${name}" draggable="false" /></div>${
+            badge ? `<div class="cart-badge" style="${box(qx, qy, 1, 1)}"><b class="cart-qty">${badge}</b></div>` : ''
+          }`;
         })
         .join('');
       const w = Math.max(...b.rows.map((r) => r.length));
@@ -291,13 +303,14 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
       return send({ type: 'arrangeCart', board, pieces });
     };
 
-    host.querySelectorAll<HTMLElement>('[data-piece]').forEach((el) =>
+    // 누른 칸의 짐을 잡는다 (칸 사이 틈을 눌러도 그 칸의 짐이 잡히게 판 전체에서 받는다)
+    grids.forEach((el, board) =>
       el.addEventListener('pointerdown', (e) => {
-        const from = el.dataset.board as BoardId;
-        const piece = model(from).pieces.find((p) => p.id === Number(el.dataset.piece))!;
         const c = at(e);
-        if (!c) return;
-        drag = { from, piece, grabX: c.x - piece.x, grabY: c.y - piece.y, startX: e.clientX, startY: e.clientY, moved: false };
+        if (!c || c.board !== board) return;
+        const piece = model(board).pieces.find((p) => p.cells.some(([x, y]) => x === c.x && y === c.y));
+        if (!piece) return;
+        drag = { from: board, piece, grabX: c.x - piece.x, grabY: c.y - piece.y, startX: e.clientX, startY: e.clientY, moved: false };
         host.setPointerCapture(e.pointerId);
         e.preventDefault();
       }),
@@ -389,24 +402,6 @@ function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView): string {
     </div>
     ${board === 'cart' ? `<button type="button" class="link-btn" data-discard ${p.incoming ? 'disabled' : ''}>버리기</button>` : ''}
   </div>`;
-}
-
-/** 조각 칸들 안에 들어가는 가장 큰 네모 [x, y, 너비, 높이]. 넓이가 같으면 먼저 찾은 것 (위·왼쪽) */
-export function largestRect(cells: readonly (readonly [number, number])[]): [number, number, number, number] {
-  const has = new Set(cells.map(([x, y]) => `${x},${y}`));
-  const xs = cells.map((c) => c[0]);
-  const ys = cells.map((c) => c[1]);
-  const [x0, y0, x1, y1] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-  let best: [number, number, number, number] = [cells[0]![0], cells[0]![1], 1, 1];
-  for (let y = y0; y <= y1; y++)
-    for (let x = x0; x <= x1; x++)
-      for (let h = 1; y + h - 1 <= y1; h++)
-        for (let w = 1; x + w - 1 <= x1; w++) {
-          let full = true;
-          for (let dy = 0; dy < h && full; dy++) for (let dx = 0; dx < w && full; dx++) full = has.has(`${x + dx},${y + dy}`);
-          if (full && w * h > best[2] * best[3]) best = [x, y, w, h];
-        }
-  return best;
 }
 
 /** 놓으려는 칸 위에 같은 물품 조각이 있나 (합치기) */
