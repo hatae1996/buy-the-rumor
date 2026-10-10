@@ -2,7 +2,7 @@
 // 도시에서 먼 마을은 하루 늦은 신문, 산 신문만 읽는다, 견습 무료, 돈은 세계 밖으로. 0.1.3: 매일 나오고 지난 3일 치는 반값.
 import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '../constants';
-import { advanceDay, applyCommand, createEconomy, playerView, type EconomyState } from '../economy';
+import { advanceDay, applyCommand, createEconomy, GOOD_NAME, playerView, type EconomyState, type GoodId } from '../economy';
 import { moneySupply } from '../economy/stats';
 import { generateWorld, townTravelDays } from '../worldgen';
 import { AUTUMN } from '../season';
@@ -111,7 +111,14 @@ describe('신문은 매일 나온다 (0.1.3, 답 96)', () => {
     }
     // 시세 줄은 도시 장에서 그날 맞춰진 값
     const city = map.towns.find((t) => t.tier === 'city')!;
-    expect(cityPriceLines(s, map)[0]!.startsWith(city.name)).toBe(true);
+    const line = cityPriceLines(s, map)[0]!;
+    expect(line.text.startsWith(city.name)).toBe(true);
+    // 실린 값은 글과 같고 그날 장 값이다 (0.1.6: 봇이 읽는다)
+    expect(line.town).toBe(city.id);
+    for (const [good, price] of Object.entries(line.prices!)) {
+      expect(price).toBe(s.towns[city.id]!.lastMarket[good as GoodId].price);
+      expect(line.text).toContain(`${GOOD_NAME[good as GoodId]} ${price}냥`);
+    }
   });
 
   it('날씨는 시드와 날로 정해진다 (같은 세계면 같은 날씨)', () => {

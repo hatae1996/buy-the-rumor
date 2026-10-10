@@ -11,6 +11,7 @@ import { eventDef } from '../events/defs';
 import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { AUTUMN, seasonOfDay } from '../season';
+import { paperOnSale } from '../news';
 import { nextScene, sceneDef } from './scenes';
 import type { SceneId, UnlockId } from './types';
 
@@ -78,7 +79,7 @@ function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
 }
 
 /**
- * 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 여행 식량 (0.1.2 길의 식량).
+ * 졸업 선물: 손수레(짐은 그대로 옮겨 싣는다)와 여행 식량 (0.1.2 길의 식량), 그날 공유 세계 신문 한 부 (0.1.6 답 116 다).
  * 식량은 첫 두 번의 이동에 넉넉하게 (0.1.3): 첫 길 + 도착 마을에서 가장 가까운 마을까지, 그 계절 길로 하루씩 올려 센다
  */
 export function graduationRations(state: EconomyState, p: PlayerState, map: WorldMap): number {
@@ -98,6 +99,10 @@ function graduationGift(state: EconomyState, p: PlayerState, map: WorldMap): voi
   }
   const n = graduationRations(state, p, map);
   if (n > 0) loadGoods(p.cart, 'rations', n, 0, 0);
+  // 가는 길에 읽으라고 주는 신문: 도시 시세가 실려 있다. 안 읽은 신문으로 남는다.
+  // 졸업은 장날 뒤에 오니(첫 구매), 방금 찍은 신문이 다음 날 아침 신문팔이가 파는 "오늘 신문"이다
+  const paper = state.news.some((n) => n.day === state.day) ? state.day : paperOnSale(state, map, p.town, p);
+  if (paper !== null && !p.newspapers.includes(paper)) p.newspapers.push(paper);
 }
 
 /** 명령이 성공한 뒤 부른다 */

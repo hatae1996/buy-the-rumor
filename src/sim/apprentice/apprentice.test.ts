@@ -66,6 +66,11 @@ function graduate(state: EconomyState, map: WorldMap, picks = [1, 1, 0]): { firs
   const ap = state.players.me!.apprentice!;
   const firstTrip = Math.ceil(townTravelDays(map, seasonOfDay(state.day, state.startSeason))[ap.town]![ap.destination]!);
   expect(cartCount(state.players.me!.cart, 'rations')).toBeGreaterThan(firstTrip);
+  // 그날 신문 한 부도 선물로 (0.1.6): 안 읽은 신문이고, 도시 시세가 실려 있다
+  const gift = playerView(state, map, 'me').newspaper.papers[0]!;
+  expect(gift.day).toBe(state.day - 1);
+  expect(gift.read).toBe(false);
+  expect(state.news.some((n) => n.day === gift.day && n.section === 'prices' && n.prices)).toBe(true);
   ok(state, map, { type: 'travel', to: ap.destination });
   expect(state.players.me!.apprentice).toBeNull();
   return { firstProfit };

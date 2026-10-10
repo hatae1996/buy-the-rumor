@@ -34,20 +34,22 @@ export function weatherLine(state: EconomyState, season: Season): string {
   return createRng(mixSeed(state.seed, 0x3ea7, state.day)).pick(WEATHER[season]);
 }
 
-/** 도시마다 시세 한 줄: 그날 장에서 많이 거래된 물품 몇 개와 맞춰진 값 */
-export function cityPriceLines(state: EconomyState, map: WorldMap): string[] {
-  const out: string[] = [];
+/** 도시마다 시세 한 줄: 그날 장에서 많이 거래된 물품 몇 개와 맞춰진 값 (실린 값도 함께, 0.1.6) */
+export function cityPriceLines(state: EconomyState, map: WorldMap): Pick<NewsItem, 'text' | 'town' | 'prices'>[] {
+  const out: Pick<NewsItem, 'text' | 'town' | 'prices'>[] = [];
   for (const town of map.towns) {
     if (town.tier !== 'city') continue;
     const market = state.towns[town.id]!.lastMarket;
     const traded = GOODS.filter((g) => market[g].price !== null && market[g].volume > 0)
       .sort((a, b) => market[b].volume - market[a].volume || a.localeCompare(b))
       .slice(0, N.cityPriceGoods);
-    out.push(
-      traded.length
+    out.push({
+      text: traded.length
         ? `${town.name} 장 시세: ${traded.map((g) => `${GOOD_NAME[g]} ${market[g].price}냥`).join(', ')}`
         : `${town.name} 장은 한산했습니다.`,
-    );
+      town: town.id,
+      prices: Object.fromEntries(traded.map((g) => [g, market[g].price!])),
+    });
   }
   return out;
 }
@@ -56,7 +58,7 @@ export function cityPriceLines(state: EconomyState, map: WorldMap): string[] {
 export function dailyPaperLines(state: EconomyState, map: WorldMap, season: Season): NewsItem[] {
   return [
     { day: state.day, text: weatherLine(state, season), section: 'weather' },
-    ...cityPriceLines(state, map).map((text): NewsItem => ({ day: state.day, text, section: 'prices' })),
+    ...cityPriceLines(state, map).map((line): NewsItem => ({ day: state.day, section: 'prices', ...line })),
   ];
 }
 

@@ -11,6 +11,7 @@ import { createGrowthMind, growthStep, noteDay, noteMissing, type GrowthMind } f
 import { caravanBigStep, createCaravanMind, type CaravanMind } from './caravanBig';
 import { bigOrderSell, bigPlanStep, bigTarget, holdForBigOrder, updateBigPlan, type BigPlan } from './bigOrder';
 import type { BotProfile } from './profiles';
+import { knownPrices, paperStep, readPapers, waitForPaper, type KnownPrices, type PaperPrices } from './paper';
 
 /** 봇이 날을 넘겨 기억하는 것 (게임 상태가 아니라 봇의 머릿속) */
 export interface BotMind {
@@ -27,10 +28,12 @@ export interface BotMind {
   bigPlan: BigPlan | null;
   /** 두 번째 행렬이 맡은 큰 주문 (0.0.8) */
   caravan: CaravanMind;
+  /** 신문에서 읽은 도시 시세 (0.1.6). 예전 저장에는 없다 */
+  papers?: PaperPrices;
 }
 
 export function createMind(): BotMind {
-  return { plan: null, day: -1, expeditionsToday: 0, tried: [], growth: createGrowthMind(), bigPlan: null, caravan: createCaravanMind() };
+  return { plan: null, day: -1, expeditionsToday: 0, tried: [], growth: createGrowthMind(), bigPlan: null, caravan: createCaravanMind(), papers: {} };
 }
 
 /** 이 정도 지난 기억은 믿지 않는다 */
@@ -105,6 +108,9 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   const price = view.market.price;
   // 신문에 실린 막힌 길은 돌아간다
   const days = townTravelDays(map, view.season, new Set(view.roads.blocked));
+  // 아는 시세: 가 본 마을의 기억 + 신문에서 읽은 도시 시세 (0.1.6)
+  readPapers(view, mind);
+  const known = knownPrices(view, mind);
 
   // 1. 지쳤으면 먹고, 그래도 많이 지쳤으면 여관
   if (view.fatigue >= profile.restAt && view.mealsLeft > 0) {
@@ -116,6 +122,13 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   }
   if (view.fatigue >= profile.restAt + 2 && view.inn && !view.inn.rested && view.gold > view.inn.fee * 6) {
     const c = once({ type: 'restAtInn' });
+    if (c) return c;
+  }
+
+  // 도시 시세를 모르면 오늘 신문을 산다 (0.1.6 답 116 가). 사면 다음 차례에 읽는다
+  const cities = map.towns.filter((t) => t.tier === 'city').map((t) => t.id);
+  if (profile.trades) {
+    const c = paperStep(view, mind, cities, once);
     if (c) return c;
   }
 
@@ -180,7 +193,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
     const mine = mind.plan?.goods.includes(good) ?? false;
     const arrived = mine && mind.plan!.to === here;
     const planned = mine && mind.plan!.to !== here;
-    const best = bestKnownPrice(view, good, here, days, qty, null, mind.bigPlan);
+    const best = bestKnownPrice(view, known, good, here, days, qty, null, mind.bigPlan);
     if (planned) continue;
     if (!arrived && best && best.net > price[good] * (1 + profile.minMargin) && profile.trades) {
       // 더 비싸게 팔 마을이 있으면 그리로 가져간다 (계획이 없으면 세운다: 짐을 든 채 멈추지 않게)
@@ -229,7 +242,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   const fill = view.cart.weight / Math.max(1, view.cart.maxWeight);
   const loading = mind.plan !== null && mind.plan.to !== here && mind.plan.days < BUY_DAYS && fill < LOAD_FULL;
   if (profile.trades && !buying && ((cargo === 0 && !mind.plan) || loading)) {
-    const deal = bestDeal(view, map, here, days, profile, loading ? mind.plan!.to : null, mind.bigPlan);
+    const deal = bestDeal(view, known, map, here, days, profile, loading ? mind.plan!.to : null, mind.bigPlan);
     if (deal) {
       const c = once({ type: 'placeBuyOrder', good: deal.good, qty: deal.qty, maxPrice: deal.maxPrice });
       if (c) {
@@ -259,7 +272,7 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
   // 6. 여기서 살 것이 없으면 기억하는 시세로 "어디서 사서 어디에 팔지"를 정해 살 마을로 간다
   let noSource = false;
   if (profile.trades && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
-    const from = bestSource(view, map, here, days, profile);
+    const from = bestSource(view, known, map, here, days, profile);
     if (from !== null) {
       const c = once(feedFor(view, from) ?? { type: 'travel', to: from });
       if (c) return c;
@@ -274,16 +287,18 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
     const c = goToResourceTown(view, map, here, days, once);
     if (c) return c;
   }
-  if (profile.trades && sawHere && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
-    const known = Object.entries(view.memory).filter(([id, m]) => Number(id) !== here && view.day - m.day <= MEMORY_TRUST_DAYS).length;
+  // 신문이 아직 안 온 마을에서는 도시 값을 보고 나서 둘러본다 (0.1.6)
+  const paperSoon = waitForPaper(view, mind, cities);
+  if (profile.trades && sawHere && !paperSoon && !buying && !overweight && selling.size === 0 && cargo === 0 && !mind.plan) {
+    const knownTowns = Object.entries(view.memory).filter(([id, m]) => Number(id) !== here && view.day - m.day <= MEMORY_TRUST_DAYS).length;
     // 아는 길에 남는 장사가 없으면 가장 오래 못 본 마을을 둘러본다 (원정할 수 있는 마을이면 원정하며 기다린다)
     const rescout = noSource && !(profile.expeditions && view.canExpedition);
-    if (known < SCOUT_TOWNS || rescout) {
+    if (knownTowns < SCOUT_TOWNS || rescout) {
       const unknown = map.towns
         .filter((t) => t.id !== here && Number.isFinite(days[here]![t.id]!) && (rescout || view.day - (view.memory[t.id]?.day ?? -Infinity) > MEMORY_TRUST_DAYS))
         .sort(
           (a, b) =>
-            (known < SCOUT_TOWNS ? Number(b.tier === 'city') - Number(a.tier === 'city') : 0) ||
+            (knownTowns < SCOUT_TOWNS ? Number(b.tier === 'city') - Number(a.tier === 'city') : 0) ||
             (view.memory[a.id]?.day ?? -Infinity) - (view.memory[b.id]?.day ?? -Infinity) ||
             days[here]![a.id]! - days[here]![b.id]!,
         )[0];
@@ -406,6 +421,7 @@ function sellableQty(view: PlayerView, good: GoodId): number {
 /** 기억하는 다른 마을 시세에서 가는 비용을 뺀, 물건 하나당 값이 가장 높은 곳 */
 function bestKnownPrice(
   view: PlayerView,
+  known: KnownPrices,
   good: GoodId,
   here: number,
   days: number[][],
@@ -414,14 +430,16 @@ function bestKnownPrice(
   big: BigPlan | null = null,
 ): { town: number; net: number } | null {
   let best: { town: number; net: number } | null = null;
-  for (const [id, mem] of Object.entries(view.memory)) {
+  for (const [id, mem] of Object.entries(known)) {
     const town = Number(id);
     if (only !== null && town !== only) continue;
     const d = days[here]![town]!;
-    if (town === here || !Number.isFinite(d) || view.day - mem.day > MEMORY_TRUST_DAYS) continue;
+    // 신문에서 읽은 마을은 실린 물품 값만 안다
+    const sell = mem.prices[good];
+    if (town === here || sell === undefined || !Number.isFinite(d) || view.day - mem.day > MEMORY_TRUST_DAYS) continue;
     const life = shelfLife(good);
     if (life !== null && life <= d * ECONOMY.spoilRate[view.season] + 1) continue;
-    const net = mem.prices[good] - (d * dayCost(view)) / Math.max(1, qty);
+    const net = sell - (d * dayCost(view)) / Math.max(1, qty);
     if (!best || net > best.net) best = { town, net };
   }
   // 노리는 큰 주문: 그 마을은 주문 값에 사 준다고 본다 (가 본 적이 없어도)
@@ -437,8 +455,8 @@ function bestKnownPrice(
  * 다른 마을에서 사서 또 다른 마을(또는 여기)에 팔 가장 남는 길: 기억하는 시세만 본다.
  * 살 마을로 가는 길값과 팔 마을로 가는 길값을 빼고도 남으면 살 마을을 돌려준다
  */
-function bestSource(view: PlayerView, map: WorldMap, here: number, days: number[][], profile: BotProfile): number | null {
-  const fresh = Object.entries(view.memory)
+function bestSource(view: PlayerView, known: KnownPrices, map: WorldMap, here: number, days: number[][], profile: BotProfile): number | null {
+  const fresh = Object.entries(known)
     .map(([id, m]) => ({ town: Number(id), prices: m.prices, day: m.day }))
     .filter((m) => view.day - m.day <= MEMORY_TRUST_DAYS && Number.isFinite(days[here]![m.town]!));
   const fee = dayCost(view);
@@ -449,11 +467,17 @@ function bestSource(view: PlayerView, map: WorldMap, here: number, days: number[
       if (b.town === a.town || !Number.isFinite(days[a.town]![b.town]!)) continue;
       for (const good of GOODS) {
         if ((shelfLife(good) ?? Infinity) < MIN_TRADE_SHELF_LIFE) continue;
-        const buy = a.prices[good] * 1.1;
-        const sell = b.prices[good] * 0.9;
+        const pa = a.prices[good];
+        const pb = b.prices[good];
+        if (pa === undefined || pb === undefined) continue;
+        const buy = pa * 1.1;
+        const sell = pb * 0.9;
         if (sell < buy * (1 + profile.minMargin)) continue;
-        const qty = Math.min(Math.floor(view.cart.maxWeight / unitWeight(good)), Math.floor((view.gold * 0.8) / buy));
-        const profit = (sell - buy) * qty - (days[here]![a.town]! + days[a.town]![b.town]!) * fee;
+        // 살 돈은 두 길의 여비와 비상금을 남기고 센다 (0.1.6: 살 마을에 닿아 돈이 모자라 못 사고 빈손으로 오가지 않게, bestDeal과 같게)
+        const road = (days[here]![a.town]! + days[a.town]![b.town]!) * fee;
+        const qty = Math.min(Math.floor(view.cart.maxWeight / unitWeight(good)), Math.floor((Math.max(0, view.gold - road - TRIP_RESERVE) * 0.8) / buy));
+        if (qty <= 0) continue;
+        const profit = (sell - buy) * qty - road;
         if (profit > 0 && (!best || profit > best.profit)) best = { town: a.town, profit };
       }
     }
@@ -465,6 +489,7 @@ function bestSource(view: PlayerView, map: WorldMap, here: number, days: number[
 /** 여기서 사서 기억하는 마을에 가져가 팔 가장 남는 거래 */
 function bestDeal(
   view: PlayerView,
+  known: KnownPrices,
   map: WorldMap,
   here: number,
   days: number[][],
@@ -477,7 +502,7 @@ function bestDeal(
   const bigTown = big?.town ?? null;
   const sellTowns = map.towns
     .map((t) => t.id)
-    .filter((t) => t !== here && Number.isFinite(days[here]![t]!) && ((view.memory[t] && view.day - view.memory[t]!.day <= MEMORY_TRUST_DAYS) || t === bigTown));
+    .filter((t) => t !== here && Number.isFinite(days[here]![t]!) && ((known[t] && view.day - known[t]!.day <= MEMORY_TRUST_DAYS) || t === bigTown));
   for (const good of GOODS) {
     if ((shelfLife(good) ?? Infinity) < MIN_TRADE_SHELF_LIFE) continue;
     const buy = market.price[good];
@@ -494,7 +519,7 @@ function bestDeal(
     const goldCap = Math.floor((Math.max(0, view.gold - travelFee - TRIP_RESERVE) * 0.9) / maxPrice);
     const qty = Math.min(cartCap, goldCap);
     if (qty <= 0) continue;
-    const target = bestKnownPrice(view, good, here, days, qty, only, big);
+    const target = bestKnownPrice(view, known, good, here, days, qty, only, big);
     if (!target || !map.towns[target.town]) continue;
     const unit = target.net * 0.9 - maxPrice;
     if (target.net * 0.9 < maxPrice * (1 + profile.minMargin)) continue;

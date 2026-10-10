@@ -330,6 +330,9 @@ export interface NewsItem {
   text: string;
   /** 신문 구역 (0.1.3 매일 신문): 없으면 큰 소식, 'prices'는 도시 시세, 'weather'는 날씨 */
   section?: 'prices' | 'weather';
+  /** 도시 시세 줄의 도시와 실린 값 (0.1.6: 봇이 글 대신 읽는다). 예전 저장의 기사에는 없다 */
+  town?: number;
+  prices?: Partial<Record<GoodId, number>>;
 }
 
 export interface EconomyState {
