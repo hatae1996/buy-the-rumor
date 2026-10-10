@@ -4,6 +4,7 @@
 // 0.1.3 세계는 작게, 랭킹은 크게: 점수 줄(시즌 id, 세계 id, 플레이어, 부문, 점수)을 모아 "시즌 전체"와 "내 세계" 두 순위를 매긴다.
 // 인장·칭호는 시즌 전체로, 신문 큰손 기사는 내 세계로. 로컬은 세계가 하나라 둘이 같다.
 // 플레이어 id는 시즌 전체에서 하나뿐이어야 한다 (서버: 계정 id, 봇도 세계마다 다른 id).
+// 0.2.0 봇(떠돌이): 내 세계 순위에는 봇도 오르고, 시즌 전체 순위(인장·칭호·상위 10%·5명 문턱의 기준)는 사람만.
 import { playerList } from '../economy/players';
 import { ECONOMY } from '../constants';
 import type { EconomyState, PlayerId, PlayerState } from '../economy/state';
@@ -32,6 +33,8 @@ export interface ScoreRow {
   playerId: PlayerId;
   /** 상단 이름 (증서) */
   name: string;
+  /** 봇 상단 (시즌 전체 순위에서 뺀다) */
+  bot: boolean;
   category: CategoryId;
   score: number;
 }
@@ -50,7 +53,7 @@ export function scoreRows(state: EconomyState): ScoreRow[] {
     if (!s) continue;
     for (const c of CATEGORIES) {
       const score = scoreOf(s, c);
-      if (score !== null && score > 0) rows.push({ seasonId, worldId, playerId: p.id, name: p.certificate.name, category: c, score });
+      if (score !== null && score > 0) rows.push({ seasonId, worldId, playerId: p.id, name: p.certificate.name, bot: p.bot, category: c, score });
     }
   }
   return rows;
@@ -64,14 +67,14 @@ export function rankRows(rows: readonly ScoreRow[]): RankTable {
 }
 
 /**
- * 지금 점수로 두 순위를 매긴다: 내 세계, 그리고 시즌 전체(다른 세계의 점수 줄 others를 합쳐서, 같은 시즌만).
- * 로컬은 others가 없어 둘이 같다
+ * 지금 점수로 두 순위를 매긴다: 내 세계(봇 포함), 그리고 시즌 전체(다른 세계의 점수 줄 others를 합쳐서, 같은 시즌만, 사람만).
+ * 로컬은 others가 없어 시즌 전체 = 내 세계의 사람
  */
 export function rankAll(state: EconomyState, others: readonly ScoreRow[] = []): { world: RankTable; season: RankTable } {
   const mine = scoreRows(state);
   const { seasonId, worldId } = state.world;
   const rest = others.filter((r) => r.seasonId === seasonId && r.worldId !== worldId);
-  return { world: rankRows(mine), season: rest.length ? rankRows([...mine, ...rest]) : rankRows(mine) };
+  return { world: rankRows(mine), season: rankRows([...mine, ...rest].filter((r) => !r.bot)) };
 }
 
 /** 장날 뒤에: 오늘 순위를 매겨 둔다 (서버는 다른 세계의 점수 줄을 넘긴다) */
@@ -88,5 +91,7 @@ export function updateRankings(state: EconomyState, others: readonly ScoreRow[] 
  */
 export function newsName(state: EconomyState, p: PlayerState): string {
   const top = (state.rankings?.table.bigShot ?? []).some((s) => s.id === p.id && s.rank <= ECONOMY.ranking.namedInNews);
-  return top && p.certificate.name !== createCertificate().name ? p.certificate.name : '어느 상단';
+  if (!top || p.certificate.name === createCertificate().name) return '어느 상단';
+  // 봇은 사람인 척하지 않는다 (0.2.0 9번)
+  return p.bot ? `${p.certificate.name}(떠돌이)` : p.certificate.name;
 }

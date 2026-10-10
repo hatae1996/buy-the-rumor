@@ -38,6 +38,8 @@ export interface PlayerSpec {
   face?: Look;
   /** 상인 번호 (0.2.0). 없으면 들어온 차례(로컬: 나 1번, 봇 2~12번). 서버는 계정의 번호, 서버 봇은 null (답 132) */
   merchantNo?: number | null;
+  /** 봇 상단 ("떠돌이", 0.2.0 9번) */
+  bot?: boolean;
 }
 
 export interface CreateOptions {
@@ -134,6 +136,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     p.homeTown = p.town;
     p.visited = [p.town];
     const spec = specs[p.seq]!;
+    p.bot = spec.bot === true;
     if (spec.name) p.certificate.name = cleanCompanyName(spec.name) ?? p.certificate.name;
     if (spec.emblem) setEmblem(p.certificate, spec.emblem);
     if (spec.face) setFace(p.certificate, spec.face);
@@ -155,6 +158,7 @@ export function newPlayer(id: PlayerId, seq: number, town: number, seed: number,
   return {
     id,
     seq,
+    bot: false,
     gold: ECONOMY.player.startGold,
     town,
     travel: null,
@@ -205,7 +209,7 @@ export function newPlayer(id: PlayerId, seq: number, town: number, seed: number,
  */
 export function nextSeasonEconomy(prev: EconomyState, map: WorldMap, seed: number, opt: Pick<CreateOptions, 'warmupDays' | 'startSeason' | 'world'> = {}): EconomyState {
   const keep = playerList(prev);
-  const state = createEconomy(map, seed, { ...opt, players: keep.map((p) => ({ id: p.id })), seasonNumber: (prev.season?.number ?? 0) + 1 });
+  const state = createEconomy(map, seed, { ...opt, players: keep.map((p) => ({ id: p.id, bot: p.bot })), seasonNumber: (prev.season?.number ?? 0) + 1 });
   for (const p of playerList(state)) {
     const old = getPlayer(prev, p.id);
     p.certificate = JSON.parse(JSON.stringify(old.certificate)) as PlayerState['certificate'];

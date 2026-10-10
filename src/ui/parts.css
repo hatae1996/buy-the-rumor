@@ -286,6 +286,27 @@
   height: auto;
 }
 
+.rank-bot {
+  margin-left: 4px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: #7a6a58;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cert-wanderer {
+  display: inline-block;
+  margin: 1cqw 0 0;
+  padding: 0.4cqw 2.4cqw;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: #7a6a58;
+  font-size: 3.6cqw;
+  font-weight: 700;
+}
+
 .cert-no {
   margin: 0 0 1cqw;
   color: #4d5f63;

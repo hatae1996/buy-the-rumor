@@ -51,6 +51,8 @@ export function trackWorth(state: EconomyState, p: PlayerState): void {
 
 /** 증서에 인장을 찍는다. 의뢰 인장은 단계가 오르면 그 줄을 고친다 */
 export function awardBadge(state: EconomyState, p: PlayerState, badge: string, tier: Tier | null, season = state.season?.number ?? 0): EarnedBadge | null {
+  // 봇(떠돌이)은 인장을 받지 않는다 (0.2.0 9번)
+  if (p.bot) return null;
   const c = p.certificate;
   const same = c.badges.find((b) => b.badge === badge && (tier === null ? true : b.season === season));
   if (same) {

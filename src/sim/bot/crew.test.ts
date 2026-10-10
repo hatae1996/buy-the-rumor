@@ -42,10 +42,11 @@ describe('봇 상인', () => {
     expect(a.players[LOCAL_PLAYER]!.ledger.filter((e) => e.kind === 'buy' || e.kind === 'sell')).toEqual([]);
   }, 60000);
 
-  it('내 화면에는 다른 상단의 이름과 있는 곳만 보인다', () => {
+  it('내 화면에는 다른 상단의 이름과 있는 곳, 떠돌이 표시만 보인다', () => {
     const { s } = world(3);
     const v = playerView(s, map, LOCAL_PLAYER);
     expect(v.rivals.map((r) => r.id)).toEqual(['bot1', 'bot2', 'bot3']);
-    expect(Object.keys(v.rivals[0]!).sort()).toEqual(['id', 'location', 'name']);
+    expect(Object.keys(v.rivals[0]!).sort()).toEqual(['bot', 'id', 'location', 'name']);
+    expect(v.rivals.every((r) => r.bot)).toBe(true);
   });
 });

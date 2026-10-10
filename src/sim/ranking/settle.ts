@@ -64,6 +64,8 @@ export function settleSeason(state: EconomyState, others: readonly ScoreRow[] = 
   const out: SeasonSettlement = { season: season.number, day: state.day, table, worldTable: world, reports: {}, awarded: {} };
   for (const p of playerList(state)) {
     if (p.record?.season !== season.number) continue;
+    // 봇(떠돌이)은 인장·칭호·연차를 받지 않는다 (시즌 전체 순위에도 없다, 0.2.0 9번)
+    if (p.bot) continue;
     const got = { badges: [] as string[], titles: [] as string[] };
     for (const c of CATEGORIES) {
       const mine = table[c]?.find((x) => x.id === p.id);

@@ -248,6 +248,8 @@ function load(): SaveData | null {
     refitBoards(data.state);
     // 0.1.7: 증서에 문장 부품, 얼굴, 상인 번호
     refitCertificates(data.state);
+    // 0.2.0: 봇 표시 (예전 저장은 봇 머릿속이 있는 자리가 봇)
+    for (const p of Object.values(data.state.players)) if (typeof p.bot !== 'boolean') p.bot = data.crew.some((b) => b.pid === p.id);
     return data;
   } catch {
     return null;

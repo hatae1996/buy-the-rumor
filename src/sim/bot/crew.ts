@@ -60,6 +60,7 @@ export function botSpecs(seed: number, n: number, taken: readonly string[] = [])
   );
   return Array.from({ length: Math.min(n, names.length) }, (_, i) => ({
     id: `bot${i + 1}`,
+    bot: true,
     name: names[i]!,
     emblem: rollEmblem(createRng(mixSeed(seed, 0xe3b1, i)), symbolFromName(names[i]!) ?? undefined),
   }));

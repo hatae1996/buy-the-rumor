@@ -86,8 +86,10 @@ export interface PendingOrder {
 export interface RankingCategoryView {
   id: CategoryId;
   name: string;
-  /** 시즌 전체 1~3위 (같은 점수는 같은 순위). mine: 내 세계 상단이면 true (다른 세계 상단은 증서를 열 수 없다) */
-  top: { id: PlayerId; name: string; rank: number; mine: boolean }[];
+  /** 시즌 전체 1~3위 (같은 점수는 같은 순위, 사람만). mine: 내 세계 상단이면 true (다른 세계 상단은 증서를 열 수 없다) */
+  top: { id: PlayerId; name: string; rank: number; mine: boolean; bot: boolean }[];
+  /** 내 세계 1~3위 (봇 포함, 0.2.0). 모두 내 세계 상단이라 증서를 열 수 있다 */
+  worldTop: { id: PlayerId; name: string; rank: number; mine: true; bot: boolean }[];
   /** 시즌 전체에서 내 순위. 이 부문에 아직 기록이 없으면 null */
   mine: { rank: number; topShare: number; score: number } | null;
   /** 시즌 전체에서 이 부문에 오른 상단 수 */
@@ -208,10 +210,10 @@ export interface PlayerView {
   ranking: RankingView;
   /** 이번 시즌 결산 (시즌 마지막 장날 뒤). 끝난 시즌 순위, 내 리포트, 새로 받은 인장과 칭호 */
   settlement: SettlementView | null;
-  /** 이 세계 상단들의 증서 (남에게 보이는 증서라 순자산이 없다). 이름을 누르면 본다 */
-  certificates: Record<PlayerId, CertificateView>;
-  /** 같은 세계의 다른 상단: 이름과 있는 곳만 (지도에 말로 보인다, 0.1.0) */
-  rivals: { id: PlayerId; name: string; location: PlayerLocation }[];
+  /** 이 세계 상단들의 증서 (남에게 보이는 증서라 순자산이 없다). 이름을 누르면 본다. bot: 봇 상단("떠돌이", 0.2.0) */
+  certificates: Record<PlayerId, CertificateView & { bot: boolean }>;
+  /** 같은 세계의 다른 상단: 이름과 있는 곳만 (지도에 말로 보인다, 0.1.0). bot: 봇 상단("떠돌이", 0.2.0) */
+  rivals: { id: PlayerId; name: string; bot: boolean; location: PlayerLocation }[];
   memory: Readonly<Record<number, PriceMemory>>;
   ledger: readonly LedgerEntry[];
   /** 신문: 산 신문의 기사만 (0.1.2) */
@@ -707,7 +709,14 @@ function rankingView(state: EconomyState, p: PlayerState, season: RankTable, wor
       id,
       name: categoryName(id),
       // 1~3위 (같은 점수가 많으면 앞의 세 상단만)
-      top: rows.filter((r) => r.rank <= 3).slice(0, 3).map((r) => ({ id: r.id, name: nameOf(r), rank: r.rank, mine: here(r) })),
+      top: rows
+        .filter((r) => r.rank <= 3)
+        .slice(0, 3)
+        .map((r) => ({ id: r.id, name: nameOf(r), rank: r.rank, mine: here(r), bot: here(r) && state.players[r.id]?.bot === true })),
+      worldTop: wrows
+        .filter((r) => r.rank <= 3)
+        .slice(0, 3)
+        .map((r) => ({ id: r.id, name: nameOf(r), rank: r.rank, mine: true as const, bot: state.players[r.id]?.bot === true })),
       mine: mine ? { rank: mine.rank, topShare: mine.topShare, score: mine.score } : null,
       count: rows.length,
       world: { mine: wmine ? { rank: wmine.rank, topShare: wmine.topShare } : null, count: wrows.length },
@@ -898,10 +907,10 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
           titles: state.settlement.awarded[p.id]?.titles ?? [],
         }
       : null,
-    certificates: Object.fromEntries(playerList(state).map((o) => [o.id, certificateView(o.certificate)])),
+    certificates: Object.fromEntries(playerList(state).map((o) => [o.id, { ...certificateView(o.certificate), bot: o.bot }])),
     rivals: playerList(state)
       .filter((o) => o.id !== p.id)
-      .map((o) => ({ id: o.id, name: o.certificate.name, location: locationOf(o) })),
+      .map((o) => ({ id: o.id, name: o.certificate.name, bot: o.bot, location: locationOf(o) })),
     draws: drawsOf(state, p).map((d) => ({
       id: d.id,
       kind: d.kind,

@@ -161,9 +161,12 @@ function myRankCard(v: PlayerView): string {
     </section>`;
 }
 
+/** 순위 화면에서 보는 범위: 시즌 전체(사람만) 또는 내 세계(봇 "떠돌이" 포함, 0.2.0) */
+let rankScope: 'season' | 'world' = 'season';
+
 /**
  * 대표 부문은 1~3위를, 물품왕은 1위만. 이름을 누르면 상인 증서(내 세계 상단만). 남의 순자산 숫자는 보이지 않는다.
- * 순위는 시즌 전체(같은 시즌의 모든 세계)이고, 내 세계 순위를 함께 적는다 (0.1.3)
+ * 순위는 시즌 전체(같은 시즌의 모든 세계, 사람만)와 내 세계(봇 포함)를 골라 본다 (0.1.3, 0.2.0)
  */
 function rankingHtml(v: PlayerView): string {
   const r = v.ranking;
@@ -173,24 +176,31 @@ function rankingHtml(v: PlayerView): string {
     const c = v.certificates[id];
     return c ? `${portraitHtml(c.face, 26)}${emblemSvg(c.emblem, 20)}` : '';
   };
-  const who = (t: RankingCategoryView['top'][number]) =>
+  const bot = (t: { bot: boolean }) => (t.bot ? '<small class="rank-bot">떠돌이</small>' : '');
+  const who = (t: RankingCategoryView['top'][number] | RankingCategoryView['worldTop'][number]) =>
     t.mine
-      ? `<button type="button" class="link-btn rank-who" data-cert-id="${t.id}">${t.rank}위 ${marks(t.id)}${t.name}</button>`
+      ? `<button type="button" class="link-btn rank-who" data-cert-id="${t.id}">${t.rank}위 ${marks(t.id)}${t.name}${bot(t)}</button>`
       : `<span>${t.rank}위 ${t.name}</span>`;
+  const world = rankScope === 'world';
+  const tops = (c: RankingCategoryView) => (world ? c.worldTop : c.top);
   const mine = (c: RankingCategoryView) =>
     c.mine
       ? `<small>나 ${c.mine.rank}위 · 상위 ${Math.max(1, Math.round(c.mine.topShare * 100))}%${c.world.mine ? ` · 내 세계 ${c.world.mine.rank}위` : ''}</small>`
       : '<small>나는 아직 기록 없음</small>';
   const main = r.categories
     .filter((c) => !c.id.startsWith('goodsKing:'))
-    .map((c) => `<li><span class="rank-name"><b>${c.name}</b>${mine(c)}</span><span class="rank-top">${c.top.map(who).join('') || '<span>아직 없음</span>'}</span></li>`)
+    .map((c) => `<li><span class="rank-name"><b>${c.name}</b>${mine(c)}</span><span class="rank-top">${tops(c).map(who).join('') || '<span>아직 없음</span>'}</span></li>`)
     .join('');
   const kings = r.categories
-    .filter((c) => c.id.startsWith('goodsKing:') && c.top.length)
-    .map((c) => `<li><span class="rank-name"><b>${c.name}</b>${c.mine ? `<small>나 ${c.mine.rank}위</small>` : ''}</span><span class="rank-top">${who(c.top[0]!)}</span></li>`)
+    .filter((c) => c.id.startsWith('goodsKing:') && tops(c).length)
+    .map((c) => `<li><span class="rank-name"><b>${c.name}</b>${c.mine ? `<small>나 ${c.mine.rank}위</small>` : ''}</span><span class="rank-top">${who(tops(c)[0]!)}</span></li>`)
     .join('');
-  return `<section class="acct-list rank-list">
-      <h4 class="acct-day">${r.day}일째 장날 기준 · 시즌 전체 (같은 시즌의 모든 세계)</h4>
+  return `<div class="act-views rank-scope" role="tablist" aria-label="순위 범위">
+      <button type="button" data-rank-scope="season" aria-pressed="${!world}">시즌 전체</button>
+      <button type="button" data-rank-scope="world" aria-pressed="${world}">내 세계</button>
+    </div>
+    <section class="acct-list rank-list">
+      <h4 class="acct-day">${r.day}일째 장날 기준 · ${world ? '내 세계 (떠돌이 상단 포함)' : '시즌 전체 (같은 시즌의 모든 세계, 떠돌이 상단 빼고)'}</h4>
       <ul>${main}</ul>
       ${kings ? `<h4 class="acct-day">물품왕</h4><ul>${kings}</ul>` : ''}
     </section>
@@ -214,6 +224,12 @@ export function bindActivity(el: HTMLElement, game: Game, rerender: () => void):
   el.querySelectorAll<HTMLButtonElement>('[data-activity-view]').forEach((b) =>
     b.addEventListener('click', () => {
       view = b.dataset.activityView as ActivityView;
+      rerender();
+    }),
+  );
+  el.querySelectorAll<HTMLButtonElement>('[data-rank-scope]').forEach((b) =>
+    b.addEventListener('click', () => {
+      rankScope = b.dataset.rankScope as typeof rankScope;
       rerender();
     }),
   );

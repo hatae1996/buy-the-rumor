@@ -215,6 +215,8 @@ export interface PlayerState {
   id: PlayerId;
   /** 세계에 들어온 차례 (0부터). 첫 플레이어는 한 사람 세계와 같은 난수를 쓴다 (playerSeed) */
   seq: number;
+  /** 봇 상단 ("떠돌이", 0.2.0 9번). 시즌 전체 순위·인장·칭호·명예의 전당에서 뺀다. 내 세계 순위와 지도·신문에는 보인다 */
+  bot: boolean;
   gold: number;
   town: number;
   travel: Travel | null;

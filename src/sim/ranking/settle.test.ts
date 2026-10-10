@@ -141,10 +141,10 @@ describe('신문의 큰 거래 이름', () => {
 describe('세계는 작게, 랭킹은 크게 (0.1.3)', () => {
   /** 다른 세계(같은 시즌)의 점수 줄: 소금을 20개 판 상단과 생선을 판 넷 */
   const others = (s: EconomyState): ScoreRow[] => [
-    { seasonId: s.world.seasonId, worldId: 'w2', playerId: 'x1', name: '먼 세계 상단', category: 'goodsKing:salt', score: 20 },
-    ...['x2', 'x3', 'x4', 'x5'].map((id, i): ScoreRow => ({ seasonId: s.world.seasonId, worldId: 'w2', playerId: id, name: id, category: 'goodsKing:fish', score: [2, 1, 1, 1][i]! })),
+    { seasonId: s.world.seasonId, worldId: 'w2', playerId: 'x1', name: '먼 세계 상단', bot: false, category: 'goodsKing:salt', score: 20 },
+    ...['x2', 'x3', 'x4', 'x5'].map((id, i): ScoreRow => ({ seasonId: s.world.seasonId, worldId: 'w2', playerId: id, name: id, bot: false, category: 'goodsKing:fish', score: [2, 1, 1, 1][i]! })),
     // 다른 시즌 줄은 섞지 않는다
-    { seasonId: 'other-season', worldId: 'w3', playerId: 'y1', name: '지난 시즌 상단', category: 'goodsKing:salt', score: 999 },
+    { seasonId: 'other-season', worldId: 'w3', playerId: 'y1', name: '지난 시즌 상단', bot: false, category: 'goodsKing:salt', score: 999 },
   ];
 
   it('점수 줄에 시즌 id와 세계 id가 붙는다. 로컬은 세계 하나라 두 순위가 같다', () => {

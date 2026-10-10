@@ -35,7 +35,7 @@ function badgeToken(b: CertificateView['pinned'][number] | undefined): string {
   return `<span class="cert-badge"><span class="cert-medal" style="--medal:${color}">${b.name.slice(0, 1)}</span><small>${b.name}${b.tier ? ` · ${TIER[b.tier]}` : ''}</small></span>`;
 }
 
-function face(c: CertificateView): string {
+function face(c: CertificateView & { bot?: boolean }): string {
   const slots = Array.from({ length: MAX_PINNED }, (_, i) => badgeToken(c.pinned[i])).join('');
   return `<section class="cert-card" style="--cert-line:${LINE[c.paper]};background-image:url('${cardImg}')" aria-label="상인 증서">
       <div class="cert-inner">
@@ -43,6 +43,7 @@ function face(c: CertificateView): string {
         <h2 class="cert-title">상인증서</h2>
         <div class="cert-marks">${portraitHtml(c.face, 84, '상인 얼굴')}${emblemSvg(c.emblem, 96)}</div>
         <h3 class="cert-name">${c.name}</h3>
+        ${c.bot ? '<p class="cert-wanderer">떠돌이 상단</p>' : ''}
         <p class="cert-honor">${c.title ?? '칭호 없음'}</p>
         <p class="cert-years">상인 ${c.seasonsCompleted + 1}년차${c.origin ? ` · ${c.origin} 출신` : ''}</p>
         <p class="cert-label">대표 인장</p>
