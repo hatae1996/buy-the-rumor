@@ -108,9 +108,9 @@ export function openNewsboy(game: Game): void {
           : ''
       }`;
     body.querySelectorAll<HTMLButtonElement>('[data-buy]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         const day = Number(b.dataset.buy);
-        if (page.send({ type: 'buyNewspaper', day })) openPaper(game, day);
+        if (await page.send({ type: 'buyNewspaper', day })) openPaper(game, day);
       }),
     );
     body.querySelectorAll<HTMLButtonElement>('[data-read]').forEach((b) => b.addEventListener('click', () => openPaper(game, Number(b.dataset.read))));

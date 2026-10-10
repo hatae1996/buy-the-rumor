@@ -424,3 +424,44 @@
   height: auto;
   align-self: center;
 }
+
+/* 홈 화면에 추가 안내 (0.2.0) */
+.home-tip-how {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: #4d5f63;
+  font-weight: 700;
+}
+
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sheet-actions .cv-btn {
+  min-height: 48px;
+}
+
+/* 시즌 결산의 설문 링크 (0.2.0) */
+.settle-survey {
+  margin: 10px 0 0;
+  text-align: center;
+}
+
+.settle-survey a {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  color: #2f6f7a;
+  font-weight: 800;
+}
+
+/* 명령의 답을 기다리는 동안 (서버 게임, 0.2.0): 단추를 잠근다 */
+[aria-busy='true'] button {
+  pointer-events: none;
+  opacity: 0.6;
+}

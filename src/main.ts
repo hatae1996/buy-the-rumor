@@ -2,7 +2,7 @@ import './ui/theme.css';
 import './ui/base.css';
 import './ui/shell.css';
 import './ui/screens.css';
-import { clearSave, Game } from './ui/game';
+import { clearSave, LocalGame, type Game } from './ui/game';
 import { mountShell } from './ui/shell';
 import { watchPortraits } from './ui/portrait/portrait';
 import { openFounding } from './ui/screens/founding';
@@ -22,7 +22,7 @@ if (params.has('new')) {
   clearSave();
   history.replaceState(null, '', location.pathname);
 }
-const saved = Game.load();
+const saved = LocalGame.load();
 if (saved) boot(saved);
 else {
   // 처음 하는 사람: 시작 화면(상단 이름 → 얼굴 → 문장)을 지나 견습으로 (0.1.7). 다음 시즌에는 묻지 않는다
@@ -32,7 +32,7 @@ else {
   const seed = Date.now() % 1_000_000_007;
   openFounding(app, seed, (company) =>
     boot(
-      Game.fresh(Date.now(), seed, {
+      LocalGame.fresh(Date.now(), seed, {
         company,
         ...(bots === null ? {} : { bots: Number(bots) }),
         ...(params.has('skip') ? { apprentice: false } : {}),

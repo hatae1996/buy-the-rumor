@@ -46,8 +46,40 @@ interface SaveData {
   dayStartedAt: number;
 }
 
-export class Game {
+/**
+ * 화면이 보는 게임 한 판 (0.2.0): 로컬 게임(LocalGame, 이 폰에서 시뮬을 돌린다)과 서버 게임(ServerGame, 명령을 보내고
+ * 화면 데이터를 받는다)이 같은 모양이다. 명령과 날 넘기기는 서버에서 답이 늦게 오므로 Promise로 돌려준다.
+ */
+export interface Game {
+  readonly map: WorldMap;
+  /** 이 폰의 플레이어 (서버에서는 로그인한 계정) */
+  readonly playerId: string;
+  /** 서버 게임인가 (의견 보내기처럼 서버에만 있는 것) */
+  readonly server: boolean;
+  view(): PlayerView;
+  faces(): TownFaces | null;
+  seasonOf(day: number): Season;
+  hireFaces(): Record<number, Look>;
+  dispatch(cmd: Command): Promise<CommandResult>;
+  msUntilMarket(now: number): number;
+  msUntilArrival(daysLeft: number, now: number): number | null;
+  readonly inApprentice: boolean;
+  readonly seasonOver: boolean;
+  /** 지나간 날을 돌려(로컬) 또는 받아 와(서버) 자리를 비운 사이를 준다 */
+  catchUp(now: number): Promise<AwaySummary | null>;
+  /** 시험용: 기다리지 않고 장날 (서버에는 없다: null) */
+  passDay(now: number): Promise<AwaySummary | null>;
+  /** 견습의 "하루 보내기" */
+  passApprenticeDay(now: number): Promise<AwaySummary | null>;
+  /** 결산을 본 뒤 다음 시즌 (로컬: 새 세계를 저장하고 true. 서버: 시즌은 운영자가 연다, false) */
+  startNextSeason(now: number): boolean;
+  subscribe(fn: () => void): () => void;
+}
+
+/** 이 폰에서 시뮬을 돌리는 게임 (나 + 봇, localStorage에 저장) */
+export class LocalGame implements Game {
   private listeners = new Set<() => void>();
+  readonly server = false;
   /** 이 폰의 플레이어 (서버에서는 로그인한 계정) */
   readonly playerId = LOCAL_PLAYER;
 
@@ -59,14 +91,14 @@ export class Game {
   ) {}
 
   /** 저장된 판이 있으면 이어서, 없으면 새 판 */
-  static start(now: number): Game {
-    return Game.load() ?? Game.fresh(now, now % 1_000_000_007);
+  static start(now: number): LocalGame {
+    return LocalGame.load() ?? LocalGame.fresh(now, now % 1_000_000_007);
   }
 
   /** 저장된 판. 없으면 null (처음 하는 사람은 시작 화면부터, 0.1.7) */
-  static load(): Game | null {
+  static load(): LocalGame | null {
     const saved = load();
-    return saved ? new Game(generateWorld(saved.seed, { towns: saved.state.towns.length }), saved.state, saved.crew, saved.dayStartedAt) : null;
+    return saved ? new LocalGame(generateWorld(saved.seed, { towns: saved.state.towns.length }), saved.state, saved.crew, saved.dayStartedAt) : null;
   }
 
   /**
@@ -77,7 +109,7 @@ export class Game {
     now: number,
     seed: number,
     opt: { apprentice?: boolean; bots?: number; seasonDays?: number; towns?: number; company?: { name: string; face: Look; emblem: Emblem } } = {},
-  ): Game {
+  ): LocalGame {
     const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
     const map = generateWorld(seed, { towns: opt.towns ?? townsForPlayers(1 + bots) });
     const specs = botSpecs(map.seed, bots, opt.company ? [opt.company.name] : []);
@@ -90,7 +122,7 @@ export class Game {
     for (const s of specs) getPlayer(state, s.id).cart = createCart('handcart');
     // 시험용: 시즌을 짧게 (결산을 빨리 보려고)
     if (opt.seasonDays && state.season && opt.seasonDays >= 2) state.season.length = Math.min(state.season.length, Math.floor(opt.seasonDays));
-    const game = new Game(map, state, createCrew(state, specs.map((s) => s.id)), now);
+    const game = new LocalGame(map, state, createCrew(state, specs.map((s) => s.id)), now);
     game.save();
     return game;
   }
@@ -118,10 +150,15 @@ export class Game {
     return hireFaces(this.state, this.playerId);
   }
 
-  dispatch(cmd: Command): CommandResult {
+  /** 명령 (바로 답한다, 시험용) */
+  dispatchNow(cmd: Command): CommandResult {
     const result = applyCommand(this.state, this.map, this.playerId, cmd);
     if (result.ok) this.changed();
     return result;
+  }
+
+  dispatch(cmd: Command): Promise<CommandResult> {
+    return Promise.resolve(this.dispatchNow(cmd));
   }
 
   /** 다음 장날 정산까지 남은 시간 */
@@ -156,20 +193,30 @@ export class Game {
    * 다음 시즌 (질문 89 답): 새 시드로 새 세계를 열고 상인 증서·인장·칭호·연차만 들고 간다.
    * 봇 상인도 같은 이름과 증서로 다시 앉는다. 새 판을 저장하고 돌려준다 (지도가 바뀌므로 부른 쪽이 화면을 새로 연다)
    */
-  startNextSeason(now: number): Game | null {
+  startNextSeason(now: number): boolean {
+    return this.nextSeason(now) !== null;
+  }
+
+  /** 다음 시즌의 새 판 (시험용) */
+  nextSeason(now: number): LocalGame | null {
     if (!this.seasonOver) return null;
     const seed = mixSeed(this.state.seed, 0x5ea5, this.state.settlement!.season) % 1_000_000_007;
     const map = generateWorld(seed, { towns: this.map.towns.length });
     const state = nextSeasonEconomy(this.state, map, map.seed, { warmupDays: ECONOMY.warmupDays });
     const bots = this.crew.map((b) => b.pid);
     for (const id of bots) getPlayer(state, id).cart = createCart('handcart');
-    const next = new Game(map, state, createCrew(state, bots), now);
+    const next = new LocalGame(map, state, createCrew(state, bots), now);
     next.save();
     return next;
   }
 
   /** 지나간 날만큼 돌린다. 하루도 안 지났으면 null. 견습 중에는 시간이 멈춰 있다. 시즌이 끝났으면 결산에서 멈춘다 */
-  catchUp(now: number): AwaySummary | null {
+  catchUp(now: number): Promise<AwaySummary | null> {
+    return Promise.resolve(this.catchUpNow(now));
+  }
+
+  /** 지나간 날을 바로 돌린다 (시험용) */
+  catchUpNow(now: number): AwaySummary | null {
     if (this.seasonOver) {
       this.dayStartedAt = now;
       return null;
@@ -189,13 +236,21 @@ export class Game {
   }
 
   /** 견습의 "하루 보내기": 견습 마을에서만 바로 다음 날로 넘긴다 */
-  passApprenticeDay(now: number): AwaySummary | null {
+  passApprenticeDay(now: number): Promise<AwaySummary | null> {
+    return Promise.resolve(this.passApprenticeDayNow(now));
+  }
+
+  passApprenticeDayNow(now: number): AwaySummary | null {
     if (!this.inApprentice) return null;
-    return this.passDay(now);
+    return this.passDayNow(now);
+  }
+
+  passDay(now: number): Promise<AwaySummary | null> {
+    return Promise.resolve(this.passDayNow(now));
   }
 
   /** 시험용: 기다리지 않고 장날을 연다. 시즌이 끝났으면 null */
-  passDay(now: number): AwaySummary | null {
+  passDayNow(now: number): AwaySummary | null {
     if (this.seasonOver) return null;
     const summary = this.advance(1);
     this.dayStartedAt = now;

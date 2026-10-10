@@ -100,22 +100,22 @@ export function openStableSheet(game: Game): void {
       ${done ? `<p class="ledger-note plain">${done}</p>` : ''}
       <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />말은 시즌마다 정해진 수만 목장에서 나와요. 한 사람당 ${HORSES.maxPerOwner}마리까지, 남은 수가 적을수록 비싸요.</p>`;
     body.querySelectorAll<HTMLButtonElement>('[data-buy]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         const kind = b.dataset.buy as HorseKindInfo['kind'];
         done = `${eulReul(stable.horses.find((k) => k.kind === kind)!.name)} 사겠다고 신청했어요. 오늘 밤 뽑아요.`;
-        if (!page.send({ type: 'buyHorse', kind })) done = '';
+        if (!await page.send({ type: 'buyHorse', kind })) done = '';
       }),
     );
     body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         done = '신청을 거두고 맡긴 돈을 돌려받았어요.';
-        if (!page.send({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) })) done = '';
+        if (!await page.send({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) })) done = '';
       }),
     );
     body.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         done = '말을 마구간에 돌려주었어요.';
-        if (!page.send({ type: 'sellHorse', horseId: Number(b.dataset.sell) })) done = '';
+        if (!await page.send({ type: 'sellHorse', horseId: Number(b.dataset.sell) })) done = '';
       }),
     );
     bindHorses(body, game);

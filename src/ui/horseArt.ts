@@ -122,9 +122,9 @@ export function bindHorses(el: HTMLElement, game: Game): void {
       const input = holder.querySelector('input')!;
       input.focus();
       input.select();
-      holder.querySelector('form')!.addEventListener('submit', (e) => {
+      holder.querySelector('form')!.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const r = game.dispatch({ type: 'nameHorse', horseId: id, name: input.value });
+        const r = await game.dispatch({ type: 'nameHorse', horseId: id, name: input.value });
         if (!r.ok) holder.querySelector('.horse-name-note')!.textContent = ERROR_TEXT[r.error];
       });
     }),

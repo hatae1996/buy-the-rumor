@@ -164,13 +164,12 @@ export function openOrderSheet(game: Game, good: GoodId): void {
         render();
       }),
     );
-    page.body.querySelector('[data-submit]')!.addEventListener('click', () => {
-      const r =
-        days > 1
+    page.body.querySelector('[data-submit]')!.addEventListener('click', async () => {
+      const r = await (days > 1
           ? game.dispatch({ type: 'reserveOrder', town: m.town, good, side, qty, limit: price, until: v.day + days - 1 })
           : side === 'sell'
             ? game.dispatch({ type: 'placeSellOrder', good, qty, minPrice: price })
-            : game.dispatch({ type: 'placeBuyOrder', good, qty, maxPrice: price });
+            : game.dispatch({ type: 'placeBuyOrder', good, qty, maxPrice: price }));
       if (r.ok) page.close();
       else {
         error = ERROR_TEXT[r.error];

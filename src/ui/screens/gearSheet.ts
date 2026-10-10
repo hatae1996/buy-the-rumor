@@ -53,9 +53,9 @@ export function openGearSheet(game: Game): void {
     </div>`;
     const act = (attr: string, run: (kind: string) => ReturnType<Game['dispatch']>, ok: (name: string) => string) =>
       sheet.body.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((b) =>
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           const kind = b.getAttribute(attr)!;
-          const r = run(kind);
+          const r = await run(kind);
           error = r.ok ? '' : ERROR_TEXT[r.error];
           done = r.ok ? ok(v.gear.find((g) => g.kind === kind)!.name) : '';
           render();

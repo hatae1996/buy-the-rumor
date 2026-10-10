@@ -44,9 +44,9 @@ export function openMealSheet(game: Game): void {
       ${error ? `<p class="error">${error}</p>` : ''}
     </div>`;
     sheet.body.querySelectorAll<HTMLButtonElement>('[data-eat]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         const good = b.dataset.eat as (typeof FOODS)[number];
-        const r = game.dispatch({ type: 'eat', good });
+        const r = await game.dispatch({ type: 'eat', good });
         error = r.ok ? '' : ERROR_TEXT[r.error];
         if (r.ok && (game.view().fatigue === 0 || game.view().mealsLeft === 0)) {
           sheet.close();

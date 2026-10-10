@@ -111,11 +111,11 @@ export function bindOrderGroups(el: HTMLElement, game: Game, v: PlayerView): voi
     b.addEventListener('click', () => (b.dataset.groupEdit === 'arrival' ? openArrivalSheet(game) : openMarket(game))),
   );
   el.querySelectorAll<HTMLButtonElement>('[data-group-cancel]').forEach((b) =>
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const g = groups[Number(b.dataset.groupCancel)];
       if (!g) return;
-      for (const id of g.orders) game.dispatch({ type: 'cancelOrder', orderId: id });
-      for (const id of g.reservations) game.dispatch({ type: 'cancelReservation', reservationId: id });
+      for (const id of g.orders) await game.dispatch({ type: 'cancelOrder', orderId: id });
+      for (const id of g.reservations) await game.dispatch({ type: 'cancelReservation', reservationId: id });
     }),
   );
 }

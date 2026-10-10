@@ -10,7 +10,7 @@ import { openSheet } from '../sheet';
 import { bindRumors, rumorCard } from './newsRumors';
 
 /** 술 한 잔을 사고, 들은 이야기를 바로 보여 준다 (수첩에 기록하면 카드가 바뀐다) */
-export function buyDrink(game: Game): void {
+export async function buyDrink(game: Game): Promise<void> {
   const townName = (id: number) => game.map.towns[id]!.name;
   // 들은 이야기는 먼저 "최근 들은 이야기"(적을지 고르는 중)에 들어오고, 수첩에 기록하면 수첩으로 옮겨 간다
   const all = () => {
@@ -18,7 +18,7 @@ export function buyDrink(game: Game): void {
     return [...v.recentHeard.map((n) => ({ n, fresh: true })), ...v.rumors.map((n) => ({ n, fresh: false }))];
   };
   const before = new Set(all().map((x) => x.n.id));
-  const r = game.dispatch({ type: 'buyDrink' });
+  const r = await game.dispatch({ type: 'buyDrink' });
   const heardIds = r.ok ? all().filter((x) => !before.has(x.n.id)).map((x) => x.n.id) : [];
   let unsub = () => {};
   const sheet = openSheet('술 한 잔', () => unsub());
@@ -80,9 +80,9 @@ export function openPigeonSheet(game: Game): void {
       ${error ? `<p class="error">${error}</p>` : ''}
     </div>`;
     sheet.body.querySelectorAll<HTMLButtonElement>('[data-to]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         const to = Number(b.dataset.to);
-        const r = game.dispatch({ type: 'sendPigeon', to });
+        const r = await game.dispatch({ type: 'sendPigeon', to });
         error = r.ok ? '' : ERROR_TEXT[r.error];
         sent = r.ok ? to : null;
         render();

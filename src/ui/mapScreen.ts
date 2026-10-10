@@ -266,14 +266,14 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
       <p class="map-card-sum">여비 ${won(fee)} · 이동 ${days}일</p>
       <button type="button" class="rumor-note map-card-go" data-go>${euro(name(to))} 출발</button>`;
     bindPrices();
-    sheet.body.querySelector('[data-rations]')?.addEventListener('click', () => {
-      const r = game.dispatch({ type: 'buyRations', qty: canBuy });
+    sheet.body.querySelector('[data-rations]')?.addEventListener('click', async () => {
+      const r = await game.dispatch({ type: 'buyRations', qty: canBuy });
       sheet.close();
       if (r.ok) openTownCard(to);
       else render();
     });
-    sheet.body.querySelector('[data-handcart]')?.addEventListener('click', () => {
-      const r = game.dispatch({ type: 'buyCart', cart: 'handcart' });
+    sheet.body.querySelector('[data-handcart]')?.addEventListener('click', async () => {
+      const r = await game.dispatch({ type: 'buyCart', cart: 'handcart' });
       const err = sheet.body.querySelector<HTMLElement>('[data-error]')!;
       if (r.ok) {
         sheet.close();
@@ -283,9 +283,9 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
         err.hidden = false;
       }
     });
-    sheet.body.querySelector('[data-go]')!.addEventListener('click', () => {
+    sheet.body.querySelector('[data-go]')!.addEventListener('click', async () => {
       departing = true;
-      const r = game.dispatch({ type: 'travel', to });
+      const r = await game.dispatch({ type: 'travel', to });
       departing = false;
       if (r.ok) {
         sheet.close();

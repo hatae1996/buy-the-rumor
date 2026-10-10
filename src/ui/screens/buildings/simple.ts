@@ -121,8 +121,8 @@ export function openOutside(game: Game): void {
         }
       </div>`;
     body.querySelector('[data-resume]')?.addEventListener('click', () => openExpeditionSheet(game));
-    body.querySelector('[data-start]')?.addEventListener('click', () => {
-      if (sheet.send({ type: 'startExpedition' })) openExpeditionSheet(game);
+    body.querySelector('[data-start]')?.addEventListener('click', async () => {
+      if (await sheet.send({ type: 'startExpedition' })) openExpeditionSheet(game);
     });
   });
 }

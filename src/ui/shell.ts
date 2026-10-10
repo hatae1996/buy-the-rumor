@@ -22,6 +22,8 @@ import { renderNews } from './screens/news';
 import { openCertificate } from './screens/certificate';
 import { renderTown } from './screens/town';
 import { openSettlement } from './screens/settlement';
+import { maybeShowHomeTip } from './screens/homeTip';
+import { track } from './track';
 
 export type TabId = 'town' | 'map' | 'cart' | 'ledger' | 'news';
 
@@ -77,10 +79,12 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
       location.reload();
     });
   };
-  const away = (s: AwaySummary | null) => {
-    if (s) showAwaySummary(game, s, settle);
-    else settle();
-  };
+  // 자리를 비운 사이 (서버 게임은 답이 늦게 온다)
+  const away = (p: Promise<AwaySummary | null>) =>
+    void p.then((s) => {
+      if (s) showAwaySummary(game, s, settle);
+      else settle();
+    });
 
   // 위 줄 왼쪽은 내 문장 (0.1.7). 바뀔 때만 다시 그린다
   let crestKey = '';
@@ -146,15 +150,23 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   });
   $('[data-crest]').addEventListener('click', () => openCertificate(game));
   game.subscribe(render);
+  // 견습을 마치고 처음 길을 떠나면 홈 화면에 추가 안내를 한 번 (0.2.0)
+  let graduating = game.view().apprentice?.scene === 'graduation';
+  game.subscribe(() => {
+    const v = game.view();
+    if (graduating && !v.apprentice && maybeShowHomeTip()) track('home_tip');
+    graduating = v.apprentice?.scene === 'graduation';
+  });
   select('town');
 
   // 앱을 다시 열었을 때와 열어 둔 동안 장날이 지나면 그 사이 일을 보여 준다 (시즌이 끝났으면 결산)
   away(game.catchUp(now()));
   setInterval(() => {
     if (game.seasonOver) return render();
-    const s = game.catchUp(now());
-    if (s) away(s);
-    else render();
+    void game.catchUp(now()).then((s) => {
+      if (s) away(Promise.resolve(s));
+      else render();
+    });
   }, CLOCK_MS);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !game.seasonOver) away(game.catchUp(now()));

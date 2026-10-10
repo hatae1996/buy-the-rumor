@@ -296,8 +296,8 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     const grids = new Map(boards.map((b) => [b.id, host.querySelector<HTMLElement>(`[data-grid="${b.id}"]`)!] as const));
     const model = (id: BoardId) => boards.find((b) => b.id === id)!;
 
-    const send = (cmd: Command) => {
-      const r = game.dispatch(cmd);
+    const send = async (cmd: Command) => {
+      const r = await game.dispatch(cmd);
       message = r.ok ? '' : ERROR_TEXT[r.error];
       if (!r.ok) render(); // 성공하면 game이 다시 그린다
       return r.ok;

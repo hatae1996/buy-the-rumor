@@ -57,6 +57,9 @@ function divisionShapes(d: DivisionId, fill: string): string {
 let uid = 0;
 
 /** 문장 하나 (SVG). size는 화면 너비(CSS px), 높이는 1.1배 */
+/** 이 크기 이하에서는 상징 글자를 그리지 않는다 (답 134) */
+export const SMALL_EMBLEM = 36;
+
 export function emblemSvg(e: Emblem, size = 64, label = '상단 문장'): string {
   const id = `em${++uid}`;
   const a = EMBLEM_COLORS[e.field[0]].hex;
@@ -74,7 +77,11 @@ export function emblemSvg(e: Emblem, size = 64, label = '상단 문장'): string
     ? `<image href="${shieldArt}" x="-5" y="0" width="110" height="110" style="mix-blend-mode:multiply"/>`
     : `<path d="${SHIELD_PATH[e.shield]}" fill="none" stroke="rgba(43,38,34,0.55)" stroke-width="3"/>`;
   const glyph = SYMBOL_GLYPH[e.symbol];
-  const symbol = symArt
+  // 작은 자리(36px 이하: 위 줄, 랭킹)에서는 상징 글자를 빼고 방패와 색만 (답 134. 상징 그림이 오면 다시 본다)
+  const small = !symArt && size <= SMALL_EMBLEM;
+  const symbol = small
+    ? ''
+    : symArt
     ? `<mask id="${id}s" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="110"><image href="${symArt}" x="22" y="27" width="56" height="56"/></mask>
        <rect width="100" height="110" fill="${sc}" mask="url(#${id}s)"/>
        <image href="${symArt}" x="22" y="27" width="56" height="56" style="mix-blend-mode:multiply"/>`

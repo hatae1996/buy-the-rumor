@@ -140,8 +140,8 @@ function openPartsPage(game: Game, kind: 'face' | 'emblem'): void {
           const ed = mountEmblemEditor(holder, c.emblem);
           return () => game.dispatch({ type: 'setEmblem', emblem: ed.get() });
         })();
-  page.body.querySelector('[data-save]')!.addEventListener('click', () => {
-    const r = save();
+  page.body.querySelector('[data-save]')!.addEventListener('click', async () => {
+    const r = await save();
     if (r.ok) page.close();
     else {
       const err = page.body.querySelector<HTMLElement>('[data-error]')!;

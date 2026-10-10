@@ -168,9 +168,9 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
       cartPick = (e.target as HTMLSelectElement).value;
       page.redraw();
     });
-    body.querySelector('[data-form]')?.addEventListener('click', () => {
+    body.querySelector('[data-form]')?.addEventListener('click', async () => {
       const [cart, how] = cartPick.split(':') as [CartType, string];
-      if (page.send({ type: 'formCaravan', horseIds: [...picked], cart, rent: how === 'rent' })) {
+      if (await page.send({ type: 'formCaravan', horseIds: [...picked], cart, rent: how === 'rent' })) {
         picked.clear();
         cartPick = '';
       }
@@ -283,14 +283,14 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
       page.body.scrollTop = 0;
     });
     body.querySelector('[data-recall]')?.addEventListener('click', () => page.send({ type: 'recallCaravan' }));
-    body.querySelector('[data-disband]')?.addEventListener('click', () => {
+    body.querySelector('[data-disband]')?.addEventListener('click', async () => {
       if (!disbandArmed) {
         disbandArmed = true;
         page.redraw();
         return;
       }
       disbandArmed = false;
-      if (!page.send({ type: 'disbandCaravan' })) page.redraw();
+      if (!await page.send({ type: 'disbandCaravan' })) page.redraw();
     });
   }
 
@@ -349,11 +349,11 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
       draft = null;
       redraw();
     });
-    on('[data-send]', 'click', () => {
+    on('[data-send]', 'click', async () => {
       // 보내면 행렬 관리로 돌아간다 (실패하면 아래에 까닭이 뜨고 고치던 것은 남는다)
       const sent = draft;
       draft = null;
-      if (!page.send({ type: 'setCaravanPlan', plan: sent! })) {
+      if (!await page.send({ type: 'setCaravanPlan', plan: sent! })) {
         draft = sent;
         redraw();
       }

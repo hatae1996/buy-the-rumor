@@ -60,8 +60,8 @@ export function openExpeditionSheet(game: Game): void {
   const sheet = openSheet('원정');
   let error = '';
 
-  const choose = (choice: number) => {
-    const r = game.dispatch({ type: 'chooseExpeditionCard', choice });
+  const choose = async (choice: number) => {
+    const r = await game.dispatch({ type: 'chooseExpeditionCard', choice });
     error = r.ok ? '' : ERROR_TEXT[r.error];
     render();
   };

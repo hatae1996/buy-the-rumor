@@ -54,9 +54,9 @@ function priceRows(game: Game, items: readonly NewsItem[]): string {
 let open: { close: () => void } | null = null;
 
 /** 산 신문 한 부를 처음부터 끝까지 (읽음으로 적는다) */
-export function openPaper(game: Game, day: number): void {
+export async function openPaper(game: Game, day: number): Promise<void> {
   open?.close();
-  const r = game.dispatch({ type: 'readPaper', day });
+  const r = await game.dispatch({ type: 'readPaper', day });
   const v = game.view();
   const items = v.news.filter((n) => n.day === day);
   const big = items.filter((n) => !n.section).map((n) => n.text);

@@ -66,16 +66,16 @@ export function openArrivalSheet(game: Game): void {
       }),
     );
     sheet.body.querySelectorAll<HTMLButtonElement>('[data-set]').forEach((b) =>
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         const g = b.dataset.set as GoodId;
-        const r = game.dispatch({ type: 'reserveOnArrival', good: g, qty: 'all', minPrice: priceOf(g) });
+        const r = await game.dispatch({ type: 'reserveOnArrival', good: g, qty: 'all', minPrice: priceOf(g) });
         error = r.ok ? '' : ERROR_TEXT[r.error];
         render();
       }),
     );
     sheet.body.querySelectorAll<HTMLButtonElement>('[data-unset]').forEach((b) =>
-      b.addEventListener('click', () => {
-        const r = game.dispatch({ type: 'cancelReservation', reservationId: Number(b.dataset.unset) });
+      b.addEventListener('click', async () => {
+        const r = await game.dispatch({ type: 'cancelReservation', reservationId: Number(b.dataset.unset) });
         error = r.ok ? '' : ERROR_TEXT[r.error];
         render();
       }),

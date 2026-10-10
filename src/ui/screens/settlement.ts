@@ -19,6 +19,7 @@ import { openPage } from '../page';
 import { openCertificate } from './certificate';
 import { emblemSvg } from '../emblem';
 import { portraitHtml } from '../portrait/portrait';
+import { SURVEY_URL } from '../config';
 
 const ICON = {
   chart: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 20v-6h3v6zM10.5 20V9h3v11zM17 20V4h3v16z" fill="currentColor"/></svg>`,
@@ -104,6 +105,7 @@ export function openSettlement(game: Game, onNextSeason: () => void): void {
       <div class="settle-me">${portraitHtml(me.face, 56, '내 얼굴')}${emblemSvg(me.emblem, 44)}<b>${me.name}</b></div>
       ${rankHtml(st.categories)}
       <p class="cv-muted">시즌 전체 순위로 인장과 칭호를 받아요.</p>
+      ${SURVEY_URL ? `<p class="settle-survey"><a href="${SURVEY_URL}" target="_blank" rel="noopener">이번 시즌 어땠나요? 설문에 답하기 ›</a></p>` : ''}
     </section>
     <section class="cv-card settle-card">
       <h3 class="settle-h"><span class="settle-h-svg">${ICON.chart}</span>시즌 리포트</h3>
