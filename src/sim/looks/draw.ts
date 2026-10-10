@@ -1,8 +1,8 @@
 // 외모 뽑기: NPC 외모 = 시즌 시드 + NPC 번호 (기획서 "NPC 외모"). 같은 시즌의 모든 세계에서 같은 NPC는 같은 얼굴이다.
 // 한 세계 안에서 같은 조합이 두 번 나오면 그 NPC만 다시 뽑는다. 세계 난수를 쓰지 않아 다른 결과를 바꾸지 않는다.
 import { createRng, mixSeed, type Rng } from '../rng';
-import { LAYERS } from './catalog';
-import { colorRange, partRange } from './roles';
+import { HAIR_STYLES, LAYERS } from './catalog';
+import { colorRange, hairStyleRange, partRange } from './roles';
 import type { LayerId, Look, LookRole, NpcEntry, NpcKind } from './types';
 
 /** 같은 NPC 번호에 대해 몇 번까지 다시 뽑나 (넘으면 겹친 채로 둔다) */
@@ -19,7 +19,14 @@ export const OUTFIT_LAYERS: readonly LayerId[] = ['top', 'hat'];
  */
 export function rollLook(body: Rng, outfit: Rng, role: LookRole): Look {
   const parts = {} as Record<LayerId, string | null>;
-  for (const l of LAYERS) parts[l.id] = (OUTFIT_LAYERS.includes(l.id) ? outfit : body).pick(partRange(role, l.id));
+  for (const l of LAYERS) {
+    if (l.id === 'frontHair' || l.id === 'backHair') continue;
+    parts[l.id] = (OUTFIT_LAYERS.includes(l.id) ? outfit : body).pick(partRange(role, l.id));
+  }
+  // 머리는 앞·뒤 한 벌로 (0.1.5)
+  const hair = HAIR_STYLES[body.pick(hairStyleRange(role))];
+  parts.frontHair = hair.front;
+  parts.backHair = hair.back;
   const c = colorRange(role);
   return { parts, skin: body.pick(c.skin), hair: body.pick(c.hair), cloth: outfit.pick(c.cloth), hatColor: outfit.pick(c.hatColor) };
 }

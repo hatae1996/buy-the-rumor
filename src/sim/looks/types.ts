@@ -10,6 +10,8 @@ export type TintId = 'skin' | 'hair' | 'cloth' | 'hat';
 export type ClothColorId = 'indigo' | 'madder' | 'ochre' | 'olive' | 'linen' | 'deepIndigo' | 'deepMadder' | 'deepOlive';
 export type SkinId = 'skin1' | 'skin2' | 'skin3' | 'skin4';
 export type HairColorId = 'black' | 'brown' | 'auburn' | 'gray';
+/** 머리 모양: 앞머리·옆머리와 뒷머리 한 벌 (catalog.ts의 HAIR_STYLES) */
+export type HairStyleId = 'curly' | 'cropped' | 'balding' | 'bun' | 'braid' | 'long' | 'ponytail';
 
 export interface Look {
   /** 레이어마다 파츠 id. 비어 있는 레이어는 null (그리지 않고 건너뛴다) */

@@ -4,9 +4,9 @@ import { advanceDays, createEconomy } from '../economy';
 import { seasonSeed } from '../economy/worldRef';
 import { createRng } from '../rng';
 import { generateWorld } from '../worldgen';
-import { CLOTH_COLORS, LAYERS, PARTS } from './catalog';
+import { CLOTH_COLORS, HAIR_STYLES, LAYERS, PARTS } from './catalog';
 import { assignLooks, drawLook, lookKey, npcKey, rollLook } from './draw';
-import { COMMON, partRange, ROLE_RANGES } from './roles';
+import { COMMON, hairStyleRange, partRange, ROLE_RANGES } from './roles';
 import { townFaces, worldLooks, worldNpcs } from './roster';
 import type { Look, LookRole, NpcEntry } from './types';
 
@@ -28,7 +28,38 @@ describe('파츠와 직업 범위', () => {
         for (const id of partRange(role, l.id)) if (id !== null) expect(PARTS[l.id], `${role} ${l.id} ${id}`).toHaveProperty(id);
       }
     }
-    for (const l of LAYERS) for (const id of COMMON.parts[l.id]) if (id !== null) expect(PARTS[l.id]).toHaveProperty(id);
+    for (const [l, ids] of Object.entries(COMMON.parts)) for (const id of ids) if (id !== null) expect(PARTS[l as keyof typeof PARTS]).toHaveProperty(id);
+    for (const h of Object.values(HAIR_STYLES)) {
+      expect(PARTS.frontHair).toHaveProperty(h.front);
+      if (h.back) expect(PARTS.backHair).toHaveProperty(h.back);
+    }
+  });
+
+  it('머리는 앞·뒤 한 벌로 나온다 (꽁지머리 앞에 생머리 뒤 같은 조합이 없다)', () => {
+    const rng = createRng(11);
+    for (let i = 0; i < 300; i++) {
+      for (const role of ROLES) {
+        const look = rollLook(rng, rng, role);
+        const style = hairStyleRange(role).find((h) => HAIR_STYLES[h].front === look.parts.frontHair)!;
+        expect(style, `${role} ${look.parts.frontHair}`).toBeDefined();
+        expect(look.parts.backHair).toBe(HAIR_STYLES[style].back);
+      }
+    }
+  });
+
+  it('0.1.5 상의 4종: 어부 스웨터, 도시 상인 털깃 겉옷, 농부 튜닉과 멜빵, 대장장이 가죽 앞치마. 기존 상의도 그대로 나온다', () => {
+    expect(partRange('fisher', 'top')).toEqual(expect.arrayContaining(['tunic', 'shawl', 'sweater']));
+    expect(partRange('cityMerchant', 'top')).toEqual(expect.arrayContaining(['cloak', 'shawl', 'furCoat']));
+    expect(partRange('farmer', 'top')).toEqual(expect.arrayContaining(['tunic', 'pinafore', 'braces']));
+    expect(partRange('smith', 'top')).toEqual(expect.arrayContaining(['leatherVest', 'apron', 'leatherApron']));
+    // 새 상의는 그 직업의 표시: 다른 직업에는 없다
+    for (const role of ROLES) {
+      const top = partRange(role, 'top');
+      if (role !== 'fisher') expect(top).not.toContain('sweater');
+      if (role !== 'cityMerchant') expect(top).not.toContain('furCoat');
+      if (role !== 'farmer') expect(top).not.toContain('braces');
+      if (role !== 'smith') expect(top).not.toContain('leatherApron');
+    }
   });
 
   it('얼굴과 상의는 늘 있다 (비어 있는 레이어는 머리, 수염, 모자 같은 것만)', () => {

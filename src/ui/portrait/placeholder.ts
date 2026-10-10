@@ -25,6 +25,11 @@ const poly = (...pts: [number, number][]) => (g: CanvasRenderingContext2D) => {
 /** 어깨 (상의마다 모양만 조금씩 다르다) */
 const shoulders = poly([18, 100], [24, 76], [40, 68], [60, 68], [76, 76], [82, 100]);
 
+/** 정수리를 덮고 뒤로 넘긴 머리 (쪽진 머리, 꽁지머리 앞 장) */
+const HAIR_CAP: [number, number][] = [
+  [33, 34], [36, 23], [50, 19], [64, 23], [67, 34], [60, 27], [40, 27],
+];
+
 const HEAD: Record<string, (g: CanvasRenderingContext2D) => void> = {
   round: ellipse(50, 40, 17, 18),
   oval: ellipse(50, 40, 15, 20),
@@ -33,16 +38,11 @@ const HEAD: Record<string, (g: CanvasRenderingContext2D) => void> = {
 
 export const PLACEHOLDER: Record<string, Record<string, (g: CanvasRenderingContext2D, color: string) => void>> = {
   backHair: {
-    long: (g, c) => shape(g, c, rect(30, 22, 40, 52, 14)),
-    braid: (g, c) => {
-      shape(g, c, ellipse(50, 36, 20, 18));
-      shape(g, c, rect(62, 44, 7, 30, 3));
+    long: (g, c) => shape(g, c, rect(30, 24, 40, 50, 14)),
+    ponytail: (g, c) => {
+      shape(g, c, rect(36, 50, 9, 22, 4));
+      shape(g, c, rect(55, 50, 9, 22, 4));
     },
-    bun: (g, c) => {
-      shape(g, c, ellipse(50, 16, 9, 8));
-      shape(g, c, ellipse(50, 36, 20, 18));
-    },
-    nape: (g, c) => shape(g, c, rect(32, 28, 36, 32, 12)),
   },
   face: Object.fromEntries(
     Object.entries(HEAD).map(([id, head]) => [
@@ -88,6 +88,26 @@ export const PLACEHOLDER: Record<string, Record<string, (g: CanvasRenderingConte
       shape(g, c, poly([24, 100], [28, 76], [42, 69], [46, 100]));
       shape(g, c, poly([76, 100], [72, 76], [58, 69], [54, 100]));
     },
+    sweater: (g, c) => {
+      shape(g, c, shoulders);
+      shape(g, c, rect(40, 64, 20, 8, 4));
+      strokes(g, 'rgba(58,42,32,0.45)', 1, [[34, 80, 34, 100], [42, 78, 42, 100], [58, 78, 58, 100], [66, 80, 66, 100]]);
+    },
+    furCoat: (g, c) => {
+      shape(g, c, shoulders);
+      shape(g, '#e3d6bd', poly([26, 76], [40, 64], [50, 74], [60, 64], [74, 76], [60, 82], [50, 78], [40, 82]));
+      strokes(g, LINE, 1.2, [[30, 98, 66, 74]]);
+    },
+    braces: (g, c) => {
+      shape(g, '#e8dcc3', shoulders);
+      shape(g, c, rect(36, 70, 6, 32, 2));
+      shape(g, c, rect(58, 70, 6, 32, 2));
+    },
+    leatherApron: (g, c) => {
+      shape(g, '#d9ccb0', shoulders);
+      shape(g, c, poly([36, 100], [38, 78], [62, 78], [64, 100]));
+      strokes(g, c, 2, [[38, 78, 44, 68], [62, 78, 56, 68]]);
+    },
   },
   brows: {
     soft: (g, c) => strokes(g, c, 1.2, [[40, 35, 47, 35], [53, 35, 60, 35]]),
@@ -122,10 +142,24 @@ export const PLACEHOLDER: Record<string, Record<string, (g: CanvasRenderingConte
     lines: (g) => strokes(g, 'rgba(58,42,32,0.55)', 0.9, [[42, 29, 58, 29], [44, 31, 56, 31], [36, 43, 38, 46], [64, 43, 62, 46]]),
   },
   frontHair: {
-    fringe: (g, c) => shape(g, c, poly([32, 36], [34, 24], [44, 19], [56, 19], [66, 24], [68, 36], [60, 30], [50, 32], [40, 30])),
-    parted: (g, c) => shape(g, c, poly([32, 40], [34, 25], [46, 20], [50, 24], [54, 20], [66, 25], [68, 40], [64, 28], [50, 26], [36, 28])),
-    swept: (g, c) => shape(g, c, poly([32, 38], [36, 22], [52, 18], [66, 24], [68, 34], [56, 26], [40, 28])),
+    curly: (g, c) => {
+      for (const [x, y] of [[36, 30], [40, 23], [47, 20], [53, 20], [60, 23], [64, 30]] as const) shape(g, c, ellipse(x, y, 5, 5));
+    },
     cropped: (g, c) => shape(g, c, poly([33, 32], [37, 23], [50, 20], [63, 23], [67, 32], [58, 26], [42, 26])),
+    balding: (g, c) => {
+      shape(g, c, poly([31, 44], [32, 30], [37, 27], [37, 40]));
+      shape(g, c, poly([69, 44], [68, 30], [63, 27], [63, 40]));
+    },
+    bun: (g, c) => {
+      shape(g, c, ellipse(50, 15, 8, 7));
+      shape(g, c, poly(...HAIR_CAP));
+    },
+    braid: (g, c) => {
+      shape(g, c, poly([32, 38], [35, 23], [44, 19], [58, 20], [66, 25], [68, 38], [56, 26], [40, 27]));
+      for (const y of [44, 52, 60, 68]) shape(g, c, ellipse(66, y, 4.5, 4.5));
+    },
+    long: (g, c) => shape(g, c, poly([31, 56], [32, 28], [42, 20], [58, 20], [68, 28], [69, 56], [64, 54], [63, 30], [50, 26], [37, 30], [36, 54])),
+    ponytail: (g, c) => shape(g, c, poly(...HAIR_CAP)),
   },
   hat: {
     hood: (g, c) => {
