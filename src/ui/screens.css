@@ -68,60 +68,6 @@
   white-space: nowrap;
 }
 
-.good-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-}
-
-.good-list li + li {
-  border-top: 1px dashed rgba(58, 43, 34, 0.25);
-}
-
-.good-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 48px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  text-align: left;
-}
-
-.good-row:active {
-  background: var(--paper-dim);
-}
-
-.good-name {
-  font-size: 16px;
-}
-
-.good-have {
-  font-size: 13px;
-  color: var(--teal);
-}
-
-.good-price {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 64px;
-  font-family: var(--f-display);
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-}
-
-.trend {
-  display: inline-block;
-  width: 12px;
-  height: 15px;
-}
-
 .pinned {
   padding-top: 18px;
 }
@@ -136,37 +82,10 @@
   object-position: 70% 0;
 }
 
-.order-list,
 .list {
   list-style: none;
   margin: 6px 0 0;
   padding: 0;
-}
-
-.order-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-}
-
-.order-row > span:nth-child(2) {
-  flex: 1;
-}
-
-.order-side {
-  padding: 1px 8px;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 13px;
-}
-
-.order-side.sell {
-  background: var(--coral);
-}
-
-.order-side.buy {
-  background: var(--teal);
 }
 
 .link-btn {
@@ -298,53 +217,6 @@
 
 .seg button:disabled {
   opacity: 0.4;
-}
-
-/* ───── 신청 쪽지 ───── */
-.price-note {
-  margin: 12px 0;
-  padding: 10px 12px;
-  border-left: 4px solid var(--mustard);
-  background: rgba(230, 180, 60, 0.12);
-}
-
-.stepper-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 10px 0;
-}
-
-.stepper-label {
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-
-.stepper {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr 1fr 1fr;
-  gap: 6px;
-  align-items: center;
-}
-
-.stepper button {
-  border: 0;
-  border-radius: 6px;
-  background: var(--wood-mid);
-  color: var(--paper);
-  font-family: var(--f-display);
-  font-size: 16px;
-}
-
-.stepper output {
-  text-align: center;
-  font-family: var(--f-display);
-  font-size: 24px;
-  font-variant-numeric: tabular-nums;
-}
-
-.order-summary {
-  margin: 12px 0 4px;
 }
 
 /* ───── 아래에서 올라오는 쪽지 ───── */
@@ -1619,14 +1491,7 @@
   opacity: 0.8;
 }
 
-.town-half /* 신문 그림은 건물보다 작게 */
-.town-half-img.small {
-  height: calc(60% - 30px);
-  top: auto;
-  bottom: 10px;
-}
-
-.town-chevron {
+.town-half .town-chevron {
   position: absolute;
   top: 14px;
   right: 14px;
@@ -3975,4 +3840,487 @@
 
 .paper-error {
   margin-top: 24px;
+}
+
+/* ───── 위 줄 아래를 덮는 페이지 (0.1.6 시장·거래 예약) ───── */
+.page {
+  --town-card: #fbf8f2;
+  --town-line: var(--cream-line);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+}
+
+.page-head {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin: 8px calc(var(--safe-right) + 12px) 0 calc(var(--safe-left) + 12px);
+  padding: 2px 10px 2px 4px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.page-back {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 17px;
+}
+
+.page-head h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.page-icon {
+  justify-self: end;
+  line-height: 0;
+}
+
+.page-icon img {
+  width: 44px;
+}
+
+.page-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px calc(var(--safe-right) + 12px) calc(var(--safe-bottom) + 16px) calc(var(--safe-left) + 12px);
+}
+
+.page-body > * {
+  flex: none;
+}
+
+/* 시장 (0.1.6 목업 docs/reference/market-mockup-0.1.6.png) */
+.market-hero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.market-hero > img {
+  flex: none;
+  width: 40%;
+  max-width: 160px;
+}
+
+.market-hero > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.market-hero small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.market-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-title h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 26px;
+}
+
+.market-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 4px 10px;
+  border-radius: 999px;
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.market-clock img {
+  width: 16px;
+}
+
+.market-clock b {
+  font-weight: normal;
+}
+
+.market-card {
+  padding: 8px 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.market-goods,
+.market-orders {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.market-goods li + li,
+.market-orders li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.market-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 50px;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--cream-ink);
+  text-align: left;
+}
+
+.market-row:active {
+  background: #f1ebdf;
+}
+
+.market-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.market-name small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.market-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.market-trend {
+  width: 12px;
+}
+
+.market-orders li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 4px;
+}
+
+.market-orders .order-btn {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.market-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 4px;
+}
+
+.market-empty img {
+  width: 96px;
+}
+
+.market-empty p {
+  margin: 6px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+/* 거래 예약 (0.1.6 목업 docs/reference/order-buy-mockup-0.1.6.png, order-sell-mockup-0.1.6.png) */
+.order-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.order-hero > img {
+  flex: none;
+  width: 34%;
+  max-width: 130px;
+  max-height: 90px;
+  object-fit: contain;
+}
+
+.order-hero h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.order-hero small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.order-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: var(--town-card);
+  overflow: hidden;
+}
+
+.order-sides button {
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.order-sides button[aria-pressed='true'] {
+  background: var(--cream-teal);
+  color: #fff;
+}
+
+.order-sides button:disabled {
+  opacity: 0.4;
+}
+
+.order-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--cream-teal-soft);
+}
+
+.order-strip > img {
+  flex: none;
+  width: 48px;
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.order-strip b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.order-strip small {
+  display: block;
+  color: var(--cream-teal);
+  font-size: 12px;
+}
+
+.order-strip small.warn {
+  color: var(--coral-deep);
+}
+
+.order-form {
+  padding: 4px 14px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.order-form h4 {
+  margin: 12px 0 2px;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.order-form > small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.order-form > small.center {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.order-stepper {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.8fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.order-stepper.days {
+  grid-template-columns: 1fr 2.6fr 1fr;
+}
+
+.order-stepper button {
+  min-height: 44px;
+  border: 1px solid var(--town-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.order-stepper button:active {
+  background: #f1ebdf;
+}
+
+.order-stepper output {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--cream-teal-soft);
+  font-family: var(--f-display);
+  font-size: 20px;
+}
+
+.order-total {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--cream-teal-soft);
+}
+
+.order-total > img {
+  width: 48px;
+}
+
+.order-total b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.order-total small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.order-total strong {
+  font-family: var(--f-display);
+  font-size: 30px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.order-total p {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(47, 143, 138, 0.25);
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.order-past {
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: var(--town-card);
+}
+
+.order-past summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 2px 12px 2px 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.order-past summary::-webkit-details-marker {
+  display: none;
+}
+
+.order-past summary img {
+  width: 32px;
+}
+
+.order-past summary b {
+  flex: 1;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.order-past summary span {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.order-past p {
+  margin: 0;
+  padding: 0 14px 10px;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.order-submit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-submit .market-clock {
+  background: none;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.order-submit .rumor-note {
+  width: 100%;
+  min-height: 52px;
+  font-size: 18px;
+}
+
+.order-submit .rumor-note:disabled {
+  opacity: 0.5;
 }
