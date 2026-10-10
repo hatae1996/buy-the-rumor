@@ -11,7 +11,6 @@ import fromHouse from '../../../assets/ui/tab_town.png';
 import toHouse from '../../../assets/ui/travel_house.png';
 import foodImg from '../../../assets/ui/travel_food.png';
 import pawnImg from '../../../assets/ui/travel_wagon.png';
-import horseWagon from '../../../assets/ui/travel_horse_wagon.png';
 import marketImg from '../../../assets/ui/bld_market.png';
 import roadSpring from '../../../assets/ui/road_spring.png';
 import roadSummer from '../../../assets/ui/road_summer.png';
@@ -21,6 +20,32 @@ import type { PlayerView } from '../../sim/economy';
 import { euro } from '../../sim/josa';
 import { DAY_MS, type Game } from '../game';
 import { clockAtText, durationText } from '../format';
+import { RIG_ASPECT, RIG_PARTS, type RigPart } from '../travelRigLayout';
+
+// 길 위 마차 부품 (assets/ui/rig/, scripts/ui/cut_wagon_parts.py)
+const RIG_FILES = import.meta.glob<string>('../../../assets/ui/rig/*.png', { eager: true, query: '?url', import: 'default' });
+const RIG_IMG = new Map(Object.entries(RIG_FILES).map(([path, url]) => [path.split('/').pop()!.replace(/\.png$/, ''), url]));
+
+/** 부품 이름 → 그림 이름 (nearRearRim → rim_near) */
+function rigFile(name: string): string {
+  if (name === 'body' || name === 'horse') return name === 'horse' ? 'horse_walk' : 'body';
+  if (name.startsWith('shaft')) return name === 'shaftNear' ? 'shaft_near' : 'shaft_far';
+  const side = name.startsWith('near') ? 'near' : 'far';
+  const kind = name.endsWith('Spokes') ? 'spokes' : name.endsWith('Rim') ? 'rim' : 'hub';
+  return `${kind}_${side}`;
+}
+
+/** 말과 마차: 바퀴살은 돌고, 말은 걷기 그림을 넘기고, 몸체는 덜컹거린다 */
+function rigHtml(): string {
+  const box = (p: RigPart) => `left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%`;
+  const parts = RIG_PARTS.map((p) => {
+    const src = RIG_IMG.get(rigFile(p.name)) ?? '';
+    if (p.frames) return `<span class="rig-part rig-horse" style="${box(p)};background-image:url('${src}')"></span>`;
+    if (p.squash) return `<span class="rig-part rig-wheel" style="${box(p)};--squash:${p.squash}"><img src="${src}" alt="" /></span>`;
+    return `<img class="rig-part${p.name === 'body' ? ' rig-body' : ''}" style="${box(p)}" src="${src}" alt="" />`;
+  }).join('');
+  return `<div class="trip-rig" style="aspect-ratio:${RIG_ASPECT}">${parts}</div>`;
+}
 
 /** 계절(봄, 여름, 가을, 겨울)별 길 그림 */
 const ROAD = [roadSpring, roadSummer, roadAutumn, roadWinter] as const;
@@ -85,7 +110,7 @@ export function travelHtml(game: Game, v: PlayerView, now: number, sectionExtra:
       <div class="trip-stage">
         <img class="trip-road" src="${ROAD[v.season]}" alt="" />
         <span class="trip-dust"><i></i><i></i><i></i></span>
-        <img class="trip-wagon" src="${horseWagon}" alt="" />
+        ${rigHtml()}
       </div>
     </div>
     <section class="trip-card">
