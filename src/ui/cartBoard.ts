@@ -15,7 +15,8 @@ import { itemArt } from './itemArt';
 import { CART_ART_LAYOUT } from './cartArtLayout';
 import type { CartType } from '../sim/cart';
 
-const CART_IMG = new Map(
+/** 수레 그림 (수레방에서도 쓴다) */
+export const CART_IMG = new Map(
   Object.entries(import.meta.glob<string>('../../assets/ui/carts/*.png', { eager: true, query: '?url', import: 'default' })).map(
     ([path, url]) => [path.split('/').pop()!.replace(/\.png$/, ''), url],
   ),

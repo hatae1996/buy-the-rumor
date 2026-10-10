@@ -1,4 +1,11 @@
-// 잡화점, 바깥(원정), 작업장, 은행, 길드 회관 쪽지.
+// 잡화점(페이지), 바깥(원정), 작업장, 은행, 길드 회관 쪽지.
+import mealImg from '../../../../assets/ui/store_meal.png';
+import rationImg from '../../../../assets/ui/travel_food.png';
+import houseImg from '../../../../assets/ui/house_red.png';
+import coinImg from '../../../../assets/ui/coin.png';
+import infoImg from '../../../../assets/ui/icon_info.png';
+import { itemArt } from '../../itemArt';
+import { openLivePage } from '../../livePage';
 import { ECONOMY } from '../../../sim/constants';
 import { money } from '../../format';
 
@@ -17,34 +24,69 @@ export function fatigueBar(v: PlayerView): string {
   return `<div class="fatigue"><div class="fatigue-cells" aria-hidden="true">${cells}</div><span>${word}</span></div>`;
 }
 
+/** 잡화점 페이지 (0.1.6 목업 docs/reference/store-mockup-0.1.6.png): 음식 먹기, 여행 식량, 장비 */
 export function openStore(game: Game): void {
-  openLiveSheet(game, '잡화점', (body, v, sheet) => {
+  const v0 = game.view();
+  if (v0.location.kind !== 'town') return;
+  const here = v0.location.town;
+  openLivePage(game, { back: '마을', title: '잡화점', sub: game.map.towns[here]!.name, icon: houseImg }, (body, v, page) => {
+    if (v.location.kind !== 'town' || v.location.town !== here) {
+      page.close();
+      return;
+    }
+    const rp = v.food.rationPrice;
+    const options = [2, 4, 8]
+      .map((n) => {
+        const ok = rp !== null && v.gold >= n * rp && v.food.rationRoom >= n;
+        return `<div class="shop-option">
+          <b>${n}개</b>
+          <span class="inn-fee"><img src="${coinImg}" alt="" />${rp !== null ? `${money(n * rp)}냥` : '-'}</span>
+          <button type="button" class="shop-buy" data-rations="${n}" ${ok ? '' : 'disabled'}>${ok ? '구입' : '구입 불가'}</button>
+        </div>`;
+      })
+      .join('');
     body.innerHTML = `
-      <h3>음식 먹기</h3>
-      ${fatigueBar(v)}
-      <div class="btn-row">
-        <button type="button" class="secondary-btn" data-meal ${v.fatigue > 0 && v.mealsLeft > 0 ? '' : 'disabled'}>짐에 있는 음식 먹기<small>오늘 ${v.mealsLeft}끼 더</small></button>
-      </div>
-      <h3>여행 식량</h3>
-      <p class="muted">길을 가는 날마다 사람 하나에 식량 하나를 먹어요. 수레의 음식(생선, 고기, 곡물, 염장 식품)도 먹지만, 여행 식량은 한 칸에 4개가 들어가요. 가진 식량 ${v.food.have}.</p>
-      <div class="btn-row">
-        ${[2, 4, 8]
-          .map(
-            (n) =>
-              `<button type="button" class="secondary-btn" data-rations="${n}" ${v.food.rationPrice !== null && v.gold >= n * v.food.rationPrice && v.food.rationRoom >= n ? '' : 'disabled'}>${n}개 사기<small>${v.food.rationPrice !== null ? money(n * v.food.rationPrice) : '-'}</small></button>`,
-          )
-          .join('')}
-      </div>
+      <section class="shop-card">
+        <h3>음식 먹기</h3>
+        <div class="shop-main">
+          <img src="${mealImg}" alt="" />
+          <div><b>피로 ${v.fatigue} / ${v.fatigueMax}</b>${fatigueBar(v)}</div>
+        </div>
+        <button type="button" class="rumor-note shop-wide" data-meal ${v.fatigue > 0 && v.mealsLeft > 0 ? '' : 'disabled'}>짐에 있는 음식 먹기</button>
+        <small class="shop-caption">${v.mealsLeft > 0 ? `오늘 ${v.mealsLeft}개 더 먹을 수 있어요.` : '오늘은 더 먹을 수 없어요.'}</small>
+      </section>
+      <section class="shop-card">
+        <h3>여행 식량</h3>
+        <div class="shop-main">
+          <img src="${rationImg}" alt="" />
+          <div><span class="shop-chip">보유 ${v.food.have}개</span><small>이동할 때 사람마다 하루 1개를 먹어요.${v.food.perDay > 1 ? ` 지금은 하루 ${v.food.perDay}개.` : ''}</small></div>
+        </div>
+        <div class="shop-options">${options}</div>
+        <ul class="shop-notes">
+          <li>여행 식량은 한 칸에 4개까지 쌓아요.${v.food.rationRoom < 8 ? ` 지금 ${v.food.rationRoom}개 더 실을 수 있어요.` : ''}</li>
+          <li>생선·고기·곡물·염장 식품도 식량으로 먹어요.</li>
+        </ul>
+      </section>
       ${
         v.apprentice
           ? ''
-          : `<h3>장비</h3>
-             <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 장비도 짐칸 자리를 차지하고, 실은 장비만 써요. 수레의 도구 ${v.tools}개${v.tools ? ` (지금 도구 ${v.toolUsesLeft}번 더)` : ''}. 도구 하나로 나무 베기·광석 캐기를 ${USES}번 해요.</p>
-             <div class="btn-row"><button type="button" class="secondary-btn" data-gear>장비 사기·고치기<small>${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 쓸 만함</small></button></div>`
+          : `<section class="shop-card">
+              <h3>장비</h3>
+              <div class="shop-main">
+                <img src="${itemArt('tools') ?? ''}" alt="" />
+                <div>
+                  <small>원정에서 쓸 장비를 준비하세요.</small>
+                  <span class="shop-chip">보유 도구 ${v.tools}개</span>
+                  <small>도구 1개로 나무 베기·광석 캐기 총 ${USES}회${v.tools ? ` · 지금 ${v.toolUsesLeft}회 남음` : ''}</small>
+                </div>
+              </div>
+              <button type="button" class="shop-link" data-gear>장비 구입·수리 <span>${v.gear.filter((g) => (g.uses ?? 0) > 0).length}개 쓸 만함 ›</span></button>
+              <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />장비도 짐칸 공간을 차지해요. 실은 장비만 원정에서 써요.</p>
+            </section>`
       }`;
     body.querySelector('[data-meal]')?.addEventListener('click', () => openMealSheet(game));
     body.querySelectorAll<HTMLButtonElement>('[data-rations]').forEach((b) =>
-      b.addEventListener('click', () => sheet.send({ type: 'buyRations', qty: Number(b.dataset.rations) })),
+      b.addEventListener('click', () => page.send({ type: 'buyRations', qty: Number(b.dataset.rations) })),
     );
     body.querySelector('[data-gear]')?.addEventListener('click', () => openGearSheet(game));
   });

@@ -1,6 +1,12 @@
 // 마구간(말 사고팔기)과 수레방(수레 바꾸기) 쪽지 (기획서 "말").
 // 말은 장날이 아니라 마구간에서 사고판다. 사기는 신청해 두면 그날 밤 신청한 사람 중에서 뽑고(0.1.0), 되팔기는 바로.
 // 마구간 남은 수는 그 마을에 와야만 보인다.
+import houseImg from '../../../assets/ui/house_red.png';
+import wheelImg from '../../../assets/ui/cartshop_wheel.png';
+import coinsImg from '../../../assets/ui/coins_stack.png';
+import infoImg from '../../../assets/ui/icon_info.png';
+import { CART_IMG } from '../cartBoard';
+import { openLivePage } from '../livePage';
 import type { HorseKindInfo, HorseView, PlayerView } from '../../sim/economy';
 import { HORSES } from '../../sim/constants';
 import { eulReul } from '../../sim/josa';
@@ -101,56 +107,61 @@ export function openStableSheet(game: Game): void {
   render();
 }
 
+/** 수레방 페이지 (0.1.6 목업 docs/reference/cartshop-mockup-0.1.6.png): 망가진 칸 고치기, 수레 바꾸기 */
 export function openCartShopSheet(game: Game): void {
-  const sheet = openSheet('수레방');
-  let error = '';
-
-  const render = () => {
-    const v = game.view();
-    const rows = v.carts
+  const v0 = game.view();
+  if (v0.location.kind !== 'town') return;
+  const here = v0.location.town;
+  const won = (n: number) => `${money(n)}냥`;
+  openLivePage(game, { back: '마을', title: '수레방', sub: game.map.towns[here]!.name, icon: houseImg }, (body, v, page) => {
+    if (v.location.kind !== 'town' || v.location.town !== here) {
+      page.close();
+      return;
+    }
+    const cards = v.carts
       .map((c) => {
         const cells = c.rows.join('').split('').filter((x) => x === '#').length;
-        const pull = c.horses ? `말 ${c.horses}필이 끌어요` : `사람이 ${c.humanPull}까지 끌어요`;
-        return `<li class="row">
-          <span><b>${c.name}</b> <span class="muted">${cells}칸</span><br /><small class="muted">${pull}</small></span>
-          ${
-            c.cost === null
-              ? '<span class="badge">쓰는 중</span>'
-              : `<button type="button" class="secondary-btn" data-cart="${c.type}" ${v.gold < c.cost ? 'disabled' : ''}>바꾸기<small>${money(c.cost)}</small></button>`
-          }
+        const pull = c.horses ? `말 ${c.horses}필 필요` : `사람이 운반 · 무게 ${c.humanPull}까지`;
+        const img = CART_IMG.get(c.type);
+        const act =
+          c.cost === null
+            ? '<span class="cart-using">사용 중</span>'
+            : v.gold >= c.cost
+              ? `<button type="button" class="rumor-note" data-cart="${c.type}">교체 · ${won(c.cost)}</button>`
+              : `<button type="button" class="rumor-note" disabled>교체 · ${won(c.cost)}</button><small>금화 부족</small>`;
+        return `<li class="cart-offer${c.cost === null ? ' current' : ''}">
+          ${img ? `<img src="${img}" alt="" />` : ''}
+          <div><span>${c.name}</span><b>${cells}칸</b><small>${pull}</small></div>
+          <div class="cart-offer-act">${act}</div>
         </li>`;
       })
       .join('');
     // 길 위 사건으로 망가진 칸 고치기 (0.1.2): 칸마다 값, 돈이 되는 만큼
     const broken = v.cart.broken.length;
     const per = broken ? v.cart.repairCost / broken : 0;
-    sheet.body.innerHTML = `
+    body.innerHTML = `
+      <section class="cartshop-hero">
+        <img src="${wheelImg}" alt="" />
+        <h3>더 넓은 짐칸으로</h3>
+        <small>쓰던 수레는 값의 절반으로 쳐 줘요. 짐은 새 수레로 옮겨져요. 새 수레는 멀쩡해요.</small>
+      </section>
       ${
         broken
-          ? `<h3>짐칸 고치기</h3>
-             <p class="muted">${v.cart.name}의 망가진 칸 ${broken}개. 칸마다 ${money(per)}이에요.</p>
-             <div class="btn-row"><button type="button" class="primary-btn" data-repair ${v.gold < per ? 'disabled' : ''}>${
-               v.gold >= v.cart.repairCost ? `모두 고치기 · ${money(v.cart.repairCost)}` : `${Math.floor(v.gold / per)}칸 고치기 · ${money(Math.floor(v.gold / per) * per)}`
-             }</button></div>
-             <h3>수레 바꾸기</h3>`
+          ? `<section class="shop-card">
+              <h3>짐칸 고치기</h3>
+              <small class="shop-caption">${v.cart.name}의 망가진 칸 ${broken}개 · 칸마다 ${won(per)}</small>
+              <button type="button" class="rumor-note shop-wide" data-repair ${v.gold < per ? 'disabled' : ''}>${
+                v.gold >= v.cart.repairCost ? `모두 고치기 · ${won(v.cart.repairCost)}` : `${Math.floor(v.gold / per)}칸 고치기 · ${won(Math.floor(v.gold / per) * per)}`
+              }</button>
+            </section>`
           : ''
       }
-      <p class="muted">쓰던 수레는 절반 값으로 쳐 줘요. 짐은 새 수레에 옮겨 실어요. 새 수레는 멀쩡해요. 무게는 끄는 말이 정해요.</p>
-      <ul class="list">${rows}</ul>
-      ${error ? `<p class="error">${error}</p>` : ''}`;
-    sheet.body.querySelector('[data-repair]')?.addEventListener('click', () => {
-      const r = game.dispatch({ type: 'repairCart' });
-      error = r.ok ? '' : ERROR_TEXT[r.error];
-      render();
-    });
-    sheet.body.querySelectorAll<HTMLButtonElement>('[data-cart]').forEach((b) =>
-      b.addEventListener('click', () => {
-        const r = game.dispatch({ type: 'buyCart', cart: b.dataset.cart as (typeof v.carts)[number]['type'] });
-        error = r.ok ? '' : ERROR_TEXT[r.error];
-        if (r.ok) sheet.close();
-        else render();
-      }),
+      <ul class="cart-offers">${cards}</ul>
+      <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />말이 끄는 수레의 무게 한도는 말에 따라 달라요.</p>
+      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>보유 금화</b><strong>${won(v.gold)}</strong></section>`;
+    body.querySelector('[data-repair]')?.addEventListener('click', () => page.send({ type: 'repairCart' }));
+    body.querySelectorAll<HTMLButtonElement>('[data-cart]').forEach((b) =>
+      b.addEventListener('click', () => page.send({ type: 'buyCart', cart: b.dataset.cart as (typeof v.carts)[number]['type'] })),
     );
-  };
-  render();
+  });
 }

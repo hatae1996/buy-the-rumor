@@ -13,7 +13,7 @@ export interface LivePage extends Page {
 
 export function openLivePage(
   game: Game,
-  opts: { back: string; title: string; icon?: string },
+  opts: { back: string; title: string; sub?: string; icon?: string },
   render: (body: HTMLElement, v: PlayerView, page: LivePage) => void,
 ): LivePage {
   let error = '';

@@ -10,7 +10,7 @@ export interface Page {
 
 const stack: Page[] = [];
 
-export function openPage(opts: { back: string; title: string; icon?: string }): Page {
+export function openPage(opts: { back: string; title: string; sub?: string; icon?: string }): Page {
   const el = document.createElement('section');
   el.className = 'page';
   el.setAttribute('role', 'dialog');
@@ -22,7 +22,7 @@ export function openPage(opts: { back: string; title: string; icon?: string }): 
   el.innerHTML = `
     <header class="page-head">
       <button type="button" class="page-back" data-page-back>‹ ${opts.back}</button>
-      <h2>${opts.title}</h2>
+      <h2>${opts.title}${opts.sub ? `<small>${opts.sub}</small>` : ''}</h2>
       <span class="page-icon">${opts.icon ? `<img src="${opts.icon}" alt="" />` : ''}</span>
     </header>
     <div class="page-body"></div>`;

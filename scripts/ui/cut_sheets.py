@@ -7,6 +7,7 @@
 - assets-src/ui/ledger-icons-sheet.png: 장부 시세 기록 (시계, 안내 i)
 - assets-src/ui/inn-ui-sheet.png: 여관 (술잔, 전서구, 침대, 고용 게시판)
 - assets-src/ui/newsboy-ui-sheet.png: 신문팔이 가판대 (신문 있음, 빔)
+- assets-src/ui/shops-ui-sheet.png: 잡화점 국과 빵, 창고 보관 칸, 수레방 바퀴와 망치
 - assets-src/ui/news-ui-sheet.png, guild-ui-sheet.png: 소식 탭 신문·활동·길드 (보고 그림, 우승컵, 핀, 시즌 방패, 의뢰 그림)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
@@ -143,6 +144,16 @@ def sheet_pieces(sheet: str, names) -> None:
                     break
             if merged:
                 break
+    # 다른 그림 상자 안에 통째로 든 작은 조각(못, 부스러기)은 그 그림에 합친다
+    inside = [
+        (i, j) for i, p in enumerate(boxes) for j, q in enumerate(boxes)
+        if i != j and q[0] <= p[0] and q[1] <= p[1] and p[2] <= q[2] and p[3] <= q[3]
+    ]
+    for i, j in sorted(inside, reverse=True):
+        q = boxes[j]
+        boxes[j] = (q[0], q[1], q[2], q[3], q[4] | boxes[i][4])
+    for i in sorted({i for i, _ in inside}, reverse=True):
+        del boxes[i]
     # 줄(가운데 높이)로 묶고 줄 안에서는 왼쪽부터
     boxes.sort(key=lambda b: (b[1] + b[3]) / 2)
     rows, cur = [], [boxes[0]]
@@ -226,6 +237,11 @@ def newsboy_ui_sheet() -> None:
     sheet_pieces('newsboy-ui-sheet.png', [('newsstand.png', 320), ('newsstand_empty.png', 320)])
 
 
+def shops_ui_sheet() -> None:
+    """잡화점·창고·수레방 그림판 (0.1.6 목업 docs/reference/store·warehouse·cartshop-mockup-0.1.6.png): 국과 빵, 보관 칸, 바퀴와 망치"""
+    sheet_pieces('shops-ui-sheet.png', [('store_meal.png', 256), ('warehouse_cells.png', 160), ('cartshop_wheel.png', 192)])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -257,5 +273,6 @@ if __name__ == '__main__':
     guild_ui_sheet()
     inn_ui_sheet()
     newsboy_ui_sheet()
+    shops_ui_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()
