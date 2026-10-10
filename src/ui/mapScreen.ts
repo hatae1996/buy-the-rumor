@@ -1,7 +1,13 @@
-// 지도 탭 (기획서 "화면 구성 - 지도 탭", 0.0.5): "어디로 갈까". 내 행렬과 두 번째 행렬의 말을 그리고,
-// 마을을 누르면 마을 정보 카드(이동 시간, 아는 시세, 들은 특색, 건물, 여기로 가기), 행렬 단추로 지시서를 고친다.
+// 지도 탭 (기획서 "화면 구성 - 지도 탭", 0.0.5 → 0.1.6 목업 docs/reference/map-mockup-0.1.6.png, map-town-card-mockup-0.1.6.png):
+// "어디로 갈까". 내 행렬과 두 번째 행렬의 말을 그리고, 마을을 누르면 마을 카드(이동 날, 여비, 필요 식량, 들려오는 이야기,
+// 건물, 시세 기록, 출발), 행렬 단추로 지시서를 고친다. 위에 현재 위치 칩과 내 위치, 오른쪽 아래 확대·축소, 아래에 상태 줄.
 // Three.js가 커서 이 탭을 처음 열 때 불러온다.
 import './mapScreen.css';
+import pinImg from '../../assets/ui/icon_pin.png';
+import hourglassImg from '../../assets/ui/icon_hourglass.png';
+import coinImg from '../../assets/ui/coin.png';
+import foodImg from '../../assets/ui/travel_food.png';
+import noticeImg from '../../assets/ui/icon_notice.png';
 import { ECONOMY } from '../sim/constants';
 import { euro } from '../sim/josa';
 import { findRoute } from '../sim/worldgen';
@@ -9,17 +15,31 @@ import { MapView, PAWN_COLORS, PAWN_SLOTS, type PawnSpec } from '../view3d';
 import { agoText, arrivalText, ERROR_TEXT, money } from './format';
 import type { Game } from './game';
 import type { PlayerView } from '../sim/economy';
+import { goToTab } from './nav';
 import { openSheet } from './sheet';
 import { openCaravanSheet } from './screens/caravanSheet';
 import { openArrivalSheet } from './screens/arrivalSheet';
+import { showLedgerSection } from './screens/ledger';
+import { showPricesOf } from './screens/ledgerPrices';
 
 export interface MapScreen {
   setActive(active: boolean): void;
   render(): void;
 }
 
+const won = (n: number) => `${money(n)}골드`;
+
+/** 과녁 (내 위치 단추) */
+const TARGET = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+/** 마을 카드 줄 아이콘: 말풍선, 집, 막대 */
+const ICON = {
+  talk: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 3C6.5 3 2.5 6.4 2.5 10.6c0 2.3 1.2 4.3 3.1 5.7L5 21l4.6-2.8c.8.2 1.6.2 2.4.2 5.5 0 9.5-3.4 9.5-7.8S17.5 3 12 3z" fill="currentColor"/><circle cx="8" cy="10.8" r="1.3" fill="#fff"/><circle cx="12" cy="10.8" r="1.3" fill="#fff"/><circle cx="16" cy="10.8" r="1.3" fill="#fff"/></svg>`,
+  house: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>`,
+  bars: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="3" y="13" width="4.5" height="8" rx="1" fill="currentColor"/><rect x="9.75" y="8" width="4.5" height="13" rx="1" fill="currentColor"/><rect x="16.5" y="3" width="4.5" height="18" rx="1" fill="currentColor"/></svg>`,
+};
+
 export function mountMapScreen(container: HTMLElement, game: Game, now: () => number): MapScreen {
-  const status = document.createElement('p');
+  const status = document.createElement('div');
   status.className = 'map-status';
   status.setAttribute('role', 'status');
 
@@ -32,39 +52,51 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
     return { setActive: () => {}, render: () => {} };
   }
   container.appendChild(status);
-  // 오른쪽 위 단추 줄: 내 위치, 두 번째 행렬
+  // 왼쪽 위: 지금 있는 곳
+  const where = document.createElement('div');
+  where.className = 'map-where';
+  container.appendChild(where);
+  // 오른쪽 위 단추 줄: 내 위치, 두 번째 행렬, 도착하면 팔기
   const tools = document.createElement('div');
   tools.className = 'map-tools';
   const locateBtn = document.createElement('button');
   locateBtn.type = 'button';
-  locateBtn.className = 'map-caravan-btn map-locate-btn';
+  locateBtn.className = 'map-pill map-locate-btn';
   locateBtn.addEventListener('click', () => {
     view.focusPawn(view.focused ? null : 'me');
     syncLocate();
   });
   const syncLocate = () => {
-    locateBtn.textContent = view.focused ? '전체 보기' : '내 위치';
+    locateBtn.innerHTML = `${TARGET}<span>${view.focused ? '전체 보기' : '내 위치'}</span>`;
     locateBtn.setAttribute('aria-pressed', String(view.focused));
   };
   syncLocate();
   const caravanBtn = document.createElement('button');
   caravanBtn.type = 'button';
-  caravanBtn.className = 'map-caravan-btn';
+  caravanBtn.className = 'map-pill';
   caravanBtn.textContent = '두 번째 행렬';
   caravanBtn.addEventListener('click', () => openCaravanSheet(game));
-  tools.append(locateBtn, caravanBtn);
-  container.appendChild(tools);
   // 예약 주문이 열렸으면 길 위에서 "도착하면 팔기"를 걸어 둘 수 있다 (0.1.0)
   const arrivalBtn = document.createElement('button');
   arrivalBtn.type = 'button';
-  arrivalBtn.className = 'map-caravan-btn map-arrival-btn';
+  arrivalBtn.className = 'map-pill';
   arrivalBtn.textContent = '도착하면 팔기';
   arrivalBtn.addEventListener('click', () => openArrivalSheet(game));
-  container.appendChild(arrivalBtn);
+  tools.append(locateBtn, caravanBtn, arrivalBtn);
+  container.appendChild(tools);
+  // 오른쪽 아래: 확대·축소 (두 손가락 확대가 어려울 때)
+  const zoom = document.createElement('div');
+  zoom.className = 'map-zoom';
+  zoom.innerHTML = '<button type="button" data-zoom="in" aria-label="확대">+</button><button type="button" data-zoom="out" aria-label="축소">−</button>';
+  zoom.querySelector('[data-zoom="in"]')!.addEventListener('click', () => view.zoom(0.75));
+  zoom.querySelector('[data-zoom="out"]')!.addEventListener('click', () => view.zoom(1.33));
+  container.appendChild(zoom);
   view.setWorld(game.map);
   const name = (id: number) => game.map.towns[id]!.name;
   /** 떠나는 순간에는 상태가 먼저 바뀌어도 말을 순간이동시키지 않고 걸어가게 한다 */
   let departing = false;
+  /** 마을 카드를 연 마을 (이름표에 과녁 표시) */
+  let selected: number | null = null;
 
   /** 내 말이 서 있는 칸: 마을이면 마을 칸, 길 위면 간 날만큼 경로를 따라간 칸 */
   function myTile(): { tile: number; route: number[] | null } {
@@ -116,24 +148,70 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
     caravanBtn.hidden = !v.caravan && !v.hires.some((h) => h.role === 'carter');
     arrivalBtn.hidden = v.location.kind !== 'road' || !v.unlocks.includes('reservation');
     const loc = v.location;
+    view.markTowns(loc.kind === 'town' ? loc.town : null, selected);
+    where.innerHTML =
+      loc.kind === 'town'
+        ? `<img src="${pinImg}" alt="" /><span>현재 위치 · <b>${name(loc.town)}</b></span>`
+        : `<img src="${pinImg}" alt="" /><span>이동 중 · <b>${euro(name(loc.to))}</b></span>`;
     status.innerHTML =
       loc.kind === 'town'
-        ? `${name(loc.town)}에 있어요. 다른 마을을 누르면 떠날 수 있어요.`
-        : `${euro(name(loc.to))} 가는 길 · ${arrivalText(game.msUntilArrival(loc.daysLeft, now()), loc.daysLeft, now())}`;
+        ? `<img src="${pinImg}" alt="" /><b>${name(loc.town)}에 머무는 중</b><span>마을을 누르면 이동 정보를 볼 수 있어요.</span>`
+        : `<img src="${pinImg}" alt="" /><b>${euro(name(loc.to))} 가는 길</b><span>${arrivalText(game.msUntilArrival(loc.daysLeft, now()), loc.daysLeft, now())}</span>`;
   }
 
-  /** 마을 정보 카드: 이동 시간, 아는 시세, 들은 특색, 건물, 여기로 가기 */
+  /** 마을 카드 줄: 아이콘, 제목, 오른쪽 또는 아래 글 */
+  const infoRow = (icon: string, title: string, text: string, attr = '') =>
+    `<li ${attr}><span class="map-card-icon">${icon}</span><b>${title}</b><span>${text}</span></li>`;
+
+  /** 마을 카드: 이동 날, 여비, 필요 식량, 들려오는 이야기, 건물, 시세 기록, 출발 */
   function openTownCard(to: number) {
     const v = game.view();
     const here = v.location.kind === 'town' ? v.location.town : null;
     const traits = v.knownTraits[to] ?? [];
     const buildings = v.knownBuildings[to];
-    const info = `
-      ${traits.length ? `<p>들은 특색: ${traits.map((t) => `${t.name}${t.confirmed ? '' : ' (소문)'}`).join(', ')}</p>` : ''}
-      <p class="muted">${buildings ? `건물: ${buildings.map((b) => b.name).join(', ')}` : '가 본 적 없는 마을이라 건물을 몰라요.'}</p>`;
+    const mem = v.memory[to];
+    const city = game.map.towns[to]!.tier === 'city';
+    const visited = here === to || !!buildings;
+    const talk = [
+      ...(city ? ['길이 모이는 도시예요. 도구·염장 식품·가죽을 비싸게 산다고 해요.'] : []),
+      ...traits.map((t) => `${t.name}${t.confirmed ? '' : ' (소문)'}`),
+    ];
+    const rows = `<ul class="map-card-rows">
+        ${talk.length ? infoRow(ICON.talk, '들려오는 이야기', talk.join(' · '), 'class="wide"') : ''}
+        ${infoRow(ICON.house, '건물 정보', buildings ? buildings.map((b) => b.name).join(', ') : '방문 후 확인')}
+        ${infoRow(
+          ICON.bars,
+          '시세 기록',
+          here === to ? '지금 여기 · 오늘 시세' : mem ? `${agoText(v.day, mem.day)} 본 시세 ›` : '아직 아는 시세가 없어요.',
+          (here === to || mem) && v.unlocks.includes('ledger') ? 'class="link" data-prices' : '',
+        )}
+      </ul>`;
+
+    // 쪽지를 먼저 연다 (앞 쪽지가 닫히며 고른 마을을 지운 뒤에 새로 고른다)
+    const sheet = openSheet(name(to), () => {
+      selected = null;
+      render();
+    });
+    selected = to;
+    render();
+    sheet.el.classList.add('cream', 'map-card');
+    sheet.el.querySelector('.sheet-head h2')!.insertAdjacentHTML(
+      'beforeend',
+      ` <span class="paper-chip${here === to ? ' now' : ''}">${here === to ? '지금 여기' : visited ? '방문함' : '미방문'}</span>`,
+    );
+    const bindPrices = () =>
+      sheet.body.querySelector('[data-prices]')?.addEventListener('click', () => {
+        sheet.close();
+        showPricesOf(to);
+        showLedgerSection('prices');
+        goToTab('ledger');
+      });
+
     if (here === null || to === here) {
-      const sheet = openSheet(name(to));
-      sheet.body.innerHTML = `${to === here ? '<p>지금 여기 있어요.</p>' : '<p class="muted">길 위에서는 다른 곳으로 갈 수 없어요. 도착하고 나서 떠나세요.</p>'}${info}`;
+      sheet.body.innerHTML = `
+        <p class="map-card-note">${to === here ? '지금 이 마을에 있어요.' : '길 위에서는 다른 곳으로 갈 수 없어요. 도착하고 나서 떠나세요.'}</p>
+        ${rows}`;
+      bindPrices();
       return;
     }
     // 신문에 실린 막힌 길은 돌아가고, 산적 길목에는 통행세를 낸다
@@ -142,38 +220,52 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
     const usual = v.travel.usual[to]!;
     const toll = (v.roads.tolls[here] ?? 0) + (v.roads.tolls[to] ?? 0);
     const fee = days * ECONOMY.player.travelFeePerDay + toll;
-    const mem = v.memory[to];
-    const city = game.map.towns[to]!.tier === 'city';
     // 길의 식량 (0.1.2): 하루에 사람 하나에 식량 하나
     const needFood = Math.ceil(days) * v.food.perDay;
     const short = Math.max(0, needFood - v.food.have);
-    const canBuy = v.food.rationPrice !== null ? Math.min(short, v.food.rationRoom, Math.floor(v.gold / v.food.rationPrice)) : 0;
-    const sheet = openSheet(name(to));
+    const price = v.food.rationPrice;
+    const canBuy = price !== null ? Math.min(short, v.food.rationRoom, Math.floor(v.gold / price)) : 0;
+    const notes = [
+      days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : '',
+      toll > 0 ? `<p class="warn">산적이 있는 길목이라 여비에 통행세 ${won(toll)} 포함이에요.</p>` : '',
+      v.horses.length ? `<p>말이 길에서 지쳐요. 길 위에서는 수레에 실은 곡물을 먹어요 (하루 ${v.horses.reduce((s, h) => s + h.feed, 0)}개).</p>` : '',
+      v.orders.some((o) => o.from === 'cart') ? `<p class="warn">이 마을에 수레 짐으로 낸 신청은 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : '',
+    ].join('');
     sheet.body.innerHTML = `
-      <p><b>${days}일</b> 걸려요. 여비 <b>${money(fee)}</b>.</p>
-      <p class="${short ? 'warn' : 'muted'}">필요한 식량 <b>${needFood}</b> (가진 식량 ${v.food.have}${v.food.perDay > 1 ? `, 하루 ${v.food.perDay}명이 먹어요` : ''}).${
-        short ? ` ${short} 모자라요. 떨어지면 지치고 길이 늦어져요.` : ''
-      }</p>
+      <div class="map-card-stats">
+        <div><img src="${hourglassImg}" alt="" /><span>이동<b>${days}일</b></span></div>
+        <div><img src="${coinImg}" alt="" /><span>여비<b>${won(fee)}</b></span></div>
+        <div><img src="${foodImg}" alt="" /><span>필요 식량<b>${needFood}개</b></span></div>
+      </div>
       ${
-        canBuy > 0
-          ? `<button type="button" class="secondary-btn" data-rations>잡화점 여행 식량 ${canBuy}개 사기<small>개당 ${money(v.food.rationPrice!)}</small></button>`
+        short
+          ? `<section class="map-card-short">
+              <img src="${noticeImg}" alt="" />
+              <div>
+                <b>식량 ${short}개 부족</b>
+                <span>보유 ${v.food.have}개 / 필요 ${needFood}개${v.food.perDay > 1 ? ` · 하루 ${v.food.perDay}명이 먹어요` : ''}</span>
+                <small>식량이 떨어지면 지치고 이동이 늦어져요.</small>
+              </div>
+              ${
+                canBuy > 0
+                  ? `<div class="map-card-buy"><button type="button" data-rations>잡화점에서 식량 ${canBuy}개 구입</button><small>개당 ${won(price!)} · 합계 ${won(canBuy * price!)}</small></div>`
+                  : ''
+              }
+            </section>`
           : ''
       }
-      ${info}
-      ${days > usual ? `<p class="warn">길이 막혀 돌아가요. 보통은 ${usual}일 걸려요.</p>` : ''}
-      ${v.horses.length ? `<p class="muted">말이 길에서 지쳐요. 길 위에서는 수레에 실은 곡물을 먹어요 (하루 ${v.horses.reduce((s, h) => s + h.feed, 0)}개).</p>` : ''}
-      ${toll > 0 ? `<p class="warn">산적이 있는 길목이라 여비에 통행세 ${money(toll)} 포함이에요.</p>` : ''}
-      ${city ? '<p class="muted">길이 모이는 도시예요. 사람과 돈이 많아 도구, 염장 식품, 가죽을 비싸게 산다고 해요.</p>' : ''}
-      <p class="muted">${mem ? `${agoText(v.day, mem.day)} 본 시세를 기억하고 있어요. 지금은 달라졌을 수 있어요.` : '가 본 적 없는 마을이에요. 시세를 몰라요.'}</p>
-      ${v.orders.some((o) => o.from === 'cart') ? `<p class="warn">이 마을에 수레 짐으로 낸 신청은 거둬요 (맡긴 돈과 짐은 돌려받아요).</p>` : ''}
+      ${rows}
+      ${notes ? `<div class="map-card-notes">${notes}</div>` : ''}
       ${
         v.cart.horsesNeeded > v.horses.length
           ? `<p class="warn">말이 모자라 ${v.cart.name}가 움직이지 않아요. 손수레로 바꾸면 떠날 수 있어요.</p>
-             <button type="button" class="secondary-btn" data-handcart>손수레로 바꾸기</button>`
+             <button type="button" class="order-btn" data-handcart>손수레로 바꾸기</button>`
           : ''
       }
       <p class="error" data-error hidden></p>
-      <button type="button" class="primary-btn" data-go>여기로 가기</button>`;
+      <p class="map-card-sum">여비 ${won(fee)} · 이동 ${days}일</p>
+      <button type="button" class="rumor-note map-card-go" data-go>${euro(name(to))} 출발</button>`;
+    bindPrices();
     sheet.body.querySelector('[data-rations]')?.addEventListener('click', () => {
       const r = game.dispatch({ type: 'buyRations', qty: canBuy });
       sheet.close();

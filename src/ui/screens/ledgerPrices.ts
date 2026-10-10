@@ -16,6 +16,11 @@ import { openSheet } from '../sheet';
 /** 고른 마을 (null이면 지금 마을, 길 위면 떠난 마을) */
 let picked: number | null = null;
 
+/** 다른 화면에서 볼 마을을 골라 둔다 (지도 마을 카드의 "시세 기록") */
+export function showPricesOf(town: number): void {
+  picked = town;
+}
+
 function shownTown(v: PlayerView): number {
   const here = v.location.kind === 'town' ? v.location.town : v.location.from;
   return picked !== null && (picked === here || v.memory[picked]) ? picked : here;

@@ -1,54 +1,44 @@
-/* 지도 탭 상자(.shell-map)는 이미 절대 위치라 쪽지를 그 안에 얹는다 */
-/* 지도 아래쪽에 얹는 종이 쪽지 */
-/* 두 번째 행렬 단추 (지도 오른쪽 위) */
-.map-caravan-btn {
+/* 지도 탭 (0.1.6 목업 docs/reference/map-mockup-0.1.6.png): 지도 위에 얹는 크림색 칩과 단추, 아래 상태 줄 */
+
+/* 왼쪽 위: 현재 위치 칩 */
+.map-where {
   position: absolute;
-  top: 8px;
-  right: 12px;
+  top: 10px;
+  left: 12px;
   z-index: 2;
-  min-height: var(--tap);
-  padding: 0 14px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--wood-mid);
-  color: var(--paper);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 150px);
+  min-height: 40px;
+  padding: 0 14px 0 10px;
+  border-radius: 12px;
+  background: rgba(251, 248, 242, 0.95);
+  color: var(--cream-ink);
   font-family: var(--f-display);
-  box-shadow: 0 3px 0 var(--wood-edge);
-}
-
-.map-caravan-btn[hidden] {
-  display: none;
-}
-
-/* 도착하면 팔기는 왼쪽 위 (두 번째 행렬 단추와 겹치지 않게) */
-.map-arrival-btn {
-  right: auto;
-  left: 12px;
-}
-
-.map-status {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  margin: 0;
-  padding: 8px 12px;
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 3px;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
   font-size: 14px;
+  box-shadow: 0 2px 6px rgba(20, 40, 50, 0.2);
   pointer-events: none;
 }
 
-.map-status:empty {
-  display: none;
+.map-where img {
+  width: 16px;
 }
 
-/* 오른쪽 위 단추 줄 (내 위치, 두 번째 행렬) */
+.map-where span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-where b {
+  font-weight: normal;
+}
+
+/* 오른쪽 위 단추 줄 (내 위치, 두 번째 행렬, 도착하면 팔기) */
 .map-tools {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 12px;
   z-index: 2;
   display: flex;
@@ -57,12 +47,328 @@
   gap: 8px;
 }
 
-.map-tools .map-caravan-btn {
-  position: static;
+.map-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(251, 248, 242, 0.95);
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(20, 40, 50, 0.2);
 }
 
-/* 내 위치: 내 말 색 */
-.map-locate-btn {
-  background: var(--coral);
-  box-shadow: 0 3px 0 var(--coral-deep);
+.map-pill[hidden] {
+  display: none;
+}
+
+.map-pill:active {
+  transform: translateY(1px);
+}
+
+.map-locate-btn svg {
+  color: var(--cream-teal);
+}
+
+.map-locate-btn[aria-pressed='true'] {
+  background: var(--cream-teal-soft);
+}
+
+/* 오른쪽 아래: 확대·축소 */
+.map-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 76px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(251, 248, 242, 0.95);
+  box-shadow: 0 2px 6px rgba(20, 40, 50, 0.2);
+}
+
+.map-zoom button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.map-zoom button + button {
+  border-top: 1px solid var(--cream-line);
+}
+
+/* 아래: 상태 줄 */
+.map-status {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: 0;
+  padding: 6px 14px 6px 10px;
+  border-radius: 12px;
+  background: rgba(251, 248, 242, 0.96);
+  color: var(--cream-ink);
+  box-shadow: 0 2px 6px rgba(20, 40, 50, 0.2);
+  pointer-events: none;
+}
+
+.map-status img {
+  flex: none;
+  width: 18px;
+}
+
+.map-status b {
+  flex: none;
+  padding-right: 10px;
+  border-right: 1px solid var(--cream-line);
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.map-status span {
+  min-width: 0;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.map-status:empty {
+  display: none;
+}
+
+/* ───── 마을 카드 (0.1.6 목업 docs/reference/map-town-card-mockup-0.1.6.png): 크림색 쪽지 ───── */
+.sheet.cream {
+  --town-card: #fbf8f2;
+  --town-line: var(--cream-line);
+  border-radius: 24px 24px 0 0;
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+  box-shadow: 0 -6px 20px rgba(20, 40, 50, 0.25);
+}
+
+/* 위 손잡이 */
+.sheet.cream::before {
+  content: '';
+  display: block;
+  width: 44px;
+  height: 5px;
+  margin: 4px auto 2px;
+  border-radius: 3px;
+  background: #cfc6b8;
+}
+
+.sheet.cream .sheet-head {
+  z-index: 1;
+  background: var(--cream-bg);
+}
+
+.sheet.cream .sheet-close {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--cream-ink);
+  font-size: 24px;
+}
+
+.sheet.cream .sheet-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+}
+
+.sheet.cream .sheet-head .paper-chip {
+  font-size: 13px;
+}
+
+.map-card .sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.map-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.map-card-stats > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: var(--town-card);
+}
+
+.map-card-stats img {
+  flex: none;
+  width: 30px;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+.map-card-stats span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--cream-ink-soft);
+  font-size: 11px;
+}
+
+.map-card-stats b {
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.map-card-short {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fbefd6;
+}
+
+.map-card-short > img {
+  width: 30px;
+}
+
+.map-card-short b {
+  display: block;
+  color: #c4502c;
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.map-card-short span,
+.map-card-short small {
+  display: block;
+  font-size: 12px;
+}
+
+.map-card-short small {
+  color: var(--cream-ink-soft);
+}
+
+.map-card-buy {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.map-card-buy button {
+  width: 100%;
+  min-height: 44px;
+  border: 1.5px solid var(--cream-teal);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.map-card-buy small {
+  color: var(--cream-ink-soft);
+  font-size: 11px;
+}
+
+.map-card-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.map-card-rows li {
+  display: grid;
+  grid-template-columns: 28px auto 1fr;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 48px;
+  padding: 6px 2px;
+}
+
+.map-card-rows li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.map-card-rows li.wide {
+  grid-template-columns: 28px 1fr;
+}
+
+.map-card-rows li.wide span:last-child {
+  grid-column: 2;
+  text-align: left;
+}
+
+.map-card-rows li.link {
+  cursor: pointer;
+}
+
+.map-card-icon {
+  display: flex;
+  color: #3b4a56;
+}
+
+.map-card-rows b {
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.map-card-rows li > span:last-child {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: right;
+}
+
+.map-card-rows li.link > span:last-child {
+  color: var(--cream-teal);
+}
+
+.map-card-notes p,
+.map-card-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cream-ink-soft);
+}
+
+.map-card-notes p + p {
+  margin-top: 4px;
+}
+
+.map-card-sum {
+  margin: 4px 0 0;
+  font-family: var(--f-display);
+  font-size: 14px;
+  text-align: center;
+}
+
+.map-card-go {
+  width: 100%;
+  min-height: 52px;
+  font-size: 19px;
 }

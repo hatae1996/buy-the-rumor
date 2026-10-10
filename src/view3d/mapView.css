@@ -40,19 +40,45 @@
 
 .map-label span {
   display: block;
-  padding: 2px 14px 3px;
+  padding: 3px 14px 4px;
   white-space: nowrap;
   font-family: var(--f-display);
   font-size: 15px;
   color: #fff;
   background: var(--coral);
-  clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%);
-  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.4));
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  box-shadow: 0 2px 4px rgba(20, 30, 40, 0.35);
 }
 
+/* 도시는 글씨만 조금 크게 (0.1.6: 색은 지금 있는 마을이 청록) */
 .map-label.city span {
-  background: var(--teal);
   font-size: 16px;
+}
+
+/* 지금 있는 마을 */
+.map-label.here span {
+  background: var(--teal);
+}
+
+/* 마을 카드를 연 마을: 흰 테두리를 굵게, 위에 과녁 */
+.map-label.selected span {
+  border-width: 3px;
+  box-shadow: 0 0 0 3px rgba(209, 89, 75, 0.35), 0 2px 4px rgba(20, 30, 40, 0.35);
+}
+
+.map-label.selected::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--coral) 0 3px, transparent 3.5px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
 }
 
 .map-error {

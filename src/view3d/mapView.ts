@@ -224,6 +224,16 @@ export class MapView {
     return this.cam.focused;
   }
 
+  /** 확대(factor < 1)·축소(factor > 1) 단추 */
+  zoom(factor: number): void {
+    this.cam.zoomBy(factor);
+  }
+
+  /** 마을 이름표: 지금 있는 마을과 고른 마을 */
+  markTowns(here: number | null, selected: number | null): void {
+    this.labels.mark(here, selected);
+  }
+
   get moving(): boolean {
     return this.mover !== null;
   }

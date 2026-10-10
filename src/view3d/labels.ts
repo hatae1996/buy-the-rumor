@@ -26,10 +26,20 @@ export class TownLabels {
       const ribbon = document.createElement('span');
       ribbon.textContent = t.name;
       el.appendChild(ribbon);
+      el.dataset.town = String(t.id);
       el.addEventListener('click', () => this.onTap(t.id));
       this.layer.appendChild(el);
       return { el, anchor: t.anchor.clone() };
     });
+  }
+
+  /** 지금 있는 마을(청록)과 고른 마을(테두리와 과녁 표시) */
+  mark(here: number | null, selected: number | null): void {
+    for (const { el } of this.labels) {
+      const id = Number(el.dataset.town);
+      el.classList.toggle('here', id === here);
+      el.classList.toggle('selected', id === selected);
+    }
   }
 
   update(camera: THREE.Camera, width: number, height: number): void {

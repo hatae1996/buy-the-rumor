@@ -72,6 +72,14 @@ export class MapCamera {
     return this.following !== null;
   }
 
+  /** 확대·축소 단추: 지금 거리에 factor를 곱한 거리로 천천히 (1보다 작으면 다가간다) */
+  zoomBy(factor: number): void {
+    const c = this.controls;
+    const now = this.camera.position.distanceTo(c.target);
+    this.touched = true;
+    this.goalDistance = THREE.MathUtils.clamp(now * factor, c.minDistance, c.maxDistance);
+  }
+
   /** 매 장면마다: 따라가는 말 쪽으로 천천히 옮기고 조작을 반영한다 */
   step(dt: number): void {
     const c = this.controls;
