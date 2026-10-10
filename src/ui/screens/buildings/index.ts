@@ -1,20 +1,22 @@
-// 마을 탭 건물 카드 (기획서 "화면 구성 - 마을 탭: 건물 카드", 시안 prototypes/screens-0.0.5.html).
-// 그 마을에 있는 건물만 카드로 보이고, 지금 할 일이 있으면 도장(!)이 찍힌다. 누르면 그 건물 쪽지가 열린다.
+// 마을 탭 건물 (기획서 "화면 구성 - 마을 탭: 건물 카드", 0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png).
+// 시장은 큰 카드, 여관과 바깥은 반 카드, 나머지 시설은 목록 줄, 신문팔이는 얇은 줄.
+// 그 마을에 있는 건물만 보이고, 지금 할 일이 있으면 도장(!)이 찍힌다. 누르면 그 건물 쪽지가 열린다.
+import anvilImg from '../../../../assets/ui/bld_anvil.png';
+import innImg from '../../../../assets/ui/bld_inn.png';
+import marketImg from '../../../../assets/ui/bld_market.png';
+import outsideImg from '../../../../assets/ui/bld_outside.png';
+import storeImg from '../../../../assets/ui/bld_store.png';
+import warehouseImg from '../../../../assets/ui/bld_warehouse.png';
+import arrowImg from '../../../../assets/ui/icon_arrow.png';
+import chevronImg from '../../../../assets/ui/icon_chevron.png';
 import bankImg from '../../../../assets/ui/bank.png';
 import fieldImg from '../../../../assets/ui/field.png';
-import forestImg from '../../../../assets/ui/forest.png';
-import innImg from '../../../../assets/ui/inn.png';
-import marketImg from '../../../../assets/ui/market.png';
-import mineImg from '../../../../assets/ui/mine.png';
-import plankImg from '../../../../assets/ui/plank_long.png';
-import seaImg from '../../../../assets/ui/sea.png';
+import paperImg from '../../../../assets/ui/tab_news.png';
 import sealImg from '../../../../assets/ui/seal_big.png';
 import smithyImg from '../../../../assets/ui/smithy.png';
-import tagImg from '../../../../assets/ui/tag.png';
-import paperImg from '../../../../assets/ui/paper_small.png';
-import woodblockImg from '../../../../assets/ui/woodblock.png';
 import type { BuildingId } from '../../../sim/growth';
 import type { PlayerView } from '../../../sim/economy';
+import { euro } from '../../../sim/josa';
 import type { Game } from '../../game';
 import { openCartShopSheet, openStableSheet } from '../horseSheet';
 import { openInn } from './inn';
@@ -24,26 +26,22 @@ import { openWarehouse } from './warehouse';
 import { openNewsboy } from '../newspaper';
 import { portraitHtml } from '../../portrait/portrait';
 
+// 로우폴리 그림이 아직 없는 시설(마구간, 작업장, 은행, 길드 회관)은 예전 그림
 const IMG: Record<BuildingId, string> = {
   market: marketImg,
   inn: innImg,
   newsboy: paperImg,
-  store: tagImg,
-  outside: forestImg,
-  warehouse: woodblockImg,
+  store: storeImg,
+  outside: outsideImg,
+  warehouse: warehouseImg,
   stable: fieldImg,
-  cartShop: plankImg,
+  cartShop: anvilImg,
   workshop: smithyImg,
   bank: bankImg,
   guildHall: sealImg,
 };
 
-/** 바깥 그림은 그 마을 자원지에 맞춘다 (시세를 보면 아는 것이 아니라 마을 이름표의 특산으로) */
-function outsideImg(game: Game, v: PlayerView): string {
-  if (v.location.kind !== 'town') return forestImg;
-  const spec = game.map.towns[v.location.town]!.specialties[0];
-  return spec === 'ore' ? mineImg : spec === 'fish' || spec === 'salt' ? seaImg : spec === 'field' ? fieldImg : forestImg;
-}
+const CHEVRON = `<img class="town-chevron" src="${chevronImg}" alt="" />`;
 
 /** 카드 아래 한 줄 (지금 상태) */
 function status(id: BuildingId, v: PlayerView): string {
@@ -51,26 +49,30 @@ function status(id: BuildingId, v: PlayerView): string {
   switch (id) {
     case 'market': {
       const n = v.orders.filter((o) => o.town === here).length;
-      return n ? `신청 ${n}건` : '오늘 시세';
+      return n ? `신청 ${n}건이 걸려 있어요` : '오늘의 시세를 확인하세요';
     }
     case 'inn':
       return v.apprentice ? '묵기' : v.hireBoard.length ? '소문 · 구인' : '소문 · 묵기';
     case 'newsboy':
-      return v.newspaper.onSale === null ? '신문 없음' : v.newspaper.onSale.bought ? '샀어요' : `오늘 신문${v.newspaper.free ? '' : ` ${v.newspaper.fee}냥`}`;
+      return v.newspaper.onSale === null
+        ? '새로운 신문이 없어요.'
+        : v.newspaper.onSale.bought
+          ? '오늘 신문을 샀어요.'
+          : `오늘 신문이 나왔어요${v.newspaper.free ? '.' : ` · ${v.newspaper.fee}냥`}`;
     case 'store':
       return v.gear.some((g) => g.uses === 0) ? '장비 수리' : '음식 · 장비';
     case 'outside':
-      return `기회 ${v.expeditionChances} / 6`;
+      return `탐색 기회 ${v.expeditionChances} / 6`;
     case 'warehouse': {
       const w = v.warehouses.find((x) => x.town === here);
-      return w ? `짐 ${w.count}개` : '빌리기';
+      return w ? `짐 ${w.count}개 보관 중` : '짐 보관 · 빌리기';
     }
     case 'stable': {
       const left = v.stable?.horses.reduce((s, h) => s + h.stock, 0) ?? 0;
       return left ? `말 ${left}마리` : '남은 말 없음';
     }
     case 'cartShop':
-      return `지금 ${v.cart.name}`;
+      return `수레 수리 · 바꾸기 · 지금 ${v.cart.name}`;
     case 'workshop':
       return '대장간 · 염장';
     case 'bank':
@@ -82,24 +84,68 @@ function status(id: BuildingId, v: PlayerView): string {
   }
 }
 
+const alertHtml = (b: PlayerView['buildings'][number]): string =>
+  b.alert ? `<span class="building-alert" title="${b.alert}">!</span>` : '';
+
 export function buildingCards(game: Game, v: PlayerView): string {
   // 견습 동안은 장면 하나에 새것 하나만: 시장, 여관, 잡화점, 바깥만
   // 신문팔이는 첫 신문 장면부터 (소식 탭이 열릴 때, 0.1.2)
   const apprenticeShown = ['market', 'inn', 'store', 'outside', ...(v.unlocks.includes('news') ? ['newsboy'] : [])];
   const shown = v.apprentice ? v.buildings.filter((b) => apprenticeShown.includes(b.id)) : v.buildings;
+  const market = shown.find((b) => b.id === 'market');
+  const halves = shown.filter((b) => b.id === 'inn' || b.id === 'outside');
+  const rows = shown.filter((b) => !['market', 'inn', 'outside', 'newsboy'].includes(b.id));
+  const news = shown.find((b) => b.id === 'newsboy');
   // 시장 카드에 장 상인 얼굴 (0.1.4, 자리만)
-  const merchant = shown.some((b) => b.id === 'market') ? game.faces()?.merchant : null;
-  return `<div class="building-grid">${shown
-    .map(
-      (b) => `<button type="button" class="building-card" data-building="${b.id}">
-        <img src="${b.id === 'outside' ? outsideImg(game, v) : IMG[b.id]}" alt="" />
-        <span class="building-name">${b.name}</span>
-        <small>${status(b.id, v)}</small>
-        ${b.id === 'market' && merchant ? `<span class="building-face">${portraitHtml(merchant, 34, '장 상인')}</span>` : ''}
-        ${b.alert ? `<span class="building-alert" title="${b.alert}">!</span>` : ''}
-      </button>`,
-    )
-    .join('')}</div>`;
+  const merchant = market ? game.faces()?.merchant : null;
+
+  const marketHtml = market
+    ? `<button type="button" class="town-hero" data-building="market">
+        <span class="town-hero-text">
+          <span class="town-hero-name">${market.name}</span>
+          <small>${status('market', v)}</small>
+          <span class="town-go">${euro(market.name)} <img src="${arrowImg}" alt="" /></span>
+        </span>
+        <img class="town-hero-img" src="${IMG.market}" alt="" />
+        ${merchant ? `<span class="building-face">${portraitHtml(merchant, 34, '장 상인')}</span>` : ''}
+        ${alertHtml(market)}
+      </button>`
+    : '';
+  const halfHtml = halves.length
+    ? `<div class="town-halves">${halves
+        .map(
+          (b) => `<button type="button" class="town-half" data-building="${b.id}">
+            <span class="town-half-name">${b.name}</span>
+            <small>${status(b.id, v)}</small>
+            <img class="town-half-img" src="${IMG[b.id]}" alt="" />
+            ${CHEVRON}
+            ${alertHtml(b)}
+          </button>`,
+        )
+        .join('')}</div>`
+    : '';
+  const rowHtml = rows.length
+    ? `<h3 class="town-section">마을 시설</h3>
+      <div class="town-rows">${rows
+        .map(
+          (b) => `<button type="button" class="town-row" data-building="${b.id}">
+            <span class="town-row-pic"><img src="${IMG[b.id]}" alt="" /></span>
+            <span class="town-row-text"><span class="town-row-name">${b.name}</span><small>${status(b.id, v)}</small></span>
+            ${CHEVRON}
+            ${alertHtml(b)}
+          </button>`,
+        )
+        .join('')}</div>`
+    : '';
+  const newsHtml = news
+    ? `<button type="button" class="town-news" data-building="newsboy">
+        <img src="${IMG.newsboy}" alt="" />
+        <span class="town-row-name">${news.name}</span>
+        <small>${status('newsboy', v)}</small>
+        ${alertHtml(news)}
+      </button>`
+    : '';
+  return marketHtml + halfHtml + rowHtml + newsHtml;
 }
 
 export function openBuilding(game: Game, id: BuildingId): void {

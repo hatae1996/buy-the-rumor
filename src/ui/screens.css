@@ -68,40 +68,6 @@
   white-space: nowrap;
 }
 
-/* ───── 마을 ───── */
-.town-banner {
-  position: relative;
-  margin: 0 calc(-16px - var(--safe-right)) 4px calc(-16px - var(--safe-left));
-  margin-top: -12px;
-}
-
-.town-banner img {
-  display: block;
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-}
-
-.tier-badge {
-  position: absolute;
-  top: 10px;
-  left: calc(var(--safe-left) + 16px);
-  padding: 2px 12px;
-  border-radius: 12px;
-  background: var(--teal);
-  color: #fff;
-  font-family: var(--f-display);
-  font-size: 15px;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
-}
-
-.town-banner .ribbon {
-  position: absolute;
-  left: 50%;
-  bottom: -14px;
-  transform: translateX(-50%);
-}
-
 .good-list {
   list-style: none;
   margin: 8px 0 0;
@@ -1317,65 +1283,6 @@
   margin-top: 2px;
 }
 
-/* ───── 마을 탭: 건물 카드 (0.0.5) ───── */
-.building-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.building-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-height: 110px;
-  padding: 10px 8px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
-}
-
-.building-card:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
-}
-
-.building-card img {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-}
-
-.building-name {
-  font-family: var(--f-display);
-  font-size: 17px;
-}
-
-.building-card small {
-  color: var(--ink-soft);
-  font-size: 13px;
-}
-
-/* 할 일 도장 (!) */
-.building-alert {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--wax);
-  color: var(--paper);
-  font-family: var(--f-display);
-  font-size: 17px;
-  line-height: 26px;
-  transform: rotate(-8deg);
-}
-
 .center {
   text-align: center;
 }
@@ -1601,9 +1508,349 @@
   color: var(--ink-soft);
 }
 
+/* ───── 마을 탭 (0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png) ─────
+   크림 바탕, 마을 이름과 특색 칩, 시장 큰 카드, 여관·바깥 반 카드, 시설 목록 줄, 신문팔이 얇은 줄 */
+.screen[data-screen='town'] {
+  --town-card: #fbf8f2;
+  --town-line: var(--cream-line);
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+}
+
+.town-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.town-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 120px);
+}
+
+.town-title h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 34px;
+  line-height: 1.1;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.town-sprig {
+  flex: none;
+  width: 22px;
+  height: auto;
+}
+
+.town-season {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  background: var(--cream-teal-soft);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.town-season img {
+  width: 20px;
+}
+
+.town-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 15px;
+  color: var(--cream-ink-soft);
+}
+
+.town-sub img {
+  width: 40px;
+  opacity: 0.85;
+}
+
+.town-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.town-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 2px 14px 2px 10px;
+  border-radius: 10px;
+  background: #e6ead9;
+  font-family: var(--f-display);
+  font-size: 14px;
+}
+
+.town-chip img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+/* 건물 카드 공통: 크림 카드, 얇은 테두리, 누르면 살짝 들어간다 */
+.town-hero,
+.town-half,
+.town-row,
+.town-news {
+  position: relative;
+  display: block;
+  width: 100%;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  color: var(--cream-ink);
+  text-align: left;
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.town-hero:active,
+.town-half:active,
+.town-row:active,
+.town-news:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.town-hero small,
+.town-half small,
+.town-row small,
+.town-news small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.town-hero {
+  display: flex;
+  align-items: center;
+  min-height: 150px;
+  padding: 14px 6px 14px 16px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.town-hero-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.town-hero-name {
+  font-family: var(--f-display);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.town-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 17px;
+  box-shadow: 0 3px 0 var(--coral-deep);
+}
+
+.town-go img {
+  width: 18px;
+}
+
+.town-hero-img {
+  flex: none;
+  width: 48%;
+  max-width: 200px;
+  height: auto;
+}
+
+.town-halves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.town-half:only-child {
+  grid-column: span 2;
+}
+
+.town-half {
+  min-height: 0;
+  padding: 12px 12px 8px;
+  overflow: hidden;
+}
+
+.town-half-name,
+.town-row-name {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.town-half-img {
+  display: block;
+  width: auto;
+  max-width: 82%;
+  height: 104px;
+  margin: 2px 0 0 auto;
+  object-fit: contain;
+  object-position: right bottom;
+}
+
+.town-chevron {
+  width: 10px;
+  height: auto;
+  opacity: 0.8;
+}
+
+.town-half .town-chevron {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+}
+
+.town-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-family: var(--f-display);
+  font-size: 19px;
+}
+
+.town-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--town-line);
+}
+
+.town-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.town-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 6px 16px 6px 8px;
+}
+
+.town-row-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 52px;
+  border-radius: 10px;
+  background: #f1ebdf;
+}
+
+.town-row-pic img {
+  max-width: 64px;
+  max-height: 46px;
+}
+
+.town-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.town-row-name {
+  font-size: 18px;
+}
+
+.town-news {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 16px 4px 12px;
+}
+
+.town-news img {
+  width: 40px;
+}
+
+.town-news .town-row-name {
+  font-size: 16px;
+}
+
+.town-news small {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 시장 카드 장 상인 얼굴 (0.1.4) */
 .building-face {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  right: 10px;
+  bottom: 8px;
   line-height: 0;
+}
+
+/* 할 일 도장 (!) */
+.building-alert {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--wax);
+  color: var(--paper);
+  font-family: var(--f-display);
+  font-size: 17px;
+  line-height: 26px;
+  transform: rotate(-8deg);
+  text-align: center;
+}
+
+/* 반 카드는 꺾쇠 왼쪽, 목록 줄은 꺾쇠 앞에 줄지어 */
+.town-half .building-alert {
+  right: 34px;
+}
+
+.town-row .building-alert,
+.town-news .building-alert {
+  position: static;
+  flex: none;
+  order: 2;
+}
+
+.town-row .town-chevron {
+  order: 3;
 }

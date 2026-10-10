@@ -1,6 +1,7 @@
 """UI 그림판을 잘라 assets/ui/ 에 투명 PNG로 넣는다.
 
 - assets-src/ui/cart-ui-sheet.png: 분홍(마젠타) 배경. 탭 아이콘 5, 모래시계·빵·동전 (0.1.6 짐칸 탭). 그림판의 마차는 쓰지 않는다
+- assets-src/ui/town-ui-sheet.png: 분홍 배경. 마을 탭 건물 6과 작은 아이콘 8 (0.1.6 마을 탭)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
 python scripts/ui/cut_sheets.py   (numpy, pillow, scipy)
@@ -101,6 +102,65 @@ def goods_sheet() -> None:
         save(rgba, box, f'goods/{good}.png', 128, pad=2)
 
 
+def town_ui_sheet() -> None:
+    """마을 탭 그림판 (0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png): 건물 6, 작은 아이콘 8"""
+    src = np.asarray(Image.open(os.path.join(ROOT, 'assets-src', 'ui', 'town-ui-sheet.png')).convert('RGB')).astype(float)
+    alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    rgb = despill_magenta(src, alpha)
+    rgba = np.dstack([rgb, alpha * 255])
+    # 그림 사이가 좁아(여관과 바깥) 조금만 부풀려 덩어리를 찾는다. 상자마다 제 덩어리 번호를 들고 다닌다
+    # (시장 등불이 여관 상자 안에 들어오듯 이웃 그림이 상자에 겹쳐도 제 것만 남긴다)
+    grown = nd.binary_dilation(alpha > 0.5, iterations=5)
+    lab, n = nd.label(grown)
+    boxes = []
+    for k, sl in enumerate(nd.find_objects(lab), 1):
+        inner = (alpha > 0.5)[sl] & (lab[sl] == k)
+        if inner.sum() < 800:
+            continue
+        ys, xs = np.where(inner)
+        boxes.append((sl[1].start + xs.min(), sl[0].start + ys.min(), sl[1].start + xs.max() + 1, sl[0].start + ys.max() + 1, {k}))
+    # 물결 두 줄처럼 가로 자리가 겹치고 위아래로 붙은 작은 조각은 하나로 묶는다
+    merged = True
+    while merged:
+        merged = False
+        for i, p in enumerate(boxes):
+            for j, q in enumerate(boxes[i + 1:], i + 1):
+                small = (p[2] - p[0]) * (p[3] - p[1]) < 40000 and (q[2] - q[0]) * (q[3] - q[1]) < 40000
+                overlap = min(p[2], q[2]) - max(p[0], q[0]) > 0.6 * min(p[2] - p[0], q[2] - q[0])
+                gap = max(p[1], q[1]) - min(p[3], q[3])
+                if small and overlap and gap < 30:
+                    boxes[i] = (min(p[0], q[0]), min(p[1], q[1]), max(p[2], q[2]), max(p[3], q[3]), p[4] | q[4])
+                    del boxes[j]
+                    merged = True
+                    break
+            if merged:
+                break
+    # 줄(가운데 높이)로 묶고 줄 안에서는 왼쪽부터
+    boxes.sort(key=lambda b: (b[1] + b[3]) / 2)
+    rows, cur = [], [boxes[0]]
+    for b in boxes[1:]:
+        if (b[1] + b[3]) / 2 - (cur[-1][1] + cur[-1][3]) / 2 > 120:
+            rows.append(cur)
+            cur = [b]
+        else:
+            cur.append(b)
+    rows.append(cur)
+    ordered = [b for row in rows for b in sorted(row, key=lambda b: b[0])]
+    names = [
+        ('bld_market.png', 480), ('bld_inn.png', 480), ('bld_outside.png', 480),
+        ('bld_store.png', 256), ('bld_warehouse.png', 256), ('bld_anvil.png', 256),
+        ('orn_sprig_l.png', 128), ('orn_sprig_r.png', 128), ('orn_waves.png', 128), ('icon_sprout.png', 96),
+        ('icon_fish.png', 96), ('icon_wheat.png', 96), ('icon_chevron.png', 64), ('icon_arrow.png', 96),
+    ]
+    if len(ordered) != len(names):
+        sys.exit(f'마을 그림판 덩어리 수가 다르다: {len(ordered)}')
+    for box, (name, size) in zip(ordered, names):
+        own = rgba.copy()
+        own[..., 3] *= np.isin(lab, list(box[4]))
+        save(own, box[:4], name, size)
+
+
 if __name__ == '__main__':
     cart_ui_sheet()
+    town_ui_sheet()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()
