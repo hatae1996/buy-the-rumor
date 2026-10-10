@@ -9,7 +9,7 @@ import { AVAILABLE_PARTS, CLOTH_COLORS, HAIR_COLORS, PARTS, REGION_PALETTE, SKIN
 import { assignLooks, drawLook, lookKey, npcKey, resolveChoices, rollLook } from './draw';
 import { KIT_PARTS } from './kitParts';
 import { COMMON_BEARDS, COMMON_HAIR, COMMON_OLD_HAIR, COMMON_TOPS, ROLE_RANGES, type PartChoice } from './roles';
-import { townFaces, worldLooks, worldNpcs } from './roster';
+import { hireFaces, townFaces, worldLooks, worldNpcs } from './roster';
 import type { Look, LookRole, NpcEntry, RegionCode } from './types';
 
 const SEED = 20261008;
@@ -314,5 +314,19 @@ describe('세계의 얼굴', () => {
     if (faces.innkeeper) expect(faces.innkeeper).toEqual(looks.get(`inn:${p.town}`));
     p.travel = { from: p.town, to: p.town, daysLeft: 1 } as never;
     expect(townFaces(s, map, pid)).toBeNull();
+  });
+
+  it('데려온 사람 얼굴은 길 위에서도 마을에서 본 얼굴과 같다', () => {
+    const s = createEconomy(map, SEED);
+    advanceDays(s, map, 1);
+    const pid = Object.keys(s.players)[0]!;
+    const p = s.players[pid]!;
+    expect(hireFaces(s, pid)).toEqual({});
+    const worker = s.workers[0]!;
+    p.hires.push({ id: 1, worker } as never);
+    const inTown = townFaces(s, map, pid)!.hires;
+    expect(hireFaces(s, pid)).toEqual(inTown);
+    p.travel = { from: p.town, to: p.town, daysLeft: 1 } as never;
+    expect(hireFaces(s, pid)[1]).toEqual(inTown[1]);
   });
 });

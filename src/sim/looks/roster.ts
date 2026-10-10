@@ -72,3 +72,11 @@ export function townFaces(state: EconomyState, map: WorldMap, playerId: PlayerId
     elder: p.apprentice ? of('elder', 0) : null,
   };
 }
+
+/** 내가 데려온 사람 얼굴 (일꾼 번호 → 얼굴). 길 위에서도 본다 (장부 인력·말) */
+export function hireFaces(state: EconomyState, playerId: PlayerId): Record<number, Look> {
+  const p = getPlayer(state, playerId);
+  if (!p.hires.length) return {};
+  const looks = worldLooks(state);
+  return Object.fromEntries(p.hires.map((h) => [h.id, looks.get(npcKey({ kind: 'worker', id: h.worker.id }))!]));
+}

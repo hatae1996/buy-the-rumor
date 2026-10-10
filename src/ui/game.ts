@@ -22,7 +22,7 @@ import {
 import { ECONOMY } from '../sim/constants';
 import { botSpecs, createCrew, crewDay, type BotBrain } from '../sim/bot';
 import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
-import { townFaces, type TownFaces } from '../sim/looks';
+import { hireFaces, townFaces, type Look, type TownFaces } from '../sim/looks';
 import { mixSeed } from '../sim/rng';
 import { createCart, refitBoards } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
@@ -117,6 +117,11 @@ export class Game {
   /** 지금 마을에서 보이는 NPC 얼굴 (0.1.4). 봇이 쓰는 view()와 따로 둔다 */
   faces(): TownFaces | null {
     return townFaces(this.state, this.map, this.playerId);
+  }
+
+  /** 데려온 일꾼 얼굴 (길 위에서도) */
+  hireFaces(): Record<number, Look> {
+    return hireFaces(this.state, this.playerId);
   }
 
   dispatch(cmd: Command): CommandResult {

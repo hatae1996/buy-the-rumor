@@ -2891,3 +2891,167 @@
 .price-pick-list .town-row[aria-current='true'] {
   border-color: var(--cream-teal);
 }
+
+/* 장부 인력·말 (0.1.6 목업 docs/reference/ledger-people-mockup-0.1.6.png): 유지비는 한 줄로 작게, 사람·말 카드는 크게 */
+.people-upkeep,
+.people-card {
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.people-upkeep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  padding: 6px 14px 6px 8px;
+}
+
+.people-upkeep img {
+  width: 30px;
+}
+
+.people-upkeep b {
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-weight: normal;
+}
+
+.people-upkeep small {
+  flex: 1 1 100%;
+  padding-left: 38px;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.people-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.people-head span {
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.people-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+}
+
+/* 얼굴(아바타 키트)과 말 그림 자리 */
+.people-pic {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 112px;
+  height: 128px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.people-pic.empty {
+  border: 2px dashed var(--town-line);
+  background: none;
+}
+
+.people-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.people-body h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 22px;
+}
+
+.people-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #efe5d2;
+  font-family: var(--f-display);
+  font-size: 12px;
+}
+
+.people-body p {
+  margin: 0;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+/* 말 피로 칸: 카드 폭만큼 (세로 줄 안에서 칸이 0으로 줄지 않게) */
+.people-body .fatigue {
+  align-self: stretch;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.people-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--town-line);
+  font-size: 13px;
+}
+
+.people-foot b {
+  flex: 1;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+  text-align: right;
+}
+
+.people-foot b small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.people-foot .order-btn {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.people-mini {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.people-mini li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: var(--town-card);
+  font-size: 13px;
+}
+
+.people-inn img {
+  flex: none;
+  width: 56px;
+}
