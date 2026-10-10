@@ -1,4 +1,4 @@
-// 잡화점(페이지), 바깥(원정), 작업장, 은행, 길드 회관 쪽지.
+// 잡화점·작업장·은행·길드 회관(페이지), 바깥(원정) 쪽지.
 import mealImg from '../../../../assets/ui/store_meal.png';
 import rationImg from '../../../../assets/ui/travel_food.png';
 import houseImg from '../../../../assets/ui/house_red.png';
@@ -6,6 +6,19 @@ import coinImg from '../../../../assets/ui/coin.png';
 import infoImg from '../../../../assets/ui/icon_info.png';
 import { itemArt } from '../../itemArt';
 import { openLivePage } from '../../livePage';
+import workshopImg from '../../../../assets/ui/bld_workshop.png';
+import bankImg from '../../../../assets/ui/bld_bank.png';
+import guildImg from '../../../../assets/ui/bld_guild.png';
+import signImg from '../../../../assets/ui/workshop_sign.png';
+import anvilImg from '../../../../assets/ui/bld_anvil.png';
+import barrelImg from '../../../../assets/ui/quest_winterFood.png';
+import sackImg from '../../../../assets/ui/coins_sack.png';
+import bookImg from '../../../../assets/ui/tab_ledger.png';
+import lettersImg from '../../../../assets/ui/ledger_letters.png';
+import coinsImg from '../../../../assets/ui/coins_stack.png';
+import { goodName } from '../../format';
+import type { GoodId } from '../../../sim/economy';
+import { questSectionsHtml, themeEmblem } from '../newsGuild';
 import { ECONOMY } from '../../../sim/constants';
 import { money } from '../../format';
 
@@ -114,42 +127,97 @@ export function openOutside(game: Game): void {
   });
 }
 
+/** "마을로 돌아가기" (도시 건물 페이지 맨 아래) */
+const BACK_LINK = '<button type="button" class="shop-link city-back" data-page-close>마을로 돌아가기 <span>›</span></button>';
+
+/** 도시 건물 페이지: 같은 마을에 있는 동안만 연다 */
+function cityPage(game: Game, title: string, draw: (body: HTMLElement, v: PlayerView) => void): void {
+  const v0 = game.view();
+  if (v0.location.kind !== 'town') return;
+  const here = v0.location.town;
+  openLivePage(game, { back: '마을', title, sub: game.map.towns[here]!.name, icon: houseImg }, (body, v, page) => {
+    if (v.location.kind !== 'town' || v.location.town !== here) {
+      page.close();
+      return;
+    }
+    draw(body, v);
+    body.querySelector('[data-page-close]')?.addEventListener('click', () => page.close());
+  });
+}
+
+/** 작업장 (0.1.6 목업 docs/reference/workshop-mockup-0.1.6.png): 도시 공방 소개, 내 작업장은 다음 버전 */
 export function openWorkshop(game: Game): void {
-  openLiveSheet(game, '작업장', (body) => {
-    body.innerHTML = `<p>도시 대장간과 염장 공방이 재료를 사서 도구와 염장 식품을 만들어요.</p>
-      <p class="muted">내 작업장(염장소, 대장간)을 사거나 짓는 것은 다음 버전에서 열려요.</p>`;
-  });
-}
-
-export function openBank(game: Game): void {
-  openLiveSheet(game, '은행', (body, v) => {
+  const recipe = (k: keyof typeof ECONOMY.craft) => {
+    const c = ECONOMY.craft[k];
+    const ins = Object.entries(c.inputs).map(([g, n]) => `${goodName(g as GoodId)} ${n}`);
+    if (c.rawFood) ins.push(`생선·고기 ${c.rawFood}`);
+    const outs = Object.entries(c.output).map(([g, n]) => `${goodName(g as GoodId)} ${n}`);
+    return `${ins.join(' · ')} → ${outs.join(' · ')}`;
+  };
+  cityPage(game, '작업장', (body) => {
     body.innerHTML = `
-      <ul class="list">
-        <li class="row"><span>예금</span><b>${money(v.bank.deposit)}</b></li>
-        <li class="row"><span>대출</span><b>${money(v.bank.loan)}</b></li>
-      </ul>
-      <p class="muted">예금 이자 시즌당 ${Math.round(v.bank.depositRate * 100)}%, 대출 이자 ${Math.round(v.bank.loanRate * 100)}%. 계좌는 하나라 어느 도시에서나 같아요.</p>
-      <p class="muted">맡기기와 빌리기는 다음 버전에서 열려요.</p>`;
+      <section class="city-hero"><img src="${workshopImg}" alt="" /><div><h3>재료가 새 물건이<br />되는 곳</h3><small>도시의 공방이 재료를 사서 물건을 만들어요.</small></div></section>
+      <section class="shop-card">
+        <h3>도시의 공방</h3>
+        <ul class="city-rows">
+          <li><img src="${anvilImg}" alt="" /><span><b>대장간</b><small>재료를 사서 도구를 만들어요.</small><small class="city-recipe">${recipe('smith')}</small></span><i><img src="${itemArt('tools') ?? ''}" alt="" /></i></li>
+          <li><img src="${barrelImg}" alt="" /><span><b>염장 공방</b><small>재료를 사서 염장 식품을 만들어요.</small><small class="city-recipe">${recipe('curer')}</small></span><i><img src="${itemArt('salted') ?? ''}" alt="" /></i></li>
+        </ul>
+      </section>
+      <section class="city-soon">
+        <h3>내 작업장</h3>
+        <div><img src="${signImg}" alt="" /><span><span class="paper-chip now">준비 중</span><small>내 작업장(염장소, 대장간) 구입과 건설은 다음 버전에서 열려요.</small><button type="button" class="rumor-note" disabled>구입·건설 준비 중</button></span></div>
+      </section>
+      ${BACK_LINK}`;
   });
 }
 
+/** 은행 (0.1.6 목업 docs/reference/bank-mockup-0.1.6.png): 계좌와 이자, 맡기기·빌리기는 다음 버전 */
+export function openBank(game: Game): void {
+  const won = (n: number) => `${money(n)}골드`;
+  cityPage(game, '은행', (body, v) => {
+    body.innerHTML = `
+      <section class="city-hero"><img src="${bankImg}" alt="" /><div><h3>어느 도시에서나<br />같은 계좌</h3><small>도시가 달라도 예금과 대출은 이어져요.</small></div></section>
+      <section class="shop-card">
+        <h3>내 계좌</h3>
+        <div class="city-account">
+          <div><img src="${sackImg}" alt="" /><span>예금<b>${won(v.bank.deposit)}</b></span></div>
+          <div><img src="${bookImg}" alt="" /><span>대출<b>${won(v.bank.loan)}</b></span></div>
+        </div>
+      </section>
+      <section class="shop-card">
+        <h3>이자 안내</h3>
+        <ul class="city-rates">
+          <li><span>예금 이자</span><b>시즌당 ${Math.round(v.bank.depositRate * 100)}%</b></li>
+          <li><span>대출 이자</span><b>시즌당 ${Math.round(v.bank.loanRate * 100)}%</b></li>
+        </ul>
+        <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />계좌는 하나라 어느 도시 은행에서나 같아요.</p>
+      </section>
+      <section class="city-soon">
+        <div><img src="${lettersImg}" alt="" /><span><b>은행 업무 준비 중</b><small>예금과 대출은 다음 버전에서 이용할 수 있어요.</small></span></div>
+        <div class="city-soon-btns"><button type="button" class="rumor-note" disabled>예금하기</button><button type="button" class="rumor-note" disabled>대출받기</button></div>
+      </section>
+      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>현재 보유 금화</b><strong>${won(v.gold)}</strong></section>
+      ${BACK_LINK}`;
+  });
+}
+
+/** 길드 회관 (0.1.6 목업 docs/reference/guildhall-mockup-0.1.6.png): 이번 시즌 테마와 의뢰 (소식 탭 길드와 같은 카드) */
 export function openGuildHall(game: Game): void {
-  openLiveSheet(game, '길드 회관', (body, v) => {
-    body.innerHTML = guildHtml(v);
+  cityPage(game, '길드 회관', (body, v) => {
+    const g = v.guild;
+    if (!g.theme) {
+      body.innerHTML = `<p class="ledger-note">이번 시즌 테마가 아직 없어요.</p>${BACK_LINK}`;
+      return;
+    }
+    const emblem = themeEmblem(g.themeId);
+    body.innerHTML = `
+      <section class="shop-card">
+        <div class="city-guild-head">${emblem ? `<img src="${emblem}" alt="" />` : `<img src="${guildImg}" alt="" />`}<div><h3>${g.theme}</h3><small>시즌 의뢰 미리보기</small></div></div>
+        <p class="city-guild-note"><img src="${infoImg}" alt="" />의뢰는 아직 다듬는 중이에요. 내용은 바뀔 수 있어요.</p>
+      </section>
+      <section class="guild-card">${questSectionsHtml(v)}</section>
+      <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />개인 의뢰는 장에 팔면 쌓이고, 동·은·금 문턱을 넘으면 인장이 찍혀요. 공동 목표는 지금은 내 몫만 세요.</p>
+      ${BACK_LINK}`;
   });
-}
-
-/** 이번 시즌 테마와 의뢰 진행 (소식 탭에서도 같이 쓴다) */
-export function guildHtml(v: PlayerView): string {
-  const g = v.guild;
-  if (!g.theme) return '<p class="muted">이번 시즌 테마가 아직 없어요.</p>';
-  const tierName: Record<string, string> = { bronze: '동', silver: '은', gold: '금' };
-  const rows = g.quests
-    .map(
-      (q) => `<li class="row"><span><b>${q.name}</b>${q.scope === 'communal' ? ' <span class="badge">공동</span>' : ''}<br /><small class="muted">${q.text} · ${q.value} / ${q.tiers.join(' · ')}</small></span>${
-        q.tier ? `<span class="stamp right">${tierName[q.tier]}</span>` : ''
-      }</li>`,
-    )
-    .join('');
-  return `<p><b>${g.theme}</b> <span class="muted">(테마와 의뢰는 기획 보류 중, 참고용)</span></p><ul class="list">${rows}</ul>`;
 }

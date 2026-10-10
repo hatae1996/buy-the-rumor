@@ -8,6 +8,7 @@
 - assets-src/ui/inn-ui-sheet.png: 여관 (술잔, 전서구, 침대, 고용 게시판)
 - assets-src/ui/newsboy-ui-sheet.png: 신문팔이 가판대 (신문 있음, 빔)
 - assets-src/ui/shops-ui-sheet.png: 잡화점 국과 빵, 창고 보관 칸, 수레방 바퀴와 망치
+- assets-src/ui/city-ui-sheet.png: 작업장·은행·길드 회관 건물, 내 작업장 팻말, 전쟁의 시즌 방패, 성벽 보수
 - assets-src/ui/news-ui-sheet.png, guild-ui-sheet.png: 소식 탭 신문·활동·길드 (보고 그림, 우승컵, 핀, 시즌 방패, 의뢰 그림)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
@@ -242,6 +243,15 @@ def shops_ui_sheet() -> None:
     sheet_pieces('shops-ui-sheet.png', [('store_meal.png', 256), ('warehouse_cells.png', 160), ('cartshop_wheel.png', 192)])
 
 
+def city_ui_sheet() -> None:
+    """도시 건물 그림판 (0.1.6 목업 docs/reference/workshop·bank·guildhall-mockup-0.1.6.png):
+    작업장, 은행, 길드 회관, 내 작업장 팻말, 전쟁의 시즌 방패, 성벽 보수(의뢰 cityWall)"""
+    sheet_pieces('city-ui-sheet.png', [
+        ('bld_workshop.png', 320), ('bld_bank.png', 320), ('bld_guild.png', 320),
+        ('workshop_sign.png', 256), ('theme_war.png', 192), ('quest_cityWall.png', 160),
+    ])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -274,5 +284,6 @@ if __name__ == '__main__':
     inn_ui_sheet()
     newsboy_ui_sheet()
     shops_ui_sheet()
+    city_ui_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

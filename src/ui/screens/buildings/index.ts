@@ -9,11 +9,11 @@ import storeImg from '../../../../assets/ui/bld_store.png';
 import warehouseImg from '../../../../assets/ui/bld_warehouse.png';
 import arrowImg from '../../../../assets/ui/icon_arrow.png';
 import chevronImg from '../../../../assets/ui/icon_chevron.png';
-import bankImg from '../../../../assets/ui/bank.png';
+import bankImg from '../../../../assets/ui/bld_bank.png';
 import fieldImg from '../../../../assets/ui/field.png';
 import paperImg from '../../../../assets/ui/newsstand.png';
-import sealImg from '../../../../assets/ui/seal_big.png';
-import smithyImg from '../../../../assets/ui/smithy.png';
+import sealImg from '../../../../assets/ui/bld_guild.png';
+import smithyImg from '../../../../assets/ui/bld_workshop.png';
 import type { BuildingId } from '../../../sim/growth';
 import type { PlayerView } from '../../../sim/economy';
 import { euro } from '../../../sim/josa';
@@ -26,7 +26,7 @@ import { openWarehouse } from './warehouse';
 import { openNewsboy } from '../newspaper';
 import { portraitHtml } from '../../portrait/portrait';
 
-// 로우폴리 그림이 아직 없는 시설(마구간, 작업장, 은행, 길드 회관)은 예전 그림
+// 로우폴리 그림이 아직 없는 시설(마구간)은 예전 그림
 const IMG: Record<BuildingId, string> = {
   market: marketImg,
   inn: innImg,

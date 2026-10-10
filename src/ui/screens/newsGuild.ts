@@ -40,12 +40,23 @@ function questCard(q: Quest): string {
     </li>`;
 }
 
+/** 테마 문장 그림 (없으면 undefined) */
+export function themeEmblem(themeId: string | null): string | undefined {
+  return themeId ? ART.get(`theme_${themeId}`) : undefined;
+}
+
+/** 개인 의뢰와 함께하는 목표 카드 목록 (소식 탭 길드, 길드 회관이 같이 쓴다) */
+export function questSectionsHtml(v: PlayerView): string {
+  const personal = v.guild.quests.filter((q) => q.scope === 'personal');
+  const communal = v.guild.quests.filter((q) => q.scope === 'communal');
+  return `${personal.length ? `<h4 class="acct-day">개인 의뢰</h4><ul class="quest-list">${personal.map(questCard).join('')}</ul>` : ''}
+    ${communal.length ? `<h4 class="acct-day">함께하는 목표</h4><ul class="quest-list">${communal.map(questCard).join('')}</ul>` : ''}`;
+}
+
 export function guildTabHtml(v: PlayerView): string {
   const g = v.guild;
   if (!g.theme) return '<p class="ledger-note">이번 시즌 테마가 아직 없어요.</p>';
-  const emblem = g.themeId ? ART.get(`theme_${g.themeId}`) : undefined;
-  const personal = g.quests.filter((q) => q.scope === 'personal');
-  const communal = g.quests.filter((q) => q.scope === 'communal');
+  const emblem = themeEmblem(g.themeId);
   return `
     <section class="guild-card">
       <header class="guild-theme">
@@ -54,8 +65,7 @@ export function guildTabHtml(v: PlayerView): string {
         <div><h3>${g.theme}</h3><small>길드 의뢰</small></div>
         <img class="town-sprig" src="${sprigR}" alt="" />
       </header>
-      ${personal.length ? `<h4 class="acct-day">개인 의뢰</h4><ul class="quest-list">${personal.map(questCard).join('')}</ul>` : ''}
-      ${communal.length ? `<h4 class="acct-day">함께하는 목표</h4><ul class="quest-list">${communal.map(questCard).join('')}</ul>` : ''}
+      ${questSectionsHtml(v)}
     </section>
     <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />동·은·금 문턱을 넘으면 인장이 찍혀요. 공동 목표는 지금은 내 몫만 세요.</p>`;
 }

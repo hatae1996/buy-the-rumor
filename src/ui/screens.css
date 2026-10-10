@@ -5968,3 +5968,266 @@
 .horse-sell small {
   font-size: 12px;
 }
+
+/* ───── 작업장·은행·길드 회관 (0.1.6 목업 docs/reference/workshop·bank·guildhall-mockup-0.1.6.png) ───── */
+.city-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.city-hero img {
+  flex: none;
+  width: 44%;
+  max-width: 170px;
+}
+
+.city-hero h3 {
+  margin: 0 0 6px;
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+  line-height: 1.25;
+}
+
+.city-hero small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.city-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.city-rows li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.city-rows li > img {
+  flex: none;
+  width: 30%;
+  max-width: 110px;
+}
+
+.city-rows span {
+  flex: 1;
+  min-width: 0;
+}
+
+.city-rows b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.city-rows small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.city-rows .city-recipe {
+  margin-top: 2px;
+  color: var(--cream-teal);
+}
+
+.city-rows i {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: #f1ebdf;
+}
+
+.city-rows i img {
+  max-width: 44px;
+  max-height: 44px;
+}
+
+.city-soon {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #bfe0dc;
+  border-radius: 14px;
+  background: #e9f5f3;
+}
+
+.city-soon h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.city-soon > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.city-soon > div > img {
+  flex: none;
+  width: 34%;
+  max-width: 120px;
+}
+
+.city-soon span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.city-soon b {
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.city-soon small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.city-soon .rumor-note {
+  align-self: stretch;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+.city-soon .rumor-note:disabled {
+  background: #b9bcc0;
+  box-shadow: none;
+  color: #f2f3f4;
+}
+
+.city-soon-btns {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+}
+
+.city-account {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.city-account > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.city-account img {
+  flex: none;
+  width: 52px;
+}
+
+.city-account span {
+  display: flex;
+  flex-direction: column;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.city-account b {
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.city-rates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.city-rates li {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--town-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  font-size: 14px;
+}
+
+.city-rates b {
+  font-family: var(--f-display);
+  font-weight: normal;
+}
+
+.city-guild-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.city-guild-head img {
+  flex: none;
+  width: 38%;
+  max-width: 130px;
+}
+
+.city-guild-head h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 24px;
+  font-weight: normal;
+}
+
+.city-guild-head small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.city-guild-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fbefd6;
+  color: #9a6a1c;
+  font-size: 13px;
+}
+
+.city-guild-note img {
+  width: 20px;
+}
+
+.city-back {
+  justify-content: center;
+  gap: 8px;
+}
