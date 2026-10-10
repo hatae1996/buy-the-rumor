@@ -11,7 +11,7 @@ import arrowImg from '../../../../assets/ui/icon_arrow.png';
 import chevronImg from '../../../../assets/ui/icon_chevron.png';
 import bankImg from '../../../../assets/ui/bank.png';
 import fieldImg from '../../../../assets/ui/field.png';
-import paperImg from '../../../../assets/ui/tab_news.png';
+import paperImg from '../../../../assets/ui/newsstand.png';
 import sealImg from '../../../../assets/ui/seal_big.png';
 import smithyImg from '../../../../assets/ui/smithy.png';
 import type { BuildingId } from '../../../sim/growth';

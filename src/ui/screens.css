@@ -1122,12 +1122,6 @@
   font: inherit;
 }
 
-/* ───── 자리를 비운 사이 카드 ───── */
-.away-card + .away-card,
-.away-head + .away-card {
-  margin-top: 10px;
-}
-
 .certificate h2 {
   font-size: 24px;
 }
@@ -4619,4 +4613,419 @@
 .hire-act small {
   color: var(--cream-ink-soft);
   font-size: 10px;
+}
+
+/* ───── 자리를 비운 사이 (0.1.6 목업 docs/reference/away-*-mockup-0.1.6.png): 가운데 뜨는 창 ───── */
+.away-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + 16px) calc(var(--safe-right) + 14px) calc(var(--safe-bottom) + 16px) calc(var(--safe-left) + 14px);
+  background: rgba(60, 55, 45, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.away-modal {
+  --town-card: #fbf8f2;
+  --town-line: var(--cream-line);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  padding: 16px 14px 14px;
+  border-radius: 20px;
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+  box-shadow: 0 10px 30px rgba(40, 30, 20, 0.25);
+}
+
+.away-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--cream-ink-soft);
+  font-size: 20px;
+}
+
+.away-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 26px;
+  font-weight: normal;
+}
+
+.away-title img {
+  width: 22px;
+}
+
+.away-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.away-days {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--cream-teal-soft);
+}
+
+.away-days img {
+  width: 40px;
+}
+
+.away-days div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.away-days b {
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.away-days span {
+  padding: 2px 16px;
+  border-radius: 8px;
+  background: #f4fbfa;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.away-card {
+  padding: 10px 12px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.away-card h3 {
+  margin: 0 0 8px;
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.away-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f3efe7;
+}
+
+.away-panel > img {
+  flex: none;
+  width: 34%;
+  max-width: 110px;
+  max-height: 84px;
+  object-fit: contain;
+  padding-right: 12px;
+  border-right: 1px solid var(--town-line);
+  box-sizing: content-box;
+}
+
+.away-panel > div {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.away-panel p {
+  margin: 0;
+}
+
+.away-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.away-panel li + li {
+  margin-top: 4px;
+}
+
+.away-panel small {
+  color: var(--cream-ink-soft);
+}
+
+.away-go {
+  margin-top: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid var(--cream-teal);
+  border-radius: 10px;
+  background: #f4fbfa;
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 14px;
+}
+
+.away-trades {
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: #f3efe7;
+}
+
+.away-trades ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.away-trades li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+}
+
+.away-trades li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.away-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 40px;
+}
+
+.away-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.away-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.away-text b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.away-text small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.away-trades li > b,
+.away-total b {
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.away-trades .plus {
+  color: var(--cream-teal);
+}
+
+.away-trades .minus {
+  color: var(--coral);
+}
+
+.away-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--town-line);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.away-total small {
+  color: var(--cream-ink-soft);
+  font-size: 11px;
+}
+
+.away-ok {
+  flex: none;
+  width: 100%;
+  min-height: 50px;
+  font-size: 18px;
+}
+
+/* ───── 신문팔이 (0.1.6 목업 docs/reference/newsboy-*-mockup-0.1.6.png) ───── */
+.stand-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.stand-hero > img {
+  width: 30%;
+  max-width: 110px;
+}
+
+.stand-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--town-line);
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.stand-title img {
+  width: 18px;
+}
+
+.stand-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.stand-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stand-main > img {
+  flex: none;
+  width: 38%;
+  max-width: 140px;
+}
+
+.stand-main h4 {
+  margin: 6px 0 2px;
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-weight: normal;
+  line-height: 1.25;
+}
+
+.stand-main small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.paper-chip.now {
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+}
+
+.stand-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.stand-price span {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #ebe7df;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.stand-price img {
+  width: 22px;
+}
+
+.stand-card .rumor-note {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.stand-card .rumor-note:disabled {
+  background: #c9c6c1;
+  box-shadow: none;
+  color: #f4f2ee;
+}
+
+.stand-route h3 {
+  margin: 0 0 8px 4px;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.stand-route-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stand-route-main img {
+  flex: none;
+  width: 30%;
+  max-width: 100px;
+}
+
+.stand-route-main ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.stand-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--town-line);
+  font-size: 13px;
+}
+
+.stand-note img {
+  width: 22px;
+}
+
+.stand-route > small {
+  display: block;
+  padding-top: 6px;
+  border-top: 1px solid var(--town-line);
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: center;
 }
