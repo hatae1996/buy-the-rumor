@@ -1367,71 +1367,6 @@
   white-space: nowrap;
 }
 
-/* 길 위 카드 (마을 탭): 떠난 마을 ~~~→ 갈 마을, 말이 간 만큼 앞에 선다 */
-.travel-route {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 4px 0 10px;
-}
-
-.travel-town {
-  flex: 0 1 auto;
-  max-width: 34%;
-  font-family: var(--f-display);
-  font-size: 18px;
-  overflow-wrap: anywhere;
-}
-
-.travel-path {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 48px;
-  height: 22px;
-  /* 점선 길 */
-  background: linear-gradient(90deg, var(--ink-soft) 50%, transparent 0) left center / 10px 2px repeat-x;
-}
-
-/* 화살촉 */
-.travel-path::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid var(--ink-soft);
-  border-right: 2px solid var(--ink-soft);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-/* 간 길은 굵은 실선 */
-.travel-done {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--coral);
-  transform: translateY(-50%);
-}
-
-/* 내 말 (지도의 말과 같은 색) */
-.travel-pawn {
-  position: absolute;
-  top: 50%;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: var(--coral);
-  transform: translate(-50%, -50%);
-}
-
-.travel-eta {
-  font-size: 16px;
-}
-
 /* ───── 최근 들은 이야기, 수첩 칸 (0.1.2) ───── */
 .note.heard .btn-row {
   margin-top: 6px;
@@ -1978,5 +1913,279 @@
 
   .town-row {
     min-height: 50px;
+  }
+}
+
+/* ───── 마을 탭: 길 위 (0.1.6 목업 docs/reference/travel-mockup-0.1.6.png) ─────
+   계절별 길 그림 위를 말과 수레가 가고, 길 카드, 식량, 도착 준비. 길 그림이 남은 높이를 차지한다 */
+.trip-head .town-title {
+  max-width: 100%;
+}
+
+/* 이름이 길어도 한 줄에 */
+.trip-head h2 {
+  font-size: clamp(20px, 7vw, 28px);
+  white-space: nowrap;
+}
+
+.trip-moving {
+  min-height: 28px;
+  margin-top: 2px;
+  background: var(--cream-teal-soft);
+}
+
+.screen[data-screen='town'] > .trip-scene {
+  flex: 1 1 0;
+  min-height: 96px;
+  max-height: 240px;
+  display: flex;
+  justify-content: center;
+  container-type: size;
+}
+
+/* 길 그림 비율(1024×454)을 지키며 칸 안에 가장 크게. 수레는 이 판을 기준으로 놓는다 */
+.trip-stage {
+  position: relative;
+  width: min(100cqw, calc(100cqh * 2.2555));
+  aspect-ratio: 1024 / 454;
+}
+
+.trip-road {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.trip-wagon {
+  position: absolute;
+  left: 23%;
+  top: 14%;
+  width: 46%;
+  animation: trip-bob 0.9s steps(2, jump-none) infinite alternate;
+}
+
+@keyframes trip-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-wagon {
+    animation: none;
+  }
+}
+
+.trip-card,
+.trip-food,
+.trip-arrival {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  color: var(--cream-ink);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.trip-card {
+  padding: 8px 16px 10px;
+}
+
+.trip-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.trip-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trip-house {
+  flex: none;
+  width: 38px;
+}
+
+/* 남은 길은 점선, 간 길은 청록 실선, 수레가 간 만큼 앞에 선다 */
+.trip-line {
+  position: relative;
+  flex: 1;
+  height: 30px;
+  background: radial-gradient(circle, #b9b2a6 1.6px, transparent 2px) left center / 9px 6px repeat-x;
+}
+
+.trip-done {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--cream-teal);
+  transform: translateY(-50%);
+}
+
+.trip-pawn {
+  position: absolute;
+  top: 50%;
+  /* 양 끝 집에 겹치지 않게 줄 안에서만 */
+  left: calc(17px + (100% - 34px) * var(--pct));
+  width: 34px;
+  transform: translate(-50%, -58%);
+}
+
+.trip-eta {
+  margin: 2px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.trip-left {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 22px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.trip-food {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 16px 6px 10px;
+}
+
+.trip-food img {
+  flex: none;
+  width: 64px;
+  padding-right: 12px;
+  border-right: 1px solid var(--town-line);
+  box-sizing: content-box;
+}
+
+.trip-food-have {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.trip-food small {
+  display: block;
+  font-size: 12px;
+}
+
+.trip-food .ok {
+  color: #4f8a3a;
+}
+
+.trip-food .warn {
+  color: var(--coral-deep);
+}
+
+/* 도착하면 팔기: 시장 그림 왼쪽, 글과 단추 오른쪽 */
+.trip-arrival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+  text-align: left;
+}
+
+.trip-arrival:active,
+.trip-cart:active {
+  transform: translateY(1px);
+}
+
+.trip-arrival-img {
+  flex: none;
+  width: 32%;
+  max-width: 120px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #f1ebdf;
+}
+
+.trip-arrival-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.trip-arrival-name {
+  font-family: var(--f-display);
+  font-size: 19px;
+}
+
+.trip-arrival small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.trip-arrival .town-go {
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.trip-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.trip-notice img {
+  width: 18px;
+}
+
+/* 작은 폰: "이동 중" 칩, 도착 시각 줄, 식량 그림을 빼고 카드를 줄여 길 그림 자리를 남긴다 */
+@media (max-height: 700px) {
+  .trip-moving,
+  .trip-eta,
+  .trip-food img {
+    display: none;
+  }
+
+  .trip-card {
+    padding: 4px 14px 6px;
+  }
+
+  .trip-left {
+    font-size: 19px;
+  }
+
+  .trip-food {
+    padding: 4px 14px;
+  }
+
+  .trip-arrival {
+    padding: 6px 10px 6px 6px;
+  }
+
+  .trip-arrival-img {
+    width: 24%;
+  }
+
+  .trip-cart {
+    min-height: 46px;
+  }
+
+  .trip-cart .town-row-pic {
+    height: 36px;
   }
 }

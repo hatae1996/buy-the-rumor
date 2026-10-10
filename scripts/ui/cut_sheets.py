@@ -2,6 +2,7 @@
 
 - assets-src/ui/cart-ui-sheet.png: 분홍(마젠타) 배경. 탭 아이콘 5, 모래시계·빵·동전 (0.1.6 짐칸 탭). 그림판의 마차는 쓰지 않는다
 - assets-src/ui/town-ui-sheet.png: 분홍 배경. 마을 탭 건물 6과 작은 아이콘 8 (0.1.6 마을 탭)
+- assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
 python scripts/ui/cut_sheets.py   (numpy, pillow, scipy)
@@ -102,9 +103,10 @@ def goods_sheet() -> None:
         save(rgba, box, f'goods/{good}.png', 128, pad=2)
 
 
-def town_ui_sheet() -> None:
-    """마을 탭 그림판 (0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png): 건물 6, 작은 아이콘 8"""
-    src = np.asarray(Image.open(os.path.join(ROOT, 'assets-src', 'ui', 'town-ui-sheet.png')).convert('RGB')).astype(float)
+def sheet_pieces(sheet: str, names) -> None:
+    """분홍 배경 그림판(assets-src/ui/<sheet>)에서 그림 덩어리를 줄마다 왼쪽부터 찾아 names 차례로 저장한다.
+    names는 (파일 이름, 가장 긴 변) 목록이고, 이름이 None이면 건너뛴다."""
+    src = np.asarray(Image.open(os.path.join(ROOT, 'assets-src', 'ui', sheet)).convert('RGB')).astype(float)
     alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
     rgb = despill_magenta(src, alpha)
     rgba = np.dstack([rgb, alpha * 255])
@@ -146,21 +148,59 @@ def town_ui_sheet() -> None:
             cur.append(b)
     rows.append(cur)
     ordered = [b for row in rows for b in sorted(row, key=lambda b: b[0])]
+    if len(ordered) != len(names):
+        sys.exit(f'{sheet}: 덩어리 수가 다르다 ({len(ordered)}, 이름은 {len(names)})')
+    for box, (name, size) in zip(ordered, names):
+        if name is None:
+            continue
+        own = rgba.copy()
+        own[..., 3] *= np.isin(lab, list(box[4]))
+        save(own, box[:4], name, size)
+
+
+def town_ui_sheet() -> None:
+    """마을 탭 그림판 (0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png): 건물 6, 작은 아이콘 8"""
     names = [
         ('bld_market.png', 480), ('bld_inn.png', 480), ('bld_outside.png', 480),
         ('bld_store.png', 256), ('bld_warehouse.png', 256), ('bld_anvil.png', 256),
         ('orn_sprig_l.png', 128), ('orn_sprig_r.png', 128), ('orn_waves.png', 128), ('icon_sprout.png', 96),
         ('icon_fish.png', 96), ('icon_wheat.png', 96), ('icon_chevron.png', 64), ('icon_arrow.png', 96),
     ]
-    if len(ordered) != len(names):
-        sys.exit(f'마을 그림판 덩어리 수가 다르다: {len(ordered)}')
-    for box, (name, size) in zip(ordered, names):
-        own = rgba.copy()
-        own[..., 3] *= np.isin(lab, list(box[4]))
-        save(own, box[:4], name, size)
+    sheet_pieces('town-ui-sheet.png', names)
+
+
+def travel_ui_sheet() -> None:
+    """길 위 마을 탭 그림판 (0.1.6 목업 docs/reference/travel-mockup-0.1.6.png): 길 장면(따로 받은 것을 쓴다), 집, 식량, 수레, 느낌표"""
+    sheet_pieces('travel-ui-sheet.png', [
+        (None, 0),
+        ('travel_house.png', 192), ('travel_food.png', 320), ('travel_wagon.png', 192),
+        ('icon_notice.png', 64),
+    ])
+
+
+def travel_scene() -> None:
+    """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
+    folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
+    roads = {}
+    for season in ('spring', 'summer', 'autumn', 'winter'):
+        src = np.asarray(Image.open(os.path.join(folder, f'road_{season}.png')).convert('RGB')).astype(float)
+        alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+        roads[season] = np.dstack([despill_magenta(src, alpha), alpha * 255])
+    # 네 장을 겹쳐 같은 상자로 자른다 (계절이 바뀌어도 길 자리가 그대로)
+    union = np.any([r[..., 3] > 128 for r in roads.values()], axis=0)
+    ys, xs = np.where(union)
+    box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    for season, rgba in roads.items():
+        save(rgba, box, f'road_{season}.png', 1024, pad=0)
+    src = np.asarray(Image.open(os.path.join(folder, 'wagon.png')).convert('RGB')).astype(float)
+    alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    ys, xs = np.where(alpha > 0.5)
+    save(np.dstack([despill_magenta(src, alpha), alpha * 255]), (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1), 'travel_horse_wagon.png', 640)
 
 
 if __name__ == '__main__':
     cart_ui_sheet()
     town_ui_sheet()
+    travel_ui_sheet()
+    travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

@@ -103,6 +103,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
         passDay: () => away(game.passDay(now())),
         passApprenticeDay: () => away(game.passApprenticeDay(now())),
         openSettlement: settle,
+        openCart: () => select('cart'),
       });
     } else if (current === 'cart') {
       renderCart(el, game, v);
