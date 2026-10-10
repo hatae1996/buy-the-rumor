@@ -62,7 +62,7 @@ describe.each([6, 8, 12])('마을 %i곳 세계', (towns) => {
   }, 60_000);
 });
 
-it('표준 세계: 20명이면 마을 8곳, 로컬 게임(나 + 봇 10명)이면 6곳', () => {
-  expect(townsForPlayers(20)).toBe(8);
+it('세계당 12명이면 마을 8곳, 로컬 게임(나 + 봇 10명)이면 6곳 (0.1.3)', () => {
+  expect(townsForPlayers(12)).toBe(8);
   expect(townsForPlayers(1 + ECONOMY.player.localBots)).toBe(6);
 });

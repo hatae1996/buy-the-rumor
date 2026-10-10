@@ -23,8 +23,8 @@ import { renderLineChart, SERIES_COLORS } from './lineChart';
 /** 여러 시드 요약에 쓰는 시드 (봇 테스트와 같은 10개, 0.0.9). 시작 계절 4개마다 돌린다 (0.0.8: 시작 계절은 시즌마다 랜덤) */
 const SUMMARY_SEEDS = [20261008, 777, 4242, 1, 99999, 31337, 2024, 555, 8080, 123456];
 const SEASONS: Season[] = [0, 1, 2, 3];
-/** 봇 n명 한 시장에서 고를 수 있는 n (handoff 0.1.0: 10, 20, 35, 50에서 잰다. 1, 5는 비교용) */
-const MARKET_NS = [1, 5, 10, 20, 35, 50];
+/** 봇 n명 한 시장에서 고를 수 있는 n (handoff 0.1.3: 세계당 10~15명, 12명이 기준. 1, 5는 비교용, 20은 0.1.2와 견주기) */
+const MARKET_NS = [1, 5, 10, 12, 15, 20];
 
 export interface BotPanel {
   reset(map: WorldMap): void;
