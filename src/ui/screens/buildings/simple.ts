@@ -40,7 +40,7 @@ export function openStore(game: Game): void {
         const ok = rp !== null && v.gold >= n * rp && v.food.rationRoom >= n;
         return `<div class="shop-option">
           <b>${n}개</b>
-          <span class="inn-fee"><img src="${coinImg}" alt="" />${rp !== null ? `${money(n * rp)}냥` : '-'}</span>
+          <span class="inn-fee"><img src="${coinImg}" alt="" />${rp !== null ? `${money(n * rp)}골드` : '-'}</span>
           <button type="button" class="shop-buy" data-rations="${n}" ${ok ? '' : 'disabled'}>${ok ? '구입' : '구입 불가'}</button>
         </div>`;
       })

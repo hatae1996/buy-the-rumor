@@ -37,7 +37,7 @@ export function pricesHtml(game: Game, v: PlayerView): string {
         return `<li>
           <span class="acct-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>
           <span class="price-name">${goodName(g)}</span>
-          <b>${money(prices[g])}냥</b>
+          <b>${money(prices[g])}골드</b>
         </li>`;
       }).join('')
     : '<li class="muted">직접 가 보거나 소문을 들어야 알 수 있어요.</li>';

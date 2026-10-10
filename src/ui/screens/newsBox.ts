@@ -16,7 +16,7 @@ export function paperHtml(game: Game, v: PlayerView): string {
   const np = v.newspaper;
   const here = v.location.kind === 'town' ? game.map.towns[v.location.town]!.name : null;
   const sale = np.onSale;
-  const price = np.free ? '견습 동안 무료' : `${money(np.fee)}냥`;
+  const price = np.free ? '견습 동안 무료' : `${money(np.fee)}골드`;
   const buy = !here
     ? '<p class="paper-buy-note">길 위에서는 신문을 살 수 없어요. 마을에 닿으면 신문팔이에게 사요.</p>'
     : sale === null
@@ -65,7 +65,7 @@ export function paperHtml(game: Game, v: PlayerView): string {
       </div>
       ${list.length ? `<ul class="paper-list">${rows}</ul>` : rows}
     </section>
-    <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />구입한 신문은 언제든 다시 읽을 수 있어요. 지난 신문은 한 부 ${money(np.backFee)}냥이에요.</p>`;
+    <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />구입한 신문은 언제든 다시 읽을 수 있어요. 지난 신문은 한 부 ${money(np.backFee)}골드예요.</p>`;
 }
 
 export function bindPaper(el: HTMLElement, game: Game, rerender: () => void): void {

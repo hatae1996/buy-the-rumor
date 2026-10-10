@@ -65,7 +65,7 @@ export const PURCHASES: readonly PurchaseDef[] = [
   ...gear,
   { id: 'porter', kind: 'porter', name: H.porter.name, ability: '내 행렬에 손수레 하나 더', building: 'inn', price: 0, upkeep: { perDay: H.porter.wage, what: '일당' }, ready: true },
   { id: 'gatherer', kind: 'gatherer', name: H.gatherer.name, ability: '내가 없어도 매일 원정 (결과는 그 마을 창고로)', building: 'inn', price: 0, upkeep: { perDay: H.gatherer.wage, what: '일당' }, ready: true },
-  { id: 'warehouse', kind: 'warehouse', name: GROWTH.warehouse.name, ability: '짐을 두고 다니고, 없어도 그 마을 장날에 팔기', building: 'warehouse', price: GROWTH.warehouse.deposit, upkeep: { perDay: WAREHOUSE_FULL_FEE, what: `보관료 (짐 ${GROWTH.warehouse.cellsPerCoin}칸마다 1냥)` }, ready: true },
+  { id: 'warehouse', kind: 'warehouse', name: GROWTH.warehouse.name, ability: '짐을 두고 다니고, 없어도 그 마을 장날에 팔기', building: 'warehouse', price: GROWTH.warehouse.deposit, upkeep: { perDay: WAREHOUSE_FULL_FEE, what: `보관료 (짐 ${GROWTH.warehouse.cellsPerCoin}칸마다 1골드)` }, ready: true },
   { id: 'caravan', kind: 'caravan', name: '두 번째 행렬', ability: '마부가 지시서대로 두 번째 길을 돈다 (말이 따로 있어야, 수레는 빌려도 된다)', building: 'inn', price: 0, upkeep: { perDay: H.carter.wage, what: `마부 일당(쉬는 날 ${H.carter.restWage}), 말 먹이, 빌린 수레` }, ready: true },
   { id: 'informant', kind: 'informant', name: H.informant.name, ability: '한 마을의 시세와 장날 신청 현황을 매일', building: 'inn', price: RUMORS.informant.hireFee, upkeep: { perDay: H.informant.wage, what: '비싼 일당' }, ready: true },
   { id: 'workshop', kind: 'workshop', name: '작업장', ability: '가공품 생산 (염장소, 대장간)', building: 'workshop', price: 0, upkeep: { perDay: 0, what: '운영비' }, ready: false },

@@ -3,7 +3,7 @@
 import { cartSlots, usedCells, type Board } from '../cart';
 import { GROWTH } from '../constants';
 
-/** 짐이 차지한 칸 수로 정하는 하루 보관료: 칸 cellsPerCoin개마다 1냥, 올림 */
+/** 짐이 차지한 칸 수로 정하는 하루 보관료: 칸 cellsPerCoin개마다 1골드, 올림 */
 export function warehouseFee(cells: number): number {
   return Math.ceil(cells / GROWTH.warehouse.cellsPerCoin);
 }

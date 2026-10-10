@@ -93,7 +93,7 @@ export function seasonIncome(run: BotRun): { avg: number; firstHalf: number; sec
 
 /**
  * "하루 벌이의 10배 넘게 번 날" 수 (0.0.7 목표: 보통 사람이 시즌에 2~3번).
- * 그날 벌이 = 그날 판 것의 이익(판 값 − 산 값), 평소 하루 벌이 = 그 시즌 평균, 적어도 1냥 (questions.md 75번).
+ * 그날 벌이 = 그날 판 것의 이익(판 값 − 산 값), 평소 하루 벌이 = 그 시즌 평균, 적어도 1골드 (questions.md 75번).
  * 가진 것의 온값으로 재면 싸게 사기만 해도 뛰어서 쓰지 않는다
  */
 export function bigDays(run: BotRun, times = 10): number {

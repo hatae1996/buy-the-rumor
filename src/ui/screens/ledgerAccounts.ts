@@ -17,7 +17,7 @@ const SHOWN = 40;
 
 let newestFirst = true;
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${won(Math.abs(n))}`;
 
 /** 내역 한 줄: 그림, 제목, 자세히, 돈. 사고팔기와 식량, 장비, 길은 짧게, 나머지는 장부 문장 그대로 */

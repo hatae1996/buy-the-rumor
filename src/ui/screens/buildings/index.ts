@@ -58,7 +58,7 @@ function status(id: BuildingId, v: PlayerView): string {
         ? '새로운 신문이 없어요.'
         : v.newspaper.onSale.bought
           ? '오늘 신문을 샀어요.'
-          : `오늘 신문이 나왔어요${v.newspaper.free ? '.' : ` · ${v.newspaper.fee}냥`}`;
+          : `오늘 신문이 나왔어요${v.newspaper.free ? '.' : ` · ${v.newspaper.fee}골드`}`;
     case 'store':
       return v.gear.some((g) => g.uses === 0) ? '장비 수리' : '음식 · 장비';
     case 'outside':

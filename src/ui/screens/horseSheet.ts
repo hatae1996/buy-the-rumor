@@ -112,7 +112,7 @@ export function openCartShopSheet(game: Game): void {
   const v0 = game.view();
   if (v0.location.kind !== 'town') return;
   const here = v0.location.town;
-  const won = (n: number) => `${money(n)}냥`;
+  const won = (n: number) => `${money(n)}골드`;
   openLivePage(game, { back: '마을', title: '수레방', sub: game.map.towns[here]!.name, icon: houseImg }, (body, v, page) => {
     if (v.location.kind !== 'town' || v.location.town !== here) {
       page.close();

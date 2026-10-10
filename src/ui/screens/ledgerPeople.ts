@@ -9,7 +9,7 @@ import { portraitHtml } from '../portrait/portrait';
 import { openInn } from './buildings/inn';
 import { horseFatigue, openStableSheet, speedWord } from './horseSheet';
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 
 export function peopleHtml(game: Game, v: PlayerView): string {
   const townName = (id: number) => game.map.towns[id]!.name;

@@ -23,7 +23,7 @@ const MAX_CARDS = 5;
 /** 장날 결과에 보이는 거래 줄 */
 const TRADE_ROWS = 4;
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${won(Math.abs(n))}`;
 
 /** 그림 칸과 글 칸으로 나뉜 회색 판 */

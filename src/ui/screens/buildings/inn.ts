@@ -42,7 +42,7 @@ const ROLE_NEED = {
   carter: '말과 수레 필요',
 } as const;
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 const coin = (n: number) => `<span class="inn-fee"><img src="${coinImg}" alt="" />${won(n)}</span>`;
 
 export function openInn(game: Game, start?: InnTab): void {

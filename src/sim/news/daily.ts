@@ -45,7 +45,7 @@ export function cityPriceLines(state: EconomyState, map: WorldMap): Pick<NewsIte
       .slice(0, N.cityPriceGoods);
     out.push({
       text: traded.length
-        ? `${town.name} 장 시세: ${traded.map((g) => `${GOOD_NAME[g]} ${market[g].price}냥`).join(', ')}`
+        ? `${town.name} 장 시세: ${traded.map((g) => `${GOOD_NAME[g]} ${market[g].price}골드`).join(', ')}`
         : `${town.name} 장은 한산했습니다.`,
       town: town.id,
       prices: Object.fromEntries(traded.map((g) => [g, market[g].price!])),

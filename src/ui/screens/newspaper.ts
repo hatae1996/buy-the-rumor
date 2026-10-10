@@ -32,7 +32,7 @@ export function openNewsboy(game: Game): void {
     }
     const np = v.newspaper;
     const sale = np.onSale;
-    const price = (fee: number) => (np.free ? '견습 동안 무료' : `${money(fee)}냥`);
+    const price = (fee: number) => (np.free ? '견습 동안 무료' : `${money(fee)}골드`);
     const card =
       sale === null
         ? `<section class="stand-card">

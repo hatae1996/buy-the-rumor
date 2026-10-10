@@ -42,7 +42,7 @@ function priceRows(game: Game, items: readonly NewsItem[]): string {
           return `<tr>
             <td>${i === 0 ? town : ''}</td>
             <td class="paper-good">${art ? `<img src="${art}" alt="" />` : ''}${goodName(g)}</td>
-            <td class="paper-price-cell">${price}냥</td>
+            <td class="paper-price-cell">${price}골드</td>
           </tr>`;
         })
         .join('');

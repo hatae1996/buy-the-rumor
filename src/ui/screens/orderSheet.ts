@@ -15,7 +15,7 @@ import { itemArt } from '../itemArt';
 import { openPage } from '../page';
 import { countdownHtml, tickCountdown } from './buildings/market';
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 
 /** −10 −1 [값] +1 +10 */
 function stepper(attr: string, steps: readonly number[], value: string): string {

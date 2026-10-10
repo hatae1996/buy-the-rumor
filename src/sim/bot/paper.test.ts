@@ -73,7 +73,7 @@ describe('봇과 신문 (0.1.6)', () => {
   it('예전 저장의 머릿속(신문 칸 없음)과 값이 없는 예전 기사도 읽는다', () => {
     const mind = createMind();
     delete mind.papers;
-    const view = { news: [{ day: 3, text: '애쉬포드 장 시세: 목재 12냥', section: 'prices' }] } as unknown as PlayerView;
+    const view = { news: [{ day: 3, text: '애쉬포드 장 시세: 목재 12골드', section: 'prices' }] } as unknown as PlayerView;
     readPapers(view, mind);
     expect(mind.papers).toEqual({});
   });

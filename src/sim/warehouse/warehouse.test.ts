@@ -83,7 +83,7 @@ describe('보관료와 상함', () => {
     expect(s.players.me!.ledger.some((e) => e.kind === 'warehouse' && e.what === 'seized')).toBe(true);
   });
 
-  it('보관료는 짐이 차지한 칸 수만큼: 5칸마다 1냥 (올림), 빈 창고는 0, 꽉 찬 15칸은 3 (0.0.8)', () => {
+  it('보관료는 짐이 차지한 칸 수만큼: 5칸마다 1골드 (올림), 빈 창고는 0, 꽉 찬 15칸은 3 (0.0.8)', () => {
     expect(WAREHOUSE_CELLS).toBe(15);
     expect([0, 1, 5, 6, 10, 11, 15].map(warehouseFee)).toEqual([0, 1, 1, 2, 2, 3, 3]);
     expect(WAREHOUSE_FULL_FEE).toBe(3);
@@ -99,7 +99,7 @@ describe('보관료와 상함', () => {
     expect(playerView(s, map, 'me').upkeep.parts.some((x) => x.what === '창고 보관료')).toBe(false);
   });
 
-  it('곡물 조각 하나(2×2)는 4칸이라 1냥, 둘은 8칸이라 2냥, 꽉 차면 3냥', () => {
+  it('곡물 조각 하나(2×2)는 4칸이라 1골드, 둘은 8칸이라 2골드, 꽉 차면 3골드', () => {
     ok({ type: 'rentWarehouse' });
     const w = warehouseAt(s.players.me!, s.players.me!.town)!;
     const view = () => playerView(s, map, 'me').warehouses[0]!;

@@ -18,7 +18,7 @@ import type { Game } from '../../game';
 import { itemArt } from '../../itemArt';
 import { openLivePage } from '../../livePage';
 
-const won = (n: number) => `${money(n)}냥`;
+const won = (n: number) => `${money(n)}골드`;
 
 function stock(v: PlayerView, town: number): Record<GoodId, number> {
   const w = v.warehouses.find((x) => x.town === town);
@@ -58,7 +58,7 @@ export function openWarehouse(game: Game): void {
           <ul class="ware-rows">
             ${infoRow(cellsImg, '보관 공간', '보관할 수 있는 최대 칸 수예요.', `${cells}칸`)}
             ${infoRow(coinImg, '대여 비용', '창고를 한 번 빌리는 데 필요한 금액이에요.', won(fee))}
-            ${infoRow(crateImg, '하루 보관료', `짐 ${per}칸마다 ${won(1)}이 붙어요. 창고가 비어 있으면 보관료가 없어요.`, `짐 ${per}칸마다 ${won(1)}`)}
+            ${infoRow(crateImg, '하루 보관료', `짐 ${per}칸마다 ${won(1)}가 붙어요. 창고가 비어 있으면 보관료가 없어요.`, `짐 ${per}칸마다 ${won(1)}`)}
           </ul>
         </section>
         <section class="shop-card">

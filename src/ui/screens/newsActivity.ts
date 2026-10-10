@@ -34,7 +34,7 @@ interface Row {
   note?: string;
 }
 
-const signed = (n: number) => `${n >= 0 ? '+' : '−'}${money(Math.abs(n))}냥`;
+const signed = (n: number) => `${n >= 0 ? '+' : '−'}${money(Math.abs(n))}골드`;
 
 /** 장부에서 활동으로 보일 줄 (돈만 나간 자잘한 줄, 먹기, 일당, 보관료는 뺀다) */
 function shown(e: LedgerEntry): boolean {

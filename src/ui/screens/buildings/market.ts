@@ -56,7 +56,7 @@ export function openMarket(game: Game): void {
       return `<li><button type="button" class="market-row" data-good="${g}">
           <span class="acct-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>
           <span class="market-name">${goodName(g)}${have ? `<small>보유 ${have}개</small>` : ''}</span>
-          <span class="market-price">${trend}${m.price[g]}냥</span>
+          <span class="market-price">${trend}${m.price[g]}골드</span>
           <img class="town-chevron" src="${chevronImg}" alt="" />
         </button></li>`;
     }).join('');
@@ -68,7 +68,7 @@ export function openMarket(game: Game): void {
             const art = itemArt(o.good);
             return `<li>
               <span class="acct-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>
-              <span class="market-name">${goodName(o.good)} ${o.qty}개${o.from === 'store' ? ' (창고)' : ''}<small>개당 ${o.limit}냥 ${o.side === 'sell' ? '이상' : '이하'}</small></span>
+              <span class="market-name">${goodName(o.good)} ${o.qty}개${o.from === 'store' ? ' (창고)' : ''}<small>개당 ${o.limit}골드 ${o.side === 'sell' ? '이상' : '이하'}</small></span>
               <span class="order-chip ${o.side}">${o.side === 'sell' ? '판매' : '구매'}</span>
               <button type="button" class="order-btn" data-cancel="${o.id}">취소</button>
             </li>`;
@@ -81,7 +81,7 @@ export function openMarket(game: Game): void {
     const canSend = v.caravan?.carter != null;
     const big = v.bigOrders
       .map(
-        (o) => `<li><span class="market-name">${o.event} · ${goodName(o.good)} ${o.left}개 남음<small>${o.price}냥 이하로 내면 팔려요 · ${o.until - v.day + 1}일 남음</small></span>${
+        (o) => `<li><span class="market-name">${o.event} · ${goodName(o.good)} ${o.left}개 남음<small>${o.price}골드 이하로 내면 팔려요 · ${o.until - v.day + 1}일 남음</small></span>${
           canSend ? `<button type="button" class="order-btn edit" data-send-caravan="${o.good}" data-price="${Math.max(1, Math.round(o.price * 0.9))}">행렬 보내기</button>` : ''
         }</li>`,
       )

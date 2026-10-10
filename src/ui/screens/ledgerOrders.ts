@@ -33,7 +33,7 @@ function groupsOf(v: PlayerView): OrderGroup[] {
     if (!g) groups.set(key, (g = { ...make(), items: [], orders: [], reservations: [] }));
     return g;
   };
-  const cond = (side: 'sell' | 'buy', limit: number) => `개당 ${limit}냥 ${side === 'sell' ? '이상' : '이하'}`;
+  const cond = (side: 'sell' | 'buy', limit: number) => `개당 ${limit}골드 ${side === 'sell' ? '이상' : '이하'}`;
 
   for (const r of v.reservations) {
     if (r.kind !== 'onArrival') continue;

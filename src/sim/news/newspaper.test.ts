@@ -117,7 +117,7 @@ describe('신문은 매일 나온다 (0.1.3, 답 96)', () => {
     expect(line.town).toBe(city.id);
     for (const [good, price] of Object.entries(line.prices!)) {
       expect(price).toBe(s.towns[city.id]!.lastMarket[good as GoodId].price);
-      expect(line.text).toContain(`${GOOD_NAME[good as GoodId]} ${price}냥`);
+      expect(line.text).toContain(`${GOOD_NAME[good as GoodId]} ${price}골드`);
     }
   });
 
