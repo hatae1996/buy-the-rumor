@@ -3,7 +3,8 @@
 // 봇의 머릿속(BotBrain)은 세계 상태 밖에 두고 함께 저장한다 (서버에서는 봇이 따로 접속하는 손님이다).
 import type { EconomyState, PlayerId, PlayerSpec } from '../economy';
 import { playerOrder } from '../economy';
-import { createRng, mixSeed, shuffle } from '../rng';
+import { createRng, mixSeed, shuffle, type Rng } from '../rng';
+import { rollEmblem, symbolFromName } from '../ranking/emblem';
 import type { WorldMap } from '../worldgen';
 import type { BotMind } from './bot';
 import { createMind } from './bot';
@@ -48,29 +49,26 @@ export interface BotBrain {
   rng: number;
 }
 
-/** 이름에 든 말로 문장을 고른다 (없으면 무늬 없음) */
-const CREST_WORDS: readonly [string, string][] = [
-  ['까마귀', 'crow'],
-  ['여우', 'fox'],
-  ['송어', 'fish'],
-  ['떡갈나무', 'oak'],
-  ['돛', 'sail'],
-  ['모루', 'anvil'],
-  ['보리', 'wheat'],
-  ['사슴', 'deer'],
-  ['닻', 'anchor'],
-  ['부엉이', 'owl'],
-  ['소금', 'salt'],
-];
-
-/** 봇 상인 n명의 자리 (id, 상단 이름, 문장). 많아야 이름 목록 수만큼 */
-export function botSpecs(seed: number, n: number): PlayerSpec[] {
-  const names = shuffle([...BOT_COMPANY_NAMES], createRng(mixSeed(seed, 0xc0a1)));
+/**
+ * 봇 상인 n명의 자리 (id, 상단 이름, 문장). 많아야 이름 목록 수만큼. 문장 상징은 이름에 든 말로 (없으면 시드로).
+ * taken: 사람이 이미 쓴 상단 이름 (시작 화면의 추천 이름도 같은 목록에서 나오니, 같은 세계에 같은 이름이 없게)
+ */
+export function botSpecs(seed: number, n: number, taken: readonly string[] = []): PlayerSpec[] {
+  const names = shuffle(
+    BOT_COMPANY_NAMES.filter((x) => !taken.includes(x)),
+    createRng(mixSeed(seed, 0xc0a1)),
+  );
   return Array.from({ length: Math.min(n, names.length) }, (_, i) => ({
     id: `bot${i + 1}`,
     name: names[i]!,
-    crest: CREST_WORDS.find(([w]) => names[i]!.includes(w))?.[1] ?? 'plain',
+    emblem: rollEmblem(createRng(mixSeed(seed, 0xe3b1, i)), symbolFromName(names[i]!) ?? undefined),
   }));
+}
+
+/** 시작 화면의 상단 이름 추천 (0.1.7 답 129): 봇 상단 이름 목록에서 하나 (except는 빼고) */
+export function recommendCompanyName(rng: Rng, except: readonly string[] = []): string {
+  const pool = BOT_COMPANY_NAMES.filter((n) => !except.includes(n));
+  return rng.pick(pool.length ? pool : BOT_COMPANY_NAMES);
 }
 
 /** 세계의 봇 자리마다 머릿속을 만든다. 성향은 봇 여럿 시험과 같은 섞기 */

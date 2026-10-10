@@ -38,10 +38,12 @@ export {
   setCompany,
   setTitle,
   COMPANY_NAME_LENGTH,
-  CRESTS,
-  CREST_IDS,
   MAX_PINNED,
+  cleanCompanyName,
+  refitCertificates,
+  setEmblem,
+  setFace,
   type CertificateError,
   type CertificateView,
-  type CrestId,
 } from './certificate';
+export * from './emblem';

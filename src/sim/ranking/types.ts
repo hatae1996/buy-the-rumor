@@ -4,6 +4,8 @@ import type { GoodId } from '../economy/goods';
 import type { ScheduledEventId } from '../events/types';
 import type { Season } from '../season';
 import type { TownTier } from '../worldgen';
+import type { Look } from '../looks/types';
+import type { Emblem } from './emblem';
 
 /** 랭킹 부문 (확정): 큰손, 수완가, 한 방, Buy the Rumor, 물품왕(물품마다) */
 export type CategoryId = 'bigShot' | 'multiplier' | 'oneShot' | 'buyTheRumor' | `goodsKing:${GoodId}`;
@@ -108,9 +110,14 @@ export interface ThemeDef {
 
 /** 상인 증서 (ID카드). 순자산 숫자는 담지 않는다 (정보 게임이므로) */
 export interface Certificate {
-  /** 상단 이름, 문장(깃발) */
+  /** 상단 이름. 시즌 사이에만 바꾼다 (0.1.7) */
   name: string;
-  crest: string;
+  /** 상단 문장: 방패 모양, 바탕 색, 나눔 무늬, 상징 (0.1.7, emblem.ts). 언제든 바꾼다 */
+  emblem: Emblem;
+  /** 플레이어 얼굴 (0.1.7, NPC 아바타 키트). 언제든 바꾼다 */
+  face: Look;
+  /** 상인 번호: 계정을 만든 순서 (로컬은 1번, 0.2.0에서 서버가 붙인다). 시즌을 넘어 그대로 */
+  merchantNo: number | null;
   /** 시작 출신 (나중에 해금). 없으면 null */
   origin: string | null;
   /** 완주한 시즌 수 (상인 연차). 오르면 증서 종이가 바뀐다 */

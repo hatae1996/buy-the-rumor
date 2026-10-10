@@ -55,7 +55,7 @@ export const REGIONAL_CARDS: readonly CardDef[] = [
     sources: [TAG('bandits'), EV('bandits')],
     danger: true,
     choices: [
-      { label: '금화를 낸다', fatigue: 0, success: [{ kind: 'pay', gold: 10 }] },
+      { label: '골드를 낸다', fatigue: 0, success: [{ kind: 'pay', gold: 10 }] },
       { label: '돌아간다', fatigue: 3, success: [{ kind: 'end' }] },
     ],
   },

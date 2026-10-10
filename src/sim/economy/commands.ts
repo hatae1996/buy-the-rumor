@@ -38,13 +38,15 @@ import {
   maxWeight,
   restHorses,
   sellHorse,
+  nameHorse,
   type HorseError,
   type HorseKind,
 } from '../horses';
 import { CART_TYPES, type Board, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
-import { checkBadges, pinBadges, setCompany, setTitle, type CertificateError } from '../ranking';
+import { checkBadges, pinBadges, setCompany, setEmblem, setFace, setTitle, type CertificateError, type Emblem } from '../ranking';
+import type { Look } from '../looks/types';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
 import { arrangeBoard, type ArrangeError, type Placement } from '../cart';
@@ -139,8 +141,12 @@ export type Command =
   | { type: 'reserveOrder'; town: number; good: GoodId; side: 'buy' | 'sell'; qty: number; limit: number; until: number }
   | { type: 'reserveOnArrival'; good: GoodId; qty: number | 'all'; minPrice: number }
   | { type: 'cancelReservation'; reservationId: number }
-  /** 상인 증서 (0.1.0): 상단 이름·문장, 앞면에 달 인장(인장첩 줄 번호, 4개까지), 대표 칭호 */
-  | { type: 'setCompany'; name: string; crest: string }
+  /** 상인 증서 (0.1.0): 상단 이름(시즌 사이에만, 0.1.7), 문장·얼굴(언제든, 0.1.7), 앞면에 달 인장(인장첩 줄 번호, 4개까지), 대표 칭호 */
+  | { type: 'setCompany'; name: string }
+  | { type: 'setEmblem'; emblem: Emblem }
+  | { type: 'setFace'; face: Look }
+  /** 산 말에 이름을 지어 준다 (0.1.7) */
+  | { type: 'nameHorse'; horseId: number; name: string }
   | { type: 'pinBadges'; rows: number[] }
   | { type: 'setTitle'; title: string | null }
   /** 내 판들(수레, 짐꾼 수레, 지금 마을 창고) 사이로 짐을 옮긴다 */
@@ -199,7 +205,7 @@ const done = (error: CommandError | null): CommandResult => (error ? fail(error)
 
 /** 플레이어 하나의 명령. 서버에서는 인증된 계정이 playerId다 */
 /** 시즌 결산 뒤에도 할 수 있는 명령 (증서 고치기, 설정, 신문 읽기) */
-const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'pinBadges', 'setTitle', 'setNotify', 'readNews', 'readPaper']);
+const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'setEmblem', 'setFace', 'pinBadges', 'setTitle', 'setNotify', 'readNews', 'readPaper']);
 
 export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
   const p = getPlayer(state, playerId);
@@ -360,7 +366,15 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
     case 'hireGuide':
       return done(hireGuide(state, p));
     case 'setCompany':
-      return done(setCompany(p.certificate, String(cmd.name ?? ''), String(cmd.crest ?? '')));
+      // 상단 이름은 시즌 사이에만 바꾼다 (0.1.7 답 129). 처음 이름은 시작 화면에서 정해 들어온다
+      if (!state.settlement) return fail('nameLocked');
+      return done(setCompany(p.certificate, String(cmd.name ?? '')));
+    case 'setEmblem':
+      return done(setEmblem(p.certificate, cmd.emblem));
+    case 'setFace':
+      return done(setFace(p.certificate, cmd.face));
+    case 'nameHorse':
+      return done(nameHorse(p, cmd.horseId, String(cmd.name ?? '')));
     case 'pinBadges':
       if (!Array.isArray(cmd.rows) || !cmd.rows.every((r) => Number.isInteger(r))) return fail('badQty');
       pinBadges(p.certificate, cmd.rows);

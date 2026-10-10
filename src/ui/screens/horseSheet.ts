@@ -8,6 +8,7 @@ import wheelImg from '../../../assets/ui/cartshop_wheel.png';
 import coinsImg from '../../../assets/ui/coins_stack.png';
 import infoImg from '../../../assets/ui/icon_info.png';
 import { CART_IMG } from '../cartBoard';
+import { bindHorseNaming, horseNameHtml, horsePicHtml } from '../horseArt';
 import { openLivePage } from '../livePage';
 import type { HorseKindInfo, HorseView } from '../../sim/economy';
 import { HORSES } from '../../sim/constants';
@@ -66,7 +67,7 @@ export function openStableSheet(game: Game): void {
           : k.price === null
             ? '<button type="button" class="rumor-note" disabled>남은 말 없음</button>'
             : `<button type="button" class="rumor-note horse-buy" data-buy="${k.kind}" ${full || v.gold < k.price ? 'disabled' : ''}>구매 신청<span><img src="${coinImg}" alt="" />${won(k.price)}</span></button>${
-                full ? '<small>두 마리까지예요</small>' : v.gold < k.price ? '<small>금화 부족</small>' : ''
+                full ? '<small>두 마리까지예요</small>' : v.gold < k.price ? '<small>골드 부족</small>' : ''
               }`;
         return `<li class="horse-card">
           <span class="people-pic empty" aria-hidden="true"></span>
@@ -81,9 +82,9 @@ export function openStableSheet(game: Game): void {
     const mine = v.horses
       .map(
         (h) => `<li class="horse-card mine">
-          <span class="people-pic empty" aria-hidden="true"></span>
+          ${horsePicHtml(h)}
           <div class="horse-body">
-            <div class="horse-head"><b>${h.name}</b><span class="paper-chip now">보유 중</span></div>
+            <div class="horse-head">${horseNameHtml(h)}<span class="paper-chip now">보유 중</span></div>
             ${statLines(h)}
             ${horseFatigue(h)}
           </div>
@@ -117,6 +118,7 @@ export function openStableSheet(game: Game): void {
         if (!page.send({ type: 'sellHorse', horseId: Number(b.dataset.sell) })) done = '';
       }),
     );
+    bindHorseNaming(body, game);
   });
 }
 
@@ -141,7 +143,7 @@ export function openCartShopSheet(game: Game): void {
             ? '<span class="cart-using">사용 중</span>'
             : v.gold >= c.cost
               ? `<button type="button" class="rumor-note" data-cart="${c.type}">교체 · ${won(c.cost)}</button>`
-              : `<button type="button" class="rumor-note" disabled>교체 · ${won(c.cost)}</button><small>금화 부족</small>`;
+              : `<button type="button" class="rumor-note" disabled>교체 · ${won(c.cost)}</button><small>골드 부족</small>`;
         return `<li class="cart-offer${c.cost === null ? ' current' : ''}">
           ${img ? `<img src="${img}" alt="" />` : ''}
           <div><span>${c.name}</span><b>${cells}칸</b><small>${pull}</small></div>
@@ -171,7 +173,7 @@ export function openCartShopSheet(game: Game): void {
       }
       <ul class="cart-offers">${cards}</ul>
       <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />말이 끄는 수레의 무게 한도는 말에 따라 달라요.</p>
-      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>보유 금화</b><strong>${won(v.gold)}</strong></section>`;
+      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>보유 골드</b><strong>${won(v.gold)}</strong></section>`;
     body.querySelector('[data-repair]')?.addEventListener('click', () => page.send({ type: 'repairCart' }));
     body.querySelectorAll<HTMLButtonElement>('[data-cart]').forEach((b) =>
       b.addEventListener('click', () => page.send({ type: 'buyCart', cart: b.dataset.cart as (typeof v.carts)[number]['type'] })),

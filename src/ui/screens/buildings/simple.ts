@@ -197,7 +197,7 @@ export function openBank(game: Game): void {
         <div><img src="${lettersImg}" alt="" /><span><b>은행 업무 준비 중</b><small>예금과 대출은 다음 버전에서 이용할 수 있어요.</small></span></div>
         <div class="city-soon-btns"><button type="button" class="rumor-note" disabled>예금하기</button><button type="button" class="rumor-note" disabled>대출받기</button></div>
       </section>
-      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>현재 보유 금화</b><strong>${won(v.gold)}</strong></section>
+      <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>현재 보유 골드</b><strong>${won(v.gold)}</strong></section>
       ${BACK_LINK}`;
   });
 }

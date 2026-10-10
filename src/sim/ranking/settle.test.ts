@@ -83,8 +83,10 @@ describe('시즌 결산', () => {
     for (let d = 0; d < 3; d++) advanceDay(s, map);
     loadGoods(s.players.me!.cart, 'ore', 3);
     expect(applyCommand(s, map, 'me', { type: 'placeSellOrder', good: 'ore', qty: 3, minPrice: 1 })).toEqual({ ok: false, error: 'seasonOver' });
-    expect(applyCommand(s, map, 'me', { type: 'setCompany', name: '  잿빛   소금 상단 ', crest: 'salt' }).ok).toBe(true);
-    expect(s.players.me!.certificate).toMatchObject({ name: '잿빛 소금 상단', crest: 'salt' });
+    expect(applyCommand(s, map, 'me', { type: 'setCompany', name: '  잿빛   소금 상단 ' }).ok).toBe(true);
+    const emblem = { shield: 'round', field: ['teal', 'cream'], division: 'cross', symbol: 'salt', symbolColor: 'ink' } as const;
+    expect(applyCommand(s, map, 'me', { type: 'setEmblem', emblem: { ...emblem, field: [...emblem.field] } }).ok).toBe(true);
+    expect(s.players.me!.certificate).toMatchObject({ name: '잿빛 소금 상단', emblem });
     const v = playerView(s, map, 'me');
     expect(v.settlement).toMatchObject({ season: 1, titles: ['1시즌 소금왕'] });
     expect(v.settlement!.report).toEqual(s.settlement!.reports.me);

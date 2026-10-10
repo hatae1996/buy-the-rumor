@@ -112,7 +112,7 @@ describe('시즌 끝과 다음 시즌 (0.1.0)', () => {
     expect(g.catchUp(t + DAY_MS * 10)).toBeNull();
     expect(g.passDay(t)).toBeNull();
     expect(g.dispatch({ type: 'restAtInn' })).toEqual({ ok: false, error: 'seasonOver' });
-    expect(g.dispatch({ type: 'setCompany', name: '시험 상단', crest: 'owl' }).ok).toBe(true);
+    expect(g.dispatch({ type: 'setCompany', name: '시험 상단' }).ok).toBe(true);
     const cert = g.view().certificate;
     const next = g.startNextSeason(t)!;
     expect(next.seed).not.toBe(g.seed);

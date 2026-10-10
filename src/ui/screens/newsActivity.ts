@@ -18,6 +18,8 @@ import { euro } from '../../sim/josa';
 import type { Game } from '../game';
 import { itemArt } from '../itemArt';
 import { openCertificate } from './certificate';
+import { emblemSvg } from '../emblem';
+import { portraitHtml } from '../portrait/portrait';
 
 type ActivityView = 'log' | 'rank';
 let view: ActivityView = 'log';
@@ -166,8 +168,15 @@ function myRankCard(v: PlayerView): string {
 function rankingHtml(v: PlayerView): string {
   const r = v.ranking;
   if (r.day === null) return '<p class="ledger-note">첫 장날이 지나면 순위가 매겨져요.</p>';
+  // 내 세계 상단은 얼굴과 문장을 함께 (0.1.7), 누르면 증서
+  const marks = (id: string) => {
+    const c = v.certificates[id];
+    return c ? `${portraitHtml(c.face, 26)}${emblemSvg(c.emblem, 20)}` : '';
+  };
   const who = (t: RankingCategoryView['top'][number]) =>
-    t.mine ? `<button type="button" class="link-btn" data-cert-id="${t.id}">${t.rank}위 ${t.name}</button>` : `<span>${t.rank}위 ${t.name}</span>`;
+    t.mine
+      ? `<button type="button" class="link-btn rank-who" data-cert-id="${t.id}">${t.rank}위 ${marks(t.id)}${t.name}</button>`
+      : `<span>${t.rank}위 ${t.name}</span>`;
   const mine = (c: RankingCategoryView) =>
     c.mine
       ? `<small>나 ${c.mine.rank}위 · 상위 ${Math.max(1, Math.round(c.mine.topShare * 100))}%${c.world.mine ? ` · 내 세계 ${c.world.mine.rank}위` : ''}</small>`

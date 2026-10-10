@@ -17,6 +17,9 @@ import {
   stableAt,
   type Horse,
   type HorseKind,
+  horseLooks,
+  type CoatId,
+  type MarkingId,
 } from '../horses';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { playerTravelDays } from './travel';
@@ -24,7 +27,7 @@ import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingI
 import { hireBoard, porterBuyRoom, porters, restWage, wageToday, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
-import { badgeDef, CATEGORIES, categoryName, certificateView, CRESTS, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport, type Standing } from '../ranking';
+import { badgeDef, CATEGORIES, categoryName, certificateView, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport, type Standing } from '../ranking';
 import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
@@ -292,8 +295,6 @@ export interface PlayerView {
   certificate: CertificateView;
   /** 내가 얻은 칭호 (대표 칭호로 고를 수 있다) */
   titles: string[];
-  /** 고를 수 있는 상단 문장 */
-  crests: Record<string, string>;
   /** 내 인장첩: 모은 인장 전부 (숨김 업적은 얻은 것만 보인다) */
   badgeBook: { name: string; kind: string; tier: 'bronze' | 'silver' | 'gold' | null; season: number; day: number }[];
   /** 알림 설정. askNow: 견습 졸업이라 알림 허락을 물을 때 */
@@ -346,6 +347,12 @@ export interface HorseView extends HorseKindInfo {
   pulling: number;
   /** 이 마을 마구간에 되팔 값. 마구간이 없으면 null */
   sellPrice: number | null;
+  /** 털색, 무늬, 이름 (0.1.7, 말마다 시드로) */
+  coat: CoatId;
+  marking: MarkingId;
+  horseName: string;
+  /** 플레이어가 지어 준 이름인가 */
+  named: boolean;
 }
 
 export interface StableView {
@@ -371,9 +378,14 @@ const kindInfo = (kind: HorseKind): HorseKindInfo => {
   return { kind, name: k.name, pull: k.pull, speed: k.speed, feed: k.feed };
 };
 
-function horseView(h: Horse, stable: ReturnType<typeof stableAt>): HorseView {
+function horseView(state: EconomyState, h: Horse, stable: ReturnType<typeof stableAt>): HorseView {
+  const looks = horseLooks(state, h);
   return {
     ...kindInfo(h.kind),
+    coat: looks.coat,
+    marking: looks.marking,
+    horseName: looks.name,
+    named: looks.named,
     id: h.id,
     fatigue: h.fatigue,
     fatigueMax: HORSES.fatigue.max,
@@ -500,7 +512,7 @@ function caravanView(state: EconomyState, p: PlayerState): CaravanView | null {
   if (!c) return null;
   return {
     carter: p.hires.find((h) => h.id === c.carter)?.name ?? null,
-    horses: c.horses.map((h) => horseView(h, null)),
+    horses: c.horses.map((h) => horseView(state, h, null)),
     cart: {
       type: c.cart.type,
       name: CART.types[c.cart.type].name,
@@ -821,7 +833,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
         horseDays(d, p.horses),
       ),
     },
-    horses: p.horses.map((h) => horseView(h, stable)),
+    horses: p.horses.map((h) => horseView(state, h, stable)),
     horseCare: p.travel
       ? null
       : { feedPrice: feedPrice(state, p.town), restFee: HORSES.fatigue.rest.fee * p.horses.length, rested: p.horsesRested },
@@ -909,7 +921,6 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     guild: guildView(state, p),
     certificate: certificateView(p.certificate),
     titles: [...p.certificate.titles],
-    crests: CRESTS,
     badgeBook: p.certificate.badges.map((b) => {
       const def = badgeDef(b.badge);
       return { name: def?.name ?? b.badge, kind: def?.kind ?? 'achievement', tier: b.tier, season: b.season, day: b.day };

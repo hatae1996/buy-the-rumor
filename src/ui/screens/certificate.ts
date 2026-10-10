@@ -1,13 +1,19 @@
 // 상인 증서 (기획서 "상인 증서 (ID카드)", 0.1.6 목업 docs/reference/certificate-mockup-0.1.6.png).
 // 남에게 보이는 증서라 순자산 숫자는 없다. 위쪽 줄의 내 문장, 랭킹의 이름을 누르면 열린다.
-// 빈 카드 그림(assets/ui/certificate_card.jpg) 위에 테두리 줄(종이 등급마다 색), 상단 이름, 대표 칭호, 년차, 대표 인장 4개.
-// 가운데 문장(마크)은 틀·색·무늬를 나눠 고르는 부품이 오기 전까지 점선 방패 자리만 둔다.
-// 내 증서는 상단 이름·문장, 대표 칭호, 앞면에 달 인장(4개까지)을 고르고, 이미지로 저장한다 (공유는 나중).
-// 상단 이름은 고르기만 한다. 금칙어 걸러 내기는 서버 버전에서 (handoff 0.1.0).
+// 빈 카드 그림(assets/ui/certificate_card.jpg) 위에 테두리 줄(종이 등급마다 색), 얼굴과 문장, 상단 이름, 대표 칭호, 년차, 대표 인장 4개, 상인 번호.
+// 0.1.7: 가운데에 내 얼굴(아바타 키트)과 문장(부품), 아래에 상인 번호. 얼굴과 문장은 언제든, 상단 이름은 시즌 사이에만 바꾼다.
+// 내 증서는 대표 칭호, 앞면에 달 인장(4개까지)을 고르고, 이미지로 저장한다 (공유는 나중).
+// 상단 이름은 로컬에서는 글자 수만 본다. 금칙어와 같은 시즌 중복은 서버 버전에서 (0.1.7 답 129).
 import cardImg from '../../../assets/ui/certificate_card.jpg';
 import type { CertificateView } from '../../sim/ranking';
+import { drawEmblem, emblemSvg } from '../emblem';
+import { ERROR_TEXT } from '../format';
 import type { Game } from '../game';
 import { openLivePage } from '../livePage';
+import { openPage } from '../page';
+import { portraitHtml } from '../portrait/portrait';
+import { mountEmblemEditor } from './emblemEditor';
+import { mountFaceEditor } from './faceEditor';
 
 const PAPER = { worn: '낡은 종이', parchment: '양피지', gilded: '금테' } as const;
 /** 종이 등급마다 테두리 줄 색 */
@@ -19,14 +25,8 @@ const KIND = { quest: '의뢰', ranking: '랭킹', achievement: '업적', memori
 /** 앞면에 다는 인장 수 (src/sim/ranking MAX_PINNED) */
 const MAX_PINNED = 4;
 
-/** 가운데 문장 자리: 부품이 오기 전까지 점선 방패와 문장 이름 */
-const SHIELD = 'M50 4 L92 18 L92 52 C92 78 72 96 50 104 C28 96 8 78 8 52 L8 18 Z';
-function crestSlot(name: string): string {
-  return `<svg class="cert-crest" viewBox="0 0 100 108" role="img" aria-label="문장 ${name}">
-    <path d="${SHIELD}" fill="rgba(60,50,40,0.04)" stroke="#b9ae9f" stroke-width="2" stroke-dasharray="6 5" />
-    <text x="50" y="60" text-anchor="middle">${name}</text>
-  </svg>`;
-}
+/** 상인 번호: 여섯 자리 (목업 "상인번호 001284") */
+export const merchantNoText = (n: number | null): string | null => (n === null ? null : `상인번호 ${String(n).padStart(6, '0')}`);
 
 /** 대표 인장 하나: 등급 색 칠각 메달에 이름 첫 글자, 아래에 이름. 빈 자리는 점선 */
 function badgeToken(b: CertificateView['pinned'][number] | undefined): string {
@@ -35,18 +35,19 @@ function badgeToken(b: CertificateView['pinned'][number] | undefined): string {
   return `<span class="cert-badge"><span class="cert-medal" style="--medal:${color}">${b.name.slice(0, 1)}</span><small>${b.name}${b.tier ? ` · ${TIER[b.tier]}` : ''}</small></span>`;
 }
 
-function face(c: CertificateView, crests: Record<string, string>): string {
+function face(c: CertificateView): string {
   const slots = Array.from({ length: MAX_PINNED }, (_, i) => badgeToken(c.pinned[i])).join('');
   return `<section class="cert-card" style="--cert-line:${LINE[c.paper]};background-image:url('${cardImg}')" aria-label="상인 증서">
       <div class="cert-inner">
         <p class="cert-kicker"><span></span>상인 길드 공인<span></span></p>
         <h2 class="cert-title">상인증서</h2>
-        ${crestSlot(crests[c.crest] ?? c.crest)}
+        <div class="cert-marks">${portraitHtml(c.face, 84, '상인 얼굴')}${emblemSvg(c.emblem, 96)}</div>
         <h3 class="cert-name">${c.name}</h3>
         <p class="cert-honor">${c.title ?? '칭호 없음'}</p>
         <p class="cert-years">상인 ${c.seasonsCompleted + 1}년차${c.origin ? ` · ${c.origin} 출신` : ''}</p>
         <p class="cert-label">대표 인장</p>
         <div class="cert-badges">${slots}</div>
+        ${merchantNoText(c.merchantNo) ? `<p class="cert-no">${merchantNoText(c.merchantNo)}</p>` : ''}
         <p class="cert-foot">${PAPER[c.paper]} · 모은 인장 ${c.badgeCount}${c.bestBigShotRank ? ` · 큰손 최고 ${c.bestBigShotRank}위` : ''}</p>
         <span class="cert-stamp" aria-hidden="true">길드<br />공인</span>
       </div>
@@ -63,7 +64,7 @@ export function openCertificate(game: Game, id?: string): void {
       return;
     }
     if (!mine) {
-      body.innerHTML = `${face(c, v.crests)}<p class="ledger-note plain">남의 증서에는 순자산이 없어요. 인장첩은 그 상단만 봐요.</p>`;
+      body.innerHTML = `${face(c)}<p class="ledger-note plain">남의 증서에는 순자산이 없어요. 인장첩은 그 상단만 봐요.</p>`;
       return;
     }
     const pinnedRows = new Set(v.certificate.pinned.map((p) => v.badgeBook.findIndex((b) => b.name === p.name && b.season === p.season)));
@@ -75,15 +76,20 @@ export function openCertificate(game: Game, id?: string): void {
         )
         .join('') || '<li class="muted">원정과 장사에서 이야기가 되는 순간, 랭킹, 길드 의뢰, 시즌 완주로 인장이 모여요.</li>';
     body.innerHTML = `
-      ${face(c, v.crests)}
+      ${face(c)}
       <button type="button" class="shop-link" data-save-image>이미지로 저장 <span>›</span></button>
+      <div class="cert-parts">
+        <button type="button" class="shop-link" data-edit-face>얼굴 바꾸기 <span>›</span></button>
+        <button type="button" class="shop-link" data-edit-emblem>문장 바꾸기 <span>›</span></button>
+      </div>
       <section class="shop-card cert-edit">
-        <h3>상단 이름과 문장</h3>
-        <input type="text" data-name maxlength="12" value="${c.name.replace(/"/g, '&quot;')}" aria-label="상단 이름" />
-        <select data-crest aria-label="문장">${Object.entries(v.crests)
-          .map(([k, name]) => `<option value="${k}" ${k === c.crest ? 'selected' : ''}>${name}</option>`)
-          .join('')}</select>
-        <button type="button" class="rumor-note" data-company>바꾸기</button>
+        <h3>상단 이름</h3>
+        ${
+          v.settlement
+            ? `<input type="text" data-name maxlength="12" value="${c.name.replace(/"/g, '&quot;')}" aria-label="상단 이름" />
+               <button type="button" class="rumor-note" data-company>이름 바꾸기</button>`
+            : '<p class="ledger-note plain">상단 이름은 시즌이 끝난 뒤, 다음 시즌을 시작하기 전에 바꿀 수 있어요.</p>'
+        }
         ${
           v.titles.length
             ? `<h3>대표 칭호</h3>
@@ -97,13 +103,11 @@ export function openCertificate(game: Game, id?: string): void {
         <h3>인장첩 (${c.badgeCount}) <small>앞면에 ${MAX_PINNED}개까지</small></h3>
         <ul class="cert-book">${book}</ul>
       </section>`;
-    body.querySelector('[data-company]')!.addEventListener('click', () =>
-      page.send({
-        type: 'setCompany',
-        name: body.querySelector<HTMLInputElement>('[data-name]')!.value,
-        crest: body.querySelector<HTMLSelectElement>('[data-crest]')!.value,
-      }),
+    body.querySelector('[data-company]')?.addEventListener('click', () =>
+      page.send({ type: 'setCompany', name: body.querySelector<HTMLInputElement>('[data-name]')!.value }),
     );
+    body.querySelector('[data-edit-face]')!.addEventListener('click', () => openPartsPage(game, 'face'));
+    body.querySelector('[data-edit-emblem]')!.addEventListener('click', () => openPartsPage(game, 'emblem'));
     body.querySelector<HTMLSelectElement>('[data-title]')?.addEventListener('change', (e) =>
       page.send({ type: 'setTitle', title: (e.target as HTMLSelectElement).value || null }),
     );
@@ -113,12 +117,41 @@ export function openCertificate(game: Game, id?: string): void {
         page.send({ type: 'pinBadges', rows });
       }),
     );
-    body.querySelector('[data-save-image]')!.addEventListener('click', () => void saveImage(c, v.crests));
+    body.querySelector('[data-save-image]')!.addEventListener('click', () => void saveImage(c, body.querySelector<HTMLCanvasElement>('.cert-marks canvas.portrait')));
   });
 }
 
-/** 증서를 그림으로 그려 내려받는다 (화면과 같은 빈 카드 위에, 공유는 나중 버전) */
-async function saveImage(c: CertificateView, crests: Record<string, string>): Promise<void> {
+/** 얼굴이나 문장을 고르는 페이지 (증서에서 언제든). 저장을 누르면 명령을 보낸다 */
+function openPartsPage(game: Game, kind: 'face' | 'emblem'): void {
+  const page = openPage({ back: '상인 증서', title: kind === 'face' ? '얼굴 바꾸기' : '문장 바꾸기' });
+  const c = game.view().certificate;
+  page.body.innerHTML = `<div class="shop-card" data-editor></div>
+    <button type="button" class="founding-btn" data-save>저장</button>
+    <p class="error" data-error hidden></p>`;
+  const holder = page.body.querySelector<HTMLElement>('[data-editor]')!;
+  const save =
+    kind === 'face'
+      ? (() => {
+          const ed = mountFaceEditor(holder, c.face);
+          return () => game.dispatch({ type: 'setFace', face: ed.get() });
+        })()
+      : (() => {
+          const ed = mountEmblemEditor(holder, c.emblem);
+          return () => game.dispatch({ type: 'setEmblem', emblem: ed.get() });
+        })();
+  page.body.querySelector('[data-save]')!.addEventListener('click', () => {
+    const r = save();
+    if (r.ok) page.close();
+    else {
+      const err = page.body.querySelector<HTMLElement>('[data-error]')!;
+      err.textContent = ERROR_TEXT[r.error];
+      err.hidden = false;
+    }
+  });
+}
+
+/** 증서를 그림으로 그려 내려받는다 (화면과 같은 빈 카드 위에, 공유는 나중 버전). photo: 화면에 이미 그린 얼굴 캔버스 */
+async function saveImage(c: CertificateView, photo: HTMLCanvasElement | null): Promise<void> {
   const card = new Image();
   card.src = cardImg;
   await card.decode().catch(() => undefined);
@@ -148,18 +181,18 @@ async function saveImage(c: CertificateView, crests: Record<string, string>): Pr
   g.fillStyle = '#3a312a';
   g.font = serif(64, 800);
   g.fillText('상인증서', W / 2, 172);
-  // 문장 자리
-  g.save();
-  g.translate(W / 2 - 60, 206);
-  g.scale(1.2, 1.2);
-  g.setLineDash([6, 5]);
-  g.strokeStyle = '#b9ae9f';
-  g.lineWidth = 2;
-  g.stroke(new Path2D(SHIELD));
-  g.restore();
-  g.fillStyle = '#8a8076';
-  g.font = serif(18, 700);
-  g.fillText(crests[c.crest] ?? c.crest, W / 2, 280);
+  // 얼굴과 문장 (0.1.7)
+  if (photo) {
+    g.save();
+    g.beginPath();
+    g.arc(W / 2 - 78, 268, 62, 0, Math.PI * 2);
+    g.fillStyle = '#efe6d6';
+    g.fill();
+    g.clip();
+    g.drawImage(photo, W / 2 - 140, 206, 124, 124);
+    g.restore();
+  }
+  await drawEmblem(g, c.emblem, W / 2 + 18, 200, 124);
   g.fillStyle = '#1f3d45';
   g.font = display(52);
   g.fillText(c.name, W / 2, 408);
@@ -205,6 +238,12 @@ async function saveImage(c: CertificateView, crests: Record<string, string>): Pr
       g.stroke();
       g.setLineDash([]);
     }
+  }
+  const no = merchantNoText(c.merchantNo);
+  if (no) {
+    g.fillStyle = '#4d5f63';
+    g.font = serif(22, 700);
+    g.fillText(no, W / 2, H - 124);
   }
   g.fillStyle = '#5b5148';
   g.font = serif(18, 700);

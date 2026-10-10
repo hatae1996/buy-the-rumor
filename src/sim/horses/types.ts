@@ -14,6 +14,8 @@ export interface Horse {
   price: number;
   /** 사 온 마구간. 굶다 도망치면 이리로 돌아간다 */
   home: number;
+  /** 플레이어가 지어 준 이름 (0.1.7). 없으면 기본 이름 (coat.ts) */
+  name?: string;
 }
 
 /** 목장 마을의 마구간. 남은 수는 그 마을에 가야만 보인다 */

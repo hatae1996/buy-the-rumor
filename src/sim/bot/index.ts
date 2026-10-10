@@ -5,4 +5,4 @@ export { bigDays, botTurn, dailyIncome, profitIncome, runBot, runBotOn, seasonIn
 // 순자산은 랭킹과 같은 계산을 쓴다
 export { netWorth } from '../ranking/worth';
 export { byProfile, MARKET_MIX, marketProblems, runBots, startBots, type MarketProblems, type MarketRun, type MarketRunOptions, type MarketStats, type MarketStepper, type SeatRun } from './market';
-export { BOT_COMPANY_NAMES, botSpecs, createCrew, crewDay, type BotBrain } from './crew';
+export { BOT_COMPANY_NAMES, botSpecs, createCrew, crewDay, recommendCompanyName, type BotBrain } from './crew';

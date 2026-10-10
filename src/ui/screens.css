@@ -5508,18 +5508,6 @@
   line-height: 1.15;
 }
 
-.cert-crest {
-  width: 26cqw;
-  margin: 2cqw 0 1cqw;
-}
-
-.cert-crest text {
-  fill: #8a8076;
-  font-family: 'Nanum Myeongjo', serif;
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .cert-name {
   margin: 1cqw 0 0;
   color: #1f3d45;

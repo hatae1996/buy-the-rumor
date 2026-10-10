@@ -17,6 +17,8 @@ import { goodName, money } from '../format';
 import type { Game } from '../game';
 import { openPage } from '../page';
 import { openCertificate } from './certificate';
+import { emblemSvg } from '../emblem';
+import { portraitHtml } from '../portrait/portrait';
 
 const ICON = {
   chart: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 20v-6h3v6zM10.5 20V9h3v11zM17 20V4h3v16z" fill="currentColor"/></svg>`,
@@ -83,6 +85,7 @@ function reportHtml(game: Game, st: SettlementView): string {
 export function openSettlement(game: Game, onNextSeason: () => void): void {
   const st = game.view().settlement;
   if (!st) return;
+  const me = game.view().certificate;
   const page = openPage({ back: '마을', title: `${st.season}시즌 결산` });
   page.el.classList.add('settle-page');
   page.body.innerHTML = `
@@ -98,6 +101,7 @@ export function openSettlement(game: Game, onNextSeason: () => void): void {
     </section>
     <section class="cv-card settle-card">
       <h3 class="settle-h"><img src="${trophyImg}" alt="" />내 순위<small>같은 시즌의 모든 세계 기준</small></h3>
+      <div class="settle-me">${portraitHtml(me.face, 56, '내 얼굴')}${emblemSvg(me.emblem, 44)}<b>${me.name}</b></div>
       ${rankHtml(st.categories)}
       <p class="cv-muted">시즌 전체 순위로 인장과 칭호를 받아요.</p>
     </section>
@@ -109,12 +113,12 @@ export function openSettlement(game: Game, onNextSeason: () => void): void {
       <h3 class="settle-h">${ICON.sprout}다음 시즌에는</h3>
       <div class="settle-next">
         <ul>
-          <li><span>${ICON.keep}</span><div><b>그대로 이어져요</b><small>상인 증서 · 인장 · 칭호 · 연차</small></div></li>
-          <li><span>${ICON.renew}</span><div><b>새로 시작해요</b><small>지도 · 시작 마을 · 금화 · 짐 · 말 · 일꾼 · 창고 · 시세 · 소문</small></div></li>
+          <li><span>${ICON.keep}</span><div><b>그대로 이어져요</b><small>상단 이름 · 상인 번호 · 얼굴 · 문장 · 인장 · 칭호 · 연차</small></div></li>
+          <li><span>${ICON.renew}</span><div><b>새로 시작해요</b><small>지도 · 시작 마을 · 골드 · 짐 · 말 · 일꾼 · 창고 · 시세 · 소문</small></div></li>
         </ul>
         <img src="${mapImg}" alt="" />
       </div>
-      <p class="cv-muted">새 지도와 새 마을에서 다시 출발해요.</p>
+      <p class="cv-muted">새 지도와 새 마을에서 다시 출발해요. 상단 이름은 지금, 다음 시즌을 시작하기 전에 상인 증서에서 바꿀 수 있어요.</p>
       <div class="settle-btns">
         <button type="button" class="settle-cert" data-cert>${ICON.cert}상인 증서</button>
         <button type="button" class="cv-btn coral" data-next>${ICON.play}다음 시즌 시작</button>

@@ -70,7 +70,7 @@ export function openWarehouse(game: Game): void {
           </ul>
           <p class="ware-warn"><img src="${itemArt('rations') ?? ''}" alt="" /><span><b>음식은 창고에서도 상해요.</b><small>아무리 안전한 창고라도, 음식은 시간이 지나면 상할 수 있어요.</small></span></p>
         </section>
-        <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>보유 금화</b><strong>${won(v.gold)}</strong></section>
+        <section class="ware-gold"><img src="${coinsImg}" alt="" /><b>보유 골드</b><strong>${won(v.gold)}</strong></section>
         <button type="button" class="rumor-note shop-wide" data-rent ${v.gold < fee ? 'disabled' : ''}>${won(fee)} · 창고 빌리기</button>`;
       body.querySelector('[data-rent]')?.addEventListener('click', () => page.send({ type: 'rentWarehouse' }));
       return;

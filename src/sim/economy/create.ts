@@ -16,7 +16,9 @@ import { createSeason } from '../events/schedule';
 import { emptyRumorMill } from '../rumors/night';
 import { emptyHorseMarket } from '../horses/supply';
 import { ALL_UNLOCKS, startApprentice } from '../apprentice/progress';
-import { createCertificate } from '../ranking/certificate';
+import { cleanCompanyName, createCertificate, setEmblem, setFace } from '../ranking/certificate';
+import type { Emblem } from '../ranking/emblem';
+import type { Look } from '../looks/types';
 import { ensureRecord } from '../ranking/record';
 import { emptyAccount } from '../bank/bank';
 import { defaultNotifySettings } from '../notify/kinds';
@@ -30,8 +32,10 @@ export interface PlayerSpec {
   apprentice?: boolean;
   /** 상단 이름 (상인 증서). 없으면 이름 없는 상단 */
   name?: string;
-  /** 상단 문장 (상인 증서 CRESTS). 없으면 무늬 없음 */
-  crest?: string;
+  /** 상단 문장 (0.1.7 시작 화면에서 고른 것). 없으면 시드로 추천한 문장 */
+  emblem?: Emblem;
+  /** 얼굴 (0.1.7 시작 화면에서 고른 것). 없으면 시드로 추천한 얼굴 */
+  face?: Look;
 }
 
 export interface CreateOptions {
@@ -71,7 +75,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     towns: map.towns.map((t) => createTown(map, t.id)),
     workers: [],
     traders: [],
-    players: Object.fromEntries(specs.map((sp, seq) => [sp.id, newPlayer(sp.id, seq, startTown(seq))])),
+    players: Object.fromEntries(specs.map((sp, seq) => [sp.id, newPlayer(sp.id, seq, startTown(seq), seed)])),
     orders: [],
     draws: [],
     news: [],
@@ -127,8 +131,10 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   for (const p of playerList(state)) {
     p.homeTown = p.town;
     p.visited = [p.town];
-    if (specs[p.seq]!.name) p.certificate.name = specs[p.seq]!.name!;
-    if (specs[p.seq]!.crest) p.certificate.crest = specs[p.seq]!.crest!;
+    const spec = specs[p.seq]!;
+    if (spec.name) p.certificate.name = cleanCompanyName(spec.name) ?? p.certificate.name;
+    if (spec.emblem) setEmblem(p.certificate, spec.emblem);
+    if (spec.face) setFace(p.certificate, spec.face);
     if (specs[p.seq]!.apprentice) startApprentice(state, p, map, createRng(playerSeed(seed ^ 0xa99e, p)));
     else for (const id of ALL_UNLOCKS) p.unlocks[id] = state.day;
   }
@@ -137,8 +143,8 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   return state;
 }
 
-/** 새 플레이어: 금화와 등짐 하나 (기획서 "시작 조건") */
-function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
+/** 새 플레이어: 골드와 등짐 하나 (기획서 "시작 조건"). 상인 번호는 들어온 차례 (로컬은 플레이어 1번, 봇은 그 뒤) */
+function newPlayer(id: PlayerId, seq: number, town: number, seed: number): PlayerState {
   return {
     id,
     seq,
@@ -173,7 +179,7 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
     newspapers: [],
     papersRead: [],
     record: null,
-    certificate: createCertificate(),
+    certificate: createCertificate(mixSeed(seed, 0xce47, seq), seq + 1),
     warehouses: [],
     hires: [],
     caravan: null,

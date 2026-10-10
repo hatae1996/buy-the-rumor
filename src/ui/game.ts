@@ -25,6 +25,7 @@ import { generateWorld, townsForPlayers, type WorldMap } from '../sim/worldgen';
 import { hireFaces, townFaces, type Look, type TownFaces } from '../sim/looks';
 import { mixSeed } from '../sim/rng';
 import { createCart, refitBoards } from '../sim/cart';
+import { refitCertificates, type Emblem } from '../sim/ranking';
 import type { NotifyEvent } from '../sim/notify';
 import { seasonOfDay, type Season } from '../sim/season';
 
@@ -81,22 +82,31 @@ export class Game {
 
   /** 저장된 판이 있으면 이어서, 없으면 새 판 */
   static start(now: number): Game {
+    return Game.load() ?? Game.fresh(now, now % 1_000_000_007);
+  }
+
+  /** 저장된 판. 없으면 null (처음 하는 사람은 시작 화면부터, 0.1.7) */
+  static load(): Game | null {
     const saved = load();
-    if (saved) return new Game(generateWorld(saved.seed, { towns: saved.state.towns.length }), saved.state, saved.crew, saved.dayStartedAt);
-    return Game.fresh(now, now % 1_000_000_007);
+    return saved ? new Game(generateWorld(saved.seed, { towns: saved.state.towns.length }), saved.state, saved.crew, saved.dayStartedAt) : null;
   }
 
   /**
    * 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다.
    * 같은 시장에 봇 상인이 함께 앉는다 (기본 11명, 개발용 0~20). 마을 수는 사람 수로 정한다 (0.1.1, 나 + 봇 11명이면 6곳)
    */
-  static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number; seasonDays?: number; towns?: number } = {}): Game {
+  static fresh(
+    now: number,
+    seed: number,
+    opt: { apprentice?: boolean; bots?: number; seasonDays?: number; towns?: number; company?: { name: string; face: Look; emblem: Emblem } } = {},
+  ): Game {
     const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
     const map = generateWorld(seed, { towns: opt.towns ?? townsForPlayers(1 + bots) });
-    const specs = botSpecs(map.seed, bots);
+    const specs = botSpecs(map.seed, bots, opt.company ? [opt.company.name] : []);
     const state = createEconomy(map, map.seed, {
       warmupDays: ECONOMY.warmupDays,
-      players: [{ id: LOCAL_PLAYER, apprentice: opt.apprentice ?? true }, ...specs],
+      // 시작 화면에서 고른 상단 이름, 얼굴, 문장 (0.1.7). 상인 번호는 로컬이라 1번
+      players: [{ id: LOCAL_PLAYER, apprentice: opt.apprentice ?? true, ...opt.company }, ...specs],
     });
     // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레
     for (const s of specs) getPlayer(state, s.id).cart = createCart('handcart');
@@ -283,6 +293,8 @@ function load(): SaveData | null {
     if (!(data.version === 1 && data.state?.version === 1 && Array.isArray(data.crew))) return null;
     // 0.1.6: 수레가 세로형으로 바뀌었다. 예전 자리에 있던 짐은 새 모양의 빈자리로 다시 놓는다
     refitBoards(data.state);
+    // 0.1.7: 증서에 문장 부품, 얼굴, 상인 번호
+    refitCertificates(data.state);
     return data;
   } catch {
     return null;

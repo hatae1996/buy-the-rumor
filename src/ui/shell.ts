@@ -6,7 +6,7 @@ import { closeAllPages } from './page';
 import coin from '../../assets/ui/coin.png';
 import hourglass from '../../assets/ui/icon_hourglass.png';
 import bread from '../../assets/ui/icon_bread.png';
-import seal from '../../assets/ui/seal_small.png';
+import { emblemSvg } from './emblem';
 import tabCart from '../../assets/ui/tab_cart.png';
 import tabLedger from '../../assets/ui/tab_ledger.png';
 import tabMap from '../../assets/ui/tab_map.png';
@@ -40,7 +40,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   root.innerHTML = `
     <div class="shell">
       <header class="status-bar">
-        <button type="button" class="status-crest" data-crest aria-label="상인 증서"><img src="${seal}" alt="" /></button>
+        <button type="button" class="status-crest" data-crest aria-label="상인 증서"></button>
         <span class="status-day" data-day></span>
         <span class="status-market"><img src="${hourglass}" alt="" /><span data-market></span></span>
         <span class="status-fatigue" aria-label="피로"><img src="${bread}" alt="" /><span data-fatigue></span></span>
@@ -82,8 +82,15 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     else settle();
   };
 
+  // 위 줄 왼쪽은 내 문장 (0.1.7). 바뀔 때만 다시 그린다
+  let crestKey = '';
   const render = () => {
     const v = game.view();
+    const key = JSON.stringify(v.certificate.emblem);
+    if (key !== crestKey) {
+      crestKey = key;
+      $('[data-crest]').innerHTML = emblemSvg(v.certificate.emblem, 36, '내 문장');
+    }
     $('[data-gold]').textContent = money(v.gold);
     $('[data-day]').textContent = dayText(v.day, v.season);
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다

@@ -1,5 +1,5 @@
 // 장부 탭 "인력·말" (0.1.6 목업 docs/reference/ledger-people-mockup-0.1.6.png, 유지비 줄은 작게 위로).
-// 하루 유지비 한 줄, 고용 인력 카드(아바타 키트 얼굴), 보유 말 카드(그림 자리만 비워 둠), 여관 안내.
+// 하루 유지비 한 줄, 고용 인력 카드(아바타 키트 얼굴), 보유 말 카드(그림 자리에 털색 점, 이름 짓기 0.1.7), 여관 안내.
 import innImg from '../../../assets/ui/bld_inn.png';
 import sackImg from '../../../assets/ui/coins_sack.png';
 import type { PlayerView } from '../../sim/economy';
@@ -8,6 +8,7 @@ import type { Game } from '../game';
 import { portraitHtml } from '../portrait/portrait';
 import { openInn } from './buildings/inn';
 import { horseFatigue, openStableSheet, speedWord } from './horseSheet';
+import { bindHorseNaming, horseNameHtml, horsePicHtml } from '../horseArt';
 
 const won = (n: number) => `${money(n)}골드`;
 
@@ -39,9 +40,9 @@ export function peopleHtml(game: Game, v: PlayerView): string {
   const people = v.hires.length + v.informants.length;
 
   const horseCard = (h: PlayerView['horses'][number], where: string) => `<section class="people-card">
-      <span class="people-pic empty" aria-hidden="true"></span>
+      ${horsePicHtml(h)}
       <div class="people-body">
-        <h3>${h.name}</h3>
+        <h3>${horseNameHtml(h)}</h3>
         <span class="people-chip">${where}</span>
         <p>끄는 무게 ${h.pull} · ${speedWord(h.speed)}</p>
         ${horseFatigue(h)}
@@ -73,4 +74,5 @@ export function peopleHtml(game: Game, v: PlayerView): string {
 export function bindPeople(el: HTMLElement, game: Game): void {
   el.querySelectorAll('[data-people-inn]').forEach((b) => b.addEventListener('click', () => openInn(game, 'hire')));
   el.querySelectorAll('[data-people-stable]').forEach((b) => b.addEventListener('click', () => openStableSheet(game)));
+  bindHorseNaming(el, game);
 }

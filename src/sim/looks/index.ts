@@ -21,3 +21,4 @@ export { COMMON_BEARDS, COMMON_HAIR, COMMON_OLD_HAIR, COMMON_TOPS, ROLE_RANGES, 
 export { assignLooks, drawLook, lookKey, npcKey, npcOrder, resolveChoices, rollLook } from './draw';
 export { hireFaces, townFaces, worldLooks, worldNpcs, type TownFaces } from './roster';
 export type * from './types';
+export { cleanFace, FACE_CLOTH, FACE_HAIR_COLORS, FACE_SKINS, faceCloth, faceParts, rollPlayerFace, withCloth, withTop } from './player';
