@@ -93,14 +93,29 @@ export const BACKGROUND = 0x2e2219;
 export const PROP = {
   trunk: 0x6b4423,
   rock: 0x8f8d84,
-  wheat: 0xd8a23a,
-  ore: 0x5b6ea0,
-  salt: 0xffffff,
-  boat: 0x8c5a2b,
   road: 0x7a5a3c,
   wall: 0xf1e2c6,
   roof: 0xd2594b,
   cityRoof: 0x2e9c98,
+} as const;
+
+/** 자원지 표시 (resources.ts) */
+export const RESOURCE_COLOR = {
+  soil: 0x9a7448,
+  soilWinter: 0x8a7d70,
+  wheat: 0xf1c85a,
+  wheatDark: 0xe0ac3e,
+  oreRock: 0x878580,
+  crystal: 0x4fa3f0,
+  mineWood: 0x6b4423,
+  mineHole: 0x2a1e16,
+  saltPanRim: 0xb9a888,
+  saltPan: 0xcfe0e6,
+  salt: 0xffffff,
+  dock: 0xa57c52,
+  hull: 0x8c5a2b,
+  mast: 0x6b4423,
+  sail: 0xf5ecd9,
 } as const;
 
 /** 내 상단은 빨강, 다른 상단들 */

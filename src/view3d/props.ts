@@ -2,11 +2,12 @@
 // 지오메트리는 한 번 만들어 같이 쓴다. 자리와 크기는 칸 좌표로 정해 늘 같은 모습이다.
 import * as THREE from 'three';
 import type { Season } from '../sim/season';
-import { HEX_DIRS, type Tile, type WorldMap } from '../sim/worldgen';
+import { HEX_DIRS, type WorldMap } from '../sim/worldgen';
 import type { InstanceBatcher, Placement } from './batcher';
 import { tileCenter, tileHash } from './layout';
 import type { MaterialKit } from './materials';
 import { BLOSSOM, BUSH_COLOR, FLOWER, PROP, ROCK_COLOR, SNOW, TREE_COLOR } from './palette';
+import { addResource, type Fixed, type SeaDir } from './resources';
 
 export class PropGeometries {
   /** 높이 1, 반지름 1인 오각뿔 (나무, 바위산). 원점은 가운데 */
@@ -17,11 +18,14 @@ export class PropGeometries {
   readonly rock = new THREE.DodecahedronGeometry(1, 0);
   /** 높이 1인 나무줄기 (봄 벚꽃나무) */
   readonly trunk = new THREE.CylinderGeometry(0.6, 1, 1, 5);
-  /** 볏단: 낮은 사각뿔 */
-  readonly sheaf = new THREE.ConeGeometry(0.075, 0.2, 4);
-  readonly ore = new THREE.OctahedronGeometry(0.18);
-  readonly salt = new THREE.ConeGeometry(0.16, 0.22, 6);
-  readonly boat = new THREE.BoxGeometry(0.42, 0.1, 0.18);
+  /** 크기 1 상자 (이랑, 기둥, 판자, 선체) */
+  readonly box = new THREE.BoxGeometry(1, 1, 1);
+  /** 밀 다발: 위가 넓은 육각 기둥 */
+  readonly bundle = new THREE.CylinderGeometry(1, 0.65, 1, 6);
+  /** 광맥 결정 */
+  readonly crystal = new THREE.OctahedronGeometry(1, 0);
+  /** 세모 돛 (얇게 눌러 쓴다) */
+  readonly sail = new THREE.ConeGeometry(1, 1, 3);
   readonly wall = new THREE.BoxGeometry(0.42, 0.32, 0.42);
   readonly roof = new THREE.ConeGeometry(0.38, 0.32, 4);
   readonly tower = new THREE.CylinderGeometry(0.17, 0.2, 0.9, 6);
@@ -71,8 +75,8 @@ export interface PropOptions {
 
 export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, opt: PropOptions): void {
   const townAt = new Map(map.towns.map((t) => [t.tile, t]));
+  const index = new Map(map.tiles.map((t, i) => [`${t.q},${t.r}`, i]));
   const outline = opt.outline ? kit.outline : null;
-  const winter = opt.season === 3;
 
   map.tiles.forEach((t, i) => {
     const c = tileCenter(t);
@@ -84,6 +88,8 @@ export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries,
       return { x: c.x + dx * cos - dz * sin, y: c.y + dy, z: c.z + dx * sin + dz * cos, scale, rotY: rotY + turn };
     };
     const rnd = (k: number) => tileHash(t.q, t.r, k + 10);
+    const fixed: Fixed = (dx, dz, dy, scale, rotY = 0) => ({ x: c.x + dx, y: c.y + dy, z: c.z + dz, scale, rotY });
+    const ore = t.resource === 'ore';
 
     const town = townAt.get(i);
     if (town) {
@@ -102,15 +108,15 @@ export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries,
 
     if (opt.terrainProps) {
       if (t.terrain === 'forest') addForest(b, geo, kit, opt.season, at, rnd, t.resource !== null);
-      else if (t.terrain === 'mountain') addMountain(b, geo, kit, opt.season, at, rnd);
-      else if (t.terrain === 'hills') addHills(b, geo, kit, opt.season, at, rnd);
+      else if (t.terrain === 'mountain') addMountain(b, geo, kit, opt.season, ore ? fixed : at, rnd, ore);
+      else if (t.terrain === 'hills') addHills(b, geo, kit, opt.season, ore ? fixed : at, rnd, ore);
       else if ((t.terrain === 'plain' || t.terrain === 'coast') && !t.resource && !t.road) {
         if (opt.season === 0 && t.terrain === 'plain') addFlowers(b, geo, kit, at, rnd);
         else addScatter(b, geo, kit, opt.season, at, rnd);
       }
     }
 
-    addResource(t, b, geo, kit, outline, winter, at);
+    addResource(t, b, geo, kit, opt.season, fixed, t.resource === 'fish' ? seaDir(map, index, t.q, t.r) : null);
   });
 
   addRoads(map, b, geo, kit);
@@ -148,12 +154,13 @@ function addForest(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, se
   });
 }
 
-/** 바위산: 큰 봉우리 하나와 작은 봉우리 한두 개, 꼭대기에 눈 */
-function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
+/** 바위산: 큰 봉우리 하나와 작은 봉우리 한두 개, 꼭대기에 눈. 광맥이 있으면 앞쪽을 비우려고 큰 봉우리만 뒤로 물린다 */
+function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At | Fixed, rnd: Rnd, ore: boolean): void {
   const winter = season === 3;
-  const peaks: [number, number, number, number][] = [[0, 0, 0.5, 1.2 + rnd(0) * 0.3]];
-  peaks.push([0.42, 0.25, 0.3, 0.65 + rnd(1) * 0.2]);
-  if (rnd(2) < 0.6) peaks.push([-0.4, 0.3, 0.28, 0.55 + rnd(3) * 0.2]);
+  const peaks: [number, number, number, number][] = ore
+    ? [[0, -0.2, 0.42, 1.1 + rnd(0) * 0.25], [-0.45, -0.1, 0.24, 0.55 + rnd(1) * 0.15]]
+    : [[0, 0, 0.5, 1.2 + rnd(0) * 0.3], [0.42, 0.25, 0.3, 0.65 + rnd(1) * 0.2]];
+  if (!ore && rnd(2) < 0.6) peaks.push([-0.4, 0.3, 0.28, 0.55 + rnd(3) * 0.2]);
   peaks.forEach(([dx, dz, r, h], k) => {
     const rot = rnd(k + 5) * Math.PI;
     b.add(geo.spike, kit.solid(ROCK_COLOR[season][k === 0 ? 0 : 1]), at(dx, dz, h / 2, [r, h, r], rot));
@@ -166,14 +173,19 @@ function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, 
   });
 }
 
-/** 언덕: 낮은 둔덕 두세 개 */
-function addHills(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
+/** 언덕: 낮은 둔덕 두세 개. 광맥이 있으면 뒤쪽에만 */
+function addHills(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At | Fixed, rnd: Rnd, ore: boolean): void {
   const color = BUSH_COLOR[season];
-  const mounds: [number, number, number][] = [
-    [-0.25, 0.1, 0.34],
-    [0.3, -0.15, 0.27],
-  ];
-  if (rnd(0) < 0.5) mounds.push([0.15, 0.42, 0.2]);
+  const mounds: [number, number, number][] = ore
+    ? [
+        [-0.3, -0.2, 0.32],
+        [0.3, -0.25, 0.27],
+      ]
+    : [
+        [-0.25, 0.1, 0.34],
+        [0.3, -0.15, 0.27],
+      ];
+  if (!ore && rnd(0) < 0.5) mounds.push([0.15, 0.42, 0.2]);
   mounds.forEach(([dx, dz, r], k) => b.add(geo.blob, kit.solid(color), at(dx, dz, 0, [r, r * 0.55, r], rnd(k + 3) * Math.PI)));
 }
 
@@ -206,37 +218,19 @@ function addFlowers(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, a
   }
 }
 
-function addResource(
-  t: Tile,
-  b: InstanceBatcher,
-  geo: PropGeometries,
-  kit: MaterialKit,
-  outline: THREE.Material | null,
-  winter: boolean,
-  at: At,
-): void {
-  switch (t.resource) {
-    case 'field':
-      // 볏단을 세 줄로 세운다. 겨울엔 거둬들여 비어 있다
-      if (!winter) {
-        for (let row = -1; row <= 1; row++) {
-          for (let col = -1; col <= 1; col++) b.add(geo.sheaf, kit.solid(PROP.wheat), at(col * 0.24 + row * 0.12, row * 0.22, 0.1, 1, Math.PI / 4));
-        }
-      }
-      break;
-    case 'ore':
-      b.addOutlined(geo.ore, kit.solid(PROP.ore), outline, at(0.45, 0.4, 0.2));
-      break;
-    case 'salt':
-      b.addOutlined(geo.salt, kit.solid(PROP.salt), outline, at(0.2, 0.15, 0.11), 0.1);
-      b.addOutlined(geo.salt, kit.solid(PROP.salt), outline, at(-0.15, 0.3, 0.11), 0.1);
-      break;
-    case 'fish':
-      b.addOutlined(geo.boat, kit.solid(PROP.boat), outline, at(0.25, 0.3, 0.05));
-      break;
-    default:
-      break;
+/** 해안 칸에서 이웃한 바다 칸 쪽 방향. 화면 앞쪽(+z)에 가까운 바다를 고른다 (배가 잘 보이게) */
+function seaDir(map: WorldMap, index: Map<string, number>, q: number, r: number): SeaDir {
+  const c = tileCenter(map.tiles[index.get(`${q},${r}`)!]!);
+  let best: [number, number] | null = null;
+  for (const [dq, dr] of HEX_DIRS) {
+    const j = index.get(`${q + dq},${r + dr}`);
+    if (j === undefined || map.tiles[j]!.terrain !== 'sea') continue;
+    const n = tileCenter(map.tiles[j]!);
+    const len = Math.hypot(n.x - c.x, n.z - c.z);
+    const dir: [number, number] = [(n.x - c.x) / len, (n.z - c.z) / len];
+    if (!best || dir[1] > best[1]) best = dir;
   }
+  return best;
 }
 
 /** 길: 칸 가운데에서 이웃한 길 칸 쪽으로 칸 가장자리까지 토막을 놓는다 */
