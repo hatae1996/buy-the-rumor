@@ -1,14 +1,14 @@
 // 장부 탭 (기획서 "화면 구성", 0.1.2 → 0.1.6 목업): 작은 탭 4개. 거래 예약(장날 신청·예약 주문) / 수입·지출(돈 내역과 손익) / 시세 기록 / 인력·말.
 // 짐은 짐칸 탭으로 옮겼다. "돈과 약속은 어떻게 됐나". 크림 바탕에 장부 책 제목.
-import coins from '../../../assets/ui/coins.png';
 import bookImg from '../../../assets/ui/tab_ledger.png';
 import sprigL from '../../../assets/ui/orn_sprig_l.png';
 import sprigR from '../../../assets/ui/orn_sprig_r.png';
 import { GOODS, type PlayerView } from '../../sim/economy';
-import { agoText, goodName, ledgerLine, money } from '../format';
+import { agoText, goodName, money } from '../format';
 import type { Game } from '../game';
 import { horseFatigue, speedWord } from './horseSheet';
 import { bindOrderGroups, ordersHtml } from './ledgerOrders';
+import { accountsHtml, bindAccounts } from './ledgerAccounts';
 
 export type LedgerSection = 'orders' | 'accounts' | 'prices' | 'people';
 
@@ -47,10 +47,6 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
   const open = SECTIONS.filter((s) => s.id !== 'prices' || v.unlocks.includes('memory'));
   if (!open.some((s) => s.id === section)) section = 'orders';
 
-  // 아는 시세로 짐 값을 어림한다 (지금 마을 시세, 길 위면 떠난 마을에서 마지막으로 본 시세)
-  const prices = v.market?.price ?? v.memory[v.location.kind === 'road' ? v.location.from : v.location.town]?.prices;
-  const cargoValue = prices ? v.cargo.reduce((s, l) => s + l.qty * prices[l.good], 0) : null;
-
   // 사람과 말: 하루 유지비 합계가 맨 위
   const people = [
     ...v.hires.map((h) => `<li class="row"><span>${h.roleName} ${h.name} <small class="muted">${h.jobName} · ${townName(h.town)}</small></span><b>${money(h.wage)}/일${h.restWage !== null ? ` <small class="muted">쉬는 날 ${money(h.restWage)}</small>` : ''}</b></li>`),
@@ -71,34 +67,9 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
     })
     .join('');
 
-  const entries = [...v.ledger].reverse().slice(0, 40);
-  const ledger =
-    entries
-      .map((e) => {
-        const { text, amount } = ledgerLine(e, townName);
-        const amt =
-          amount === null ? '' : `<b class="${amount >= 0 ? 'plus' : 'minus'}">${amount >= 0 ? '+' : '−'}${money(Math.abs(amount))}</b>`;
-        return `<li class="row"><span><span class="day">${e.day}일째</span> ${text}</span>${amt}</li>`;
-      })
-      .join('') || '<li class="muted">아직 적힌 게 없어요. 마을에서 물건을 사고팔아 보세요.</li>';
-
   const bodies: Record<LedgerSection, string> = {
     orders: ordersHtml(game, v),
-    accounts: `
-      <section class="card money-card">
-        <img src="${coins}" alt="" />
-        <div>
-          <div class="muted">가진 돈</div>
-          <div class="big-number">${money(v.gold)}</div>
-          ${v.reserved ? `<div class="muted">신청에 맡긴 돈 ${money(v.reserved)}</div>` : ''}
-          ${cargoValue !== null ? `<div class="muted">수레 짐을 아는 시세로 치면 ${money(cargoValue)}</div>` : ''}
-          ${v.bank.deposit || v.bank.loan ? `<div class="muted">예금 ${money(v.bank.deposit)} · 대출 ${money(v.bank.loan)}</div>` : ''}
-        </div>
-      </section>
-      <section class="card">
-        <h2>들어오고 나간 돈</h2>
-        <ul class="list">${ledger}</ul>
-      </section>`,
+    accounts: accountsHtml(game, v),
     prices: `
       <section class="card">
         <h2>내가 아는 시세</h2>
@@ -132,4 +103,5 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
     }),
   );
   if (section === 'orders') bindOrderGroups(el, game, v);
+  if (section === 'accounts') bindAccounts(el, () => renderLedger(el, game, v));
 }

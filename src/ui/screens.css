@@ -2272,6 +2272,8 @@
   background: var(--cream-bg);
   color: var(--cream-ink);
   gap: 10px;
+  /* 내용이 짧아도 아래까지 크림 바탕 */
+  min-height: 100%;
 }
 
 .ledger-head {
@@ -2538,4 +2540,221 @@
   font-weight: bold;
   line-height: 26px;
   text-align: center;
+}
+
+/* 장부 수입·지출 (0.1.6 목업 docs/reference/ledger-accounts-mockup-0.1.6.png) */
+.acct-summary,
+.acct-total,
+.acct-list {
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.acct-summary {
+  padding: 10px 16px 8px 10px;
+}
+
+.acct-gold {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--town-line);
+}
+
+.acct-gold img {
+  flex: none;
+  width: 38%;
+  max-width: 140px;
+  padding-right: 14px;
+  border-right: 1px solid var(--town-line);
+  box-sizing: content-box;
+}
+
+.acct-gold div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.acct-label {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.acct-big {
+  font-family: var(--f-display);
+  font-size: 38px;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.acct-summary small,
+.acct-list small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.acct-cargo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 2px 6px;
+}
+
+.acct-cargo img {
+  flex: none;
+  width: 40px;
+}
+
+.acct-cargo > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.acct-cargo b {
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-weight: normal;
+}
+
+.acct-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.acct-total {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+}
+
+.acct-total.in {
+  background: #e9f2ef;
+}
+
+.acct-total.out {
+  background: #f8e8e4;
+}
+
+.acct-total img {
+  flex: none;
+  width: 48px;
+}
+
+.acct-total b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.acct-total.in b {
+  color: var(--cream-teal);
+}
+
+.acct-total.out b {
+  color: var(--coral);
+}
+
+.acct-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.acct-order {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.acct-list {
+  padding: 6px 10px 4px;
+}
+
+.acct-day {
+  margin: 4px 0 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #efe9de;
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--cream-ink-soft);
+}
+
+.acct-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.acct-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 4px 6px;
+}
+
+.acct-list li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.acct-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 40px;
+}
+
+.acct-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.acct-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.acct-title {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.acct-list b {
+  flex: none;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.acct-list b.plus {
+  color: var(--cream-teal);
+}
+
+.acct-list b.minus {
+  color: var(--coral);
+}
+
+.ledger-note.plain {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0 4px;
 }
