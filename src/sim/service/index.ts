@@ -12,6 +12,7 @@ export {
   screenData,
   seasonMap,
   SERVER_TOWNS,
+  settleWorld,
   SimVersionMismatch,
   tickWorld,
   type OpenWorldOptions,

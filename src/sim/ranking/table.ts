@@ -77,10 +77,13 @@ export function rankAll(state: EconomyState, others: readonly ScoreRow[] = []): 
   return { world: rankRows(mine), season: rankRows([...mine, ...rest].filter((r) => !r.bot)) };
 }
 
-/** 장날 뒤에: 오늘 순위를 매겨 둔다 (서버는 다른 세계의 점수 줄을 넘긴다) */
-export function updateRankings(state: EconomyState, others: readonly ScoreRow[] = []): void {
+/**
+ * 장날 뒤에: 오늘 순위를 매겨 둔다 (서버는 다른 세계의 점수 줄을 넘긴다).
+ * day: 매긴 장날 (서버가 화면 데이터를 만들 때 시즌 전체 순위를 다시 매기면 마지막 장날을 넘긴다)
+ */
+export function updateRankings(state: EconomyState, others: readonly ScoreRow[] = [], day = state.day): void {
   const { world, season } = rankAll(state, others);
-  state.rankings = { day: state.day, table: world, season };
+  state.rankings = { day, table: world, season };
 }
 
 /**

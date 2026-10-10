@@ -33,6 +33,7 @@ export function joinPlayer(state: EconomyState, spec: PlayerSpec, town: number |
   p.homeTown = town;
   p.visited = [town];
   p.bot = spec.bot === true;
+  if (spec.certificate) p.certificate = copy(spec.certificate);
   if (spec.name) p.certificate.name = cleanCompanyName(spec.name) ?? p.certificate.name;
   if (spec.emblem) setEmblem(p.certificate, spec.emblem);
   if (spec.face) setFace(p.certificate, spec.face);

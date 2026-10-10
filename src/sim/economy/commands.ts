@@ -45,7 +45,7 @@ import {
 import { CART_TYPES, type Board, type CartType } from '../cart';
 import { playerTravelDays } from './travel';
 import { apprenticeAfterCommand, updateUnlocks } from '../apprentice';
-import { checkBadges, pinBadges, setCompany, setEmblem, setFace, setTitle, type CertificateError, type Emblem } from '../ranking';
+import { checkBadges, pinBadges, seasonFinished, setCompany, setEmblem, setFace, setTitle, type CertificateError, type Emblem } from '../ranking';
 import type { Look } from '../looks/types';
 import type { NotifyKind } from '../notify';
 import { disbandCaravan, formCaravan, recallCaravan, setCaravanPlan, type CaravanError, type CaravanPlan } from '../caravan';
@@ -212,8 +212,8 @@ const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'setEm
 export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
   const p = getPlayer(state, playerId);
   if (!cmd || typeof cmd !== 'object' || typeof cmd.type !== 'string') return fail('badCommand');
-  // 결산한 시즌에는 장사하지 않는다 (서버는 쉬는 날, 로컬은 새 세계를 기다린다)
-  if (state.settlement && !AFTER_SEASON.has(cmd.type)) return fail('seasonOver');
+  // 마지막 장날을 마친 시즌에는 장사하지 않는다 (서버는 모든 세계의 결산을 기다리거나 쉬는 날, 로컬은 새 세계를 기다린다)
+  if (seasonFinished(state) && !AFTER_SEASON.has(cmd.type)) return fail('seasonOver');
   const result = runCommand(state, p, map, cmd);
   if (result.ok) {
     // 견습 장면을 넘기고, 조건이 맞으면 하나씩 연다

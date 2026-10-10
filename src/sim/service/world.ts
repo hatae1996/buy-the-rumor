@@ -22,7 +22,7 @@ import {
   type PlayerView,
 } from '../economy';
 import { townFaces, type TownFaces } from '../looks';
-import { scoreRows, type ScoreRow } from '../ranking';
+import { scoreRows, seasonFinished, settleSeason, type ScoreRow, type SeasonSettlement } from '../ranking';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { digestAfter, markBefore, type PlayerDigest } from './away';
 import { SIM_VERSION } from './version';
@@ -116,22 +116,33 @@ export interface TickResult {
  * 장날 하루: 봇이 먼저 오늘 할 일을 하고 장날을 연다 (로컬 Game.advance와 같은 차례).
  * 시즌이 끝나 결산 중이면 null
  */
-export function tickWorld(blob: WorldBlob, map: WorldMap, watch: readonly PlayerId[] = []): TickResult | null {
+export function tickWorld(blob: WorldBlob, map: WorldMap, watch: readonly PlayerId[] = [], opt: { settle?: boolean } = {}): TickResult | null {
   assertSimVersion(blob);
-  if (blob.state.settlement) return null;
+  if (seasonFinished(blob.state)) return null;
   crewDay(blob.state, map, blob.crew);
   // 봇 판단은 사람의 짐과 장부를 건드리지 않으니, 사람의 "돌리기 전"은 봇 다음에 적어도 같다
   const marks = watch.map((pid) => [pid, markBefore(blob.state, pid)] as const);
-  const report = advanceDay(blob.state, map);
+  // 서버는 결산을 미룬다 (settle: false): 시즌의 모든 세계가 마지막 장날을 마치면 settleWorld로 한꺼번에
+  const report = advanceDay(blob.state, map, opt);
   const digests: Record<PlayerId, PlayerDigest> = {};
   for (const [pid, mark] of marks) digests[pid] = digestAfter(blob.state, pid, mark, report.day, report.players[pid]);
   return { report, rows: scoreRows(blob.state), digests };
 }
 
+/**
+ * 시즌 결산 (0.2.0 10번): 마지막 장날을 마친 세계를 같은 시즌의 다른 세계 점수 줄(others, 마지막 장날)과 함께 결산한다.
+ * 인장·칭호·상위 10%는 시즌 전체 순위(사람만)로. 이미 결산했으면 그 결과
+ */
+export function settleWorld(blob: WorldBlob, others: readonly ScoreRow[]): SeasonSettlement | null {
+  assertSimVersion(blob);
+  if (!seasonFinished(blob.state)) return null;
+  return settleSeason(blob.state, others);
+}
+
 /** 사람의 명령 하나. 봇의 명령은 받지 않는다 */
 export function commandWorld(blob: WorldBlob, map: WorldMap, pid: PlayerId, cmd: Command): CommandResult {
   assertSimVersion(blob);
-  if (blob.crew.some((b) => b.pid === pid)) throw new Error('봇 자리에는 명령을 보낼 수 없다');
+  if (getPlayer(blob.state, pid).bot) throw new Error('봇 자리에는 명령을 보낼 수 없다');
   return applyCommand(blob.state, map, pid, cmd);
 }
 

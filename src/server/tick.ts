@@ -5,11 +5,14 @@
 // - 시뮬 버전이 다르면 상태를 건드리지 않고 세계를 멈추고 운영 로그에 남긴다 (handoff 0.2.0 3번).
 // - 한 세계가 실패해도 다른 세계는 돈다.
 // - 첫 장날 직전에 사람이 12명이 안 되는 세계를 봇으로 12명까지 채운다 (답 112·115, 8번).
+// - 세계는 마지막 장날을 마치면 결산하지 않고 멈춘다. 시즌의 모든 세계가 멈추면 한꺼번에 결산한다 (10번, settle.ts).
+import { seasonFinished } from '../sim/ranking';
 import { fillBots, SimVersionMismatch, tickWorld, type WorldBlob } from '../sim/service';
 import type { WorldMap } from '../sim/worldgen';
 import { ts, type Db } from './db';
 import { mapFor } from './maps';
 import { daysBehind } from './schedule';
+import { settleSeasonAll, type SeasonSettleSummary } from './settle';
 
 export interface TickOptions {
   now: number;
@@ -33,8 +36,8 @@ export interface WorldTick {
 
 export interface TickSummary {
   worlds: WorldTick[];
-  /** 모든 세계가 결산에 닿아 결산으로 넘긴 시즌 */
-  settling: string[];
+  /** 모든 세계가 마지막 장날을 마쳐 결산한 시즌 */
+  settled: SeasonSettleSummary[];
 }
 
 interface DueWorld {
@@ -64,8 +67,12 @@ export async function tickDue(db: Db, opt: TickOptions): Promise<TickSummary> {
       worlds.push({ seasonId: w.season_id, worldId: w.id, from: w.day, to: w.day, error });
     }
   }
-  const settling = await settleSeasons(db, [...new Set(worlds.filter((w) => w.settled).map((w) => w.seasonId))]);
-  return { worlds, settling };
+  const settled: SeasonSettleSummary[] = [];
+  for (const id of new Set(worlds.filter((w) => w.settled).map((w) => w.seasonId))) {
+    const r = await settleSeasonAll(db, id);
+    if (r) settled.push(r);
+  }
+  return { worlds, settled };
 }
 
 async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays: number): Promise<WorldTick> {
@@ -91,7 +98,7 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
       // 첫 장날 직전: 봇 채우기 (말 입고 일정은 첫 장날 아침의 인원으로 짠다)
       if (blob.state.day === 1 && due > 0) fillBots(blob, map);
       for (let i = 0; i < due; i++) {
-        const r = tickWorld(blob, map, members.map((m) => m.account_id));
+        const r = tickWorld(blob, map, members.map((m) => m.account_id), { settle: false });
         if (!r) break;
         const day = r.report.day;
         for (const s of r.rows) {
@@ -107,7 +114,8 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
       await log(tx, 'error', '시뮬 버전이 달라 장날을 멈췄다', { ...base, world: e.world, bundle: e.bundle });
       return { ...base, from, to: from, halted: e.message };
     }
-    const settled = blob.state.settlement !== null;
+    // 마지막 장날을 마쳤다 (결산은 시즌의 모든 세계가 마친 뒤)
+    const settled = seasonFinished(blob.state);
     await tx.query(
       `update public.worlds
           set state = $3::text::json, day = $4, rev = rev + 1, last_tick_at = $5::timestamptz, settled = $6, bots = $7
@@ -122,25 +130,6 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
     }
     return { ...base, from, to: blob.state.day, ...(settled ? { settled } : {}) };
   });
-}
-
-/** 세계가 모두 결산에 닿은 시즌을 결산으로 넘긴다 (결산 자체는 10번) */
-async function settleSeasons(db: Db, seasonIds: string[]): Promise<string[]> {
-  const out: string[] = [];
-  for (const id of seasonIds) {
-    const rows = await db.query<{ id: string }>(
-      `update public.seasons set status = 'settling'
-        where id = $1 and status = 'open'
-          and not exists (select 1 from public.worlds where season_id = $1 and not settled)
-        returning id`,
-      [id],
-    );
-    if (rows.length) {
-      out.push(id);
-      await log(db, 'info', '시즌의 모든 세계가 마지막 장날을 마쳤다', { seasonId: id });
-    }
-  }
-  return out;
 }
 
 async function log(db: Db, level: 'info' | 'warn' | 'error', message: string, data: unknown): Promise<void> {

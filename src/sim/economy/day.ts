@@ -76,7 +76,11 @@ export interface DayReport {
   players: Record<PlayerId, PlayerDayReport>;
 }
 
-export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
+/**
+ * 장날 하루. opt.settle가 false면 시즌 마지막 장날에 결산하지 않고 멈춘다(서버: 같은 시즌의 모든 세계가
+ * 마지막 장날을 마친 뒤 점수 줄을 모아 한꺼번에 결산한다, 0.2.0 10번). 기본은 로컬처럼 바로 결산
+ */
+export function advanceDay(state: EconomyState, map: WorldMap, opt: { settle?: boolean } = {}): DayReport {
   const rng = createRng(state.rng);
   const season = seasonOfDay(state.day, state.startSeason);
   const news: string[] = [];
@@ -296,7 +300,7 @@ export function advanceDay(state: EconomyState, map: WorldMap): DayReport {
   // 오늘 순위를 매기고, 시즌 마지막 장날이면 결산한다 (시즌 중이 아니면 하지 않는다)
   if (state.season) {
     updateRankings(state);
-    if (lastSeasonDay(state)) settleSeason(state);
+    if (lastSeasonDay(state) && opt.settle !== false) settleSeason(state);
   }
   state.day++;
   state.rng = rng.state();

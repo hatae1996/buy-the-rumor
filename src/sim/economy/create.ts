@@ -18,6 +18,7 @@ import { emptyHorseMarket } from '../horses/supply';
 import { ALL_UNLOCKS, startApprentice } from '../apprentice/progress';
 import { cleanCompanyName, createCertificate, setEmblem, setFace } from '../ranking/certificate';
 import type { Emblem } from '../ranking/emblem';
+import type { Certificate } from '../ranking/types';
 import type { Look } from '../looks/types';
 import { ensureRecord } from '../ranking/record';
 import { emptyAccount } from '../bank/bank';
@@ -40,6 +41,11 @@ export interface PlayerSpec {
   merchantNo?: number | null;
   /** 봇 상단 ("떠돌이", 0.2.0 9번) */
   bot?: boolean;
+  /**
+   * 시즌을 넘어 남는 증서 전체 (0.2.0 10번: 서버는 계정의 증서로 세계에 앉힌다, 지난 인장·칭호·연차가 그대로).
+   * 있으면 name, emblem, face, merchantNo 대신 이것을 쓴다
+   */
+  certificate?: Certificate;
 }
 
 export interface CreateOptions {
@@ -137,6 +143,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     p.visited = [p.town];
     const spec = specs[p.seq]!;
     p.bot = spec.bot === true;
+    if (spec.certificate) p.certificate = JSON.parse(JSON.stringify(spec.certificate)) as Certificate;
     if (spec.name) p.certificate.name = cleanCompanyName(spec.name) ?? p.certificate.name;
     if (spec.emblem) setEmblem(p.certificate, spec.emblem);
     if (spec.face) setFace(p.certificate, spec.face);

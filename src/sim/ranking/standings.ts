@@ -22,7 +22,12 @@ export interface Standing {
 }
 
 export function standings(entries: readonly StandingEntry[]): Standing[] {
-  const scored = entries.filter((e): e is StandingEntry & { score: number } => e.score !== null).sort((a, b) => b.score - a.score);
+  // 같은 점수는 같은 순위이고, 늘어놓는 차례는 세계 id와 상단 id로 정한다: 어느 세계에서 매겨도 같은 표 (0.2.0 10번).
+  // 글자 비교는 localeCompare가 아니라 코드 순서로 (Node와 Deno에서 같게)
+  const cmp = (x: string, y: string) => (x < y ? -1 : x > y ? 1 : 0);
+  const scored = entries
+    .filter((e): e is StandingEntry & { score: number } => e.score !== null)
+    .sort((a, b) => b.score - a.score || cmp(a.worldId ?? '', b.worldId ?? '') || cmp(a.id, b.id));
   const n = scored.length;
   const out: Standing[] = [];
   scored.forEach((e, i) => {

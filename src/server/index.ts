@@ -11,3 +11,4 @@ export { commandFor, gameRequest, markSeen, passDayFor, viewFor, type Away, type
 export { type ApprenticeError } from './apprentice';
 export { addWorld, JOIN_LAST_DAY, openSeason, pickWorld, seasonOpensAt, WORLD_CAP, type OpenSeasonError, type PickError, type SeasonKind } from './season';
 export { adminRequest } from './admin';
+export { seasonRows, settleSeasonAll, type SeasonSettleSummary } from './settle';

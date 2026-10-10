@@ -3,7 +3,7 @@ export { netWorth, worthParts, lastMarketPrice, holdingPrice, HOLDINGS_SHARE, ty
 export { seasonScores, bestSale, bestSingleSale, buyTheRumorProfit, eventGoods, type SeasonScores } from './scores';
 export { standings, type Standing, type StandingEntry } from './standings';
 export { newsName, rankAll, rankRows, scoreRows, updateRankings, type RankTable, type Rankings, type ScoreRow } from './table';
-export { lastSeasonDay, placeOf, settleSeason, type SeasonReport, type SeasonSettlement } from './settle';
+export { lastSeasonDay, placeOf, seasonFinished, settleSeason, type SeasonReport, type SeasonSettlement } from './settle';
 export { THEMES, themeDef, questDef, pickTheme } from './quests';
 export {
   ACHIEVEMENTS,
@@ -13,6 +13,7 @@ export {
   badgeDef,
   categoryName,
   memorialBadge,
+  PIONEER_BADGE,
   rankingBadge,
   type AchievementDef,
 } from './badges';

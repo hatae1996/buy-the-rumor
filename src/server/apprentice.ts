@@ -46,12 +46,12 @@ export async function currentApprentice(db: Db, uid: string): Promise<string | n
   return r?.season_id ?? null;
 }
 
-/** 증서로 세계에 앉을 자리 */
+/** 증서로 세계에 앉을 자리: 시즌을 넘어 남는 증서 전체(지난 인장·칭호·연차)를 들고 앉는다 (10번) */
 export async function specOf(db: Db, uid: string): Promise<PlayerSpec | null> {
   const [r] = await db.query<{ cert: string }>('select cert::text as cert from public.certificates where account_id = $1', [uid]);
   if (!r) return null;
   const c = JSON.parse(r.cert) as Certificate;
-  return { id: uid, name: c.name, face: c.face, emblem: c.emblem, merchantNo: c.merchantNo };
+  return { id: uid, name: c.name, face: c.face, emblem: c.emblem, merchantNo: c.merchantNo, certificate: c };
 }
 
 /** 견습을 연다 (게임 시작 화면을 마친 뒤). 이미 하고 있으면 그것을 그대로 */
@@ -144,8 +144,12 @@ async function graduate(
   ]);
   if (!w) return { kind: 'error', error: 'worldsFull', blob: apprentice };
   const shared = JSON.parse(w.state) as WorldBlob;
+  // 계정의 증서 그대로 (견습 동안 얼굴·문장을 바꿨으면 견습 세계의 것으로)
   const c = getPlayer(apprentice.state, uid).certificate;
-  const spec: PlayerSpec = { id: uid, name: c.name, face: c.face, emblem: c.emblem, merchantNo: c.merchantNo };
+  const saved = await specOf(tx, uid);
+  const spec: PlayerSpec = saved
+    ? { ...saved, certificate: { ...saved.certificate!, face: c.face, emblem: c.emblem } }
+    : { id: uid, name: c.name, face: c.face, emblem: c.emblem, merchantNo: c.merchantNo };
   let result: CommandResult;
   try {
     result = enterWorld(shared, mapFor(seasonId), spec, graduationKit(apprentice, uid), travel);

@@ -61,7 +61,8 @@ export function settleSeason(state: EconomyState, others: readonly ScoreRow[] = 
   if (!season) return null;
   if (state.settlement?.season === season.number) return state.settlement;
   const { world, season: table } = rankAll(state, others);
-  const out: SeasonSettlement = { season: season.number, day: state.day, table, worldTable: world, reports: {}, awarded: {} };
+  // 서버는 마지막 장날 뒤에 결산하므로(0.2.0) 결산한 날은 마지막 장날로 적는다
+  const out: SeasonSettlement = { season: season.number, day: Math.min(state.day, season.startDay + season.length - 1), table, worldTable: world, reports: {}, awarded: {} };
   for (const p of playerList(state)) {
     if (p.record?.season !== season.number) continue;
     // 봇(떠돌이)은 인장·칭호·연차를 받지 않는다 (시즌 전체 순위에도 없다, 0.2.0 9번)
@@ -111,6 +112,12 @@ function reportOf(state: EconomyState, p: PlayerState, startDay: number): Season
     trips: trips.length,
     roadDays: trips.reduce((s, e) => s + (e.kind === 'travel' ? e.days : 0), 0),
   };
+}
+
+/** 이번 시즌 마지막 장날을 마쳤는가 (결산했거나, 서버에서 결산을 기다린다) */
+export function seasonFinished(state: EconomyState): boolean {
+  const s = state.season;
+  return state.settlement !== null || (s !== null && state.day > s.startDay + s.length - 1);
 }
 
 /** 오늘이 이번 시즌 마지막 장날인가 */

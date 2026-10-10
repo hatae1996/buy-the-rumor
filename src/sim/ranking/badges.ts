@@ -54,6 +54,9 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
 /** 기념 인장: 시즌 완주 (시즌마다 다른 모양) */
 export const memorialBadge = (season: number): BadgeDef => ({ id: `season-${season}`, name: `${season}시즌`, kind: 'memorial', how: `${season}시즌 완주` });
 
+/** 테스터 전용 인장 (handoff 0.2.0 6번): 비공개 테스트 시즌에 하루라도 들어온 사람. 정식 출시 때 초기화하지 않는다 */
+export const PIONEER_BADGE: BadgeDef = { id: 'pioneer', name: '개척 상인', kind: 'memorial', how: '비공개 테스트 시즌을 함께한 상인' };
+
 /** 랭킹 인장 하나 */
 export const rankingBadge = (category: CategoryId, place: (typeof RANKING_PLACES)[number]['id']): BadgeDef => ({
   id: `rank-${category}-${place}`,
@@ -69,7 +72,7 @@ export const QUEST_BADGES: readonly BadgeDef[] = THEMES.flatMap((t) =>
 
 /** 인장 하나 찾기 (의뢰, 업적, 랭킹, 기념) */
 export function badgeDef(id: string): BadgeDef | null {
-  const found = [...QUEST_BADGES, ...ACHIEVEMENTS].find((b) => b.id === id);
+  const found = [...QUEST_BADGES, ...ACHIEVEMENTS, PIONEER_BADGE].find((b) => b.id === id);
   if (found) return found;
   const season = /^season-(\d+)$/.exec(id);
   if (season) return memorialBadge(Number(season[1]));

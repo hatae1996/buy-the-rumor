@@ -6,7 +6,10 @@
 // - 화면 데이터에는 "자리를 비운 사이"(마지막으로 본 날부터 장날 하루치 기록을 모은 것)를 붙인다 (6번).
 //   폰이 보여 준 뒤 seen으로 본 날을 올린다. 알림은 화면 안 알림만이고, 조용한 시간에 생긴 것은 띠로 띄우지 않는다.
 // - 공유 세계에 들기 전에는 견습 세계(7번)가 화면과 명령을 받는다(place: 'apprentice'). 졸업 명령이면 공유 세계에 들인다.
+// - 시즌 전체 순위는 화면 데이터를 만들 때 다른 세계의 최신 점수 줄을 합쳐 매긴다(10번). 끝난 시즌의 세계는
+//   다음 시즌이 열릴 때까지 결산 화면으로 보인다(이름 바꾸기 같은 시즌 사이 명령도 받는다).
 import { getPlayer, type Command, type CommandResult } from '../sim/economy';
+import { updateRankings } from '../sim/ranking';
 import { planDelivery, type DeliveryPlan } from '../sim/notify';
 import { awaySummary, commandWorld, screenData, SimVersionMismatch, type AwaySummary, type PlayerDigest, type ScreenData, type WorldBlob } from '../sim/service';
 import { checkName, type AccountError } from './account';
@@ -15,6 +18,7 @@ import type { Db } from './db';
 import { mapFor } from './maps';
 import { bannedWordIn, nameKey } from './names';
 import { kstHour } from './schedule';
+import { seasonRows } from './settle';
 
 /** 폰이 보낸 명령 하나의 글자 수 상한 (수레 짐 다시 놓기가 가장 길다) */
 const MAX_COMMAND_CHARS = 20_000;
@@ -45,17 +49,30 @@ export interface Screen extends ScreenData {
 interface Membership {
   season_id: string;
   world_id: string;
+  /** 시즌 상태 (ended면 결산이 끝난 세계: 결산 화면과 시즌 사이 명령만) */
+  status?: string;
 }
 
-/** 지금 들어가 있는 공유 세계 (끝나지 않은 시즌 중 가장 최근) */
+/**
+ * 지금 들어가 있는 공유 세계: 가장 최근에 들어간 시즌. 그 시즌이 끝났고 더 새 시즌이 열려 있으면 없음
+ * (새 시즌의 견습이나 배정으로)
+ */
 async function membership(db: Db, uid: string): Promise<Membership | null> {
   const [m] = await db.query<Membership>(
-    `select m.season_id, m.world_id from public.members m join public.seasons s on s.id = m.season_id
-      where m.account_id = $1 and s.status <> 'ended'
+    `select m.season_id, m.world_id, s.status from public.members m join public.seasons s on s.id = m.season_id
+      where m.account_id = $1
+        and not (s.status = 'ended' and exists (select 1 from public.seasons n where n.status = 'open' and n.opens_at > s.opens_at))
       order by s.opens_at desc limit 1`,
     [uid],
   );
   return m ?? null;
+}
+
+/** 시즌 전체 순위를 같은 시즌의 다른 세계 점수 줄과 합쳐 다시 매긴다 (저장하지 않는 화면용, 결산 뒤에는 결산 표를 쓴다) */
+async function withSeasonRanking(db: Db, m: Membership, blob: WorldBlob): Promise<WorldBlob> {
+  const r = blob.state.rankings;
+  if (r && !blob.state.settlement) updateRankings(blob.state, await seasonRows(db, m.season_id, m.world_id, r.day), r.day);
+  return blob;
 }
 
 function screenOf(m: Membership, blob: WorldBlob, uid: string, halted: string | null): Screen {
@@ -95,7 +112,7 @@ export async function viewFor(
     [m.season_id, m.world_id, uid],
   );
   if (!w) return { ok: false, error: 'noWorld' };
-  const blob = JSON.parse(w.state) as WorldBlob;
+  const blob = await withSeasonRanking(db, m, JSON.parse(w.state) as WorldBlob);
   return { ok: true, screen: screenOf(m, blob, uid, w.halted), away: await awayOf(db, m, blob, uid, w.seen_day, now) };
 }
 
@@ -181,7 +198,7 @@ export async function commandFor(db: Db, uid: string, cmd: unknown): Promise<Com
       }
     }
     await logCommand(tx, m.season_id, m.world_id, uid, day, text, result.ok ? null : result.error);
-    return { ok: true, result, screen: screenOf(m, blob, uid, null) };
+    return { ok: true, result, screen: screenOf(m, await withSeasonRanking(tx, m, blob), uid, null) };
   });
 }
 
@@ -195,7 +212,8 @@ async function apprenticeCommandFor(tx: Db, uid: string, c: Command, text: strin
   if (r.kind === 'error') return { ok: false, error: r.error, ...(r.blob ? { screen: apprenticeScreen(season, r.blob, uid) } : {}) };
   if (r.kind === 'graduated') {
     await logCommand(tx, season, r.worldId, uid, r.day, text, r.result.ok ? null : r.result.error);
-    return { ok: true, result: r.result, screen: screenOf({ season_id: season, world_id: r.worldId }, r.blob, uid, null) };
+    const m = { season_id: season, world_id: r.worldId };
+    return { ok: true, result: r.result, screen: screenOf(m, await withSeasonRanking(tx, m, r.blob), uid, null) };
   }
   await logCommand(tx, season, null, uid, r.day, text, r.result.ok ? null : r.result.error);
   return { ok: true, result: r.result, screen: apprenticeScreen(season, r.blob, uid) };
@@ -252,7 +270,8 @@ export async function gameRequest(db: Db, uid: string, body: unknown): Promise<{
       return { status: !r.ok && r.error === 'badRequest' ? 400 : 200, body: r };
     }
     case 'startApprentice': {
-      const r = await startApprentice(db, uid, (await membership(db, uid)) !== null);
+      const m = await membership(db, uid);
+      const r = await startApprentice(db, uid, m !== null && m.status !== 'ended');
       return { status: 200, body: r.ok ? await viewFor(db, uid) : r };
     }
     case 'passDay':

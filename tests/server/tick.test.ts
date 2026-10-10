@@ -172,7 +172,7 @@ describe('tick', () => {
     expect(log).toHaveLength(1);
   });
 
-  it('모든 세계가 마지막 장날을 마치면 시즌을 결산으로 넘긴다', async () => {
+  it('모든 세계가 마지막 장날을 마치면 시즌을 결산한다', async () => {
     await addAccount(db, '00000000-0000-0000-0000-00000000000b');
     for (const [w, h] of [
       ['w1', HUMAN],
@@ -184,9 +184,9 @@ describe('tick', () => {
     }
     const r = await tickDue(db, { now: at(10) });
     expect(r.worlds.every((w) => w.settled)).toBe(true);
-    expect(r.settling).toEqual([SEASON]);
+    expect(r.settled.map((x) => x.seasonId)).toEqual([SEASON]);
     const [season] = await db.query<{ status: string }>(`select status from public.seasons where id = $1`, [SEASON]);
-    expect(season!.status).toBe('settling');
+    expect(season!.status).toBe('ended');
     // 결산 뒤에는 돌리지 않는다
     expect((await tickDue(db, { now: at(20) })).worlds).toEqual([]);
   });
