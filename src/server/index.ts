@@ -2,3 +2,6 @@
 // src/server는 서버 쪽 일(표 읽고 쓰기, 잠금, 시각)을 맡고, 게임 규칙은 모두 src/sim에 있다.
 export * from '../sim/service';
 export { parityRun, type ParityResult } from './parity';
+export { tickDue, type TickOptions, type TickSummary, type WorldTick } from './tick';
+export { DAY_MS, daysBehind, marketAt, marketsDue } from './schedule';
+export type { Db } from './db';

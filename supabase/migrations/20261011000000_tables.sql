@@ -53,6 +53,8 @@ create table public.worlds (
   sim_version integer not null,
   -- 장날을 멈춘 이유 (시뮬 버전이 다르다 등). null이면 돈다
   halted text,
+  -- 시즌 마지막 장날을 돌려 결산이 났다. 시즌의 세계가 모두 끝나면 시즌을 결산으로 넘긴다
+  settled boolean not null default false,
   created_at timestamptz not null default now(),
   primary key (season_id, id),
   check (humans + bots <= 15)

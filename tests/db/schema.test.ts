@@ -1,30 +1,7 @@
 // supabase/migrations의 표를 PGlite(WASM Postgres)에 올려 검사한다 (작업목록-0.2.0 1번).
-// Supabase가 미리 만들어 두는 auth 스키마와 역할은 아래에서 흉내 낸다. pg_cron 같은 확장은 쓰지 않는 마이그레이션만.
-import { readdirSync, readFileSync } from 'node:fs';
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-const MIGRATIONS = new URL('../../supabase/migrations/', import.meta.url);
-
-const SUPABASE_STUB = `
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin bypassrls;
-  create schema auth;
-  create table auth.users (id uuid primary key, email text);
-  create function auth.uid() returns uuid language sql stable as $$
-    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
-  $$;
-  grant usage on schema auth to anon, authenticated, service_role;
-  grant execute on function auth.uid() to anon, authenticated, service_role;
-`;
-
-// Supabase는 public 표에 이 역할들의 권한을 기본으로 준다(막는 것은 RLS)
-const SUPABASE_GRANTS = `
-  grant usage on schema public to anon, authenticated, service_role;
-  grant all on all tables in schema public to anon, authenticated, service_role;
-  grant all on all sequences in schema public to anon, authenticated, service_role;
-`;
+import { createTestDb } from './pglite';
 
 const ALICE = '00000000-0000-0000-0000-00000000000a';
 const BOB = '00000000-0000-0000-0000-00000000000b';
@@ -40,12 +17,7 @@ async function asUser<T>(uid: string, sql: string, params: unknown[] = []) {
 }
 
 beforeAll(async () => {
-  db = new PGlite();
-  await db.exec(SUPABASE_STUB);
-  for (const f of readdirSync(MIGRATIONS).filter((n) => n.endsWith('.sql')).sort()) {
-    await db.exec(readFileSync(new URL(f, MIGRATIONS), 'utf8'));
-  }
-  await db.exec(SUPABASE_GRANTS);
+  db = (await createTestDb()).pg;
   await db.exec(`
     insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');
     insert into public.invite_codes (code, uses_left) values ('TEST-0001', 10);
