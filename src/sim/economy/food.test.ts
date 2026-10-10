@@ -1,4 +1,4 @@
-// 길의 식량 (0.1.2): 이동하는 날마다 사람 1명당 1, 먼저 상할 것부터, 떨어지면 지치고 느려진다.
+// 길의 식량 (0.1.2): 이동하는 날마다 사람 1명당 1, 여행 식량 먼저 그다음 먼저 상할 것부터(0.1.3), 떨어지면 지치고 느려진다.
 import { describe, expect, it } from 'vitest';
 import { cartCount, createCart, loadGoods } from '../cart';
 import { ECONOMY, FOOD } from '../constants';
@@ -42,7 +42,7 @@ describe('길의 식량', () => {
     expect(playerView(s, map, 'me').food).toMatchObject({ have: 4, perDay: 1 });
   });
 
-  it('먼저 상할 것부터 먹는다 (생선 → 여행 식량 → 곡물)', () => {
+  it('여행 식량을 먼저 먹고, 없으면 먼저 상할 것부터 (여행 식량 → 생선 → 곡물, 답 101)', () => {
     const cart = createCart('wagon');
     loadGoods(cart, 'grain', 2);
     loadGoods(cart, 'rations', 2);
@@ -50,10 +50,22 @@ describe('길의 식량', () => {
     const { eaten, short } = eatFrom([cart], 3);
     expect(short).toBe(0);
     expect(eaten).toEqual([
-      { good: 'fish', qty: 1 },
       { good: 'rations', qty: 2 },
+      { good: 'fish', qty: 1 },
     ]);
     expect(cartCount(cart, 'grain')).toBe(2);
+  });
+
+  it('여행 식량이 다른 판에 있어도 팔려고 실은 짐보다 먼저 먹는다', () => {
+    const mine = createCart('handcart');
+    const porter = createCart('handcart');
+    loadGoods(mine, 'fish', 3, 2);
+    loadGoods(porter, 'rations', 1);
+    const { eaten } = eatFrom([mine, porter], 2);
+    expect(eaten).toEqual([
+      { good: 'rations', qty: 1 },
+      { good: 'fish', qty: 1 },
+    ]);
   });
 
   it('떨어지면 피로가 크게 오르고, 배고픈 날이 쌓이면 남은 길이 늘어난다. 짐은 잃지 않는다', () => {

@@ -1,6 +1,6 @@
 // 길의 식량 (0.1.2, 기획서 "직접 해 본 뒤 고친 것 - 식량").
 // 이동하는 날마다 사람이 식량을 먹는다: 나와 짐꾼은 내 수레·짐꾼 수레에서, 두 번째 행렬의 마부는 행렬 수레에서.
-// 음식 물품(생선, 고기, 곡물, 염장 식품)과 잡화점 여행 식량 중 먼저 상할 것부터 하나에 식량 1.
+// 잡화점 여행 식량을 먼저 먹고, 없으면 음식 물품(생선, 고기, 곡물, 염장 식품) 중 먼저 상할 것부터 하나에 식량 1 (0.1.3, 답 101).
 // 떨어지면 그날 피로가 크게 오르고 남은 길이 늘어난다. 죽거나 짐을 잃지는 않는다. 마을에 머무는 날은 먹지 않는다.
 import { cartCount, itemShelfLife, loadGoods, roomFor, takeGoods, type Board, type ItemId } from '../cart';
 import { ECONOMY, FOOD } from '../constants';
@@ -31,16 +31,19 @@ export function myFood(p: PlayerState): number {
   return foodOn([p.cart, ...porterBoards(p)]);
 }
 
+/** 먹는 차례: 작을수록 먼저. 여행 식량이 먼저라 팔려고 실은 짐을 먼저 먹어 버리지 않는다 (0.1.3, 답 101) */
+const eatRank = (good: ItemId): number => (good === 'rations' ? 0 : 1);
+
 /**
- * 판들에서 식량 n을 먹는다: 먼저 상할 것부터(남은 날이 적은 묶음). 먹은 것과 모자란 양을 돌려준다.
+ * 판들에서 식량 n을 먹는다: 여행 식량 먼저, 같은 차례면 먼저 상할 것부터(남은 날이 적은 묶음). 먹은 것과 모자란 양을 돌려준다.
  * 같은 물건이 여러 판에 있으면 앞 판부터
  */
 export function eatFrom(boards: readonly Board[], n: number): { eaten: { good: ItemId; qty: number }[]; short: number } {
   const eaten = new Map<ItemId, number>();
   let left = n;
   while (left > 0) {
-    // 남은 날이 가장 적은 식량 묶음을 찾는다
-    let best: { board: Board; good: ItemId; leftDays: number } | null = null;
+    // 차례가 가장 앞이고 남은 날이 가장 적은 식량 묶음을 찾는다
+    let best: { board: Board; good: ItemId; rank: number; leftDays: number } | null = null;
     for (const board of boards) {
       for (const piece of board.pieces) {
         if (!ROAD_FOODS.includes(piece.good) || piece.uses !== undefined) continue;
@@ -48,7 +51,8 @@ export function eatFrom(boards: readonly Board[], n: number): { eaten: { good: I
         for (const l of piece.lots) {
           if (l.qty <= 0) continue;
           const leftDays = life - l.age;
-          if (!best || leftDays < best.leftDays) best = { board, good: piece.good, leftDays };
+          const rank = eatRank(piece.good);
+          if (!best || rank < best.rank || (rank === best.rank && leftDays < best.leftDays)) best = { board, good: piece.good, rank, leftDays };
         }
       }
     }
