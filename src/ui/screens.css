@@ -1261,10 +1261,6 @@
   gap: 6px;
 }
 
-.teller-list {
-  margin-bottom: 8px;
-}
-
 .card h3 + .list {
   margin-top: 2px;
 }
@@ -1360,30 +1356,6 @@
 
 .note.dismissed .note-text {
   opacity: 0.55;
-}
-
-.note-groups {
-  margin: 8px 0;
-}
-
-.note-groups button {
-  min-height: var(--tap);
-  font-size: 15px;
-}
-
-.note-filter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0 8px;
-  font-size: 14px;
-}
-
-.note-filter select {
-  min-height: var(--tap);
-  padding: 0 8px;
-  border-radius: 6px;
-  font: inherit;
 }
 
 /* ───── NPC 초상 (0.1.4): 파츠 조합, 그림이 없으면 단색 자리표시 ───── */
@@ -2252,7 +2224,8 @@
 
 /* ───── 장부 탭 (0.1.6 목업 docs/reference/ledger-orders-mockup-0.1.6.png) ─────
    크림 바탕, 장부 책 제목, 청록 작은 탭. 거래 예약은 요약 카드와 마을·때별 카드 */
-.screen[data-screen='ledger'] {
+.screen[data-screen='ledger'],
+.screen[data-screen='news'] {
   --town-card: #fbf8f2;
   --town-line: var(--cream-line);
   background: var(--cream-bg);
@@ -3054,4 +3027,227 @@
 .people-inn img {
   flex: none;
   width: 56px;
+}
+
+/* 소식 소문 (0.1.6 목업 docs/reference/news-rumors-mockup-0.1.6.png) */
+.rumor-groups {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.rumor-groups button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 4px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: var(--town-card);
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.rumor-groups button[aria-pressed='true'] {
+  border-color: var(--cream-teal-soft);
+  background: var(--cream-teal-soft);
+}
+
+.rumor-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #8f8a84;
+  color: #fff;
+  font-size: 12px;
+  line-height: 22px;
+}
+
+.rumor-groups button[aria-pressed='true'] .rumor-count {
+  background: var(--cream-teal);
+}
+
+.rumor-list {
+  padding: 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.rumor-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #efe9de;
+  color: var(--cream-ink-soft);
+  font-family: var(--f-display);
+  font-size: 14px;
+}
+
+.rumor-list-head select {
+  min-height: 32px;
+  border: 1px solid var(--town-line);
+  border-radius: 8px;
+  background: var(--town-card);
+  font-size: 13px;
+}
+
+.rumor-list ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rumor-card {
+  padding: 10px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.rumor-card.dismissed {
+  opacity: 0.6;
+}
+
+.rumor-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rumor-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 64px;
+}
+
+.rumor-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.rumor-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.rumor-text h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 19px;
+}
+
+.rumor-text p {
+  margin: 2px 0;
+  font-size: 15px;
+}
+
+.rumor-text small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.rumor-wait {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f6e7c8;
+  color: #9a6a1c;
+  font-family: var(--f-display);
+  font-size: 11px;
+}
+
+.rumor-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--town-line);
+}
+
+.rumor-note {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 16px;
+  box-shadow: 0 3px 0 var(--coral-deep);
+}
+
+.rumor-skip,
+.rumor-skipped {
+  min-height: 44px;
+  margin-left: 12px;
+  border: 0;
+  border-left: 1px solid var(--town-line);
+  background: none;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 16px;
+  text-align: center;
+  line-height: 44px;
+}
+
+.rumor-skipped {
+  color: var(--cream-ink-soft);
+}
+
+.rumor-note:active,
+.rumor-skip:active {
+  transform: translateY(1px);
+}
+
+.rumor-empty {
+  margin: 12px 4px 6px;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.rumor-tellers {
+  padding: 8px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.rumor-tellers h4 {
+  margin: 0 0 4px;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.rumor-tellers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rumor-tellers li {
+  display: flex;
+  justify-content: space-between;
+  min-height: 32px;
+  align-items: center;
+  font-size: 13px;
 }

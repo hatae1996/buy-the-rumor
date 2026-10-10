@@ -405,12 +405,14 @@ export type NoteView = Omit<HeardRumor, 'claim' | 'rumor'> & {
   omen: { event: ScheduledEventId; town: number } | null;
   /** 문장이 말하는 물품 (수첩 물품별 찾기, 0.1.2). 시세·신청 소문과, 물품을 고른 징조 */
   good: GoodId | null;
+  /** 문장이 말하는 마을 (수첩 카드 제목, 0.1.6). 문장에 이미 나오는 마을이다. 확인할 주장이 없으면 null */
+  about: number | null;
 };
 
 /** 수첩 한 줄을 화면용으로: 도장 판정용 주장과 세계 소문 번호는 뺀다 */
 export function noteView({ claim, rumor: _rumor, ...rest }: HeardRumor): NoteView {
   const good = claim?.kind === 'price' || claim?.kind === 'orders' ? claim.good : claim?.kind === 'omen' ? (eventDef(claim.event).goods?.[0] ?? null) : null;
-  return { ...rest, omen: claim?.kind === 'omen' ? { event: claim.event, town: claim.town } : null, good };
+  return { ...rest, omen: claim?.kind === 'omen' ? { event: claim.event, town: claim.town } : null, good, about: claim?.town ?? null };
 }
 
 export interface ExpeditionChoiceView {
