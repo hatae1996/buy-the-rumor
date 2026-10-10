@@ -101,7 +101,7 @@ export class MapView {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.sea.setSeason(this.season);
     this.renderer.setClearColor(this.sea.deepColor);
-    this.scene.add(this.sea.mesh);
+    this.scene.add(this.sea.object);
     // 로우폴리 디오라마: 해가 비스듬히 비추고 기둥과 나무가 그림자를 드리운다 (그림자 지도는 1024, 사파리 메모리)
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -303,6 +303,7 @@ export class MapView {
     cam.updateProjectionMatrix();
     this.sun.position.set(-0.45 * 30, 0.75 * 30, -0.35 * 30);
     this.sun.target.position.set(0, 0, 0);
+    this.sea.setSun(this.sun.position);
   }
 
   private clearBoard(): void {

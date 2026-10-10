@@ -8,6 +8,7 @@ import { tileCenter, tileHash } from './layout';
 import type { MaterialKit } from './materials';
 import { BLOSSOM, BUSH_COLOR, FLOWER, PROP, ROCK_COLOR, SNOW, TREE_COLOR } from './palette';
 import { addResource, type Fixed, type SeaDir } from './resources';
+import { SEA_LEVEL } from './sea';
 
 export class PropGeometries {
   /** 높이 1, 반지름 1인 오각뿔 (나무, 바위산). 원점은 가운데 */
@@ -107,7 +108,8 @@ export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries,
     }
 
     if (opt.terrainProps) {
-      if (t.terrain === 'forest') addForest(b, geo, kit, opt.season, at, rnd, t.resource !== null);
+      if (t.terrain === 'sea') addSeaRocks(map, index, t.q, t.r, b, geo, kit, opt.season, at, rnd, SEA_LEVEL - c.y);
+      else if (t.terrain === 'forest') addForest(b, geo, kit, opt.season, at, rnd, t.resource !== null);
       else if (t.terrain === 'mountain') addMountain(b, geo, kit, opt.season, ore ? fixed : at, rnd, ore);
       else if (t.terrain === 'hills') addHills(b, geo, kit, opt.season, ore ? fixed : at, rnd, ore);
       else if ((t.terrain === 'plain' || t.terrain === 'coast') && !t.resource && !t.road) {
@@ -215,6 +217,34 @@ function addFlowers(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, a
     const r = 0.035 + rnd(k + 4) * 0.025;
     const color = FLOWER[Math.floor(rnd(k + 20) * FLOWER.length)]!;
     b.add(geo.blob, kit.solid(color), at(cx + (rnd(k + 40) - 0.5) * 0.45, cz + (rnd(k + 60) - 0.5) * 0.45, r * 0.4, [r, r * 0.6, r], rnd(k + 80)));
+  }
+}
+
+/** 해안 옆 바다 칸 몇 곳에 물 위로 솟은 바위 한두 개 (얕은 물에만) */
+function addSeaRocks(
+  map: WorldMap,
+  index: Map<string, number>,
+  q: number,
+  r: number,
+  b: InstanceBatcher,
+  geo: PropGeometries,
+  kit: MaterialKit,
+  season: Season,
+  at: At,
+  rnd: Rnd,
+  water: number,
+): void {
+  if (rnd(0) > 0.16) return;
+  const nearLand = HEX_DIRS.some(([dq, dr]) => {
+    const j = index.get(`${q + dq},${r + dr}`);
+    return j !== undefined && map.tiles[j]!.terrain !== 'sea';
+  });
+  if (!nearLand) return;
+  const [light, dark] = ROCK_COLOR[season];
+  const n = 1 + Math.floor(rnd(1) * 2);
+  for (let k = 0; k < n; k++) {
+    const s = 0.12 + rnd(k + 2) * 0.1;
+    b.add(geo.rock, kit.solid(k === 0 ? light : dark), at(-0.3 + rnd(k + 5) * 0.6, -0.3 + rnd(k + 8) * 0.6, water + s * 0.25, [s, s * 0.9, s], rnd(k + 11) * Math.PI));
   }
 }
 
