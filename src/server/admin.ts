@@ -1,6 +1,8 @@
-// 운영자 함수 (작업목록-0.2.0 8번): 시즌 열기와 세계 더 열기. 비밀 값(ADMIN_SECRET)을 아는 사람만 부른다.
+// 운영자 함수 (작업목록-0.2.0 8·12번): 시즌 열기, 세계 더 열기, 세계 상태 보기, 기록 표, 멈춘 세계 풀기.
+// 비밀 값(ADMIN_SECRET)을 아는 사람만 부른다.
 // 쓰는 법은 supabase/README.md "시즌 열기".
 import type { Db } from './db';
+import { metricsCsv, metricsTable } from './metrics';
 import { addWorld, openSeason, type SeasonKind } from './season';
 
 const KINDS: readonly SeasonKind[] = ['rehearsal', 'closed_test', 'live'];
@@ -18,6 +20,34 @@ export async function adminRequest(db: Db, body: unknown): Promise<{ status: num
       const [s] = await db.query('select 1 from public.seasons where id = $1', [req.seasonId]);
       if (!s) return { status: 400, body: { ok: false, error: 'noSeason' } };
       return { status: 200, body: { ok: true, worldId: await addWorld(db, req.seasonId) } };
+    }
+    case 'world': {
+      // 관찰 화면: 세계 상태 그대로 (숨은 숫자 포함, 운영자만)
+      const w = req as { seasonId?: unknown; worldId?: unknown };
+      if (typeof w.seasonId !== 'string' || typeof w.worldId !== 'string') return bad();
+      const [row] = await db.query<{ state: string; halted: string | null; rev: number }>(
+        'select state::text as state, halted, rev::int as rev from public.worlds where season_id = $1 and id = $2',
+        [w.seasonId, w.worldId],
+      );
+      return row ? { status: 200, body: { ok: true, halted: row.halted, rev: row.rev, blob: JSON.parse(row.state) } } : { status: 400, body: { ok: false, error: 'noWorld' } };
+    }
+    case 'worlds': {
+      if (typeof req.seasonId !== 'string') return bad();
+      const rows = await db.query('select id, humans, bots, day, halted, settled, last_tick_at from public.worlds where season_id = $1 order by id', [req.seasonId]);
+      const log = await db.query('select at, level, message, data from public.ops_log order by id desc limit 50');
+      return { status: 200, body: { ok: true, worlds: rows, log } };
+    }
+    case 'metrics': {
+      if (typeof req.seasonId !== 'string') return bad();
+      const t = await metricsTable(db, req.seasonId);
+      return { status: 200, body: { ok: true, ...t, csv: metricsCsv(t.rows) } };
+    }
+    case 'unhalt': {
+      // 맞는 번들을 다시 올린 뒤 멈춘 세계를 푼다 (handoff 0.2.0 3번)
+      const w = req as { seasonId?: unknown; worldId?: unknown };
+      if (typeof w.seasonId !== 'string' || typeof w.worldId !== 'string') return bad();
+      await db.query('update public.worlds set halted = null where season_id = $1 and id = $2', [w.seasonId, w.worldId]);
+      return { status: 200, body: { ok: true } };
     }
     default:
       return bad();

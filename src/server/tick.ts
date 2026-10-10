@@ -120,7 +120,7 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
       `update public.worlds
           set state = $3::text::json, day = $4, rev = rev + 1, last_tick_at = $5::timestamptz, settled = $6, bots = $7
         where season_id = $1 and id = $2`,
-      [w.season_id, w.id, JSON.stringify(blob), blob.state.day, ts(now), settled, blob.crew.length],
+      [w.season_id, w.id, JSON.stringify(blob), blob.state.day, ts(now), settled, Object.values(blob.state.players).filter((p) => p.bot).length],
     );
     if (scoreRows.length) {
       await tx.query('insert into public.score_rows select * from json_populate_recordset(null::public.score_rows, $1::text::json)', [JSON.stringify(scoreRows)]);

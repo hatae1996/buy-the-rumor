@@ -2,6 +2,7 @@
 // 다시 열면 마지막으로 본 날부터 모아 요약(AwaySummary)을 만든다. 로컬 게임(src/ui/game.ts)과 서버가 같은 함수를 쓴다.
 import { getPlayer, noteView, playerView, type EconomyState, type LedgerEntry, type NewsItem, type NoteView, type PlayerDayReport, type PlayerId } from '../economy';
 import type { HeardRumor } from '../rumors/types';
+import { netWorth } from '../ranking/worth';
 import type { NotifyEvent } from '../notify';
 import type { WorldMap } from '../worldgen';
 
@@ -17,6 +18,8 @@ export interface PlayerDigest {
   ledger: LedgerEntry[];
   /** 그날 밤 길에서 내려 닿은 마을 */
   arrivedAt: number | null;
+  /** 장날 뒤 순자산 (기록 표의 첫 5일, handoff 0.2.0 4번) */
+  worth: number;
 }
 
 /** 장날을 돌리기 전에 적어 두는 것 */
@@ -39,6 +42,7 @@ export function digestAfter(state: EconomyState, pid: PlayerId, mark: DigestMark
     notices: report?.notices ?? [],
     ledger: p.ledger.slice(mark.ledger),
     arrivedAt: mark.onRoad && p.travel === null ? p.town : null,
+    worth: netWorth(state, p),
   };
 }
 

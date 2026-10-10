@@ -2,6 +2,7 @@
 export { SIM_VERSION } from './version';
 export { hashText, stateHash } from './hash';
 export { APPRENTICE_WORLD_ID, enterWorld, graduationKit, isGraduation, openApprentice, type Graduation } from './apprentice';
+export { dailyProfit, firstDays, monopoly, startGroup, type FirstDays, type Monopoly, type StartGroup } from './metrics';
 export { awaySummary, digestAfter, markBefore, type AwaySummary, type DigestMark, type PlayerDigest } from './away';
 export {
   assertSimVersion,

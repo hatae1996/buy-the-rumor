@@ -3,6 +3,7 @@ import { SEASON_NAME, type Season } from '../sim/season';
 import { mountBotPanel } from './botPanel';
 import { mountEconomyPanel } from './economyPanel';
 import { mountFacesPanel } from './facesPanel';
+import { mountServerPanel } from './serverPanel';
 import {
   checkWorldRules,
   generateWorld,
@@ -74,6 +75,7 @@ export function mountWorldgenView(root: HTMLElement): void {
       <section class="dev-econ" data-economy></section>
       <section class="dev-econ" data-bots></section>
       <section class="dev-econ" data-faces-panel></section>
+      <section class="dev-econ" data-server-panel></section>
     </div>
   `;
 
@@ -109,6 +111,7 @@ export function mountWorldgenView(root: HTMLElement): void {
   const economy = mountEconomyPanel($('[data-economy]'));
   const bots = mountBotPanel($('[data-bots]'));
   const faces = mountFacesPanel($('[data-faces-panel]'));
+  mountServerPanel($('[data-server-panel]'));
   let economyMap: WorldMap | null = null;
 
   function render() {
