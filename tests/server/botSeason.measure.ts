@@ -137,6 +137,8 @@ describe('봇으로 서버 시즌 한 번', () => {
       hallOfFame: hall.length,
       pioneers: pioneers[0]!.n,
       relief: reliefSales,
+      // 기록 표의 봄 구휼 줄 (0.2.1, 답 139)
+      reliefRows: metrics.worlds.map((w) => ({ world: w.worldId, humans: w.humans, rows: w.relief })),
       monopoly: metrics.worlds.map((w) => ({ world: w.worldId, all: w.monopolyAll, humans: w.monopolyHumans })),
       rows: metrics.rows.map((r) => ({
         no: r.merchantNo,

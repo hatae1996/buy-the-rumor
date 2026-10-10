@@ -118,3 +118,56 @@ export function monopoly(state: EconomyState, humansOnly: boolean): Monopoly {
     : null;
   return { soleDays: best?.[1] ?? 0, at, days, monopoly: (best?.[1] ?? 0) > days / 2 };
 }
+
+/** 봄 구휼 한 번 (0.2.1, 답 139) */
+export interface ReliefRow {
+  town: number;
+  /** 시작한 날, 끝나는 날 (다 차면 그날로 끝난다) */
+  day: number;
+  end: number;
+  /** 큰 주문 양 (200 × 인원 배율)과 영주가 부른 값 */
+  ordered: number;
+  price: number;
+  /** 큰 주문이 실제로 사들인 양 */
+  filled: number;
+  /** 그동안 그 마을 장에 곡물을 판 양과 사람 수 (사람 / 봇). 장날은 한꺼번에 맞추므로 큰 주문이 누구 것을 샀는지는 가를 수 없다 */
+  sold: { humans: number; bots: number };
+  sellers: { humans: number; bots: number };
+  /** 그동안 플레이어가 판 값의 평균 (판 사람이 없으면 null) */
+  soldPrice: number | null;
+}
+
+/**
+ * 봄 구휼 줄 (0.2.1, 답 139): 시즌 기록에 남은 큰 주문 양과 채워진 양, 그동안 그 마을에 곡물을 판 플레이어.
+ * 판단 기준: 사람이 있는 세계에서도 채워진 양이 절반을 못 넘으면 다음 시즌부터 주문 양 200 → 100 (기획에서 확정)
+ */
+export function reliefRows(state: EconomyState): ReliefRow[] {
+  const out: ReliefRow[] = [];
+  for (const r of state.season?.log ?? []) {
+    if (r.event !== 'relief') continue;
+    const order = r.orders?.find((o) => o.good === 'grain');
+    const sold = { humans: 0, bots: 0 };
+    const sellers = { humans: 0, bots: 0 };
+    let value = 0;
+    for (const p of Object.values(state.players)) {
+      const qty = p.ledger.reduce((n, e) => n + (e.kind === 'sell' && e.good === 'grain' && e.town === r.town && e.day >= r.day && e.day <= r.end ? e.qty : 0), 0);
+      if (!qty) continue;
+      value += p.ledger.reduce((n, e) => n + (e.kind === 'sell' && e.good === 'grain' && e.town === r.town && e.day >= r.day && e.day <= r.end ? e.qty * e.price : 0), 0);
+      sold[p.bot ? 'bots' : 'humans'] += qty;
+      sellers[p.bot ? 'bots' : 'humans']++;
+    }
+    const total = sold.humans + sold.bots;
+    out.push({
+      town: r.town,
+      day: r.day,
+      end: r.end,
+      ordered: order?.qty ?? 0,
+      price: order?.price ?? 0,
+      filled: order?.filled ?? 0,
+      sold,
+      sellers,
+      soldPrice: total ? Math.round((value / total) * 10) / 10 : null,
+    });
+  }
+  return out;
+}

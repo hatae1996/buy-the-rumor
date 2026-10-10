@@ -42,7 +42,7 @@ export function showAwaySummary(game: Game, s: AwaySummary, onClose?: () => void
       .slice(-TRADE_ROWS)
       .map((e) => {
         const art = itemArt(e.good);
-        const by = e.by === 'store' ? ' · 창고 짐' : e.by === 'caravan' ? ' · 두 번째 행렬' : '';
+        const by = e.by === 'store' ? ' · 창고 짐' : e.by === 'caravan' ? ' · 두 번째 행렬' : e.by === 'guest' ? ' · 견습 손님이 약속대로 사 갔어요' : '';
         const amount = (e.kind === 'sell' ? 1 : -1) * e.qty * e.price;
         return `<li>
           <span class="away-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>

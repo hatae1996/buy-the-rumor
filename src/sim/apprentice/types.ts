@@ -1,5 +1,6 @@
 // 견습과 하나씩 열리는 화면 (기획서 "처음 하는 플레이어"). 대사와 연출은 나중 버전.
 // 성장에는 단계가 없다 (0.0.5): 여기서 여는 것은 화면을 하나씩 보여 주는 것이지, 살 수 있는 것을 막지 않는다.
+import type { GoodId } from '../economy/goods';
 
 /** 첫 5분의 7장면 */
 export type SceneId = 'start' | 'firstExpedition' | 'firstLoad' | 'firstSale' | 'firstNews' | 'firstBuy' | 'graduation';
@@ -18,4 +19,15 @@ export interface ApprenticeState {
   destination: number;
   /** 이 장면에 들어온 날 (장날을 겪었는지 볼 때) */
   sceneDay: number;
+}
+
+/**
+ * 견습 손님 (기획 0.2.1, 답 137): 졸업생이 가는 마을에서 그 사람만의 손님이 견습에서 산 물건을
+ * 견습에서 산 수량까지만, 견습에서 안내한 값에 사 준다. 그 마을에 도착한 뒤 첫 장날 한 번
+ */
+export interface ApprenticeGuest {
+  town: number;
+  good: GoodId;
+  qty: number;
+  price: number;
 }

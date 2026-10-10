@@ -238,6 +238,58 @@
   font-size: 13px;
 }
 
+/* 대기 화면의 지난 시즌 명예의 전당 (0.2.1) */
+.hall-of-fame {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--cream-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.hall-of-fame h3 {
+  margin: 0 0 8px;
+  font-family: var(--f-display);
+  font-size: 17px;
+}
+
+.hall-of-fame h3 small {
+  margin-left: 6px;
+  color: var(--cream-ink-soft);
+  font-family: var(--f-body);
+  font-size: 12px;
+}
+
+.hall-of-fame ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hall-of-fame li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--cream-line);
+  font-size: 14px;
+}
+
+.hall-of-fame li:first-child {
+  border-top: 0;
+}
+
+/* 대기 화면에서 여는 증서·얼굴·문장 페이지는 대기 화면 위에 */
+body:has(.entry-waiting) .page {
+  z-index: 55;
+}
+
+.entry-waiting .founding-card > .founding-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+
 .founding-foot {
   display: grid;
   grid-template-columns: 1fr 1fr 1.4fr;
@@ -500,4 +552,38 @@ a.founding-btn {
   font-size: 14px;
   font-weight: 700;
   text-align: center;
+}
+
+/* 장날 알림 띠 (0.2.1): 위 줄 바로 아래, 화면을 막지 않는다 */
+.market-banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 56px);
+  left: 50%;
+  /* 열린 페이지·쪽지 위에도 (잠깐 떴다 사라진다) */
+  z-index: 80;
+  min-height: 44px;
+  max-width: calc(100% - 32px);
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cream-teal);
+  box-shadow: 0 4px 14px rgba(40, 30, 20, 0.22);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 16px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: market-banner-in 0.25s ease-out;
+}
+
+.market-banner b {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes market-banner-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
 }

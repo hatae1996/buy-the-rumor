@@ -1,6 +1,8 @@
 // 견습 세계와 졸업해 공유 세계에 들어가기 (작업목록-0.2.0 7번), 시뮬 입구(src/sim/service)만으로
 import { describe, expect, it } from 'vitest';
-import { cartCount } from '../../src/sim/cart';
+import { cartCount, loadGoods } from '../../src/sim/cart';
+import { settleApprenticeGuest } from '../../src/sim/apprentice';
+import { Accounts } from '../../src/sim/economy/accounts';
 import { getPlayer, playerList, playerView } from '../../src/sim/economy';
 import {
   commandWorld,
@@ -88,6 +90,7 @@ describe('졸업해 공유 세계에 들어가기', () => {
     const shared = sharedWorld(6);
     const map = seasonMap(SEASON);
     const day = shared.state.day;
+    const yardsBefore = shared.state.events.filter((e) => e.event === 'shipyard').length;
     const r = enterWorld(shared, map, spec, g, { type: 'travel', to: destination });
     expect(r.ok).toBe(true);
     const p = getPlayer(shared.state, ME);
@@ -109,8 +112,9 @@ describe('졸업해 공유 세계에 들어가기', () => {
     // 증서와 상인 번호, 이번 시즌 기록은 들어온 날부터
     expect(p.certificate).toMatchObject({ name: '소금 상단', merchantNo: 7 });
     expect(p.record?.joinedDay).toBe(day);
-    // 견습의 첫 신문 소식(조선소)이 공유 세계의 그 마을에도 (질문 137)
-    expect(shared.state.events.some((e) => e.event === 'shipyard' && e.town === destination)).toBe(true);
+    // 견습의 첫 신문 소식(조선소)은 공유 세계에 일으키지 않고, 가는 마을에 그 사람만의 견습 손님 (답 137)
+    expect(shared.state.events.filter((e) => e.event === 'shipyard').length).toBe(yardsBefore);
+    expect(p.apprenticeGuest).toMatchObject({ town: destination, good: 'wood', qty: cartCount(before.cart, 'wood') });
     // 들어온 뒤에도 하루가 돈다
     const t = tickWorld(shared, map, [ME]);
     expect(t?.digests[ME]?.day).toBe(day);
@@ -124,9 +128,10 @@ describe('졸업해 공유 세계에 들어가기', () => {
     expect(getPlayer(shared.state, ME).newspapers).toEqual([0]);
   });
 
-  it('같은 마을의 조선소 소식은 둘로 늘지 않는다', async () => {
+  it('여럿이 졸업해 들어와도 공유 세계에 조선소 사건이 생기지 않는다 (답 137)', async () => {
     const shared = sharedWorld(2);
     const map = seasonMap(SEASON);
+    const before = JSON.stringify(shared.state.events);
     for (const id of ['00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2']) {
       const a = openApprentice(map, { seasonId: SEASON, spec: { id, name: `상단 ${id.slice(-2)}` }, warmupDays: 3 });
       const destination = await walkApprentice({
@@ -136,8 +141,7 @@ describe('졸업해 공유 세계에 들어가기', () => {
       });
       enterWorld(shared, map, { id, name: `상단 ${id.slice(-2)}` }, graduationKit(a, id), { type: 'travel', to: destination });
     }
-    const yards = shared.state.events.filter((e) => e.event === 'shipyard');
-    expect(new Set(yards.map((e) => e.town)).size).toBe(yards.length);
+    expect(JSON.stringify(shared.state.events)).toBe(before);
   });
 
   it('같은 졸업을 두 번 하면 같은 세계가 된다 (서버에서 다시 돌려도 같다)', async () => {
@@ -149,5 +153,82 @@ describe('졸업해 공유 세계에 들어가기', () => {
     enterWorld(s1, seasonMap(SEASON), spec, g, { type: 'travel', to: destination });
     enterWorld(s2, seasonMap(SEASON), spec, JSON.parse(JSON.stringify(g)), { type: 'travel', to: destination });
     expect(stateHash(s2)).toBe(stateHash(s1));
+  });
+});
+
+describe('견습 손님 (0.2.1, 답 137)', () => {
+  /** 졸업해 들어가 가는 마을에 닿을 때까지 장날을 돌린다 */
+  async function arrive(): Promise<{ shared: WorldBlob; destination: number; paid: number }> {
+    const { blob } = apprentice();
+    const { destination } = await graduateIn(blob);
+    const ledger = getPlayer(blob.state, ME).ledger.filter((e) => e.kind === 'buy' && e.good === 'wood');
+    const paid = Math.max(...ledger.map((e) => (e.kind === 'buy' ? e.price : 0)));
+    const shared = sharedWorld(3);
+    const map = seasonMap(SEASON);
+    enterWorld(shared, map, spec, graduationKit(blob, ME), { type: 'travel', to: destination });
+    for (let i = 0; i < 10 && getPlayer(shared.state, ME).travel; i++) tickWorld(shared, map, [ME]);
+    expect(getPlayer(shared.state, ME).town).toBe(destination);
+    return { shared, destination, paid };
+  }
+
+  it('도착한 뒤 첫 장날에 견습에서 산 목재를 안내한 값에 먼저 산다 (첫 거래는 이익, 공유 시장은 그대로)', async () => {
+    const { shared, destination, paid } = await arrive();
+    const map = seasonMap(SEASON);
+    const p = getPlayer(shared.state, ME);
+    const guest = p.apprenticeGuest!;
+    expect(guest.price).toBeGreaterThan(paid);
+    const wood = cartCount(p.cart, 'wood');
+    // 신청을 내지 않은 같은 세계와 그 마을 목재 장이 같다 (공유 시장의 값과 체결량에 들어가지 않는다)
+    const twin = JSON.parse(JSON.stringify(shared)) as WorldBlob;
+    expect(commandWorld(shared, map, ME, { type: 'placeSellOrder', good: 'wood', qty: wood, minPrice: 1 }).ok).toBe(true);
+    const t = tickWorld(shared, map, [ME])!;
+    const t2 = tickWorld(twin, map, [ME])!;
+    expect(t.report.markets[destination]!.wood).toEqual(t2.report.markets[destination]!.wood);
+    const sold = p.ledger.filter((e) => e.kind === 'sell' && e.day === t.report.day);
+    expect(sold).toEqual([{ day: t.report.day, kind: 'sell', town: destination, good: 'wood', qty: guest.qty, price: guest.price, by: 'guest' }]);
+    expect(t.digests[ME]!.notices.some((n) => n.text.includes('견습 손님이 약속대로 목재'))).toBe(true);
+    // 한 번뿐
+    expect(p.apprenticeGuest).toBeNull();
+    // 신문에 실리지 않는다
+    expect(shared.state.news.filter((n) => n.day === t.report.day).some((n) => n.text.includes('견습'))).toBe(false);
+  });
+
+  it('손님 값보다 높게 내면 사지 않고 보통 장으로, 첫 장날이 지나면 사라진다', async () => {
+    const { shared } = await arrive();
+    const map = seasonMap(SEASON);
+    const p = getPlayer(shared.state, ME);
+    const guest = p.apprenticeGuest!;
+    commandWorld(shared, map, ME, { type: 'placeSellOrder', good: 'wood', qty: guest.qty, minPrice: guest.price + 1 });
+    const t = tickWorld(shared, map, [ME])!;
+    expect(p.ledger.some((e) => e.kind === 'sell' && e.by === 'guest')).toBe(false);
+    expect(t.digests[ME]!.notices.some((n) => n.text.includes('견습 손님'))).toBe(false);
+    expect(p.apprenticeGuest).toBeNull();
+  });
+
+  it('다른 마을에 서면 사라진다', async () => {
+    const { blob } = apprentice();
+    const { destination } = await graduateIn(blob);
+    const shared = sharedWorld(3);
+    const map = seasonMap(SEASON);
+    const g = graduationKit(blob, ME);
+    const other = map.towns.find((t) => t.id !== destination && t.id !== g.town)!.id;
+    enterWorld(shared, map, spec, g, { type: 'travel', to: other });
+    expect(getPlayer(shared.state, ME).apprenticeGuest?.town).toBe(destination);
+    for (let i = 0; i < 12 && getPlayer(shared.state, ME).travel; i++) tickWorld(shared, map, [ME]);
+    tickWorld(shared, map, [ME]);
+    expect(getPlayer(shared.state, ME).apprenticeGuest).toBeNull();
+  });
+
+  it('손님 수량보다 많이 내면 남은 양은 보통 장 신청으로 남는다', async () => {
+    const { shared, destination } = await arrive();
+    const p = getPlayer(shared.state, ME);
+    const guest = p.apprenticeGuest!;
+    loadGoods(p.cart, 'wood', 3, 0, 0);
+    const accounts = new Accounts(shared.state);
+    const order = accounts.place({ kind: 'player', pid: ME }, destination, 'wood', 'sell', guest.qty + 3, 1)!;
+    shared.state.orders.push(order);
+    const fills = settleApprenticeGuest(shared.state, p, accounts);
+    expect(fills).toEqual([{ qty: guest.qty, price: guest.price }]);
+    expect(shared.state.orders.find((o) => o.id === order.id)?.qty).toBe(3);
   });
 });

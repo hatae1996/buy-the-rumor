@@ -180,7 +180,8 @@ export const ERROR_TEXT: Record<CommandError | ServerError, string> = {
 };
 
 /** 누가 한 거래인지: 창고 짐, 두 번째 행렬 */
-const byText = (by: 'store' | 'caravan' | undefined): string => (by === 'caravan' ? '[행렬] ' : by === 'store' ? '[창고] ' : '');
+const byText = (by: 'store' | 'caravan' | 'guest' | undefined): string =>
+  by === 'caravan' ? '[행렬] ' : by === 'store' ? '[창고] ' : by === 'guest' ? '[견습 손님] ' : '';
 
 /** 장부 한 줄: 글과 돈 변화 */
 export function ledgerLine(e: LedgerEntry, townName: (id: number) => string): { text: string; amount: number | null } {

@@ -124,6 +124,8 @@ export function settleBigOrders(state: EconomyState, bought: readonly { event: n
     if (!ev || !o) continue;
     o.left = Math.max(0, o.left - b.qty);
     paid += b.qty * b.price;
+    const rec = state.season?.log.find((r) => r.id === ev.id)?.orders?.find((x) => x.good === b.good);
+    if (rec) rec.filled += b.qty;
   }
   for (const ev of state.events) {
     if (ev.orders?.length && ev.orders.every((o) => o.left === 0) && ev.end > state.day) ev.end = state.day;
@@ -192,7 +194,8 @@ function begin(state: EconomyState, map: WorldMap, sch: ScheduledEvent): string 
   const season = state.season!;
   const end = def.days === 'season' ? season.startDay + season.length - 1 : state.day + def.days - 1;
   const ev = activate(state, map, sch.event, sch.town, end, { good: sch.good, tiles: sch.tiles });
-  season.log.push({ event: sch.event, town: sch.town, day: state.day, end, omenDay: sch.omenDay, good: sch.good });
+  const orders = ev.orders?.map((o) => ({ good: o.good, qty: o.left, price: o.price, filled: 0 }));
+  season.log.push({ event: sch.event, town: sch.town, day: state.day, end, omenDay: sch.omenDay, good: sch.good, ...(orders ? { id: ev.id, orders } : {}) });
   return def.news({ town: map.towns[ev.town]!.name, good: sch.good ?? null, job: null });
 }
 

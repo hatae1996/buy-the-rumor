@@ -23,7 +23,13 @@ export function openArrivalSheet(game: Game): void {
     }
     const to = v.location.to;
     const mem = v.memory[to];
-    const priceOf = (g: GoodId) => prices.get(g) ?? Math.max(1, Math.round(mem ? mem.prices[g] * 0.9 : basePrice(g) * 0.8));
+    // 견습 손님이 기다리는 마을이면 손님 값 이하로 (답 140)
+    const guest = v.apprenticeGuest?.town === to ? v.apprenticeGuest : null;
+    const suggest = (g: GoodId) => {
+      const p = Math.max(1, Math.round(mem ? mem.prices[g] * 0.9 : basePrice(g) * 0.8));
+      return guest?.good === g ? Math.min(p, guest.price) : p;
+    };
+    const priceOf = (g: GoodId) => prices.get(g) ?? suggest(g);
     const goods = GOODS.filter((g) => count(v.haul, g) > 0);
     const rows =
       goods

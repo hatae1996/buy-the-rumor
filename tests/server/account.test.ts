@@ -2,7 +2,7 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createCertificate } from '../../src/sim/ranking/certificate';
-import { accountRequest, checkName, foundCompany, getMe, redeemInvite, setLook } from '../../src/server/account';
+import { accountRequest, checkName, foundCompany, getMe, lastHallOfFame, redeemInvite, setLook } from '../../src/server/account';
 import type { Db } from '../../src/server/db';
 import { createTestDb } from '../db/pglite';
 
@@ -127,5 +127,35 @@ describe('account 함수 몸통', () => {
     expect((await accountRequest(db, A, { action: 'nope' })).status).toBe(400);
     expect((await accountRequest(db, A, null)).status).toBe(400);
     expect((await accountRequest(db, A, { action: 'redeem', code: 5 })).status).toBe(400);
+  });
+});
+
+describe('지난 시즌 명예의 전당 (0.2.1, 답 138)', () => {
+  const season = (id: string, opens: string, status: string) =>
+    db.query(`insert into public.seasons (id, seed, kind, opens_at, ends_at, sim_version, status) values ($1, 1, 'closed_test', $2, $2::timestamptz + interval '14 days', 1, $3)`, [
+      id,
+      opens,
+      status,
+    ]);
+
+  it('첫 시즌이면 비어 있다 (화면은 그 줄을 숨긴다)', async () => {
+    await season('2026-10-12', '2026-10-12T00:00:00Z', 'open');
+    expect(await accountRequest(db, A, { action: 'hallOfFame' })).toEqual({ status: 200, body: { ok: true, value: null } });
+  });
+
+  it('명예의 전당을 남긴 가장 최근 끝난 시즌', async () => {
+    await redeemInvite(db, A, 'ABCD2345');
+    await season('2026-09-14', '2026-09-14T00:00:00Z', 'ended');
+    await season('2026-09-28', '2026-09-28T00:00:00Z', 'ended');
+    await season('2026-10-12', '2026-10-12T00:00:00Z', 'open');
+    await db.query(`insert into public.hall_of_fame (season_id, category, account_id, name, score) values
+      ('2026-09-14', 'bigShot', $1, '옛 상단', 1), ('2026-09-28', 'bigShot', $1, '소금 상단', 2), ('2026-09-28', 'oneShot', $1, '소금 상단', 3)`, [A]);
+    expect(await lastHallOfFame(db)).toEqual({
+      seasonId: '2026-09-28',
+      entries: [
+        { category: 'bigShot', name: '소금 상단' },
+        { category: 'oneShot', name: '소금 상단' },
+      ],
+    });
   });
 });

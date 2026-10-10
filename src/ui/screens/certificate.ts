@@ -6,7 +6,9 @@
 // 상단 이름은 로컬에서는 글자 수만 본다. 금칙어와 같은 시즌 중복은 서버 버전에서 (0.1.7 답 129).
 import { canSendFeedback, openFeedbackSheet } from '../feedback';
 import cardImg from '../../../assets/ui/certificate_card.jpg';
-import type { CertificateView } from '../../sim/ranking';
+import type { CertificateView, Emblem } from '../../sim/ranking';
+import type { Look } from '../../sim/looks';
+import { badgeArt } from '../badgeArt';
 import { drawEmblem, emblemSvg } from '../emblem';
 import { ERROR_TEXT } from '../format';
 import type { Game } from '../game';
@@ -33,10 +35,14 @@ export const merchantNoText = (n: number | null): string | null => (n === null ?
 function badgeToken(b: CertificateView['pinned'][number] | undefined): string {
   if (!b) return '<span class="cert-badge empty"><span class="cert-medal"></span><small>빈 자리</small></span>';
   const color = TIER_COLOR[b.tier ?? 'none'];
+  // 그림이 있는 인장 (개척 상인, 0.2.1)
+  const art = badgeArt(b.badge);
+  if (art) return `<span class="cert-badge"><img class="cert-medal-art" src="${art}" alt="" /><small>${b.name}</small></span>`;
   return `<span class="cert-badge"><span class="cert-medal" style="--medal:${color}">${b.name.slice(0, 1)}</span><small>${b.name}${b.tier ? ` · ${TIER[b.tier]}` : ''}</small></span>`;
 }
 
-function face(c: CertificateView & { bot?: boolean }): string {
+/** 증서 앞면 (대기 화면처럼 세계 밖에서도 쓴다) */
+export function certificateCard(c: CertificateView & { bot?: boolean }): string {
   const slots = Array.from({ length: MAX_PINNED }, (_, i) => badgeToken(c.pinned[i])).join('');
   return `<section class="cert-card" style="--cert-line:${LINE[c.paper]};background-image:url('${cardImg}')" aria-label="상인 증서">
       <div class="cert-inner">
@@ -66,7 +72,7 @@ export function openCertificate(game: Game, id?: string): void {
       return;
     }
     if (!mine) {
-      body.innerHTML = `${face(c)}<p class="ledger-note plain">남의 증서에는 순자산이 없어요. 인장첩은 그 상단만 봐요.</p>`;
+      body.innerHTML = `${certificateCard(c)}<p class="ledger-note plain">남의 증서에는 순자산이 없어요. 인장첩은 그 상단만 봐요.</p>`;
       return;
     }
     const pinnedRows = new Set(v.certificate.pinned.map((p) => v.badgeBook.findIndex((b) => b.name === p.name && b.season === p.season)));
@@ -78,7 +84,7 @@ export function openCertificate(game: Game, id?: string): void {
         )
         .join('') || '<li class="muted">원정과 장사에서 이야기가 되는 순간, 랭킹, 길드 의뢰, 시즌 완주로 인장이 모여요.</li>';
     body.innerHTML = `
-      ${face(c)}
+      ${certificateCard(c)}
       <button type="button" class="shop-link" data-save-image>이미지로 저장 <span>›</span></button>
       <div class="cert-parts">
         <button type="button" class="shop-link" data-edit-face>얼굴 바꾸기 <span>›</span></button>
@@ -127,28 +133,44 @@ export function openCertificate(game: Game, id?: string): void {
 
 /** 얼굴이나 문장을 고르는 페이지 (증서에서 언제든). 저장을 누르면 명령을 보낸다 */
 function openPartsPage(game: Game, kind: 'face' | 'emblem'): void {
-  const page = openPage({ back: '상인 증서', title: kind === 'face' ? '얼굴 바꾸기' : '문장 바꾸기' });
   const c = game.view().certificate;
+  openLookPage(kind, c, async (look) => {
+    const r = await game.dispatch(look.face ? { type: 'setFace', face: look.face } : { type: 'setEmblem', emblem: look.emblem! });
+    return r.ok ? null : ERROR_TEXT[r.error];
+  });
+}
+
+/**
+ * 얼굴이나 문장을 고르는 페이지. save가 실패 문구를 돌려주면 페이지에 보이고, null이면 닫는다
+ * (세계 안에서는 명령으로, 대기 화면에서는 계정 함수로 저장한다, 0.2.1)
+ */
+export function openLookPage(
+  kind: 'face' | 'emblem',
+  initial: { face: Look; emblem: Emblem },
+  save: (look: { face?: Look; emblem?: Emblem }) => Promise<string | null>,
+  back = '상인 증서',
+): void {
+  const page = openPage({ back, title: kind === 'face' ? '얼굴 바꾸기' : '문장 바꾸기' });
   page.body.innerHTML = `<div class="shop-card" data-editor></div>
     <button type="button" class="founding-btn" data-save>저장</button>
     <p class="error" data-error hidden></p>`;
   const holder = page.body.querySelector<HTMLElement>('[data-editor]')!;
-  const save =
+  const get =
     kind === 'face'
       ? (() => {
-          const ed = mountFaceEditor(holder, c.face);
-          return () => game.dispatch({ type: 'setFace', face: ed.get() });
+          const ed = mountFaceEditor(holder, initial.face);
+          return () => ({ face: ed.get() });
         })()
       : (() => {
-          const ed = mountEmblemEditor(holder, c.emblem);
-          return () => game.dispatch({ type: 'setEmblem', emblem: ed.get() });
+          const ed = mountEmblemEditor(holder, initial.emblem);
+          return () => ({ emblem: ed.get() });
         })();
   page.body.querySelector('[data-save]')!.addEventListener('click', async () => {
-    const r = await save();
-    if (r.ok) page.close();
+    const m = await save(get());
+    if (m === null) page.close();
     else {
       const err = page.body.querySelector<HTMLElement>('[data-error]')!;
-      err.textContent = ERROR_TEXT[r.error];
+      err.textContent = m;
       err.hidden = false;
     }
   });
@@ -214,6 +236,16 @@ async function saveImage(c: CertificateView, photo: HTMLCanvasElement | null): P
   g.stroke();
   g.font = serif(20, 700);
   g.fillText('대표 인장', W / 2, 568);
+  // 그림이 있는 인장은 그림을 먼저 읽어 둔다
+  const arts = await Promise.all(
+    Array.from({ length: MAX_PINNED }, async (_, i) => {
+      const src = c.pinned[i] ? badgeArt(c.pinned[i]!.badge) : null;
+      if (!src) return null;
+      const im = new Image();
+      im.src = src;
+      return im.decode().then(() => im, () => null);
+    }),
+  );
   for (let i = 0; i < MAX_PINNED; i++) {
     const b = c.pinned[i];
     const cx = W / 2 + (i - 1.5) * 116;
@@ -227,7 +259,13 @@ async function saveImage(c: CertificateView, photo: HTMLCanvasElement | null): P
       else g.moveTo(x, y);
     }
     g.closePath();
-    if (b) {
+    const art = b ? arts[i] : null;
+    if (b && art) {
+      g.drawImage(art, cx - 48, cy - 48, 96, 96);
+      g.fillStyle = '#5b5148';
+      g.font = serif(14, 700);
+      g.fillText(b.name, cx, cy + 66);
+    } else if (b) {
       g.fillStyle = TIER_COLOR[b.tier ?? 'none'];
       g.fill();
       g.fillStyle = '#fff';

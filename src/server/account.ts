@@ -136,13 +136,36 @@ export async function setLook(db: Db, uid: string, look: { face?: unknown; emble
   });
 }
 
+/** 명예의 전당 한 줄: 부문과 그 부문 1위 상단 이름 */
+export interface HallOfFameEntry {
+  category: string;
+  name: string;
+}
+
+/**
+ * 지난 시즌 명예의 전당 (0.2.1, 답 138): 대기 화면에 보인다. 명예의 전당을 남긴 가장 최근 끝난 시즌.
+ * 시험 시즌·예행연습은 남기지 않으니(10번) 첫 시즌이면 null (화면은 그 줄을 숨긴다)
+ */
+export async function lastHallOfFame(db: Db): Promise<{ seasonId: string; entries: HallOfFameEntry[] } | null> {
+  const rows = await db.query<{ season_id: string; category: string; name: string }>(
+    `select h.season_id, h.category, h.name from public.hall_of_fame h
+      where h.season_id = (select s.id from public.seasons s
+                            where s.status = 'ended' and exists (select 1 from public.hall_of_fame x where x.season_id = s.id)
+                            order by s.opens_at desc limit 1)
+      order by h.category`,
+  );
+  if (!rows.length) return null;
+  return { seasonId: rows[0]!.season_id, entries: rows.map((r) => ({ category: r.category, name: r.name })) };
+}
+
 /** account 함수가 받는 요청 */
 export type AccountRequest =
   | { action: 'me' }
   | { action: 'redeem'; code: string }
   | { action: 'checkName'; name: string }
   | { action: 'found'; name: string; face: unknown; emblem: unknown }
-  | { action: 'setLook'; face?: unknown; emblem?: unknown };
+  | { action: 'setLook'; face?: unknown; emblem?: unknown }
+  | { action: 'hallOfFame' };
 
 /** account Edge Function의 몸통: 요청 하나 → 응답 (상태 코드와 JSON) */
 export async function accountRequest(db: Db, uid: string, body: unknown): Promise<{ status: number; body: unknown }> {
@@ -166,6 +189,9 @@ export async function accountRequest(db: Db, uid: string, body: unknown): Promis
       break;
     case 'setLook':
       r = await setLook(db, uid, { face: req.face, emblem: req.emblem });
+      break;
+    case 'hallOfFame':
+      r = { ok: true, value: await lastHallOfFame(db) };
       break;
     default:
       r = fail('badRequest');

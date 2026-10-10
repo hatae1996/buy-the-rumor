@@ -160,6 +160,10 @@ export interface EventRecord {
   end: number;
   omenDay: number | null;
   good?: GoodId;
+  /** 진행 중인 사건 번호 (큰 주문이 채워진 양을 적으려고, 0.2.1) */
+  id?: number;
+  /** 큰 주문: 처음 양, 값, 채워진 양 (기록 표의 봄 구휼 줄, 0.2.1) */
+  orders?: { good: GoodId; qty: number; price: number; filled: number }[];
 }
 
 /** 시즌 (기획서 "멀티플레이와 시즌": 실제 13일 = 게임 속 사계절 한 바퀴) */

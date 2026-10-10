@@ -341,6 +341,8 @@ export const ECONOMY = {
     /** 견습 마을 손님: 플레이어가 팔면 시세의 이 배로 사 주고, 사면 이 배로 팔아 준다 */
     buyMarkup: 1.1,
     sellMarkdown: 0.95,
+    /** 견습 손님(0.2.1)이 사 주는 값은 견습에서 산 값의 이 배보다 낮지 않다 (첫 거래는 반드시 이익) */
+    guestMinMarkup: 1.2,
     /** 견습 뒤 열리는 조건: 예약 주문은 금화 이만큼 */
     reservationGold: 300,
   },

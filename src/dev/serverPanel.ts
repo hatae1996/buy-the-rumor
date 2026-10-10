@@ -124,6 +124,21 @@ export function mountServerPanel(root: HTMLElement): void {
         <tr><th>세계</th><th>사람</th><th>봇</th><th>장날</th><th>독점 날 (전체)</th><th>독점 날 (사람)</th></tr>
         ${r.worlds.map((w) => `<tr><td>${esc(w.worldId)}</td><td>${w.humans}</td><td>${w.bots}</td><td>${w.monopolyAll.days}</td><td>${w.monopolyAll.soleDays}${w.monopolyAll.monopoly ? ' (독점)' : ''}</td><td>${w.monopolyHumans.soleDays}${w.monopolyHumans.monopoly ? ' (독점)' : ''}</td></tr>`).join('')}
       </table></section>
+      <section class="dev-slip"><h2>봄 구휼 (답 139: 사람이 있는 세계도 채워진 양이 50%를 못 넘으면 다음 시즌 200 → 100)</h2><table class="dev-table">
+        <tr><th>세계</th><th>마을</th><th>날</th><th>주문 양</th><th>값</th><th>채워진 양</th><th>판 양 (사람 / 봇)</th><th>판 사람 (사람 / 봇)</th><th>판 값</th></tr>
+        ${
+          r.worlds
+            .flatMap((w) =>
+              w.relief.map(
+                (x) =>
+                  `<tr><td>${esc(w.worldId)}</td><td>${x.town}</td><td>${x.day}~${x.end}</td><td>${x.ordered}</td><td>${x.price}</td>
+                   <td>${x.filled} (${x.ordered ? Math.round((x.filled / x.ordered) * 100) : 0}%)${w.humans > 0 && x.filled * 2 < x.ordered ? ' · 절반 못 채움' : ''}</td>
+                   <td>${x.sold.humans} / ${x.sold.bots}</td><td>${x.sellers.humans} / ${x.sellers.bots}</td><td>${x.soldPrice ?? ''}</td></tr>`,
+              ),
+            )
+            .join('') || '<tr><td colspan="9">이번 시즌에는 아직 봄 구휼이 없었어요.</td></tr>'
+        }
+      </table></section>
       <section class="dev-slip"><h2>사람마다 (${r.rows.length}명)</h2>
         <button type="button" class="dev-btn alt" data-csv>CSV 내려받기</button>
         <div class="dev-scroll"><table class="dev-table">

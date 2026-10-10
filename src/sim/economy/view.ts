@@ -30,11 +30,11 @@ import type { NotifySettings } from '../notify';
 import { badgeDef, CATEGORIES, categoryName, certificateView, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport, type Standing } from '../ranking';
 import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
-import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
+import { apprenticeGuestOf, SCENES, sceneDef, type ApprenticeGuest, type SceneId, type UnlockId } from '../apprentice';
 import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
 import { CYCLE_DAYS, seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
-import { GOODS, type GoodId } from './goods';
+import { GOOD_NAME, GOODS, type GoodId } from './goods';
 import { sellableCount, totalCount, type Lot } from './inventory';
 import { euro, iGa } from '../josa';
 import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, gearUses, guideFee, needsMet, type GearKind } from '../expedition';
@@ -322,6 +322,8 @@ export interface PlayerView {
   guide: { fee: number; hired: boolean } | null;
   /** 견습 중이면 지금 장면 (기획서 "첫 5분의 흐름"). 아니면 null */
   apprentice: ApprenticeView | null;
+  /** 졸업하고 가는 마을의 견습 손님 (내게 한 약속이라 나만 안다, 0.2.1). 화면은 그 마을 첫 장날의 추천 최소 가격을 이 값 이하로 */
+  apprenticeGuest: ApprenticeGuest | null;
   /** 열린 것 (탭, 내가 아는 시세, 소문, 최소 가격 고치기, 말과 큰 수레 등) */
   unlocks: readonly UnlockId[];
   /** 마지막으로 신문을 읽은 날 */
@@ -533,16 +535,22 @@ function caravanView(state: EconomyState, p: PlayerState): CaravanView | null {
   };
 }
 
-function apprenticeView(p: PlayerState, map: WorldMap): ApprenticeView | null {
+function apprenticeView(state: EconomyState, p: PlayerState, map: WorldMap): ApprenticeView | null {
   const ap = p.apprentice;
   if (!ap) return null;
   const def = sceneDef(ap.scene);
+  // 졸업 장면: 견습 손님이 사 줄 값을 노상인이 한 번 말해 둔다 (답 140, 쪽지의 "약속대로")
+  const guest = def.hint.includes('{offer}') ? apprenticeGuestOf(state, p, cartCount(p.cart, 'wood')) : null;
+  const offer = guest ? ` {dest}에서는 ${GOOD_NAME[guest.good]} 하나에 ${guest.price}골드는 쳐 줄 걸세.` : '';
   return {
     scene: ap.scene,
     step: SCENES.indexOf(def) + 1,
     steps: SCENES.length,
     title: def.title,
-    hint: def.hint.replaceAll('{destTo}', euro(map.towns[ap.destination]!.name)).replaceAll('{dest}', map.towns[ap.destination]!.name),
+    hint: def.hint
+      .replaceAll('{offer}', offer)
+      .replaceAll('{destTo}', euro(map.towns[ap.destination]!.name))
+      .replaceAll('{dest}', map.towns[ap.destination]!.name),
     destination: ap.destination,
   };
 }
@@ -864,7 +872,8 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
       rationRoom: roomFor(p.cart, 'rations', 99),
     },
     toolUsesLeft: cartCount(p.cart, 'tools') > 0 ? ECONOMY.expedition.usesPerTool - p.toolUses : 0,
-    apprentice: apprenticeView(p, map),
+    apprentice: apprenticeView(state, p, map),
+    apprenticeGuest: p.apprenticeGuest ? { ...p.apprenticeGuest } : null,
     newsReadDay: p.newsReadDay,
     unlocks: (Object.keys(p.unlocks) as UnlockId[]).filter((id) => p.unlocks[id] !== undefined),
     guide: p.travel || !hasExpeditions(state.towns[p.town]!) ? null : { fee: guideFee(state, p.town), hired: p.guide },

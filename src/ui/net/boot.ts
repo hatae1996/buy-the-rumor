@@ -19,6 +19,7 @@ const HEARTBEAT_MS = 5 * 60 * 1000;
 
 type Me = { ok: true; value: { merchantNo: number; certificate: Certificate | null } } | { ok: false; error: string };
 type Done = { ok: true } | { ok: false; error: string };
+type Hall = { ok: true; value: { seasonId: string; entries: { category: string; name: string }[] } | null } | { ok: false; error: string };
 
 const text = (e: string) => ERROR_TEXT[e as ServerError] ?? e;
 
@@ -113,7 +114,18 @@ export async function bootServer(root: HTMLElement): Promise<void> {
       }
     },
   });
-  if (!opened.ok) return showWaiting(root, opened.error, () => location.reload());
+  if (!opened.ok) {
+    // 기다리는 동안 지난 시즌 명예의 전당과 내 증서 (0.2.1, 답 138)
+    const certificate = me.value.certificate ?? (await api.call<Me>('account', { action: 'me' }).then((m) => (m.ok ? m.value.certificate : null)));
+    return showWaiting(root, opened.error, () => location.reload(), {
+      hall: api.call<Hall>('account', { action: 'hallOfFame' }).then((r) => (r.ok ? r.value : null)),
+      certificate,
+      setLook: async (look) => {
+        const r = await api.call<{ ok: true; value: Certificate } | { ok: false; error: string }>('account', { action: 'setLook', ...look });
+        return r.ok ? r.value : text(r.error);
+      },
+    });
+  }
   const game = opened.game;
 
   // 기록 사건과 의견: 지금 시즌·세계·게임 날을 붙여 표에 넣는다

@@ -5572,6 +5572,13 @@
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 
+/* 그림이 있는 인장 (개척 상인, 0.2.1) */
+.cert-medal-art {
+  width: 15cqw;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
 .cert-badge.empty .cert-medal {
   background: rgba(120, 100, 80, 0.12);
 }

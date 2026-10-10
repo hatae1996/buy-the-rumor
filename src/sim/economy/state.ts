@@ -4,7 +4,7 @@ import type { HeardRumor, RumorMill } from '../rumors/types';
 import type { Horse, HorseKind, HorseMarket } from '../horses/types';
 import type { CartType, ItemId } from '../cart';
 import type { IncidentCause, RoadRisk } from './incidents';
-import type { ApprenticeState, UnlockId } from '../apprentice/types';
+import type { ApprenticeGuest, ApprenticeState, UnlockId } from '../apprentice/types';
 import type { Certificate, SeasonRecord } from '../ranking/types';
 import type { Rankings } from '../ranking/table';
 import type { SeasonSettlement } from '../ranking/settle';
@@ -123,8 +123,11 @@ export interface PriceMemory {
 }
 
 export type LedgerEntry =
-  /** by: 창고 짐이나 두 번째 행렬이 한 거래 (없으면 내가 직접). reserved: 예약 주문이 한 거래 (0.1.0) */
-  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number; by?: 'store' | 'caravan'; reserved?: true }
+  /**
+   * by: 창고 짐이나 두 번째 행렬이 한 거래 (없으면 내가 직접), 견습 손님이 사 간 것 (0.2.1).
+   * reserved: 예약 주문이 한 거래 (0.1.0)
+   */
+  | { day: number; kind: 'buy' | 'sell'; town: number; good: GoodId; qty: number; price: number; by?: 'store' | 'caravan' | 'guest'; reserved?: true }
   | { day: number; kind: 'travel'; from: number; to: number; days: number; fee: number }
   | { day: number; kind: 'spoil'; good: GoodId; qty: number }
   | { day: number; kind: 'eat'; good: GoodId; recovered: number }
@@ -259,6 +262,8 @@ export interface PlayerState {
   toolUses: number;
   /** 견습 중이면 지금 장면. 견습을 마쳤거나 건너뛰었으면 null */
   apprentice: ApprenticeState | null;
+  /** 졸업하고 가는 마을의 견습 손님 (서버의 견습 세계에서 졸업한 사람만, 0.2.1). 첫 장날이 지나면 없앤다 */
+  apprenticeGuest?: ApprenticeGuest | null;
   /** 하나씩 열리는 것과 열린 날 (탭, 내가 아는 시세, 소문, 최소 가격 고치기 등) */
   unlocks: Partial<Record<UnlockId, number>>;
   /** 처음 시작한 마을 (견습 마을). 다른 마을에 처음 닿으면 시세 기억과 소문이 열린다 */

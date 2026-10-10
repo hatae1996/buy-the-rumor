@@ -2,7 +2,7 @@
 // createEconomy는 세계를 만들 때만 플레이어를 받으므로, 들어온 차례(seq)를 이어서 매기고 같은 모양의 플레이어를 만든다.
 import type { Cart, CartType } from '../cart';
 import { ALL_UNLOCKS } from '../apprentice/progress';
-import type { UnlockId } from '../apprentice/types';
+import type { ApprenticeGuest, UnlockId } from '../apprentice/types';
 import type { NotifySettings } from '../notify/types';
 import { ensurePlayerRecord } from '../ranking/record';
 import { cleanCompanyName, setEmblem, setFace } from '../ranking/certificate';
@@ -19,6 +19,8 @@ export interface JoinKit {
   unlocks?: readonly UnlockId[];
   /** 견습 동안 고친 알림 설정 */
   notify?: NotifySettings;
+  /** 가는 마을의 견습 손님 (0.2.1) */
+  guest?: ApprenticeGuest | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export function joinPlayer(state: EconomyState, spec: PlayerSpec, town: number |
     // 견습 세계의 장 신청 자리는 두고 온다
     p.cart = { ...copy(kit.cart), pieces: kit.cart.pieces.map((q) => ({ ...copy(q), incoming: [] })) };
     if (kit.notify) p.notify = copy(kit.notify);
+    if (kit.guest) p.apprenticeGuest = { ...kit.guest };
   }
   state.players[spec.id] = p;
   ensurePlayerRecord(state, p);

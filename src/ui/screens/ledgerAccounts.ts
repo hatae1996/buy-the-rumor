@@ -27,7 +27,7 @@ function rowOf(e: LedgerEntry, townName: (id: number) => string): { art: string 
   switch (e.kind) {
     case 'buy':
     case 'sell': {
-      const how = [e.reserved ? '예약 주문' : '', e.by === 'store' ? '창고 짐' : e.by === 'caravan' ? '두 번째 행렬' : ''].filter(Boolean).join(' · ');
+      const how = [e.reserved ? '예약 주문' : '', e.by === 'store' ? '창고 짐' : e.by === 'caravan' ? '두 번째 행렬' : e.by === 'guest' ? '견습 손님' : ''].filter(Boolean).join(' · ');
       return {
         art: itemArt(e.good),
         title: `${goodName(e.good)} ${e.kind === 'sell' ? '판매' : '구매'}`,

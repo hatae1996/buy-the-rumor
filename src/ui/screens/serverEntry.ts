@@ -1,7 +1,11 @@
 // 서버 게임의 들어가는 화면들 (작업목록-0.2.0 11번): 로그인(개인정보 한 줄), 초대 코드, 다음 시즌 기다리기, 세계에 들어가기.
 // 시작 화면(founding.ts)과 같은 크림 바탕 틀을 쓴다.
+import type { Look } from '../../sim/looks';
+import { categoryName, certificateView, type Certificate, type CategoryId, type Emblem } from '../../sim/ranking';
 import { ERROR_TEXT, type ServerError } from '../format';
+import { openPage } from '../page';
 import { openSheet } from '../sheet';
+import { certificateCard, openLookPage } from './certificate';
 
 /** 로그인 화면에 한 줄 (handoff 0.2.0 9번) */
 export const PRIVACY_LINE = '테스트용 게임이며 이메일과 플레이 기록만 저장합니다.';
@@ -114,13 +118,68 @@ export function showInvite(root: HTMLElement, redeem: (code: string) => Promise<
   });
 }
 
-/** 다음 시즌 기다리기 (답 115, 질문 138): 시즌이 없거나, 세계가 다 찼거나, 들어올 날이 지났다 */
-export function showWaiting(root: HTMLElement, reason: string, retry: () => void): void {
+/** 대기 화면에 더 보이는 것 (0.2.1, 답 138) */
+export interface WaitingExtras {
+  /** 지난 시즌 명예의 전당. 첫 시즌이라 비면 null (그 줄을 숨긴다) */
+  hall: Promise<{ seasonId: string; entries: { category: string; name: string }[] } | null>;
+  /** 내 상인 증서 (상단을 세웠으면) */
+  certificate: Certificate | null;
+  /** 얼굴이나 문장을 바꾼다 (계정 함수). 바뀐 증서, 또는 실패 문구 */
+  setLook: (look: { face?: Look; emblem?: Emblem }) => Promise<Certificate | string>;
+}
+
+/** 시즌 id(여는 날, 한국 날짜)를 "10월 12일 시즌"으로 */
+const seasonText = (id: string) => {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(id);
+  return m ? `${Number(m[1])}월 ${Number(m[2])}일 시즌` : id;
+};
+
+/**
+ * 다음 시즌 기다리기 (답 115, 질문 138): 시즌이 없거나, 세계가 다 찼거나, 들어올 날이 지났다.
+ * 기다리는 동안 지난 시즌 명예의 전당과 내 상인 증서(얼굴·문장 바꾸기)를 본다 (0.2.1)
+ */
+export function showWaiting(root: HTMLElement, reason: string, retry: () => void, extras?: WaitingExtras): void {
   const text = ERROR_TEXT[reason as ServerError] ?? '지금은 들어갈 수 없어요.';
   const el = frame(root, '다음 시즌을 기다려 주세요', '"장이 다시 서면 부르겠네. 그동안 증서나 매만져 두게."', `<p>${text}</p>
      <p class="pick-note">시즌은 격주 월요일 아침 9시에 열려요.</p>
+     <section class="hall-of-fame" data-hall hidden></section>
+     ${extras?.certificate ? '<button type="button" class="founding-btn ghost" data-cert>내 상인 증서 ›</button>' : ''}
      <button type="button" class="founding-btn" data-retry>다시 확인</button>`);
+  el.classList.add('entry-waiting');
   el.querySelector('[data-retry]')!.addEventListener('click', retry);
+  if (!extras) return;
+  void extras.hall
+    .then((h) => {
+      if (!h?.entries.length) return;
+      const box = el.querySelector<HTMLElement>('[data-hall]')!;
+      box.innerHTML = `<h3>지난 시즌 명예의 전당 <small>${seasonText(h.seasonId)}</small></h3>
+        <ul>${h.entries.map((e) => `<li><span>${categoryName(e.category as CategoryId)}</span><b>${e.name}</b></li>`).join('')}</ul>`;
+      box.hidden = false;
+    })
+    .catch(() => undefined);
+  let cert = extras.certificate;
+  el.querySelector('[data-cert]')?.addEventListener('click', () => {
+    const page = openPage({ back: '돌아가기', title: '상인 증서' });
+    const render = () => {
+      page.body.innerHTML = `${certificateCard(certificateView(cert!))}
+        <div class="cert-parts">
+          <button type="button" class="shop-link" data-edit-face>얼굴 바꾸기 <span>›</span></button>
+          <button type="button" class="shop-link" data-edit-emblem>문장 바꾸기 <span>›</span></button>
+        </div>
+        <p class="ledger-note plain">상단 이름은 다음 시즌에 들어가기 전에 바꿀 수 있어요.</p>`;
+      const edit = (kind: 'face' | 'emblem') =>
+        openLookPage(kind, cert!, async (look) => {
+          const r = await extras.setLook(look);
+          if (typeof r === 'string') return r;
+          cert = r;
+          render();
+          return null;
+        });
+      page.body.querySelector('[data-edit-face]')!.addEventListener('click', () => edit('face'));
+      page.body.querySelector('[data-edit-emblem]')!.addEventListener('click', () => edit('emblem'));
+    };
+    render();
+  });
 }
 
 /** 견습을 마치고 공유 세계에 들어갈 때 (○○ 세계에 들어갑니다) */

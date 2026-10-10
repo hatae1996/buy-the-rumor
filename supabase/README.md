@@ -1,12 +1,12 @@
-# Supabase (0.2.0 서버)
+# Supabase (0.2.0 서버, 0.2.1 고침)
 
 - `migrations/`: 표, 행 수준 보안, 5분마다 하루 돌리기(pg_cron). `npm test`가 PGlite에 올려 시험한다(첫 줄에 `pglite: skip`인 파일은 빼고).
 - `functions/`: Edge Function 껍데기. 게임 규칙과 서버 일은 `src/sim`, `src/server`에 있고 `npm run build:server`가 `functions/_shared/server.js` 하나로 묶는다. 껍데기는 그 번들을 불러 DB 연결(`_shared/pg.ts`)만 넘긴다.
   - `health`: 시뮬 버전과 짧은 판의 상태 해시 (배포한 번들이 소스와 같은 규칙으로 도는지)
   - `tick`: 밀린 장날 돌리기 (pg_cron이 부른다)
-  - `account`: 내 계정, 초대 코드 넣기, 상단 이름 검사, 상단 세우기, 얼굴·문장 바꾸기 (로그인한 사람만)
+  - `account`: 내 계정, 초대 코드 넣기, 상단 이름 검사, 상단 세우기, 얼굴·문장 바꾸기, 지난 시즌 명예의 전당(0.2.1 대기 화면) (로그인한 사람만)
   - `game`: 화면 데이터와 명령, 견습 시작·하루 보내기 (로그인한 사람만)
-  - `admin`: 시즌 열기, 세계 더 열기 (운영자, 비밀 값)
+  - `admin`: 시즌 열기, 세계 더 열기, 세계 상태·기록 표 보기, 멈춘 세계 풀기, 예행연습 지우기, 장날 예약 기록 (운영자, 비밀 값)
 - 시험: `npm test`(PGlite), `npm run test:deno`(번들을 만들어 Deno에서: 상태 해시가 소스와 같은지, tick 함수가 postgres.js로 실제 장날을 도는지, account 함수가 로그인 토큰을 확인하고 계정을 만드는지, game 함수가 명령을 저장하는지).
 
 ## 처음 한 번 (운영자)
@@ -54,12 +54,33 @@
 
 6. `health`를 불러 로컬 값과 같은지 본다: `npm run test:deno`가 도는 소스의 `parityRun(3)`과 해시 셋이 같아야 한다.
 
+## 새 버전 올리기 (0.2.1부터)
+
+0.2.1은 **시뮬 버전이 1 → 2**로 올랐다(견습 손님, 봄 구휼 기록). 표는 바뀌지 않아 `db push`는 하지 않는다. 지금 열린 예행연습 시즌(`2026-10-11`, 시뮬 버전 1)은 새 함수를 올리면 다음 장날에 멈추므로(`worlds.halted`), 지우고 다시 연다. 순서가 중요하다: **함수를 먼저 올리고**, 그다음 시즌을 연다(시즌과 세계에 올린 함수의 시뮬 버전이 적힌다).
+
+1. 함수 다섯을 다시 올린다(위 "처음 한 번" 5번과 같다).
+
+   ```bash
+   npm run build:server
+   ```
+
+   ```bash
+   npx supabase functions deploy health tick admin account game --use-api
+   ```
+
+2. `health`의 시뮬 버전이 2인지 본다.
+3. 예행연습 시즌을 지운다(`deleteSeason`, 아래 "시즌 열기"). 견습 세계·세계·명령이 함께 지워지고, 계정과 증서는 남는다(다시 들어가면 게임 시작 화면 없이 견습부터).
+4. 예행연습 시즌을 다시 연다(`openSeason`, `kind`는 `rehearsal`). 같은 id(`2026-10-11`)를 다시 써도 된다.
+5. 게임 화면(대기 화면, 장날 알림 띠, 견습 손님 글)은 `main`에 올리면 GitHub Pages가 새로 빌드한다.
+
+시즌 중(비공개 테스트)에는 시뮬 버전이 오르는 버전을 올리지 않는다. 화면·글만 바뀐 버전은 5번만 하면 된다.
+
 ## 로그인 설정 (작업목록-0.2.0 4번, 대시보드)
 
 - **Authentication → URL Configuration**: Site URL에 게임 주소(GitHub Pages 등), Redirect URLs에 게임 주소와 개발 서버(`http://localhost:5173`, 아이폰에서 여는 `http://<컴퓨터 IP>:5173`).
 - **로그인 메일 틀**(링크 + 숫자 코드): Authentication → Emails → Templates에서 **Confirm signup**(처음 로그인하는 사람)과 **Magic Link**(이미 계정이 있는 사람) 둘 다 제목을 `Buy the Rumor 로그인`, 내용을 `supabase/templates/login.html`로 바꾼다. 숫자(`{{ .Token }}`)가 있어야 메일을 다른 기기에서 받아도 게임 화면에 숫자를 넣어 로그인할 수 있다(카톡 안 브라우저·컴퓨터 메일함 문제).
 - **메일 발송(SMTP)**: Authentication → Emails → SMTP Settings. 지금은 네이버 메일(`smtp.naver.com`, 465, 네이버 애플리케이션 비밀번호, 네이버 메일 환경설정의 POP3/SMTP 사용함). 구글 계정이 지메일이 아닌 주소(naver.com 등)면 `smtp.gmail.com`은 쓸 수 없다. 그다음 Authentication → Rate Limits에서 시간당 메일 수를 올린다.
-- **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어, 예행연습(2~3명)은 그대로, 비공개 테스트(20~30명) 전에는 SMTP(메일 발송 서비스)를 잇는 것이 좋다.
+- **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어 SMTP를 이었다(위 줄). 비공개 테스트(20~30명) 전에 Rate Limits의 시간당 메일 수가 사람 수보다 넉넉한지 다시 본다.
 - **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 JavaScript 원본에 `https://hatae1996.github.io`, 승인된 리디렉션 URI에 `https://znirrdzxsjxksfjibnnv.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Sign In / Providers → Google에 넣고 켠다. 그다음 `.env.production`의 `VITE_LOGIN_GOOGLE=on`으로 바꿔 다시 배포하면 로그인 화면에 구글 단추가 나온다(꺼져 있는 동안은 이메일 링크만). 동의 화면을 "테스트"로 두면 테스트 사용자로 등록한 구글 계정만 로그인된다.
 
 ## 게임(폰) 빌드에 서버 잇기

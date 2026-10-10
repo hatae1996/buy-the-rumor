@@ -48,7 +48,10 @@ export function openOrderSheet(game: Game, good: GoodId): void {
 
   function defaultPrice(s: 'sell' | 'buy'): number {
     // 팔 때는 시세보다 조금 낮게, 살 때는 조금 높게 불러야 장날에 맞춰질 가능성이 크다
-    return Math.max(1, Math.round(m!.price[good] * (s === 'sell' ? 0.9 : 1.1)));
+    const p = Math.max(1, Math.round(m!.price[good] * (s === 'sell' ? 0.9 : 1.1)));
+    // 견습 손님이 기다리는 마을이면 손님 값 이하로 (기본값대로 눌러 첫 거래를 놓치지 않게, 답 140)
+    const guest = v.apprenticeGuest;
+    return s === 'sell' && guest && guest.town === m!.town && guest.good === good ? Math.min(p, guest.price) : p;
   }
   const maxQty = () => {
     if (days > 1) return side === 'sell' ? have + stored : 99;

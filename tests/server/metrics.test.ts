@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createCrew } from '../../src/sim/bot';
 import { createEconomy, type LedgerEntry } from '../../src/sim/economy';
 import { createCertificate } from '../../src/sim/ranking/certificate';
-import { dailyProfit, monopoly, openWorld, seasonMap, SIM_VERSION, startGroup, type WorldBlob } from '../../src/sim/service';
+import { dailyProfit, monopoly, openWorld, reliefRows, seasonMap, SIM_VERSION, startGroup, type WorldBlob } from '../../src/sim/service';
+import { activate, settleBigOrders } from '../../src/sim/events/active';
 import { generateWorld } from '../../src/sim/worldgen';
 import { foundCompany, redeemInvite } from '../../src/server/account';
 import { adminRequest } from '../../src/server/admin';
@@ -52,6 +53,26 @@ describe('시뮬 기록 함수', () => {
     for (let d = 0; d < 3; d++) h.ledger.push({ day: s.season!.startDay + d, kind: 'sell', town: 1, good: 'fish', qty: 5, price: 1 });
     expect(monopoly(s, false)).toMatchObject({ soleDays: 6, monopoly: true, at: { town: 0, good: 'salt', playerId: 'bot1' }, days: 10 });
     expect(monopoly(s, true)).toMatchObject({ soleDays: 3, monopoly: false, at: { town: 1, good: 'fish', playerId: 'h' } });
+  });
+});
+
+describe('봄 구휼 줄 (0.2.1, 답 139)', () => {
+  it('시즌 기록의 큰 주문 양과 채워진 양, 그동안 그 마을에 곡물을 판 사람 / 봇', () => {
+    const map = generateWorld(3);
+    const s = createEconomy(map, 3, { players: [{ id: 'h' }, { id: 'bot1', bot: true }, { id: 'bot2', bot: true }] });
+    const day = s.day;
+    const ev = activate(s, map, 'relief', 0, day + 7);
+    const order = ev.orders!.find((o) => o.good === 'grain')!;
+    s.season!.log.push({ event: 'relief', town: 0, day, end: day + 7, omenDay: null, id: ev.id, orders: [{ good: 'grain', qty: order.left, price: order.price, filled: 0 }] });
+    settleBigOrders(s, [{ event: ev.id, good: 'grain', qty: 30, price: order.price }]);
+    s.players.h!.ledger.push({ day, kind: 'sell', town: 0, good: 'grain', qty: 20, price: 10 });
+    s.players.bot1!.ledger.push({ day: day + 1, kind: 'sell', town: 0, good: 'grain', qty: 10, price: 13 });
+    // 다른 마을, 기간 밖은 세지 않는다
+    s.players.bot2!.ledger.push({ day, kind: 'sell', town: 1, good: 'grain', qty: 50, price: 9 });
+    s.players.bot2!.ledger.push({ day: day + 9, kind: 'sell', town: 0, good: 'grain', qty: 50, price: 9 });
+    expect(reliefRows(s)).toEqual([
+      { town: 0, day, end: day + 7, ordered: order.left + 30, price: order.price, filled: 30, sold: { humans: 20, bots: 10 }, sellers: { humans: 1, bots: 1 }, soldPrice: 11 },
+    ]);
   });
 });
 
@@ -110,6 +131,7 @@ describe('기록 표 (서버)', () => {
     expect(JSON.stringify(t)).not.toContain('@');
     expect(t.worlds[0]).toMatchObject({ worldId: 'w1', humans: 1, bots: 11, day: 7 });
     expect(t.worlds[0]!.monopolyHumans.days).toBe(6);
+    expect(Array.isArray(t.worlds[0]!.relief)).toBe(true);
   });
 
   it('CSV와 운영자 함수', async () => {

@@ -6,8 +6,9 @@ import { ECONOMY, FOOD } from '../constants';
 import type { Command } from '../economy/commands';
 import { hasExpeditions } from '../economy/player';
 import type { EconomyState, PlayerState } from '../economy/state';
-import { activate } from '../events/active';
 import { eventDef } from '../events/defs';
+import { cartCount } from '../cart';
+import { apprenticeGuestOf } from './guest';
 import type { Rng } from '../rng';
 import { townTravelDays, type WorldMap } from '../worldgen';
 import { AUTUMN, seasonOfDay } from '../season';
@@ -63,14 +64,13 @@ function advance(state: EconomyState, p: PlayerState, map: WorldMap): void {
   if (next === 'graduation') graduationGift(state, p, map);
 }
 
-/** 첫 신문: 졸업하고 갈 마을에 조선소 대형 상선 (목재 수요가 는다). 견습 동안 신문은 무료다 */
+/**
+ * 첫 신문: 졸업하고 갈 마을의 조선소 대형 상선 기사. 견습 동안 신문은 무료다.
+ * 기사만 싣고 사건은 일으키지 않는다(답 141, 로컬도 서버처럼): 목재는 그 마을의 견습 손님이 산다(guest.ts)
+ */
 function firstNews(state: EconomyState, p: PlayerState, map: WorldMap): void {
   const ap = p.apprentice!;
   const def = eventDef('shipyard');
-  const days = typeof def.days === 'number' ? def.days : 5;
-  // 졸업하고 도착할 때까지 이어지도록 길 위의 날만큼 더 둔다
-  const travel = townTravelDays(map, AUTUMN)[ap.town]![ap.destination]!;
-  activate(state, map, 'shipyard', ap.destination, state.day + days + travel);
   // 첫 신문 장면의 기사이니 그날 신문의 머리기사로 (0.1.2: 신문팔이에게서 받아 읽는다)
   const item = { day: state.day, text: def.news({ town: map.towns[ap.destination]!.name, good: null, job: null }) };
   const at = state.news.findIndex((n) => n.day === state.day);
@@ -121,7 +121,8 @@ export function apprenticeAfterCommand(state: EconomyState, p: PlayerState, map:
   // 첫 신문: 신문팔이에게서 받아(견습 동안 무료) 읽으면 (0.1.2. 소식 탭을 여는 것만으로는 넘어가지 않는다)
   else if (is('firstNews') && cmd.type === 'readPaper') advance(state, p, map);
   else if (is('graduation') && cmd.type === 'travel') {
-    // 첫 출발: 견습을 마치고 공유 시장으로 들어간다
+    // 첫 출발: 견습을 마치고 공유 시장으로 들어간다. 가는 마을에 견습 손님 (서버는 graduationKit이 같은 값으로)
+    p.apprenticeGuest = apprenticeGuestOf(state, p, cartCount(p.cart, 'wood'));
     p.apprentice = null;
   }
 }

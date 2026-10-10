@@ -28,7 +28,7 @@ import { regrow } from './nodes';
 import { playerNight } from './player';
 import { rumorNight, type HeardRumor } from '../rumors';
 import { horseMorning, playerHorsesNight, traderHorseDeal, traderHorsesNight } from '../horses';
-import { apprenticeAfterDay, noteUnsold, settleApprenticeOrders, updateUnlocks } from '../apprentice';
+import { apprenticeAfterDay, expireApprenticeGuest, noteUnsold, settleApprenticeGuest, settleApprenticeOrders, updateUnlocks } from '../apprentice';
 import { checkBadges, ensureRecord, lastSeasonDay, newsName, noteTrade, settleSeason, trackWorth, tradeRecord, updateRankings } from '../ranking';
 import { warehouseNight } from '../warehouse/warehouse';
 import { resolveDraws } from '../draws';
@@ -111,6 +111,16 @@ export function advanceDay(state: EconomyState, map: WorldMap, opt: { settle?: b
   // 예약 주문: 오늘 장날 신청으로 넣는다 (자리를 비운 사이에도)
   for (const p of turn) state.orders.push(...placeReservations(state, p, accounts));
 
+  // 견습 손님 (0.2.1): 졸업생이 간 마을의 첫 장날, 장날 정산 전에 따로 산다 (공유 시장의 값과 체결량에 들어가지 않는다)
+  for (const p of turn) {
+    for (const f of settleApprenticeGuest(state, p, accounts)) {
+      const good = p.apprenticeGuest!.good;
+      if (f.reservation !== undefined) noteReservationFill(p, f.reservation, f.qty);
+      p.ledger.push({ day: state.day, kind: 'sell', town: p.town, good, qty: f.qty, price: f.price, by: 'guest', ...(f.reservation !== undefined ? { reserved: true as const } : {}) });
+      noteTrade(p, tradeRecord(state.day, 'sell', p.town, good, f.qty, f.price));
+    }
+  }
+
   // 1. 신청: 플레이어가 낮 동안 낸 신청 + NPC 신청
   const byTown: Order[][] = state.towns.map(() => []);
   for (const o of state.orders) byTown[o.town]!.push(o);
@@ -176,6 +186,7 @@ export function advanceDay(state: EconomyState, map: WorldMap, opt: { settle?: b
   giveOutBigOrders(state, buyerFills);
   for (const p of turn) {
     noteUnsold(state, p, offered.get(p.id) ?? 0, sold.get(p.id) ?? 0);
+    expireApprenticeGuest(p);
     if (p.travel) continue;
     const t = state.towns[p.town]!;
     const prices = {} as Record<GoodId, number>;

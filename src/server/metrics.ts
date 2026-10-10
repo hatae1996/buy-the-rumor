@@ -1,7 +1,7 @@
 // 기록 표 (작업목록-0.2.0 12·13번, handoff 0.2.0 4번): 비공개 테스트에서 사람마다 한 줄, 상인 번호로(이메일 없이).
 // 세계 상태(시작 마을, 첫 5일, 말·고용), 하루치 기록(순자산), 기록 사건(처음 흐름 시간, 접속), 명령 기록(시스템을 쓰는지)을 모은다.
 import { getPlayer } from '../sim/economy';
-import { dailyProfit, firstDays, monopoly, startGroup, type Monopoly, type StartGroup, type WorldBlob } from '../sim/service';
+import { dailyProfit, firstDays, monopoly, reliefRows, startGroup, type Monopoly, type ReliefRow, type StartGroup, type WorldBlob } from '../sim/service';
 import type { Db } from './db';
 import { mapFor } from './maps';
 import { DAY_MS } from './schedule';
@@ -47,6 +47,8 @@ export interface WorldMetrics {
   /** 독점 (답 92): 전체, 사람 기준 (답 133) */
   monopolyAll: Monopoly;
   monopolyHumans: Monopoly;
+  /** 봄 구휼 (0.2.1, 답 139): 시즌에 난 것마다 */
+  relief: ReliefRow[];
 }
 
 interface EventRow {
@@ -134,7 +136,7 @@ export async function metricsTable(db: Db, seasonId: string): Promise<{ rows: Me
   }
   const worldRows = worlds.map((w) => {
     const blob = blobs.get(w.id)!;
-    return { worldId: w.id, humans: w.humans, bots: w.bots, day: blob.state.day, monopolyAll: monopoly(blob.state, false), monopolyHumans: monopoly(blob.state, true) };
+    return { worldId: w.id, humans: w.humans, bots: w.bots, day: blob.state.day, monopolyAll: monopoly(blob.state, false), monopolyHumans: monopoly(blob.state, true), relief: reliefRows(blob.state) };
   });
   return { rows, worlds: worldRows };
 }

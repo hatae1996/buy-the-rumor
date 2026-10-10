@@ -27,6 +27,11 @@ export function dayNotices(state: EconomyState, p: PlayerState, map: WorldMap, d
       out.push({ kind: 'reservation', day, text: `예약 주문: ${name(e.town)}에서 ${GOOD_NAME[e.good]} ${e.qty}개 ${e.kind === 'sell' ? '팔림' : '삼'} (개당 ${e.price})`, target: { tab: 'ledger', section: 'orders' } });
       continue;
     }
+    // 견습 손님 (0.2.1): 판매 결과에 한 줄
+    if (e.by === 'guest') {
+      out.push({ kind: 'market', day, text: `${name(e.town)} 장날: 견습 손님이 약속대로 ${GOOD_NAME[e.good]} ${e.qty}개를 사 갔어요 (개당 ${e.price}), +${e.qty * e.price}`, target: { tab: 'news', section: 'reports' } });
+      continue;
+    }
     const t = byTown.get(e.town) ?? { parts: [], net: 0 };
     t.parts.push(`${GOOD_NAME[e.good]} ${e.qty}개 ${e.kind === 'sell' ? '팔림' : '삼'}`);
     t.net += (e.kind === 'sell' ? 1 : -1) * e.qty * e.price;

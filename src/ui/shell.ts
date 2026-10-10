@@ -15,6 +15,7 @@ import tabTown from '../../assets/ui/tab_town.png';
 import { clockText, dayText, money } from './format';
 import type { AwaySummary, Game } from './game';
 import type { MapScreen } from './mapScreen';
+import { showMarketBanner } from './marketBanner';
 import { showAwaySummary } from './screens/away';
 import { renderCart } from './screens/cart';
 import { renderLedger } from './screens/ledger';
@@ -159,13 +160,18 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   });
   select('town');
 
-  // 앱을 다시 열었을 때와 열어 둔 동안 장날이 지나면 그 사이 일을 보여 준다 (시즌이 끝났으면 결산)
+  // 앱을 다시 열었을 때는 그 사이 일을 보여 준다 (시즌이 끝났으면 결산)
   away(game.catchUp(now()));
+  // 열어 둔 동안 장날이 지나면 화면을 막지 않는 띠만 (0.2.1). 누르면 그날 결과. 시즌이 끝났으면 결산으로
+  // 화면이 숨어 있는 동안은 돌리지 않는다: 다시 보일 때 "자리를 비운 사이"로 보여 준다
   setInterval(() => {
     if (game.seasonOver) return render();
+    if (document.hidden) return;
     void game.catchUp(now()).then((s) => {
-      if (s) away(Promise.resolve(s));
-      else render();
+      if (!s) return render();
+      if (game.seasonOver) return away(Promise.resolve(s));
+      render();
+      showMarketBanner(() => showAwaySummary(game, s, settle));
     });
   }, CLOCK_MS);
   document.addEventListener('visibilitychange', () => {

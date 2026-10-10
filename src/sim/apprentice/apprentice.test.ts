@@ -71,8 +71,17 @@ function graduate(state: EconomyState, map: WorldMap, picks = [1, 1, 0]): { firs
   expect(gift.day).toBe(state.day - 1);
   expect(gift.read).toBe(false);
   expect(state.news.some((n) => n.day === gift.day && n.section === 'prices' && n.prices)).toBe(true);
+  // 노상인이 견습 손님 값을 한 번 말해 둔다 (답 140)
+  const hint = playerView(state, map, 'me').apprentice!.hint;
+  const offered = Number(/목재 하나에 (\d+)골드는 쳐 줄 걸세/.exec(hint)?.[1]);
+  expect(offered).toBeGreaterThan(0);
   ok(state, map, { type: 'travel', to: ap.destination });
   expect(state.players.me!.apprentice).toBeNull();
+  // 로컬도 서버처럼 (답 141): 조선소는 신문에만, 목재는 가는 마을의 견습 손님이 말해 둔 값에
+  expect(state.events.some((e) => e.event === 'shipyard' && e.town === ap.destination && e.start >= state.day - 3)).toBe(false);
+  expect(state.players.me!.apprenticeGuest).toEqual({ town: ap.destination, good: 'wood', qty: cartCount(state.players.me!.cart, 'wood'), price: offered });
+  // 그 마을 추천 최소 가격을 손님 값 이하로 맞추도록 화면에 알린다
+  expect(playerView(state, map, 'me').apprenticeGuest).toMatchObject({ town: ap.destination, price: offered });
   return { firstProfit };
 }
 
