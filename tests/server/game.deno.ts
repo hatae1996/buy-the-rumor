@@ -24,6 +24,7 @@ beforeAll(async () => {
       }
       const look = createCertificate(5);
       await foundCompany(db, A, { name: '소금 상단', face: look.face, emblem: look.emblem });
+      await foundCompany(db, B, { name: '바람 상단', face: look.face, emblem: look.emblem });
       await db.query(`insert into public.seasons (id, seed, kind, opens_at, ends_at, sim_version) values ($1, 1, 'rehearsal', now(), now() + interval '14 days', $2)`, [
         SEASON,
         SIM_VERSION,
@@ -56,8 +57,18 @@ describe('Edge Function game (Deno + withSupabase + postgres.js)', () => {
 
   it('세계에 든 사람은 화면 데이터를 받는다, 아닌 사람은 noWorld', async () => {
     const r = await h.call({ action: 'view' }, await h.token(A));
-    expect(r.json).toMatchObject({ ok: true, screen: { seasonId: SEASON, worldId: 'w1', halted: null, view: { day: 1 } } });
+    expect(r.json).toMatchObject({ ok: true, screen: { place: 'world', seasonId: SEASON, worldId: 'w1', halted: null, view: { day: 1 } } });
     expect((await h.call({ action: 'view' }, await h.token(B))).json).toEqual({ ok: false, error: 'noWorld' });
+  });
+
+  it('세계에 안 든 사람은 견습을 시작하고 하루를 보낸다', async () => {
+    const token = await h.token(B);
+    const r = await h.call({ action: 'startApprentice' }, token);
+    expect(r.json).toMatchObject({ ok: true, screen: { place: 'apprentice', view: { apprentice: { scene: 'start' } } } });
+    const day = await h.call({ action: 'passDay' }, token);
+    expect(day.json).toMatchObject({ ok: true, summary: { days: 1 }, screen: { place: 'apprentice' } });
+    const [t] = await h.db.query<{ t: string }>('select json_typeof(state) as t from public.apprentice_worlds');
+    expect(t!.t).toBe('object');
   });
 
   it('명령을 적용해 저장하고 기록을 남긴다', async () => {

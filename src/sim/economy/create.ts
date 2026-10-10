@@ -146,7 +146,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
 }
 
 /** 새 플레이어: 골드와 등짐 하나 (기획서 "시작 조건"). 상인 번호는 들어온 차례 (로컬은 플레이어 1번, 봇은 그 뒤) */
-function newPlayer(id: PlayerId, seq: number, town: number, seed: number, merchantNo: number | null): PlayerState {
+export function newPlayer(id: PlayerId, seq: number, town: number, seed: number, merchantNo: number | null): PlayerState {
   return {
     id,
     seq,

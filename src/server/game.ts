@@ -5,10 +5,12 @@
 // - 증서를 바꾸는 명령(이름, 얼굴, 문장, 인장 달기, 칭호)은 certificates 표에도 옮긴다.
 // - 화면 데이터에는 "자리를 비운 사이"(마지막으로 본 날부터 장날 하루치 기록을 모은 것)를 붙인다 (6번).
 //   폰이 보여 준 뒤 seen으로 본 날을 올린다. 알림은 화면 안 알림만이고, 조용한 시간에 생긴 것은 띠로 띄우지 않는다.
+// - 공유 세계에 들기 전에는 견습 세계(7번)가 화면과 명령을 받는다(place: 'apprentice'). 졸업 명령이면 공유 세계에 들인다.
 import { getPlayer, type Command, type CommandResult } from '../sim/economy';
 import { planDelivery, type DeliveryPlan } from '../sim/notify';
 import { awaySummary, commandWorld, screenData, SimVersionMismatch, type AwaySummary, type PlayerDigest, type ScreenData, type WorldBlob } from '../sim/service';
 import { checkName, type AccountError } from './account';
+import { apprenticeCommand, currentApprentice, passApprenticeDay, readApprentice, startApprentice, type ApprenticeError } from './apprentice';
 import type { Db } from './db';
 import { mapFor } from './maps';
 import { bannedWordIn, nameKey } from './names';
@@ -28,9 +30,12 @@ export type GameError =
   | 'bannedName'
   /** 같은 상단 이름이 있다 */
   | 'nameTaken'
-  | 'badRequest';
+  | 'badRequest'
+  | ApprenticeError;
 
 export interface Screen extends ScreenData {
+  /** 공유 세계인가 견습 세계인가 */
+  place: 'world' | 'apprentice';
   seasonId: string;
   worldId: string;
   /** 세계가 멈췄으면 그 이유 (화면은 보이되 명령은 받지 않는다) */
@@ -54,7 +59,11 @@ async function membership(db: Db, uid: string): Promise<Membership | null> {
 }
 
 function screenOf(m: Membership, blob: WorldBlob, uid: string, halted: string | null): Screen {
-  return { seasonId: m.season_id, worldId: m.world_id, halted, ...screenData(blob, mapFor(m.season_id), uid) };
+  return { place: 'world', seasonId: m.season_id, worldId: m.world_id, halted, ...screenData(blob, mapFor(m.season_id), uid) };
+}
+
+function apprenticeScreen(seasonId: string, blob: WorldBlob, uid: string): Screen {
+  return { place: 'apprentice', seasonId, worldId: blob.state.world.worldId, halted: null, ...screenData(blob, mapFor(seasonId), uid) };
 }
 
 export interface Away {
@@ -73,7 +82,12 @@ export async function viewFor(
   now = Date.now(),
 ): Promise<{ ok: true; screen: Screen; away: Away | null } | { ok: false; error: GameError }> {
   const m = await membership(db, uid);
-  if (!m) return { ok: false, error: 'noWorld' };
+  if (!m) {
+    // 견습 중이면 견습 세계 (견습은 하루 보내기로만 날이 가 자리를 비운 사이가 없다)
+    const season = await currentApprentice(db, uid);
+    const blob = season ? await readApprentice(db, uid, season, false) : null;
+    return season && blob ? { ok: true, screen: apprenticeScreen(season, blob, uid), away: null } : { ok: false, error: 'noWorld' };
+  }
   const [w] = await db.query<{ state: string; halted: string | null; seen_day: number }>(
     `select w.state::text as state, w.halted, m.seen_day from public.worlds w
        join public.members m on m.season_id = w.season_id and m.world_id = w.id and m.account_id = $3
@@ -126,7 +140,7 @@ export async function commandFor(db: Db, uid: string, cmd: unknown): Promise<Com
   const c = cmd as Command;
   return db.transaction(async (tx) => {
     const m = await membership(tx, uid);
-    if (!m) return { ok: false, error: 'noWorld' };
+    if (!m) return apprenticeCommandFor(tx, uid, c, text);
     const [w] = await tx.query<{ state: string; halted: string | null }>(
       'select state::text as state, halted from public.worlds where season_id = $1 and id = $2 for update',
       [m.season_id, m.world_id],
@@ -138,7 +152,7 @@ export async function commandFor(db: Db, uid: string, cmd: unknown): Promise<Com
     // 남에게 보이는 글자는 서버가 먼저 거른다
     const refused = await refuseText(tx, uid, c);
     if (refused) {
-      await logCommand(tx, m, uid, blob.state.day, text, refused);
+      await logCommand(tx, m.season_id, m.world_id, uid, blob.state.day, text, refused);
       return { ok: false, error: refused, screen: screenOf(m, blob, uid, null) };
     }
 
@@ -166,9 +180,25 @@ export async function commandFor(db: Db, uid: string, cmd: unknown): Promise<Com
         ]);
       }
     }
-    await logCommand(tx, m, uid, day, text, result.ok ? null : result.error);
+    await logCommand(tx, m.season_id, m.world_id, uid, day, text, result.ok ? null : result.error);
     return { ok: true, result, screen: screenOf(m, blob, uid, null) };
   });
+}
+
+/** 공유 세계에 들기 전: 견습 세계의 명령 (졸업이면 공유 세계에 들인다) */
+async function apprenticeCommandFor(tx: Db, uid: string, c: Command, text: string): Promise<CommandReply> {
+  const season = await currentApprentice(tx, uid);
+  if (!season) return { ok: false, error: 'noWorld' };
+  const refused = await refuseText(tx, uid, c);
+  if (refused) return { ok: false, error: refused };
+  const r = await apprenticeCommand(tx, uid, season, c);
+  if (r.kind === 'error') return { ok: false, error: r.error, ...(r.blob ? { screen: apprenticeScreen(season, r.blob, uid) } : {}) };
+  if (r.kind === 'graduated') {
+    await logCommand(tx, season, r.worldId, uid, r.day, text, r.result.ok ? null : r.result.error);
+    return { ok: true, result: r.result, screen: screenOf({ season_id: season, world_id: r.worldId }, r.blob, uid, null) };
+  }
+  await logCommand(tx, season, null, uid, r.day, text, r.result.ok ? null : r.result.error);
+  return { ok: true, result: r.result, screen: apprenticeScreen(season, r.blob, uid) };
 }
 
 /** 말 이름과 상단 이름(시즌 사이): 금칙어와 같은 이름. 시뮬은 글자 수만 본다 */
@@ -185,15 +215,26 @@ async function refuseText(db: Db, uid: string, c: Command): Promise<GameError | 
   return null;
 }
 
-async function logCommand(db: Db, m: Membership, uid: string, day: number, cmd: string, error: string | null): Promise<void> {
+/** 받은 명령 기록. 견습 세계의 명령은 세계 id 없이 */
+async function logCommand(db: Db, seasonId: string, worldId: string | null, uid: string, day: number, cmd: string, error: string | null): Promise<void> {
   await db.query('insert into public.commands (season_id, world_id, account_id, day, cmd, error) values ($1, $2, $3, $4, $5::text::json, $6)', [
-    m.season_id,
-    m.world_id,
+    seasonId,
+    worldId,
     uid,
     day,
     cmd,
     error,
   ]);
+}
+
+/** 견습의 "하루 보내기" (공유 세계에서는 장날을 기다린다) */
+export async function passDayFor(db: Db, uid: string): Promise<{ ok: true; summary: AwaySummary; screen: Screen } | { ok: false; error: GameError }> {
+  return db.transaction(async (tx) => {
+    const season = (await membership(tx, uid)) ? null : await currentApprentice(tx, uid);
+    if (!season) return { ok: false, error: 'notApprentice' };
+    const r = await passApprenticeDay(tx, uid, season);
+    return r.ok ? { ok: true, summary: r.summary, screen: apprenticeScreen(season, r.blob, uid) } : r;
+  });
 }
 
 /** game Edge Function의 몸통 */
@@ -210,6 +251,12 @@ export async function gameRequest(db: Db, uid: string, body: unknown): Promise<{
       const r = await commandFor(db, uid, req.cmd);
       return { status: !r.ok && r.error === 'badRequest' ? 400 : 200, body: r };
     }
+    case 'startApprentice': {
+      const r = await startApprentice(db, uid, (await membership(db, uid)) !== null);
+      return { status: 200, body: r.ok ? await viewFor(db, uid) : r };
+    }
+    case 'passDay':
+      return { status: 200, body: await passDayFor(db, uid) };
     default:
       return { status: 400, body: { ok: false, error: 'badRequest' } };
   }
