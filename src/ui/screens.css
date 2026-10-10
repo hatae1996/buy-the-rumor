@@ -7109,3 +7109,398 @@
 .cv-foot .cv-btn {
   min-height: 52px;
 }
+
+/* ───── 시즌 결산 (0.1.6 목업 docs/reference/settlement-mockup-0.1.6.png) ───── */
+.settle-page .page-head {
+  display: none;
+}
+
+.settle-page .page-body {
+  gap: 12px;
+  padding-top: 0;
+}
+
+.settle-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 calc(-12px - var(--safe-right)) 0 calc(-12px - var(--safe-left));
+  padding: 22px 56px 26px;
+  text-align: center;
+  isolation: isolate;
+}
+
+/* 뒤로 흐리게 깐 마을 */
+.settle-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--village) center 70% / cover no-repeat;
+  opacity: 0.22;
+  -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent);
+}
+
+.settle-hero > img {
+  flex: none;
+  width: 34px;
+}
+
+.settle-hero h2 {
+  margin: 0;
+  color: #1f3f4a;
+  font-family: var(--f-display);
+  font-size: 34px;
+  font-weight: normal;
+  line-height: 1.1;
+}
+
+.settle-hero small {
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.settle-close {
+  position: absolute;
+  top: 14px;
+  right: calc(12px + var(--safe-right));
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: #efe7da;
+  color: var(--cream-ink);
+  font-size: 20px;
+  box-shadow: 0 2px 4px rgba(60, 40, 20, 0.15);
+}
+
+.settle-card {
+  gap: 10px;
+}
+
+.settle-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 21px !important;
+}
+
+.settle-h img {
+  width: 30px;
+}
+
+.settle-h small {
+  margin-left: auto;
+  color: var(--cream-ink-soft);
+  font-family: var(--f-body);
+  font-size: 12px;
+}
+
+.settle-h-svg {
+  display: flex;
+  color: #3b4a56;
+}
+
+/* 보상 */
+.settle-reward,
+.settle-rank {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--cream-line);
+  border-radius: 14px;
+  background: #fffdf8;
+}
+
+.settle-reward > img {
+  flex: none;
+  width: 34%;
+  max-width: 120px;
+}
+
+.settle-rank > img {
+  flex: none;
+  width: 30%;
+  max-width: 104px;
+}
+
+.settle-reward.none > img,
+.settle-rank.none > img {
+  width: 64px;
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.settle-reward > div,
+.settle-rank > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.settle-reward small,
+.settle-rank small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.settle-reward b,
+.settle-rank b {
+  color: #1f3f4a;
+  font-family: var(--f-display);
+  font-size: 30px;
+  font-weight: normal;
+  line-height: 1.1;
+  word-break: keep-all;
+}
+
+.settle-reward.none b,
+.settle-rank.none b {
+  font-size: 18px;
+}
+
+.settle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+.settle-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #1f6b6e;
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 13px;
+}
+
+.settle-rank span {
+  font-size: 14px;
+}
+
+.settle-rank em {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--cream-teal-soft);
+  color: #1f5a64;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-style: normal;
+}
+
+.settle-more {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.settle-more li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 4px;
+  font-size: 13px;
+}
+
+.settle-more li + li {
+  border-top: 1px dashed var(--cream-line);
+}
+
+.settle-more span {
+  flex: 1;
+}
+
+.settle-more b {
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.settle-more small {
+  color: var(--cream-ink-soft);
+}
+
+/* 리포트 */
+.settle-report {
+  list-style: none;
+  margin: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--cream-line);
+  border-radius: 14px;
+  background: #fffdf8;
+}
+
+.settle-report li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 8px 0;
+}
+
+.settle-report li + li {
+  border-top: 1px dashed #d9cfbf;
+}
+
+.settle-report li > img {
+  flex: none;
+  width: 48px;
+  max-height: 52px;
+  object-fit: contain;
+}
+
+.settle-report li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.settle-report h4 {
+  margin: 0;
+  color: #1f3f4a;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.settle-report p {
+  margin: 2px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settle-report .plus {
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-weight: normal;
+}
+
+.settle-trip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+}
+
+.settle-trip span + span::before {
+  content: '|';
+  margin: 0 8px;
+  color: #c9bfae;
+}
+
+.settle-worth {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settle-worth b {
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 26px;
+  font-weight: normal;
+}
+
+.settle-worth small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+/* 다음 시즌에는 */
+.settle-next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settle-next ul {
+  flex: 1;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settle-next li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #e3efec;
+}
+
+.settle-next li > span {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  width: 36px;
+  color: #1f5a64;
+}
+
+.settle-next b {
+  display: block;
+  color: #1f3f4a;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.settle-next small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.settle-next > img {
+  flex: none;
+  width: 26%;
+  max-width: 110px;
+}
+
+.settle-btns {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 10px;
+}
+
+.settle-cert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  border: 2px solid #1f5a64;
+  border-radius: 12px;
+  background: #fffdf8;
+  color: #1f3f4a;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.settle-cert svg {
+  color: #1f5a64;
+}
+
+.settle-btns .cv-btn {
+  min-height: 56px;
+  font-size: 18px;
+}
