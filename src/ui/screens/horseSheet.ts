@@ -1,28 +1,25 @@
-// 마구간(말 사고팔기)과 수레방(수레 바꾸기) 쪽지 (기획서 "말").
+// 마구간(말 사고팔기)과 수레방(수레 바꾸기) 페이지 (기획서 "말", 0.1.6 목업).
 // 말은 장날이 아니라 마구간에서 사고판다. 사기는 신청해 두면 그날 밤 신청한 사람 중에서 뽑고(0.1.0), 되팔기는 바로.
 // 마구간 남은 수는 그 마을에 와야만 보인다.
+import wheatImg from '../../../assets/ui/icon_wheat.png';
+import coinImg from '../../../assets/ui/coin.png';
 import houseImg from '../../../assets/ui/house_red.png';
 import wheelImg from '../../../assets/ui/cartshop_wheel.png';
 import coinsImg from '../../../assets/ui/coins_stack.png';
 import infoImg from '../../../assets/ui/icon_info.png';
 import { CART_IMG } from '../cartBoard';
 import { openLivePage } from '../livePage';
-import type { HorseKindInfo, HorseView, PlayerView } from '../../sim/economy';
+import type { HorseKindInfo, HorseView } from '../../sim/economy';
 import { HORSES } from '../../sim/constants';
 import { eulReul } from '../../sim/josa';
-import { ERROR_TEXT, money } from '../format';
+import { money } from '../format';
 import type { Game } from '../game';
-import { openSheet } from '../sheet';
 
 /** 이동 일수 배율을 말로 */
 export function speedWord(speed: number): string {
   if (speed < 0.75) return '빠름';
   if (speed < 1) return '조금 빠름';
   return '사람 걸음';
-}
-
-function kindLine(k: HorseKindInfo): string {
-  return `끄는 무게 ${k.pull} · ${speedWord(k.speed)} · 하루 곡물 ${k.feed}`;
 }
 
 /** 말 피로 막대 (플레이어 피로와 같은 모양) */
@@ -32,79 +29,95 @@ export function horseFatigue(h: HorseView): string {
   return `<div class="fatigue"><div class="fatigue-cells" aria-hidden="true">${cells}</div><span${h.hungry ? ' class="warn"' : ''}>${word}</span></div>`;
 }
 
-export function openStableSheet(game: Game): void {
-  const sheet = openSheet('마구간');
-  let error = '';
-  let done = '';
+/** 말 능력 줄: 운반 무게, 빠르기, 하루 곡물 (아이콘과 함께) */
+const STAT_ICON = {
+  weight: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6a3 3 0 0 1 6 0h3l2.5 14h-17L6 6zm2 0h2a1 1 0 0 0-2 0z" fill="currentColor"/></svg>`,
+  speed: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="15" cy="4.5" r="2.2" fill="currentColor"/><path d="M13 8l-4 2-2 4M13 8l2 5 4 1M11 13l-2 5-4 1M15 13l-1 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+function statLines(k: HorseKindInfo): string {
+  return `<ul class="horse-stats">
+    <li>${STAT_ICON.weight}운반 무게 ${k.pull}</li>
+    <li>${STAT_ICON.speed}${speedWord(k.speed)}</li>
+    <li><img src="${wheatImg}" alt="" />하루 곡물 ${k.feed}</li>
+  </ul>`;
+}
 
-  const render = () => {
-    const v: PlayerView = game.view();
+/** 마구간 페이지 (0.1.6 목업 docs/reference/stable-mockup-0.1.6.png). 말 그림은 캐릭터처럼 부품으로 만들 예정이라 자리만 둔다 */
+export function openStableSheet(game: Game): void {
+  const v0 = game.view();
+  if (!v0.stable || v0.location.kind !== 'town') return;
+  const here = v0.location.town;
+  let done = '';
+  openLivePage(game, { back: '마을', title: '마구간', sub: game.map.towns[here]!.name }, (body, v, page) => {
     const stable = v.stable;
-    if (!stable) {
-      sheet.close();
+    if (!stable || v.location.kind !== 'town' || v.location.town !== here) {
+      page.close();
       return;
     }
     const waiting = v.draws.filter((d) => d.kind === 'horse' && d.town === stable.town);
-    const full = v.horses.length + v.draws.filter((d) => d.kind === 'horse').length >= HORSES.maxPerOwner;
+    const pending = v.draws.filter((d) => d.kind === 'horse').length;
+    const full = v.horses.length + pending >= HORSES.maxPerOwner;
+    const won = (n: number) => `${money(n)}골드`;
     const buy = stable.horses
       .map((k) => {
         const asked = waiting.find((d) => d.horse === k.kind);
-        return `<li class="row">
-          <span><b>${k.name}</b> <span class="muted">${k.stock ? `${k.stock}마리 남음` : '없음'}</span><br /><small class="muted">${kindLine(k)}</small></span>
-          ${
-            asked
-              ? `<button type="button" class="secondary-btn" data-cancel="${asked.id}">신청 거두기<small>오늘 밤 추첨 · ${money(asked.reserved)} 맡김</small></button>`
-              : `<button type="button" class="secondary-btn" data-buy="${k.kind}" ${k.price === null || full || v.gold < k.price ? 'disabled' : ''}>
-            사기 신청<small>${k.price === null ? '남은 말 없음' : money(k.price)}</small>
-          </button>`
-          }
+        const act = asked
+          ? `<button type="button" class="order-btn" data-cancel="${asked.id}">신청 거두기</button><small>오늘 밤 추첨 · ${won(asked.reserved)} 맡김</small>`
+          : k.price === null
+            ? '<button type="button" class="rumor-note" disabled>남은 말 없음</button>'
+            : `<button type="button" class="rumor-note horse-buy" data-buy="${k.kind}" ${full || v.gold < k.price ? 'disabled' : ''}>구매 신청<span><img src="${coinImg}" alt="" />${won(k.price)}</span></button>${
+                full ? '<small>두 마리까지예요</small>' : v.gold < k.price ? '<small>금화 부족</small>' : ''
+              }`;
+        return `<li class="horse-card">
+          <span class="people-pic empty" aria-hidden="true"></span>
+          <div class="horse-body">
+            <div class="horse-head"><b>${k.name}</b><span class="paper-chip${k.stock ? ' now' : ''}">${k.stock ? `${k.stock}마리 남음` : '없음'}</span></div>
+            ${statLines(k)}
+          </div>
+          <div class="horse-act">${act}</div>
         </li>`;
       })
       .join('');
     const mine = v.horses
       .map(
-        (h) => `<li class="row">
-          <span><b>${h.name}</b><br /><small class="muted">${kindLine(h)}</small></span>
-          <button type="button" class="secondary-btn" data-sell="${h.id}" ${h.sellPrice === null ? 'disabled' : ''}>
-            되팔기<small>${h.sellPrice === null ? '' : money(h.sellPrice)}</small>
-          </button>
+        (h) => `<li class="horse-card mine">
+          <span class="people-pic empty" aria-hidden="true"></span>
+          <div class="horse-body">
+            <div class="horse-head"><b>${h.name}</b><span class="paper-chip now">보유 중</span></div>
+            ${statLines(h)}
+            ${horseFatigue(h)}
+          </div>
+          <div class="horse-act"><button type="button" class="order-btn horse-sell" data-sell="${h.id}" ${h.sellPrice === null ? 'disabled' : ''}>되팔기${h.sellPrice === null ? '' : `<small>${won(h.sellPrice)}</small>`}</button></div>
         </li>`,
       )
       .join('');
-    sheet.body.innerHTML = `
-      <p class="muted">말은 시즌마다 정해진 수만 목장에서 나와요. 남은 수가 적을수록 비싸요. 한 사람 두 필까지.</p>
-      <p class="muted">사겠다고 신청하면 오늘 밤 신청한 사람 중에서 뽑아요. 먼저 신청한다고 유리하지 않아요. 뽑히지 않으면 맡긴 돈은 그대로 돌아와요.</p>
-      <ul class="list">${buy}</ul>
-      ${mine ? `<h3>내 말</h3><ul class="list">${mine}</ul>` : ''}
-      ${done ? `<p>${done}</p>` : ''}
-      ${error ? `<p class="error">${error}</p>` : ''}`;
-    sheet.body.querySelectorAll<HTMLButtonElement>('[data-buy]').forEach((b) =>
+    body.innerHTML = `
+      <p class="horse-strip"><img src="${infoImg}" alt="" /><span><b>구매 신청은 오늘 밤 추첨해요.</b><small>먼저 신청해도 우선권은 없어요. 뽑히지 않으면 맡긴 금액은 돌려받아요.</small></span></p>
+      <div class="horse-section"><h3>구매할 말</h3><span class="shop-chip">보유 ${v.horses.length}${pending ? ` + 신청 ${pending}` : ''} / ${HORSES.maxPerOwner}마리</span></div>
+      <ul class="horse-list">${buy}</ul>
+      ${mine ? `<div class="horse-section"><h3>내 말</h3></div><ul class="horse-list">${mine}</ul>` : ''}
+      ${done ? `<p class="ledger-note plain">${done}</p>` : ''}
+      <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />말은 시즌마다 정해진 수만 목장에서 나와요. 한 사람당 ${HORSES.maxPerOwner}마리까지, 남은 수가 적을수록 비싸요.</p>`;
+    body.querySelectorAll<HTMLButtonElement>('[data-buy]').forEach((b) =>
       b.addEventListener('click', () => {
         const kind = b.dataset.buy as HorseKindInfo['kind'];
-        const r = game.dispatch({ type: 'buyHorse', kind });
-        error = r.ok ? '' : ERROR_TEXT[r.error];
-        done = r.ok ? `${eulReul(stable.horses.find((k) => k.kind === kind)!.name)} 사겠다고 신청했어요. 오늘 밤 뽑아요.` : '';
-        render();
+        done = `${eulReul(stable.horses.find((k) => k.kind === kind)!.name)} 사겠다고 신청했어요. 오늘 밤 뽑아요.`;
+        if (!page.send({ type: 'buyHorse', kind })) done = '';
       }),
     );
-    sheet.body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
+    body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
       b.addEventListener('click', () => {
-        const r = game.dispatch({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) });
-        error = r.ok ? '' : ERROR_TEXT[r.error];
-        done = r.ok ? '신청을 거두고 맡긴 돈을 돌려받았어요.' : '';
-        render();
+        done = '신청을 거두고 맡긴 돈을 돌려받았어요.';
+        if (!page.send({ type: 'cancelDraw', drawId: Number(b.dataset.cancel) })) done = '';
       }),
     );
-    sheet.body.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) =>
+    body.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) =>
       b.addEventListener('click', () => {
-        const r = game.dispatch({ type: 'sellHorse', horseId: Number(b.dataset.sell) });
-        error = r.ok ? '' : ERROR_TEXT[r.error];
-        done = r.ok ? '말을 마구간에 돌려주었어요.' : '';
-        render();
+        done = '말을 마구간에 돌려주었어요.';
+        if (!page.send({ type: 'sellHorse', horseId: Number(b.dataset.sell) })) done = '';
       }),
     );
-  };
-  render();
+  });
 }
 
 /** 수레방 페이지 (0.1.6 목업 docs/reference/cartshop-mockup-0.1.6.png): 망가진 칸 고치기, 수레 바꾸기 */

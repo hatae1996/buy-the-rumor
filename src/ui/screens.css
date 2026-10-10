@@ -5791,3 +5791,180 @@
   border-color: var(--cream-teal);
   background: var(--cream-teal-soft);
 }
+
+/* ───── 마구간 (0.1.6 목업 docs/reference/stable-mockup-0.1.6.png) ───── */
+.horse-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid #bfe0dc;
+  border-radius: 14px;
+  background: var(--cream-teal-soft);
+}
+
+.horse-strip img {
+  flex: none;
+  width: 32px;
+}
+
+.horse-strip b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.horse-strip small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.horse-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.horse-section h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.horse-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.horse-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.horse-card.mine {
+  border: 2px solid #8fd0c9;
+  background: #f4fbfa;
+}
+
+.horse-card .people-pic {
+  width: 84px;
+  height: 96px;
+}
+
+.horse-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.horse-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.horse-head b {
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.horse-stats {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.horse-stats li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  color: var(--cream-ink);
+}
+
+.horse-stats svg {
+  color: #5e6a72;
+}
+
+.horse-stats img {
+  width: 16px;
+}
+
+.horse-body .fatigue {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+.horse-act {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100px;
+  text-align: center;
+}
+
+.horse-act .rumor-note,
+.horse-act .order-btn {
+  min-height: 44px;
+  padding: 0 6px;
+  font-size: 14px;
+}
+
+.horse-act .rumor-note:disabled {
+  background: #c9c6c1;
+  box-shadow: none;
+}
+
+.horse-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  line-height: 1.2;
+}
+
+.horse-buy span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+}
+
+.horse-buy img {
+  width: 16px;
+}
+
+.horse-act small {
+  color: var(--cream-ink-soft);
+  font-size: 11px;
+}
+
+.horse-sell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.horse-sell small {
+  font-size: 12px;
+}
