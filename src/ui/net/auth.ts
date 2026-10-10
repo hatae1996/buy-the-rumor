@@ -28,10 +28,27 @@ export async function signInWithGoogle(): Promise<string | null> {
   return error?.message ?? null;
 }
 
-/** 이메일로 로그인 링크를 보낸다. 실패하면 까닭 */
+/** Supabase 로그인 오류를 화면 글로 */
+function authErrorText(message: string): string {
+  if (/rate limit|too many/i.test(message)) return '메일을 너무 자주 보냈어요. 잠시 뒤에 다시 해 주세요.';
+  if (/expired|invalid|otp/i.test(message)) return '숫자가 맞지 않거나 시간이 지났어요. 메일을 다시 받아 주세요.';
+  if (/sending|smtp|email/i.test(message)) return '메일을 보내지 못했어요. 잠시 뒤에 다시 해 주세요.';
+  return message;
+}
+
+/**
+ * 이메일로 로그인 메일을 보낸다: 링크와 숫자 코드가 함께 간다(메일 틀에 {{ .Token }}, supabase/README.md "로그인 설정").
+ * 실패하면 까닭
+ */
 export async function signInWithEmail(email: string): Promise<string | null> {
   const { error } = await supabase().auth.signInWithOtp({ email, options: { emailRedirectTo: here() } });
-  return error?.message ?? null;
+  return error ? authErrorText(error.message) : null;
+}
+
+/** 메일에 온 숫자로 이 기기에서 로그인 (링크를 다른 기기에서 받았을 때). 실패하면 까닭 */
+export async function verifyEmailCode(email: string, code: string): Promise<string | null> {
+  const { error } = await supabase().auth.verifyOtp({ email, token: code, type: 'email' });
+  return error ? authErrorText(error.message) : null;
 }
 
 export async function signOut(): Promise<void> {

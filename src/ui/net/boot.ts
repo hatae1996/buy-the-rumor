@@ -49,7 +49,13 @@ export async function bootServer(root: HTMLElement): Promise<void> {
     );
   }
   const s = await auth.session();
-  if (!s) return showLogin(root, { google: LOGIN_GOOGLE ? auth.signInWithGoogle : null, email: auth.signInWithEmail });
+  if (!s)
+    return showLogin(root, {
+      google: LOGIN_GOOGLE ? auth.signInWithGoogle : null,
+      email: auth.signInWithEmail,
+      verify: auth.verifyEmailCode,
+      done: () => location.reload(),
+    });
   const uid = s.user.id;
   const api = httpApi(SUPABASE_URL, SUPABASE_ANON_KEY, auth.token);
 

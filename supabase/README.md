@@ -57,6 +57,8 @@
 ## 로그인 설정 (작업목록-0.2.0 4번, 대시보드)
 
 - **Authentication → URL Configuration**: Site URL에 게임 주소(GitHub Pages 등), Redirect URLs에 게임 주소와 개발 서버(`http://localhost:5173`, 아이폰에서 여는 `http://<컴퓨터 IP>:5173`).
+- **로그인 메일 틀**(링크 + 숫자 코드): Authentication → Emails → Templates에서 **Confirm signup**(처음 로그인하는 사람)과 **Magic Link**(이미 계정이 있는 사람) 둘 다 제목을 `Buy the Rumor 로그인`, 내용을 `supabase/templates/login.html`로 바꾼다. 숫자(`{{ .Token }}`)가 있어야 메일을 다른 기기에서 받아도 게임 화면에 숫자를 넣어 로그인할 수 있다(카톡 안 브라우저·컴퓨터 메일함 문제).
+- **메일 발송(SMTP)**: Authentication → Emails → SMTP Settings. 지금은 네이버 메일(`smtp.naver.com`, 465, 네이버 애플리케이션 비밀번호, 네이버 메일 환경설정의 POP3/SMTP 사용함). 구글 계정이 지메일이 아닌 주소(naver.com 등)면 `smtp.gmail.com`은 쓸 수 없다. 그다음 Authentication → Rate Limits에서 시간당 메일 수를 올린다.
 - **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어, 예행연습(2~3명)은 그대로, 비공개 테스트(20~30명) 전에는 SMTP(메일 발송 서비스)를 잇는 것이 좋다.
 - **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 JavaScript 원본에 `https://hatae1996.github.io`, 승인된 리디렉션 URI에 `https://znirrdzxsjxksfjibnnv.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Sign In / Providers → Google에 넣고 켠다. 그다음 `.env.production`의 `VITE_LOGIN_GOOGLE=on`으로 바꿔 다시 배포하면 로그인 화면에 구글 단추가 나온다(꺼져 있는 동안은 이메일 링크만). 동의 화면을 "테스트"로 두면 테스트 사용자로 등록한 구글 계정만 로그인된다.
 

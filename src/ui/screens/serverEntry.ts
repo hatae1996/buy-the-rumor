@@ -23,6 +23,10 @@ export interface LoginActions {
   /** 없으면 구글 단추를 보이지 않는다 (설정 전) */
   google: (() => Promise<string | null>) | null;
   email: (email: string) => Promise<string | null>;
+  /** 메일에 온 로그인 코드로 이 기기에서 로그인 (링크를 다른 기기에서 받았을 때). 실패하면 까닭 */
+  verify: (email: string, code: string) => Promise<string | null>;
+  /** 코드로 로그인했다 (다시 연다) */
+  done: () => void;
 }
 
 /** 로그인: 구글 계정 또는 이메일 링크. 로그인하면 이 주소로 돌아와 다시 연다 */
@@ -32,11 +36,16 @@ export function showLogin(root: HTMLElement, act: LoginActions): void {
     'Buy the Rumor',
     '"소문에 사서 뉴스에 팔게. 먼저 길드 명부에 이름을 올리세."',
     `${act.google ? '<button type="button" class="founding-btn" data-google>구글 계정으로 시작</button>' : ''}
-     <label class="founding-name"><span>${act.google ? '또는 ' : ''}이메일로 로그인 링크 받기</span>
+     <label class="founding-name"><span>${act.google ? '또는 ' : ''}이메일로 로그인</span>
        <input type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" data-email /></label>
-     <button type="button" class="founding-btn ghost" data-send>링크 보내기</button>
+     <button type="button" class="founding-btn ghost" data-send>로그인 메일 받기</button>
+     <div data-code-box hidden>
+       <label class="founding-name"><span>메일에 온 숫자</span>
+         <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" data-code /></label>
+       <button type="button" class="founding-btn" data-verify>로그인</button>
+       <p class="pick-note">메일을 다른 기기(컴퓨터 등)에서 봐도 숫자만 여기에 넣으면 돼요. 이 기기에서 메일의 링크를 눌러도 돼요.</p>
+     </div>
      <p class="founding-error" data-error hidden></p>
-     <p class="pick-note" data-sent hidden>메일함의 링크를 누르면 이 화면으로 돌아와요.</p>
      <p class="pick-note">${PRIVACY_LINE}</p>`,
   );
   const err = el.querySelector<HTMLElement>('[data-error]')!;
@@ -49,9 +58,27 @@ export function showLogin(root: HTMLElement, act: LoginActions): void {
   el.querySelector('[data-send]')!.addEventListener('click', async () => {
     const email = el.querySelector<HTMLInputElement>('[data-email]')!.value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) return show('이메일 주소를 확인해 주세요.');
+    const send = el.querySelector<HTMLButtonElement>('[data-send]')!;
+    send.disabled = true;
     const m = await act.email(email);
+    send.disabled = false;
     show(m);
-    el.querySelector<HTMLElement>('[data-sent]')!.hidden = m !== null;
+    if (m === null) {
+      send.textContent = '메일 다시 받기';
+      el.querySelector<HTMLElement>('[data-code-box]')!.hidden = false;
+      el.querySelector<HTMLInputElement>('[data-code]')!.focus();
+    }
+  });
+  el.querySelector('[data-verify]')!.addEventListener('click', async (e) => {
+    const email = el.querySelector<HTMLInputElement>('[data-email]')!.value.trim();
+    const code = el.querySelector<HTMLInputElement>('[data-code]')!.value.replace(/\s/g, '');
+    if (!/^\d{6,8}$/.test(code)) return show('메일에 온 숫자를 넣어 주세요.');
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.disabled = true;
+    const m = await act.verify(email, code);
+    btn.disabled = false;
+    if (m) return show(m);
+    act.done();
   });
 }
 
