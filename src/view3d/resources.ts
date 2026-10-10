@@ -8,9 +8,8 @@ import { tileTop } from './layout';
 import type { InstanceBatcher, Placement } from './batcher';
 import type { MaterialKit } from './materials';
 import type { PropGeometries } from './props';
-import { BASE_HEIGHT, RESOURCE_COLOR as C } from './palette';
-
-const BASE_SEA = BASE_HEIGHT.sea;
+import { RESOURCE_COLOR as C } from './palette';
+import { SEA_LEVEL } from './sea';
 
 /** 칸 가운데 기준 자리 (돌리지 않음) */
 export type Fixed = (dx: number, dz: number, dy: number, scale: number | readonly [number, number, number], rotY?: number) => Placement;
@@ -87,7 +86,7 @@ function addBoat(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, at: 
   b.add(geo.box, dock, along(0.62, 0.03, [0.7, 0.04, 0.16]));
   for (const d of [0.4, 0.75, 0.95]) b.add(geo.box, dock, along(d, -0.15, [0.04, 0.36, 0.04]));
   // 배는 칸 바깥 물 위 (바다 윗면 높이). 해안과 나란히 대어 돛의 넓은 면이 보이게 한다
-  const water = BASE_SEA - top;
+  const water = SEA_LEVEL - top;
   const side = (d: number, dy: number, scale: readonly [number, number, number]) => at(ux * d, uz * d, dy, scale, rot + Math.PI / 2);
   b.add(geo.box, kit.solid(C.hull), side(1.2, water + 0.07, [0.56, 0.12, 0.22]));
   b.add(geo.box, kit.solid(C.hull), side(1.2, water + 0.15, [0.42, 0.05, 0.27]));

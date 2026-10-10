@@ -9,9 +9,10 @@ import { MapCamera } from './camera';
 import { TownLabels } from './labels';
 import { tileCenter } from './layout';
 import { MaterialKit } from './materials';
-import { BACKGROUND, MARKER_RING } from './palette';
+import { MARKER_RING } from './palette';
 import { addMarker, createPawn, PAWN_SLOTS, PawnGeometries, PawnMover, ringMaterial } from './pawn';
 import { addProps, PropGeometries } from './props';
+import { SeaSurface } from './sea';
 import { Snowfall } from './snow';
 import { buildTiles, createPrism, type TileBoard } from './tiles';
 
@@ -58,6 +59,7 @@ export class MapView {
   private readonly pawnGeo = new PawnGeometries();
   private readonly labels: TownLabels;
   private readonly snow = new Snowfall();
+  private readonly sea = new SeaSurface();
   private readonly raycaster = new THREE.Raycaster();
   private readonly sun = new THREE.DirectionalLight(0xfff3dc, 2.2);
   private readonly resizeObserver: ResizeObserver;
@@ -97,7 +99,9 @@ export class MapView {
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setClearColor(BACKGROUND);
+    this.sea.setSeason(this.season);
+    this.renderer.setClearColor(this.sea.deepColor);
+    this.scene.add(this.sea.mesh);
     // 로우폴리 디오라마: 해가 비스듬히 비추고 기둥과 나무가 그림자를 드리운다 (그림자 지도는 1024, 사파리 메모리)
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -130,6 +134,7 @@ export class MapView {
     this.cam.setMapRadius(map.radius);
     this.snow.fit(map.radius);
     this.fitShadow(map.radius);
+    this.sea.setWorld(map);
     this.mover = null;
     this.rebuild();
     this.labels.set(
@@ -143,6 +148,8 @@ export class MapView {
   setSeason(season: Season): void {
     if (season === this.season) return;
     this.season = season;
+    this.sea.setSeason(season);
+    this.renderer.setClearColor(this.sea.deepColor);
     this.rebuild();
   }
 
@@ -241,6 +248,7 @@ export class MapView {
     for (const p of this.pawns.values()) this.scene.remove(p.obj);
     this.labels.dispose();
     this.snow.dispose();
+    this.sea.dispose();
     this.cam.dispose();
     this.prism.dispose();
     this.propGeo.dispose();
@@ -343,6 +351,7 @@ export class MapView {
       done();
     }
     if (this.season === 3) this.snow.step(dt);
+    this.sea.step(dt);
     this.stepPulse(dt);
     this.cam.step(dt);
     this.renderer.render(this.scene, this.cam.camera);

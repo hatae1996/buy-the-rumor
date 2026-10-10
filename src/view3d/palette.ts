@@ -7,13 +7,8 @@ type BySeason<T> = readonly [T, T, T, T];
 /** 밝은 칸, 어두운 칸 */
 type Pair = readonly [number, number];
 
-export const TILE_COLOR: Record<Terrain, BySeason<Pair>> = {
-  sea: [
-    [0x78bcd6, 0x6bb0cc],
-    [0x3a6f7c, 0x326571],
-    [0x3d6a73, 0x355f69],
-    [0x6f95a0, 0x648995],
-  ],
+/** 육지 칸 색. 바다는 칸 기둥이 아니라 수면 하나로 그린다 (sea.ts, SEA_COLOR) */
+export const TILE_COLOR: Record<Exclude<Terrain, 'sea'>, BySeason<Pair>> = {
   coast: [
     [0xf4e7c0, 0xebdcb0],
     [0xe0cc88, 0xd0bb78],
@@ -46,8 +41,13 @@ export const TILE_COLOR: Record<Terrain, BySeason<Pair>> = {
   ],
 };
 
-/** 겨울에 해안에 닿은 바다는 언다 */
-export const FROZEN_SEA = 0xcfe2e8;
+/** 바다 수면 색: 해안 옆 얕은 물, 바다, 먼 바다(배경도 이 색), 포말과 그 양. 겨울엔 해안 옆이 언다 */
+export const SEA_COLOR: BySeason<{ shallow: number; mid: number; deep: number; foam: number; foamAmount: number }> = [
+  { shallow: 0xa9e2d9, mid: 0x7cc4d8, deep: 0x5aa2c2, foam: 0xfffaf0, foamAmount: 0.8 },
+  { shallow: 0x86c6be, mid: 0x397d89, deep: 0x285563, foam: 0xf3ecd8, foamAmount: 0.8 },
+  { shallow: 0x80b6ab, mid: 0x367079, deep: 0x244b57, foam: 0xefe5cc, foamAmount: 0.7 },
+  { shallow: 0xd6e7eb, mid: 0x6f95a0, deep: 0x4a6c77, foam: 0xffffff, foamAmount: 0.35 },
+];
 
 /** 옆면은 윗면 색에 이만큼 곱한다 (빛을 덜 받는 쪽은 조명이 더 어둡게 한다) */
 export const SIDE_SHADE = 0.74;
@@ -88,7 +88,6 @@ export const HEIGHT_RELIEF = 0.9;
 export const HEIGHT_STEP = 0.18;
 
 export const INK = 0x2a1e16;
-export const BACKGROUND = 0x2e2219;
 
 export const PROP = {
   trunk: 0x6b4423,
