@@ -1122,10 +1122,6 @@
   font: inherit;
 }
 
-.certificate h2 {
-  font-size: 24px;
-}
-
 /* 신문: 사지 않은 날은 머리기사 아래에 "기사 n개 더 · 신문 사기" (0.1.0) */
 .paper-more {
   display: flex;
@@ -1135,16 +1131,7 @@
   margin-top: 6px;
 }
 
-/* 상인 증서 고치기 (0.1.0): 상단 이름·문장 한 줄, 인장 앞면 고르기 */
-.field-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.field-row input,
-.field-row select,
+/* 쪽지와 카드 안 고르기 상자 */
 .card select,
 .sheet-body > select {
   min-height: var(--tap);
@@ -1156,11 +1143,7 @@
   font: inherit;
 }
 
-.field-row input {
-  flex: 1 1 10em;
-  min-width: 0;
-}
-
+/* 상인 증서: 인장을 앞면에 달기 */
 .pin-toggle {
   display: inline-flex;
   align-items: center;
@@ -5473,4 +5456,226 @@
   font-family: var(--f-display);
   font-size: 16px;
   text-align: center;
+}
+
+/* ───── 상인 증서 (0.1.6 목업 docs/reference/certificate-mockup-0.1.6.png): 빈 카드 그림 위에 테두리 줄과 글 ───── */
+.cert-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  aspect-ratio: 640 / 936;
+  border-radius: 16px;
+  background-size: cover;
+  box-shadow: 0 6px 18px rgba(80, 60, 30, 0.18);
+  container-type: inline-size;
+}
+
+/* 테두리 줄: 종이 등급마다 색 (낡은 종이 갈색, 양피지 청록, 금테 금빛) */
+.cert-card::before {
+  content: '';
+  position: absolute;
+  inset: 3.2cqw;
+  border: 2px solid var(--cert-line);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.cert-inner {
+  position: absolute;
+  inset: 3.2cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7cqw 6cqw 5cqw;
+  color: #3a312a;
+  font-family: 'Nanum Myeongjo', 'AppleMyungjo', serif;
+  text-align: center;
+}
+
+.cert-kicker {
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+  margin: 0;
+  color: #6b6158;
+  font-size: 3.6cqw;
+}
+
+.cert-kicker span {
+  width: 12cqw;
+  height: 1px;
+  background: #b5aa9b;
+}
+
+.cert-title {
+  margin: 0.5cqw 0 0;
+  font-size: 11cqw;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+
+.cert-crest {
+  width: 26cqw;
+  margin: 2cqw 0 1cqw;
+}
+
+.cert-crest text {
+  fill: #8a8076;
+  font-family: 'Nanum Myeongjo', serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cert-name {
+  margin: 1cqw 0 0;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 9cqw;
+  font-weight: normal;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
+.cert-honor {
+  margin: 1cqw 0 0;
+  color: #5b5148;
+  font-size: 5.2cqw;
+  font-weight: 700;
+}
+
+.cert-years {
+  margin: 1cqw 0 0;
+  padding-bottom: 3cqw;
+  border-bottom: 1px solid #c9bfb1;
+  color: #5b5148;
+  font-size: 3.8cqw;
+  font-weight: 700;
+  align-self: stretch;
+}
+
+.cert-label {
+  margin: 3cqw 0 1.5cqw;
+  color: #6b6158;
+  font-size: 3.6cqw;
+  font-weight: 700;
+}
+
+.cert-badges {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2cqw;
+  width: 100%;
+}
+
+.cert-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1cqw;
+  min-width: 0;
+}
+
+/* 칠각 메달: 등급 색 바탕에 인장 이름 첫 글자 */
+.cert-medal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15cqw;
+  aspect-ratio: 1;
+  clip-path: polygon(50% 0%, 89% 19%, 98% 61%, 72% 95%, 28% 95%, 2% 61%, 11% 19%);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--medal) 75%, #fff), var(--medal) 55%, color-mix(in srgb, var(--medal) 80%, #000));
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 6cqw;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.cert-badge.empty .cert-medal {
+  background: rgba(120, 100, 80, 0.12);
+}
+
+.cert-badge small {
+  max-width: 100%;
+  overflow: hidden;
+  color: #6b6158;
+  font-size: 2.6cqw;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cert-badge.empty small {
+  color: #b0a597;
+}
+
+.cert-foot {
+  margin: auto 0 0;
+  color: #5b5148;
+  font-size: 3.4cqw;
+  font-weight: 700;
+}
+
+/* 길드 도장: 오른쪽 아래 붉은 원 */
+.cert-stamp {
+  position: absolute;
+  right: 3cqw;
+  bottom: 3cqw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12cqw;
+  aspect-ratio: 1;
+  border: 2px solid rgba(190, 70, 55, 0.75);
+  border-radius: 50%;
+  color: rgba(190, 70, 55, 0.8);
+  font-size: 2.6cqw;
+  font-weight: 800;
+  line-height: 1.2;
+  transform: rotate(-12deg);
+}
+
+.cert-edit input,
+.cert-edit select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font: inherit;
+}
+
+.cert-edit .rumor-note {
+  min-height: 44px;
+}
+
+.cert-edit h3 small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.cert-book {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cert-book li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.cert-book li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.cert-book li > span small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
 }
