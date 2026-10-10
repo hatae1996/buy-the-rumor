@@ -5749,3 +5749,41 @@
 .hold-board-head.over .hold-weight {
   color: var(--coral-deep);
 }
+
+/* 창고와 옮길 개수: 1개, +1, +5, 전체 */
+.hold-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
+.hold-qty span {
+  flex: 1;
+  color: var(--cream-ink-soft);
+}
+
+.hold-qty b {
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.hold-qty button {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--hold-line);
+  border-radius: 10px;
+  background: var(--hold-card);
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+}
+
+.hold-qty button[aria-pressed='true'] {
+  border-color: var(--cream-teal);
+  background: var(--cream-teal-soft);
+}

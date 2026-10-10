@@ -70,7 +70,7 @@ export function storeGoods(p: PlayerState, good: GoodId, qty: number): Err | nul
 
 /** 지금 마을 창고 짐을 수레로 꺼낸다 (보관료가 밀리면 못 꺼낸다) */
 /**
- * 창고와 수레 두 판 사이로 조각을 끌어 옮긴다 (0.1.2 짐칸 화면). from: 꺼낼 판.
+ * 창고와 수레 두 판 사이로 조각을 끌어 옮긴다 (0.1.2 짐칸 화면). from: 꺼낼 판. qty: 몇 개만 (없으면 담을 수 있는 만큼).
  * 밀린 보관료가 있으면 창고에서 꺼낼 수 없다 (넣기는 된다)
  */
 export function transferBetween(
@@ -80,13 +80,15 @@ export function transferBetween(
   x: number,
   y: number,
   rot: number,
-): Err | 'cantPlace' | null {
+  qty?: number,
+): Err | 'cantPlace' | 'badQty' | null {
+  if (qty !== undefined && (!Number.isInteger(qty) || qty <= 0)) return 'badQty';
   if (p.travel) return 'traveling';
   const w = warehouseAt(p, p.town);
   if (!w) return 'noWarehouse';
   if (from === 'warehouse' && w.owed > 0) return 'warehouseOwed';
   const [src, dst] = from === 'cart' ? [p.cart, w.board] : [w.board, p.cart];
-  return transferPiece(src as Board, dst as Board, pieceId, x, y, rot) ? null : 'cantPlace';
+  return transferPiece(src as Board, dst as Board, pieceId, x, y, rot, qty) ? null : 'cantPlace';
 }
 
 export function retrieveGoods(p: PlayerState, good: GoodId, qty: number): Err | null {

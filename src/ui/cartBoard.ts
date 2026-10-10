@@ -68,6 +68,9 @@ function cartArt(type: CartType | 'warehouse'): BoardModel['art'] {
 // 화면이 다시 그려져도 고른 짐과 안내 문구는 남긴다
 let selected: { board: BoardId; piece: number } | null = null;
 let message = '';
+/** 창고와 옮길 개수 (0.1.6: 1개, +1, +5, 전체). 다른 짐을 고르면 1로 돌아간다 */
+let moveQty = 1;
+let moveFor = '';
 
 function boardsOf(v: PlayerView, townName: (id: number) => string): BoardModel[] {
   const out: BoardModel[] = [];
@@ -122,6 +125,14 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
     const selBoard = boards.find((b) => b.id === selected?.board) ?? null;
     const sel = selBoard?.pieces.find((p) => p.id === selected?.piece) ?? null;
     if (!sel) selected = null;
+    const selKey = sel ? `${selBoard!.id}:${sel.id}` : '';
+    if (selKey !== moveFor) {
+      moveFor = selKey;
+      moveQty = 1;
+    }
+    // 묶음이 여럿인 짐만 개수를 고른다 (장비는 늘 하나)
+    const canSplit = boards.some((b) => b.id === 'warehouse') && !!sel && !sel.uses && sel.qty > 1;
+    if (sel) moveQty = Math.max(1, Math.min(moveQty, sel.qty));
 
     const grid = (b: BoardModel) => {
       const cell = cellOf(b.id);
@@ -223,7 +234,22 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
         }
         <div class="hold-frame${cartBoard.art ? ' art' : ''}" data-frame="cart"></div>
       </div>
-      ${sel && selBoard ? infoPanel(v, selBoard.id, sel, store ? (selBoard.id === 'cart' ? '창고로 옮기기' : '수레로 옮기기') : null) : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'}
+      ${
+        sel && selBoard
+          ? infoPanel(v, selBoard.id, sel, store ? `${selBoard.id === 'cart' ? '창고로' : '수레로'}${canSplit ? ` ${moveQty}개` : ''} 옮기기` : null)
+          : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'
+      }
+      ${
+        canSplit
+          ? `<div class="hold-qty" role="group" aria-label="옮길 개수">
+              <span>옮길 개수 <b>${moveQty}</b> / ${sel!.qty}</span>
+              <button type="button" data-qty="1" aria-pressed="${moveQty === 1}">1개</button>
+              <button type="button" data-qty="+1">+1</button>
+              <button type="button" data-qty="+5">+5</button>
+              <button type="button" data-qty="all" aria-pressed="${moveQty === sel!.qty}">전체</button>
+            </div>`
+          : ''
+      }
       ${notice}
       <button type="button" class="pack-btn" data-pack title="짐을 위·왼쪽으로 모아 붙여요">빈칸 정리</button>`;
 
@@ -287,9 +313,19 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
         render();
         return;
       }
-      selected = null;
-      send({ type: 'transferPiece', from, pieceId: sel.id, x: spot.x, y: spot.y, rot: spot.rot });
+      // 일부만 옮기면 남은 짐을 계속 고른 채로 둔다
+      const part = canSplit && moveQty < sel.qty;
+      if (!part) selected = null;
+      send({ type: 'transferPiece', from, pieceId: sel.id, x: spot.x, y: spot.y, rot: spot.rot, ...(canSplit ? { qty: moveQty } : {}) });
     });
+    host.querySelectorAll<HTMLButtonElement>('[data-qty]').forEach((b) =>
+      b.addEventListener('click', () => {
+        if (!sel) return;
+        const q = b.dataset.qty!;
+        moveQty = q === 'all' ? sel.qty : q === '1' ? 1 : Math.min(sel.qty, moveQty + Number(q));
+        render();
+      }),
+    );
     host.querySelector('[data-others]')?.addEventListener('click', () => opts.openOthers());
     host.querySelector('[data-discard]')?.addEventListener('click', () => {
       if (!sel || selected?.board !== 'cart') return;

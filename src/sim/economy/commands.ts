@@ -126,7 +126,7 @@ export type Command =
   /** 수레 짐을 지금 마을 창고에 넣는다 / 창고 짐을 수레로 꺼낸다 */
   | { type: 'storeGoods'; good: GoodId; qty: number }
   /** 창고와 수레 두 판 사이로 조각을 끌어 옮긴다 (0.1.2) */
-  | { type: 'transferPiece'; from: 'cart' | 'warehouse'; pieceId: number; x: number; y: number; rot: number }
+  | { type: 'transferPiece'; from: 'cart' | 'warehouse'; pieceId: number; x: number; y: number; rot: number; qty?: number }
   | { type: 'retrieveGoods'; good: GoodId; qty: number }
   /** 그 마을 창고 짐으로 팔기 신청 (어디서나 낼 수 있고, 내가 없어도 그 마을 장날에 맞춰진다) */
   | { type: 'placeStoreSellOrder'; town: number; good: GoodId; qty: number; minPrice: number }
@@ -380,7 +380,7 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       return done(releaseWarehouse(state, p, cmd.town));
     case 'transferPiece':
       if (p.expedition) return fail('inExpedition');
-      return done(transferBetween(p, cmd.from, cmd.pieceId, cmd.x, cmd.y, cmd.rot));
+      return done(transferBetween(p, cmd.from, cmd.pieceId, cmd.x, cmd.y, cmd.rot, cmd.qty));
     case 'storeGoods':
       if (!GOODS.includes(cmd.good)) return fail('badGood');
       return done(storeGoods(p, cmd.good, cmd.qty));

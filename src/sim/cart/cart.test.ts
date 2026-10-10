@@ -192,6 +192,16 @@ describe('옮기기, 돌리기, 정리', () => {
     expect(transferPiece(cart, store, cart.pieces[0]!.id, 0, 0, 0)).toBe(true);
     expect(store.pieces).toHaveLength(1);
     expect(cartCount(store, 'salt')).toBe(5);
+    // 몇 개만: 나머지는 그 조각에 남는다 (가죽은 수레 한 조각에 4개)
+    loadGoods(cart, 'leather', 4);
+    const leather = cart.pieces.find((q) => q.good === 'leather')!;
+    expect(transferPiece(cart, store, leather.id, 3, 0, 0, 1)).toBe(true);
+    expect(cartCount(cart, 'leather')).toBe(3);
+    expect(cartCount(store, 'leather')).toBe(1);
+    // 같은 물품 위에 몇 개만 더 합친다
+    expect(transferPiece(cart, store, leather.id, 3, 0, 0, 2)).toBe(true);
+    expect(cartCount(cart, 'leather')).toBe(1);
+    expect(cartCount(store, 'leather')).toBe(3);
     // 놓을 수 없는 자리면 그대로
     loadGoods(cart, 'wood', 1);
     expect(transferPiece(cart, store, cart.pieces[0]!.id, 99, 0, 0)).toBe(false);

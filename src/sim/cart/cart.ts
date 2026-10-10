@@ -482,14 +482,15 @@ export function packCart(cart: Board): boolean {
 
 /**
  * 판 사이로 조각을 옮긴다 (창고와 수레 두 판, 0.1.2). 놓을 자리(x, y, rot)에 맞으면 조각째,
- * 그 칸에 같은 물품 조각이 있으면 담을 수 있는 만큼 합친다. 장날 신청이 걸린 조각은 옮길 수 없다. 성공하면 true
+ * 그 칸에 같은 물품 조각이 있으면 담을 수 있는 만큼 합친다. 장날 신청이 걸린 조각은 옮길 수 없다. 성공하면 true.
+ * limit: 많아야 이만큼만 옮긴다 (0.1.6 "1개, +1, +5, 전체"). 나머지는 그 조각에 남는다. 장비는 늘 조각째
  */
-export function transferPiece(from: Board, to: Board, pieceId: number, x: number, y: number, rot: number): boolean {
+export function transferPiece(from: Board, to: Board, pieceId: number, x: number, y: number, rot: number, limit = Infinity): boolean {
   const p = from.pieces.find((q) => q.id === pieceId);
   if (!p || p.incoming.length > 0) return false;
   const onto = to.pieces.find((q) => q.good === p.good && q.uses === undefined && p.uses === undefined && pieceCells(q).some(([cx, cy]) => cx === x && cy === y));
   if (onto) {
-    const n = Math.min(roomIn(to, onto), qtyOf(p));
+    const n = Math.min(roomIn(to, onto), qtyOf(p), limit);
     if (n <= 0) return false;
     for (const lot of takeFromPiece(p, n)) addLotTo(onto, lot);
     tidy(from);
@@ -506,7 +507,7 @@ export function transferPiece(from: Board, to: Board, pieceId: number, x: number
     from.pieces = from.pieces.filter((q) => q !== p);
     return true;
   }
-  for (const lot of takeFromPiece(p, Math.min(room, qtyOf(p)))) addLotTo(moved, lot);
+  for (const lot of takeFromPiece(p, Math.min(room, qtyOf(p), limit))) addLotTo(moved, lot);
   tidy(from);
   return true;
 }
