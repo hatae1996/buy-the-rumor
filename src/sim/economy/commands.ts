@@ -334,7 +334,7 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       if (p.expedition) return fail('inExpedition');
       return done(listenGossip(state, p, map));
     case 'noteRumor':
-      return done(noteRumor(state, p, cmd.id));
+      return done(noteRumor(p, cmd.id));
     case 'dismissRumor':
       return done(dismissRumor(p, cmd.id));
     case 'sendPigeon':

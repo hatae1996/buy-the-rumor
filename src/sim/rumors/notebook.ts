@@ -23,7 +23,7 @@ export function addNote(state: EconomyState, p: PlayerState, note: NoteInput, op
 export type NoteError = 'noNote';
 
 /** 들은 이야기를 수첩에 적는다. 도장은 적은 것에만 찍힌다 (Buy the Rumor는 들을 때 이미 셌다) */
-export function noteRumor(state: EconomyState, p: PlayerState, id: number): NoteError | null {
+export function noteRumor(p: PlayerState, id: number): NoteError | null {
   const h = p.rumors.find((x) => x.id === id && x.noted === false);
   if (!h) return 'noNote';
   h.noted = true;
