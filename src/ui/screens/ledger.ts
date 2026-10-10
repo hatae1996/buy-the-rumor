@@ -1,18 +1,22 @@
-// 장부 탭 (기획서 "화면 구성", 0.1.2): 작은 탭 4개. 신청(장날·예약) / 가계부(돈 내역과 손익) / 시세 / 사람과 말.
-// 짐은 짐칸 탭으로 옮겼다. "돈과 약속은 어떻게 됐나".
+// 장부 탭 (기획서 "화면 구성", 0.1.2 → 0.1.6 목업): 작은 탭 4개. 거래 예약(장날 신청·예약 주문) / 수입·지출(돈 내역과 손익) / 시세 기록 / 인력·말.
+// 짐은 짐칸 탭으로 옮겼다. "돈과 약속은 어떻게 됐나". 크림 바탕에 장부 책 제목.
 import coins from '../../../assets/ui/coins.png';
+import bookImg from '../../../assets/ui/tab_ledger.png';
+import sprigL from '../../../assets/ui/orn_sprig_l.png';
+import sprigR from '../../../assets/ui/orn_sprig_r.png';
 import { GOODS, type PlayerView } from '../../sim/economy';
 import { agoText, goodName, ledgerLine, money } from '../format';
 import type { Game } from '../game';
 import { horseFatigue, speedWord } from './horseSheet';
+import { bindOrderGroups, ordersHtml } from './ledgerOrders';
 
 export type LedgerSection = 'orders' | 'accounts' | 'prices' | 'people';
 
 const SECTIONS: { id: LedgerSection; label: string }[] = [
-  { id: 'orders', label: '신청' },
-  { id: 'accounts', label: '가계부' },
-  { id: 'prices', label: '시세' },
-  { id: 'people', label: '사람과 말' },
+  { id: 'orders', label: '거래 예약' },
+  { id: 'accounts', label: '수입·지출' },
+  { id: 'prices', label: '시세 기록' },
+  { id: 'people', label: '인력·말' },
 ];
 
 const SECTION_KEY = 'buy-the-rumor/ledger-section';
@@ -37,7 +41,7 @@ export function showLedgerSection(id: LedgerSection): void {
   }
 }
 
-export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelOrder: (id: number) => void): void {
+export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
   const townName = (id: number) => game.map.towns[id]!.name;
   // 시세는 다른 마을에 처음 닿으면 열린다 (기획서 "견습 뒤에도 시스템은 하나씩 열린다")
   const open = SECTIONS.filter((s) => s.id !== 'prices' || v.unlocks.includes('memory'));
@@ -46,34 +50,6 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
   // 아는 시세로 짐 값을 어림한다 (지금 마을 시세, 길 위면 떠난 마을에서 마지막으로 본 시세)
   const prices = v.market?.price ?? v.memory[v.location.kind === 'road' ? v.location.from : v.location.town]?.prices;
   const cargoValue = prices ? v.cargo.reduce((s, l) => s + l.qty * prices[l.good], 0) : null;
-
-  // 신청: 마을마다 (수레 짐, 창고 짐)
-  const orders =
-    v.orders
-      .map(
-        (o) => `<li class="order-row">
-          <span class="order-side ${o.side}">${o.side === 'sell' ? '팔기' : '사기'}</span>
-          <span>${townName(o.town)} · ${goodName(o.good)} ${o.qty}개${o.from === 'store' ? ' (창고)' : ''} · ${o.side === 'sell' ? `${o.limit} 이상` : `${o.limit} 이하`}</span>
-          <button type="button" class="link-btn" data-cancel="${o.id}">취소</button>
-        </li>`,
-      )
-      .join('') || '<li class="muted">장날에 낼 신청이 없어요.</li>';
-
-  // 예약 주문: 마감 날까지 날마다 그 마을 장날에 들어가는 신청, 도착하면 팔기
-  const reservations = v.reservations
-    .map((r) => {
-      const what =
-        r.kind === 'standing'
-          ? `${townName(r.town)} · ${goodName(r.good)} ${r.qty}개 남음 · ${r.side === 'sell' ? `${r.limit} 이상` : `${r.limit} 이하`} · ${r.until}일째까지`
-          : `${townName(r.town)}에 도착하면 · ${goodName(r.good)} ${r.qty === 'all' ? '전부' : `${r.qty}개`} · ${r.minPrice} 이상`;
-      const side = r.kind === 'standing' ? r.side : 'sell';
-      return `<li class="order-row">
-          <span class="order-side ${side}">예약 ${side === 'sell' ? '팔기' : '사기'}</span>
-          <span>${what}</span>
-          <button type="button" class="link-btn" data-unreserve="${r.id}">지우기</button>
-        </li>`;
-    })
-    .join('');
 
   // 사람과 말: 하루 유지비 합계가 맨 위
   const people = [
@@ -107,20 +83,7 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
       .join('') || '<li class="muted">아직 적힌 게 없어요. 마을에서 물건을 사고팔아 보세요.</li>';
 
   const bodies: Record<LedgerSection, string> = {
-    orders: `
-      <section class="card">
-        <h2>장날 신청</h2>
-        <ul class="order-list">${orders}</ul>
-      </section>
-      ${
-        reservations
-          ? `<section class="card">
-              <h2>예약 주문</h2>
-              <p class="muted">마감 날까지 날마다 그 마을 장날에 다시 들어가요. 체결되면 알려 드려요.</p>
-              <ul class="order-list">${reservations}</ul>
-            </section>`
-          : ''
-      }`,
+    orders: ordersHtml(game, v),
     accounts: `
       <section class="card money-card">
         <img src="${coins}" alt="" />
@@ -151,6 +114,12 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
   };
 
   el.innerHTML = `
+    <header class="ledger-head">
+      <img class="town-sprig" src="${sprigL}" alt="" />
+      <img class="ledger-book" src="${bookImg}" alt="" />
+      <div><h2>장부</h2><small>상인의 기록</small></div>
+      <img class="town-sprig" src="${sprigR}" alt="" />
+    </header>
     <div class="seg ledger-tabs" role="tablist" aria-label="장부">
       ${open.map((s) => `<button type="button" role="tab" data-section="${s.id}" aria-pressed="${s.id === section}" aria-selected="${s.id === section}">${s.label}</button>`).join('')}
     </div>
@@ -159,13 +128,8 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView, cancelO
   el.querySelectorAll<HTMLButtonElement>('[data-section]').forEach((b) =>
     b.addEventListener('click', () => {
       showLedgerSection(b.dataset.section as LedgerSection);
-      renderLedger(el, game, v, cancelOrder);
+      renderLedger(el, game, v);
     }),
   );
-  el.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
-    b.addEventListener('click', () => cancelOrder(Number(b.dataset.cancel))),
-  );
-  el.querySelectorAll<HTMLButtonElement>('[data-unreserve]').forEach((b) =>
-    b.addEventListener('click', () => game.dispatch({ type: 'cancelReservation', reservationId: Number(b.dataset.unreserve) })),
-  );
+  if (section === 'orders') bindOrderGroups(el, game, v);
 }

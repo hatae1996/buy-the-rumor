@@ -2263,3 +2263,279 @@
     height: 36px;
   }
 }
+
+/* ───── 장부 탭 (0.1.6 목업 docs/reference/ledger-orders-mockup-0.1.6.png) ─────
+   크림 바탕, 장부 책 제목, 청록 작은 탭. 거래 예약은 요약 카드와 마을·때별 카드 */
+.screen[data-screen='ledger'] {
+  --town-card: #fbf8f2;
+  --town-line: var(--cream-line);
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+  gap: 10px;
+}
+
+.ledger-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ledger-book {
+  width: 56px;
+}
+
+.ledger-head div {
+  display: flex;
+  flex-direction: column;
+}
+
+.ledger-head h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.ledger-head small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.ledger-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ledger-tabs button {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1px solid var(--town-line);
+  border-radius: 10px;
+  background: var(--town-card);
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(80, 60, 30, 0.06);
+}
+
+.ledger-tabs button[aria-pressed='true'] {
+  border-color: var(--cream-teal);
+  background: var(--cream-teal);
+  color: #fff;
+}
+
+.ledger-summary,
+.order-group,
+.ledger-note {
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.ledger-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px 10px 10px;
+}
+
+.ledger-summary img {
+  flex: none;
+  width: 38%;
+  max-width: 140px;
+  padding-right: 14px;
+  border-right: 1px solid var(--town-line);
+  box-sizing: content-box;
+}
+
+.ledger-summary div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ledger-summary-label {
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.ledger-summary-count {
+  font-family: var(--f-display);
+  font-size: 40px;
+  line-height: 1.05;
+}
+
+.ledger-summary small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.ledger-section-title {
+  margin: 4px 0 -2px;
+  font-family: var(--f-display);
+  font-size: 22px;
+}
+
+.order-group {
+  padding: 10px 12px 12px;
+}
+
+.order-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-group-head img {
+  flex: none;
+  width: 64px;
+}
+
+.order-group-head div {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-group-head h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 20px;
+}
+
+.order-group-head small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.order-chip {
+  flex: none;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: var(--f-display);
+  font-size: 13px;
+}
+
+.order-chip.sell {
+  background: #e3efd8;
+  color: #3f6e2c;
+}
+
+.order-chip.buy {
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+}
+
+.order-items {
+  list-style: none;
+  margin: 8px 0 10px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: #f6f1e7;
+}
+
+.order-items li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.order-items li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.order-item-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 40px;
+}
+
+.order-item-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.order-item-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.order-item-name small {
+  display: block;
+  font-family: inherit;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.order-items b {
+  flex: none;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.order-group-btns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 10px;
+}
+
+.order-btn {
+  min-height: 44px;
+  border: 1.5px solid #9a928a;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--cream-ink-soft);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.order-btn.edit {
+  border-color: var(--cream-teal);
+  color: var(--cream-teal);
+}
+
+.order-btn:active {
+  transform: translateY(1px);
+}
+
+.ledger-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ledger-note-i {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #8f8a84;
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 26px;
+  text-align: center;
+}

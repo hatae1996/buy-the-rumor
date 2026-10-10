@@ -108,7 +108,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     } else if (current === 'cart') {
       renderCart(el, game, v);
     } else if (current === 'ledger') {
-      renderLedger(el, game, v, (id) => game.dispatch({ type: 'cancelOrder', orderId: id }));
+      renderLedger(el, game, v);
     }
     else if (current === 'news') renderNews(el, game, v);
     else void map?.then((m) => m.render());

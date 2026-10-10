@@ -2,6 +2,7 @@
 
 - assets-src/ui/cart-ui-sheet.png: 분홍(마젠타) 배경. 탭 아이콘 5, 모래시계·빵·동전 (0.1.6 짐칸 탭). 그림판의 마차는 쓰지 않는다
 - assets-src/ui/town-ui-sheet.png: 분홍 배경. 마을 탭 건물 6과 작은 아이콘 8 (0.1.6 마을 탭)
+- assets-src/ui/ledger-ui-sheet.png: 장부 탭 (편지 묶음, 마을 집 둘)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
@@ -178,6 +179,11 @@ def travel_ui_sheet() -> None:
     ])
 
 
+def ledger_ui_sheet() -> None:
+    """장부 탭 그림판 (0.1.6 목업 docs/reference/ledger-orders-mockup-0.1.6.png): 봉인한 편지 묶음, 다른 마을 집(파랑), 지금 마을 집(빨강)"""
+    sheet_pieces('ledger-ui-sheet.png', [('ledger_letters.png', 320), ('house_blue.png', 192), ('house_red.png', 192)])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -202,5 +208,6 @@ if __name__ == '__main__':
     cart_ui_sheet()
     town_ui_sheet()
     travel_ui_sheet()
+    ledger_ui_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()
