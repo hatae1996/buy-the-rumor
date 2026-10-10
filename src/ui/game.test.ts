@@ -82,9 +82,9 @@ describe('견습 마을은 시간이 멈춰 있다', () => {
 });
 
 describe('봇 상인 (0.1.0)', () => {
-  it('새 판에는 봇 상인 10명이 같은 시장에 앉고, 날이 가면 장사한다', () => {
+  it('새 판에는 봇 상인 11명이 같은 시장에 앉고, 날이 가면 장사한다', () => {
     const g = Game.fresh(0, SEED, { apprentice: false });
-    expect(g.view().rivals).toHaveLength(10);
+    expect(g.view().rivals).toHaveLength(11);
     const where = () => g.view().rivals.map((r) => JSON.stringify(r.location));
     const before = where();
     g.catchUp(DAY_MS * 8);

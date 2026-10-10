@@ -351,8 +351,8 @@ export const ECONOMY = {
     travelFeePerDay: 3,
     /** 이보다 큰 거래(금액)는 신문에 실린다 */
     bigTradeNews: 400,
-    /** 로컬 게임에 함께 앉는 봇 상인 수 (질문 87 답). 개발용으로 0~maxLocalBots */
-    localBots: 10,
+    /** 로컬 게임에 함께 앉는 봇 상인 수 (질문 87 답, 0.1.6 답 117: 나 포함 12명). 개발용으로 0~maxLocalBots */
+    localBots: 11,
     maxLocalBots: 20,
   },
 

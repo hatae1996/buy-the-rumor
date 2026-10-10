@@ -87,7 +87,7 @@ export class Game {
 
   /**
    * 새 판. 처음 하는 사람은 견습으로 시작한다 (기획서 "처음 하는 플레이어"). 두 번째 시즌부터는 건너뛸 수 있다.
-   * 같은 시장에 봇 상인이 함께 앉는다 (기본 10명, 개발용 0~20). 마을 수는 사람 수로 정한다 (0.1.1, 나 + 봇 10명이면 6곳)
+   * 같은 시장에 봇 상인이 함께 앉는다 (기본 11명, 개발용 0~20). 마을 수는 사람 수로 정한다 (0.1.1, 나 + 봇 11명이면 6곳)
    */
   static fresh(now: number, seed: number, opt: { apprentice?: boolean; bots?: number; seasonDays?: number; towns?: number } = {}): Game {
     const bots = Math.max(0, Math.min(ECONOMY.player.maxLocalBots, Math.floor(opt.bots ?? ECONOMY.player.localBots)));
