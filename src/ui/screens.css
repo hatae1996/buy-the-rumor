@@ -1509,12 +1509,22 @@
 }
 
 /* ───── 마을 탭 (0.1.6 목업 docs/reference/town-tab-mockup-0.1.6.png) ─────
-   크림 바탕, 마을 이름과 특색 칩, 시장 큰 카드, 여관·바깥 반 카드, 시설 목록 줄, 신문팔이 얇은 줄 */
+   크림 바탕, 마을 이름과 특색 칩, 시장 큰 카드, 여관·바깥 반 카드, 시설 두 줄 격자, 신문팔이 얇은 줄.
+   스크롤 없이 한 화면: 시장과 반 카드가 남은 높이를 나눠 갖는다 (견습·결산 카드가 붙어 넘치면 그때만 스크롤) */
 .screen[data-screen='town'] {
   --town-card: #fbf8f2;
   --town-line: var(--cream-line);
   background: var(--cream-bg);
   color: var(--cream-ink);
+  height: 100%;
+  overflow-y: auto;
+  gap: 8px;
+  padding-top: 8px;
+  padding-bottom: 10px;
+}
+
+.screen[data-screen='town'] > * {
+  flex: none;
 }
 
 .town-head {
@@ -1522,8 +1532,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 2px;
 }
 
 .town-title {
@@ -1536,7 +1545,7 @@
 .town-title h2 {
   margin: 0;
   font-family: var(--f-display);
-  font-size: 34px;
+  font-size: 30px;
   line-height: 1.1;
   text-align: center;
   word-break: keep-all;
@@ -1544,26 +1553,26 @@
 
 .town-sprig {
   flex: none;
-  width: 22px;
+  width: 20px;
   height: auto;
 }
 
 .town-season {
   position: absolute;
-  top: 2px;
+  top: 3px;
   right: 0;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 12px 4px 8px;
+  padding: 3px 12px 3px 8px;
   border-radius: 999px;
   background: var(--cream-teal-soft);
   font-family: var(--f-display);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .town-season img {
-  width: 20px;
+  width: 18px;
 }
 
 .town-sub {
@@ -1572,12 +1581,12 @@
   gap: 8px;
   margin: 0;
   font-family: var(--f-display);
-  font-size: 15px;
+  font-size: 14px;
   color: var(--cream-ink-soft);
 }
 
 .town-sub img {
-  width: 40px;
+  width: 36px;
   opacity: 0.85;
 }
 
@@ -1593,17 +1602,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 2px 14px 2px 10px;
+  min-height: 30px;
+  padding: 2px 12px 2px 8px;
   border-radius: 10px;
   background: #e6ead9;
   font-family: var(--f-display);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .town-chip img {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -1636,32 +1645,43 @@
 .town-row small,
 .town-news small {
   display: block;
+  overflow: hidden;
   color: var(--cream-ink-soft);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 시장: 남은 높이를 반 카드와 나눈다. 그림은 카드 높이에 맞춰 오른쪽에 */
+.screen[data-screen='town'] > .town-hero {
+  flex: 1.1 1 0;
+  min-height: 104px;
+  max-height: 210px;
 }
 
 .town-hero {
   display: flex;
   align-items: center;
-  min-height: 150px;
-  padding: 14px 6px 14px 16px;
-  margin-bottom: 10px;
+  padding: 10px 50% 10px 16px;
   overflow: hidden;
 }
 
 .town-hero-text {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .town-hero-name {
   font-family: var(--f-display);
-  font-size: 34px;
+  font-size: 30px;
   line-height: 1;
+}
+
+.town-hero small {
+  white-space: normal;
 }
 
 .town-go {
@@ -1669,32 +1689,41 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  margin-top: 4px;
-  padding: 0 18px;
+  margin-top: 2px;
+  padding: 0 16px;
   border-radius: 12px;
   background: var(--coral);
   color: #fff;
   font-family: var(--f-display);
-  font-size: 17px;
+  font-size: 16px;
+  white-space: nowrap;
   box-shadow: 0 3px 0 var(--coral-deep);
 }
 
 .town-go img {
-  width: 18px;
+  width: 16px;
 }
 
 .town-hero-img {
-  flex: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 48%;
-  max-width: 200px;
-  height: auto;
+  height: calc(100% - 16px);
+  object-fit: contain;
+  object-position: right center;
+}
+
+.screen[data-screen='town'] > .town-halves {
+  flex: 1 1 0;
+  min-height: 100px;
+  max-height: 200px;
 }
 
 .town-halves {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
 }
 
 .town-half:only-child {
@@ -1702,8 +1731,12 @@
 }
 
 .town-half {
-  min-height: 0;
-  padding: 12px 12px 8px;
+  /* 단추는 글을 세로 가운데에 두니 위로 붙인다 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+  padding: 10px 12px;
   overflow: hidden;
 }
 
@@ -1711,29 +1744,44 @@
 .town-row-name {
   display: block;
   font-family: var(--f-display);
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.1;
 }
 
 .town-half-img {
-  display: block;
-  width: auto;
-  max-width: 82%;
-  height: 104px;
-  margin: 2px 0 0 auto;
+  position: absolute;
+  top: 52px;
+  right: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 58px);
   object-fit: contain;
   object-position: right bottom;
 }
 
+/* 신문 그림은 건물보다 작게 */
+.town-half-img.small {
+  height: calc(60% - 30px);
+  top: auto;
+  bottom: 10px;
+}
+
 .town-chevron {
-  width: 10px;
+  width: 9px;
   height: auto;
   opacity: 0.8;
 }
 
-.town-half .town-chevron {
+.town-half /* 신문 그림은 건물보다 작게 */
+.town-half-img.small {
+  height: calc(60% - 30px);
+  top: auto;
+  bottom: 10px;
+}
+
+.town-chevron {
   position: absolute;
-  top: 16px;
+  top: 14px;
   right: 14px;
 }
 
@@ -1741,31 +1789,49 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 8px;
+}
+
+.town-section h3 {
+  margin: 0;
   font-family: var(--f-display);
-  font-size: 19px;
+  font-size: 17px;
 }
 
 .town-section::after {
   content: '';
+  order: 1;
   flex: 1;
   height: 1px;
   background: var(--town-line);
 }
 
+/* 시험용 단추는 "마을 시설" 줄 오른쪽에 작게 */
+.town-section .test-btn {
+  order: 2;
+  min-height: 30px;
+  padding: 0 10px;
+  border-color: var(--cream-line);
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+/* 시설: 두 줄 격자 (도시는 6~7곳). 홀수면 마지막은 한 줄을 다 쓴다 */
 .town-rows {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 10px;
+}
+
+.town-rows:not(.many) > .town-row:last-child:nth-child(odd) {
+  grid-column: span 2;
 }
 
 .town-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 64px;
-  padding: 6px 16px 6px 8px;
+  gap: 8px;
+  min-height: 54px;
+  padding: 4px 8px 4px 4px;
 }
 
 .town-row-pic {
@@ -1773,15 +1839,55 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 76px;
-  height: 52px;
+  width: 54px;
+  height: 44px;
   border-radius: 10px;
   background: #f1ebdf;
 }
 
 .town-row-pic img {
-  max-width: 64px;
-  max-height: 46px;
+  max-width: 48px;
+  max-height: 38px;
+}
+
+/* 시설이 많으면 (도시) 네 칸 아이콘 격자: 그림과 이름만, 상태 글은 시설을 열면 본다 */
+.town-rows.many {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.town-rows.many .town-row {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+  min-height: 0;
+  padding: 4px 2px 6px;
+  text-align: center;
+}
+
+.town-rows.many .town-row-pic {
+  width: 100%;
+  height: 40px;
+  background: none;
+}
+
+.town-rows.many .town-row-text small {
+  display: none;
+}
+
+.town-rows.many .town-row-name {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.town-rows.many .building-alert {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .town-row-text {
@@ -1790,23 +1896,24 @@
 }
 
 .town-row-name {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .town-news {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 4px 16px 4px 12px;
+  gap: 10px;
+  min-height: 44px;
+  padding: 2px 14px 2px 10px;
 }
 
 .town-news img {
-  width: 40px;
+  width: 34px;
 }
 
 .town-news .town-row-name {
-  font-size: 16px;
+  flex: none;
+  font-size: 15px;
 }
 
 .town-news small {
@@ -1839,18 +1946,37 @@
   text-align: center;
 }
 
-/* 반 카드는 꺾쇠 왼쪽, 목록 줄은 꺾쇠 앞에 줄지어 */
+/* 반 카드는 꺾쇠 왼쪽, 목록 줄은 이름 오른쪽에 줄지어 */
 .town-half .building-alert {
-  right: 34px;
+  right: 30px;
 }
 
 .town-row .building-alert,
 .town-news .building-alert {
   position: static;
   flex: none;
-  order: 2;
 }
 
-.town-row .town-chevron {
-  order: 3;
+/* 작은 폰(아이폰 SE 등): 머리와 사이를 조금 줄여 한 화면에 */
+@media (max-height: 700px) {
+  .screen[data-screen='town'] {
+    gap: 6px;
+    padding-top: 6px;
+  }
+
+  .town-title h2 {
+    font-size: 26px;
+  }
+
+  .town-chip {
+    min-height: 28px;
+  }
+
+  .town-section .test-btn {
+    min-height: 26px;
+  }
+
+  .town-row {
+    min-height: 50px;
+  }
 }

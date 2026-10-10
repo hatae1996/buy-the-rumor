@@ -65,14 +65,14 @@ function status(id: BuildingId, v: PlayerView): string {
       return `탐색 기회 ${v.expeditionChances} / 6`;
     case 'warehouse': {
       const w = v.warehouses.find((x) => x.town === here);
-      return w ? `짐 ${w.count}개 보관 중` : '짐 보관 · 빌리기';
+      return w ? `짐 ${w.count}개 보관 중` : '보관 · 빌리기';
     }
     case 'stable': {
       const left = v.stable?.horses.reduce((s, h) => s + h.stock, 0) ?? 0;
       return left ? `말 ${left}마리` : '남은 말 없음';
     }
     case 'cartShop':
-      return `수레 수리 · 바꾸기 · 지금 ${v.cart.name}`;
+      return `지금 ${v.cart.name}`;
     case 'workshop':
       return '대장간 · 염장';
     case 'bank':
@@ -87,7 +87,8 @@ function status(id: BuildingId, v: PlayerView): string {
 const alertHtml = (b: PlayerView['buildings'][number]): string =>
   b.alert ? `<span class="building-alert" title="${b.alert}">!</span>` : '';
 
-export function buildingCards(game: Game, v: PlayerView): string {
+/** 마을 탭 건물들. sectionExtra는 "마을 시설" 제목 줄 오른쪽에 붙는다 (시험용 단추) */
+export function buildingCards(game: Game, v: PlayerView, sectionExtra = ''): string {
   // 견습 동안은 장면 하나에 새것 하나만: 시장, 여관, 잡화점, 바깥만
   // 신문팔이는 첫 신문 장면부터 (소식 탭이 열릴 때, 0.1.2)
   const apprenticeShown = ['market', 'inn', 'store', 'outside', ...(v.unlocks.includes('news') ? ['newsboy'] : [])];
@@ -111,13 +112,16 @@ export function buildingCards(game: Game, v: PlayerView): string {
         ${alertHtml(market)}
       </button>`
     : '';
+  // 바깥이 없는 마을(도시 등)은 신문팔이를 반 카드 자리에 올린다 (한 화면에 넣으려고)
+  const newsHalf = news && !halves.some((b) => b.id === 'outside');
+  if (newsHalf) halves.push(news);
   const halfHtml = halves.length
     ? `<div class="town-halves">${halves
         .map(
           (b) => `<button type="button" class="town-half" data-building="${b.id}">
             <span class="town-half-name">${b.name}</span>
             <small>${status(b.id, v)}</small>
-            <img class="town-half-img" src="${IMG[b.id]}" alt="" />
+            <img class="town-half-img${b.id === 'newsboy' ? ' small' : ''}" src="${IMG[b.id]}" alt="" />
             ${CHEVRON}
             ${alertHtml(b)}
           </button>`,
@@ -125,19 +129,18 @@ export function buildingCards(game: Game, v: PlayerView): string {
         .join('')}</div>`
     : '';
   const rowHtml = rows.length
-    ? `<h3 class="town-section">마을 시설</h3>
-      <div class="town-rows">${rows
+    ? `<div class="town-section"><h3>마을 시설</h3>${sectionExtra}</div>
+      <div class="town-rows${rows.length > 4 ? ' many' : ''}">${rows
         .map(
           (b) => `<button type="button" class="town-row" data-building="${b.id}">
             <span class="town-row-pic"><img src="${IMG[b.id]}" alt="" /></span>
             <span class="town-row-text"><span class="town-row-name">${b.name}</span><small>${status(b.id, v)}</small></span>
-            ${CHEVRON}
             ${alertHtml(b)}
           </button>`,
         )
         .join('')}</div>`
     : '';
-  const newsHtml = news
+  const newsHtml = news && !newsHalf
     ? `<button type="button" class="town-news" data-building="newsboy">
         <img src="${IMG.newsboy}" alt="" />
         <span class="town-row-name">${news.name}</span>
@@ -145,7 +148,7 @@ export function buildingCards(game: Game, v: PlayerView): string {
         ${alertHtml(news)}
       </button>`
     : '';
-  return marketHtml + halfHtml + rowHtml + newsHtml;
+  return marketHtml + halfHtml + (rowHtml || sectionExtra) + newsHtml;
 }
 
 export function openBuilding(game: Game, id: BuildingId): void {

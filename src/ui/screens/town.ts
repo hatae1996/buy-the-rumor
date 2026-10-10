@@ -83,6 +83,8 @@ function townHead(game: Game, v: PlayerView, place: string): string {
     </header>`;
 }
 
+const TEST_BTN = '<button type="button" class="test-btn" data-pass-day>시험용: 장날 열기</button>';
+
 export interface TownScreenActions {
   /** 지금 실제 시각 (도착 예상 시각을 셈한다) */
   now: number;
@@ -145,8 +147,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
         <p class="muted">길 위에서는 장에 신청할 수 없어요. 창고에 둔 짐은 그 마을 장날에 팔 수 있어요(장부 탭).</p>
       </section>`;
   } else {
-    body = buildingCards(game, v);
-    if (!v.buildings.some((b) => b.id === 'outside')) body += '<p class="muted center">자원지가 없어 원정은 못 해요.</p>';
+    body = buildingCards(game, v, v.settlement ? '' : TEST_BTN);
   }
 
   el.innerHTML = `
@@ -154,7 +155,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
     ${settlementCard(v)}
     ${apprenticeCard(v, v.apprentice ? (game.faces()?.elder ?? null) : null)}
     ${body}
-    ${v.settlement ? '' : '<button type="button" class="test-btn" data-pass-day>시험용: 장날 바로 열기</button>'}
+    ${v.settlement || v.location.kind === 'town' ? '' : TEST_BTN}
   `;
 
   el.querySelectorAll<HTMLButtonElement>('[data-building]').forEach((b) =>
