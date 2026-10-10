@@ -28,7 +28,7 @@ export function openGearSheet(game: Game): void {
         const art = itemArt(g.kind);
         const button =
           g.uses === null || g.uses === 0
-            ? `<button type="button" class="sk-btn" data-buy="${g.kind}" ${v.location.kind !== 'town' || v.gold < g.price ? 'disabled' : ''}>사기<small>${money(g.price)} G</small></button>`
+            ? `<button type="button" class="sk-btn" data-buy="${g.kind}" ${v.location.kind !== 'town' || v.gold < g.price ? 'disabled' : ''}>사기<small>${money(g.price)}골드</small></button>`
             : '';
         const repair =
           g.uses !== null && g.uses < g.maxUses

@@ -54,7 +54,7 @@ function otherHolds(game: Game, v: PlayerView): string[] {
         holdRow(
           img(warehouseImg),
           `${townName(w.town)} 창고`,
-          `짐 ${w.count}개 · 보관료 하루 ${money(w.fee)} G${w.owed ? ` · 밀린 보관료 ${money(w.owed)} G` : ''}`,
+          `짐 ${w.count}개 · 보관료 하루 ${money(w.fee)}골드${w.owed ? ` · 밀린 보관료 ${money(w.owed)}골드` : ''}`,
           `${townName(w.town)}에 가야 열 수 있어요`,
           true,
         ),

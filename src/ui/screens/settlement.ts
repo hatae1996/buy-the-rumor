@@ -68,7 +68,7 @@ function reportHtml(game: Game, st: SettlementView): string {
   if (!r) return '<p class="cv-muted">이번 시즌 리포트가 없어요.</p>';
   const town = (id: number) => game.map.towns[id]!.name;
   const best = r.bestTrade
-    ? `${r.bestTrade.day}일째 ${town(r.bestTrade.town)}에서 ${goodName(r.bestTrade.good)} ${r.bestTrade.qty}개를 개당 ${money(r.bestTrade.price)} G에 팔아 <b class="plus">+${money(r.bestTrade.profit)} G</b>`
+    ? `${r.bestTrade.day}일째 ${town(r.bestTrade.town)}에서 ${goodName(r.bestTrade.good)} ${r.bestTrade.qty}개를 개당 ${money(r.bestTrade.price)}골드에 팔아 <b class="plus">+${money(r.bestTrade.profit)}골드</b>`
     : '이익을 남긴 거래가 없어요.';
   const row = (img: string, title: string, text: string) => `<li><img src="${img}" alt="" /><div><h4>${title}</h4><p>${text}</p></div></li>`;
   return `<ul class="settle-report">
@@ -76,7 +76,7 @@ function reportHtml(game: Game, st: SettlementView): string {
     ${row(talkImg, '가장 믿었던 소문꾼', r.trustedGossip ? `${r.trustedGossip.name} · 맞았다 ${r.trustedGossip.right}번` : '아직 기록이 없어요.')}
     ${row(scrollImg, '맞힌 소문', `확인된 소문 ${r.rumorsRight}개`)}
     ${row(signImg, '다닌 길', `<span class="settle-trip"><span>방문 마을 ${r.towns}곳</span><span>출발 ${r.trips}번</span><span>이동 ${r.roadDays}일</span></span>`)}
-    <li class="worth"><img src="${sackImg}" alt="" /><div><h4>시즌 끝 순자산</h4><p class="settle-worth"><b>${money(r.worth)} G</b><small>${ICON.lock}나에게만 보여요</small></p></div></li>
+    <li class="worth"><img src="${sackImg}" alt="" /><div><h4>시즌 끝 순자산</h4><p class="settle-worth"><b>${money(r.worth)}골드</b><small>${ICON.lock}나에게만 보여요</small></p></div></li>
   </ul>`;
 }
 

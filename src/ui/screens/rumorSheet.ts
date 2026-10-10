@@ -67,7 +67,7 @@ export function openPigeonSheet(game: Game): void {
             ${
               flying
                 ? '<span class="sk-chip teal">날아가는 중<br />내일 도착</span>'
-                : `<button type="button" class="sk-btn" data-to="${t.id}" ${v.gold < v.pigeon.fee ? 'disabled' : ''}>보내기<small>${money(v.pigeon.fee)} G</small></button>`
+                : `<button type="button" class="sk-btn" data-to="${t.id}" ${v.gold < v.pigeon.fee ? 'disabled' : ''}>보내기<small>${money(v.pigeon.fee)}골드</small></button>`
             }
           </div>
         </li>`;

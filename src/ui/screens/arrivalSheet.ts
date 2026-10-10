@@ -34,8 +34,8 @@ export function openArrivalSheet(game: Game): void {
           return `<li class="sk-row${set ? ' on' : ''}">
             <div class="sk-row-main">
               <span class="sk-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>
-              <span class="sk-text"><b>${goodName(g)} <em>${count(v.haul, g)}개</em></b><small>${mem ? `${mem.day}일째에 본 값 ${money(mem.prices[g])} G` : '이 마을 값은 몰라요'}</small></span>
-              ${set ? `<span class="sk-chip teal">전부 · ${money(set.kind === 'onArrival' ? set.minPrice : p)} G 이상</span>` : ''}
+              <span class="sk-text"><b>${goodName(g)} <em>${count(v.haul, g)}개</em></b><small>${mem ? `${mem.day}일째에 본 값 ${money(mem.prices[g])}골드` : '이 마을 값은 몰라요'}</small></span>
+              ${set ? `<span class="sk-chip teal">전부 · ${money(set.kind === 'onArrival' ? set.minPrice : p)}골드 이상</span>` : ''}
             </div>
             ${
               set
@@ -43,10 +43,10 @@ export function openArrivalSheet(game: Game): void {
                 : `<div class="sk-row-act">
                     <span class="sk-step">
                       <button type="button" data-p="${g}" data-dp="-1" aria-label="${goodName(g)} 값 내리기">−</button>
-                      <b>${money(p)} G</b>
+                      <b>${money(p)}골드</b>
                       <button type="button" data-p="${g}" data-dp="1" aria-label="${goodName(g)} 값 올리기">+</button>
                     </span>
-                    <button type="button" class="sk-btn coral" data-set="${g}">전부 팔기<small>${money(p)} G 이상</small></button>
+                    <button type="button" class="sk-btn coral" data-set="${g}">전부 팔기<small>${money(p)}골드 이상</small></button>
                   </div>`
             }
           </li>`;

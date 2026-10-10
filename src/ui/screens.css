@@ -6570,8 +6570,10 @@
 }
 
 .cv-num em {
-  color: var(--cream-ink);
+  flex: none;
+  color: var(--cream-ink-soft);
   font-family: var(--f-display);
+  font-size: 13px;
   font-style: normal;
 }
 

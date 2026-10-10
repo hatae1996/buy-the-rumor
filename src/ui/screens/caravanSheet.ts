@@ -95,8 +95,8 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
     for (const id of picked) if (!v.horses.some((h) => h.id === id)) picked.delete(id);
     const carts = v.carts.filter((c) => c.horses > 0 || c.type === 'handcart');
     const cartChoices = carts.flatMap((c) => [
-      ...(c.rentPerDay !== null ? [{ value: `${c.type}:rent`, label: `${c.name} 빌리기`, price: `하루 ${money(c.rentPerDay)} G` }] : []),
-      { value: `${c.type}:buy`, label: `${c.name} 사기`, price: `${money(CART.types[c.type].price)} G` },
+      ...(c.rentPerDay !== null ? [{ value: `${c.type}:rent`, label: `${c.name} 빌리기`, price: `하루 ${money(c.rentPerDay)}골드` }] : []),
+      { value: `${c.type}:buy`, label: `${c.name} 사기`, price: `${money(CART.types[c.type].price)}골드` },
     ]);
     if (!cartChoices.some((o) => o.value === cartPick)) cartPick = '';
     const chosenCart = cartChoices.find((o) => o.value === cartPick);
@@ -194,8 +194,8 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
       : `<span><small>현재 마을</small><b>${townName(c.town)}</b></span>`;
     const lines = (s: CaravanStop) =>
       [
-        ...s.buys.map((b) => `<span class="cv-tag buy">사기</span>${goodName(b.good)} ${b.qty}개 · 최대 ${money(b.maxPrice)} G`),
-        ...s.sells.map((x) => `<span class="cv-tag sell">팔기</span>${goodName(x.good)} ${x.qty === 'all' ? '전부' : `${x.qty}개`} · 최소 ${money(x.minPrice)} G`),
+        ...s.buys.map((b) => `<span class="cv-tag buy">사기</span>${goodName(b.good)} ${b.qty}개 · 최대 ${money(b.maxPrice)}골드`),
+        ...s.sells.map((x) => `<span class="cv-tag sell">팔기</span>${goodName(x.good)} ${x.qty === 'all' ? '전부' : `${x.qty}개`} · 최소 ${money(x.minPrice)}골드`),
       ]
         .map((l) => `<li>${l}</li>`)
         .join('') || '<li class="cv-muted">들르기만</li>';
@@ -214,14 +214,14 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
           <div>
             <b>마부 ${c.carter ?? '없음'} · ${horseNames}</b>
             <small>${c.cart.name}${c.rent ? ' · 대여 중' : ''}</small>
-            ${c.rent ? `<span class="cv-chip">하루 ${money(c.rent.perDay)} G</span>` : ''}
+            ${c.rent ? `<span class="cv-chip">하루 ${money(c.rent.perDay)}골드</span>` : ''}
           </div>
         </div>
         <div class="cv-status-row">
           <div class="cv-where"><img src="${pinImg}" alt="" />${where}</div>
           <div class="cv-weight"><img src="${weightImg}" alt="" /><span><small>적재 무게</small><i class="cv-bar"><i style="width:${share}%"></i></i><em>${c.cart.weight} / ${c.cart.maxWeight}</em></span></div>
         </div>
-        ${c.rent?.owed ? `<p class="cv-muted">밀린 수레 값 ${money(c.rent.owed)} G (행렬을 풀 때 다 내요)</p>` : ''}
+        ${c.rent?.owed ? `<p class="cv-muted">밀린 수레 값 ${money(c.rent.owed)}골드 (행렬을 풀 때 다 내요)</p>` : ''}
       </section>
       ${c.carter ? '' : '<p class="cv-hint"><img src="' + innImg + '" alt="" />마부가 떠나 행렬이 멈췄어요. 그 마을에 가서 행렬을 푸세요.</p>'}
       <section class="cv-card">
@@ -240,7 +240,7 @@ export function openCaravanSheet(game: Game, preset?: QuickSell, back = '지도'
           <label><small>목적지</small><span class="cv-select"><img src="${pinImg}" alt="" /><select data-quick-town aria-label="목적지">${townOptions(q.town)}</select></span></label>
           <label><small>물품</small><span class="cv-select">${goodPic(q.good)}<select data-quick-good aria-label="물품">${goodOptions(q.good)}</select></span></label>
           <label><small>수량</small><span class="cv-select plain"><select data-quick-qty aria-label="수량">${sellQtyOptions(q.qty ?? 'all')}</select></span></label>
-          <label><small>최소 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-quick-price aria-label="최소 단가" value="${q.minPrice}" /><em>G</em></span></label>
+          <label><small>최소 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-quick-price aria-label="최소 단가" value="${q.minPrice}" /><em>골드</em></span></label>
         </div>
         <p class="cv-muted">행렬 짐: ${[...cargo.entries()].map(([g, n]) => `${goodName(g)} ${n}`).join(', ') || '없음'} · 지금 지시서 대신 보내요. 다 팔면 도착한 마을에 머물러요.</p>
         <button type="button" class="cv-btn coral" data-quick-send>${ICON.send}판매 지시 보내기</button>
@@ -378,7 +378,7 @@ function editorHtml(plan: CaravanPlan, townOptions: (sel: number) => string): st
             <div class="cv-line">
               <span class="cv-select tall">${goodPic(b.good)}<select data-buy-good="${i}:${j}" aria-label="살 물품">${goodOptions(b.good)}</select></span>
               <label><small>수량</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-buy-qty="${i}:${j}" value="${b.qty}" /><em>개</em></span></label>
-              <label><small>최대 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-buy-price="${i}:${j}" value="${b.maxPrice}" /><em>G</em></span></label>
+              <label><small>최대 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-buy-price="${i}:${j}" value="${b.maxPrice}" /><em>골드</em></span></label>
             </div>`,
           )
           .join('')}
@@ -388,7 +388,7 @@ function editorHtml(plan: CaravanPlan, townOptions: (sel: number) => string): st
             <div class="cv-line">
               <span class="cv-select tall">${goodPic(x.good)}<select data-sell-good="${i}:${j}" aria-label="팔 물품">${goodOptions(x.good)}</select></span>
               <label><small>수량</small><span class="cv-select plain"><select data-sell-qty="${i}:${j}" aria-label="수량">${sellQtyOptions(x.qty)}</select></span></label>
-              <label><small>최소 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-sell-price="${i}:${j}" value="${x.minPrice}" /><em>G</em></span></label>
+              <label><small>최소 단가</small><span class="cv-num"><input type="number" min="1" inputmode="numeric" data-sell-price="${i}:${j}" value="${x.minPrice}" /><em>골드</em></span></label>
             </div>`,
           )
           .join('')}
