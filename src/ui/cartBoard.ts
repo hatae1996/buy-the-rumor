@@ -68,7 +68,7 @@ function cartArt(type: CartType | 'warehouse'): BoardModel['art'] {
 // 화면이 다시 그려져도 고른 짐과 안내 문구는 남긴다
 let selected: { board: BoardId; piece: number } | null = null;
 let message = '';
-/** 창고와 옮길 개수 (0.1.6: 1개, +1, +5, 전체). 다른 짐을 고르면 1로 돌아간다 */
+/** 창고와 옮길 개수 (0.1.6: 1개, −1, +1, +5, 전체). 다른 짐을 고르면 1로 돌아간다 */
 let moveQty = 1;
 let moveFor = '';
 
@@ -244,6 +244,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
           ? `<div class="hold-qty" role="group" aria-label="옮길 개수">
               <span>옮길 개수 <b>${moveQty}</b> / ${sel!.qty}</span>
               <button type="button" data-qty="1" aria-pressed="${moveQty === 1}">1개</button>
+              <button type="button" data-qty="-1" ${moveQty <= 1 ? 'disabled' : ''}>−1</button>
               <button type="button" data-qty="+1">+1</button>
               <button type="button" data-qty="+5">+5</button>
               <button type="button" data-qty="all" aria-pressed="${moveQty === sel!.qty}">전체</button>
@@ -322,7 +323,7 @@ export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOpt
       b.addEventListener('click', () => {
         if (!sel) return;
         const q = b.dataset.qty!;
-        moveQty = q === 'all' ? sel.qty : q === '1' ? 1 : Math.min(sel.qty, moveQty + Number(q));
+        moveQty = q === 'all' ? sel.qty : q === '1' ? 1 : Math.max(1, Math.min(sel.qty, moveQty + Number(q)));
         render();
       }),
     );
