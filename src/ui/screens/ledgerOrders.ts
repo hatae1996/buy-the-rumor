@@ -1,6 +1,7 @@
 // 장부 탭 "거래 예약" (0.1.6 목업 docs/reference/ledger-orders-mockup-0.1.6.png).
 // 장날 신청과 예약 주문을 마을과 때(다음 장날, 마감 날까지, 도착 후 첫 장날)로 묶어 카드 하나씩.
 // 카드마다 물품 그림과 개수, 팔기·사기 칩, 예약 수정(그 자리에서 고칠 수 있을 때만)과 예약 취소.
+import infoImg from '../../../assets/ui/icon_info.png';
 import lettersImg from '../../../assets/ui/ledger_letters.png';
 import houseHere from '../../../assets/ui/house_red.png';
 import houseThere from '../../../assets/ui/house_blue.png';
@@ -101,7 +102,7 @@ export function ordersHtml(game: Game, v: PlayerView): string {
     .join('');
   return `${summary}
     ${groups.length ? `<h3 class="ledger-section-title">진행 중</h3>${cards}` : ''}
-    <p class="ledger-note"><span class="ledger-note-i" aria-hidden="true">i</span>예약은 판매 완료가 아니에요.<br />판매 결과는 수입·지출에서 확인하세요.</p>`;
+    <p class="ledger-note"><img class="ledger-note-i" src="${infoImg}" alt="" />예약은 판매 완료가 아니에요.<br />판매 결과는 수입·지출에서 확인하세요.</p>`;
 }
 
 export function bindOrderGroups(el: HTMLElement, game: Game, v: PlayerView): void {

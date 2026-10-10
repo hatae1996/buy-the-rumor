@@ -3,12 +3,13 @@
 import bookImg from '../../../assets/ui/tab_ledger.png';
 import sprigL from '../../../assets/ui/orn_sprig_l.png';
 import sprigR from '../../../assets/ui/orn_sprig_r.png';
-import { GOODS, type PlayerView } from '../../sim/economy';
-import { agoText, goodName, money } from '../format';
+import type { PlayerView } from '../../sim/economy';
+import { money } from '../format';
 import type { Game } from '../game';
 import { horseFatigue, speedWord } from './horseSheet';
 import { bindOrderGroups, ordersHtml } from './ledgerOrders';
 import { accountsHtml, bindAccounts } from './ledgerAccounts';
+import { bindPrices, pricesHtml } from './ledgerPrices';
 
 export type LedgerSection = 'orders' | 'accounts' | 'prices' | 'people';
 
@@ -55,27 +56,10 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
     ...(v.caravan?.horses ?? []).map((h) => `<li><b>${h.name}</b> <small class="muted">두 번째 행렬</small>${horseFatigue(h)}</li>`),
   ].join('');
 
-  const here = v.location.kind === 'town' ? v.location.town : null;
-  const known = game.map.towns
-    .map((t) => {
-      const mem = v.memory[t.id];
-      const badge = here === t.id ? '지금 여기' : mem ? `${agoText(v.day, mem.day)} 본 시세` : '가 본 적 없음';
-      const head = `<header class="card-head"><h3>${t.name}</h3><span class="badge">${badge}</span></header>`;
-      if (!mem) return `<div class="memory">${head}<p class="muted">직접 가 보거나 소문을 들어야 알 수 있어요.</p></div>`;
-      const cells = GOODS.map((g) => `<span><span class="muted">${goodName(g)}</span> ${mem.prices[g]}</span>`).join('');
-      return `<div class="memory">${head}<div class="memory-prices">${cells}</div></div>`;
-    })
-    .join('');
-
   const bodies: Record<LedgerSection, string> = {
     orders: ordersHtml(game, v),
     accounts: accountsHtml(game, v),
-    prices: `
-      <section class="card">
-        <h2>내가 아는 시세</h2>
-        <p class="muted">다른 마을 시세는 마지막으로 본 날의 값이에요. 지금은 달라졌을 수 있어요.</p>
-        ${known}
-      </section>`,
+    prices: pricesHtml(game, v),
     people: `
       <section class="card">
         <header class="card-head"><h2>사람과 말</h2><span class="badge">하루 ${money(v.upkeep.total)}</span></header>
@@ -104,4 +88,5 @@ export function renderLedger(el: HTMLElement, game: Game, v: PlayerView): void {
   );
   if (section === 'orders') bindOrderGroups(el, game, v);
   if (section === 'accounts') bindAccounts(el, () => renderLedger(el, game, v));
+  if (section === 'prices') bindPrices(el, game, v, () => renderLedger(el, game, v));
 }

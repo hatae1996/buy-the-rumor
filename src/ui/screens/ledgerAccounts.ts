@@ -1,5 +1,6 @@
 // 장부 탭 "수입·지출" (0.1.6 목업 docs/reference/ledger-accounts-mockup-0.1.6.png).
 // 보유금과 짐의 추정 가치, 누적 수입·지출, 날과 마을로 묶은 입출금 내역(최신순·오래된순).
+import infoImg from '../../../assets/ui/icon_info.png';
 import purseImg from '../../../assets/ui/money_purse.png';
 import crateImg from '../../../assets/ui/cargo_crate.png';
 import incomeImg from '../../../assets/ui/coins_stack.png';
@@ -123,7 +124,7 @@ export function accountsHtml(game: Game, v: PlayerView): string {
             .join('')}</section>`
         : '<p class="ledger-note">아직 적힌 게 없어요. 마을에서 물건을 사고팔아 보세요.</p>'
     }
-    <p class="ledger-note plain"><span class="ledger-note-i" aria-hidden="true">i</span>물품을 얻은 것(원정, 채집)은 수입에 들어가지 않아요.</p>`;
+    <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />물품을 얻은 것(원정, 채집)은 수입에 들어가지 않아요.</p>`;
 }
 
 export function bindAccounts(el: HTMLElement, rerender: () => void): void {

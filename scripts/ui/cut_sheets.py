@@ -4,6 +4,7 @@
 - assets-src/ui/town-ui-sheet.png: 분홍 배경. 마을 탭 건물 6과 작은 아이콘 8 (0.1.6 마을 탭)
 - assets-src/ui/ledger-ui-sheet.png: 장부 탭 (편지 묶음, 마을 집 둘)
 - assets-src/ui/ledger-money-sheet.png: 장부 수입·지출 (돈주머니, 상자, 금화 더미, 자루)
+- assets-src/ui/ledger-icons-sheet.png: 장부 시세 기록 (시계, 안내 i)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
@@ -190,6 +191,11 @@ def ledger_money_sheet() -> None:
     sheet_pieces('ledger-money-sheet.png', [('money_purse.png', 320), ('cargo_crate.png', 160), ('coins_stack.png', 192), ('coins_sack.png', 192)])
 
 
+def ledger_icons_sheet() -> None:
+    """장부 시세 기록 아이콘 (0.1.6 목업 docs/reference/ledger-prices-mockup-0.1.6.png): 시계, 안내(i)"""
+    sheet_pieces('ledger-icons-sheet.png', [('icon_clock.png', 96), ('icon_info.png', 96)])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -216,5 +222,6 @@ if __name__ == '__main__':
     travel_ui_sheet()
     ledger_ui_sheet()
     ledger_money_sheet()
+    ledger_icons_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

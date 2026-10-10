@@ -519,20 +519,6 @@
   line-height: 1.3;
 }
 
-.memory {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(58, 43, 34, 0.3);
-}
-
-.memory-prices {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2px 10px;
-  margin-top: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ───── 자리를 비운 사이 ───── */
 .away-head {
   display: flex;
@@ -2532,14 +2518,6 @@
   flex: none;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  background: #8f8a84;
-  color: #fff;
-  font-family: Georgia, serif;
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 26px;
-  text-align: center;
 }
 
 /* 장부 수입·지출 (0.1.6 목업 docs/reference/ledger-accounts-mockup-0.1.6.png) */
@@ -2757,4 +2735,159 @@
   background: none;
   box-shadow: none;
   padding: 0 4px;
+}
+
+/* 장부 시세 기록 (0.1.6 목업 docs/reference/ledger-prices-mockup-0.1.6.png) */
+.price-town,
+.price-table {
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.price-town {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+}
+
+.price-town > img {
+  flex: none;
+  width: 64px;
+}
+
+.price-town-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.price-pick {
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 22px;
+  text-align: left;
+}
+
+.price-town-when {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--town-line);
+}
+
+.price-when {
+  font-family: var(--f-display);
+  font-size: 13px;
+}
+
+.price-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 2px 4px;
+  border-radius: 999px;
+  font-family: var(--f-display);
+  font-size: 12px;
+}
+
+.price-chip img {
+  width: 20px;
+}
+
+.price-chip.here {
+  padding-left: 10px;
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+}
+
+.price-chip.now {
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+}
+
+.price-chip.old {
+  background: #f6e7c8;
+  color: #9a6a1c;
+}
+
+.price-table {
+  padding: 6px 10px 4px;
+}
+
+.price-table-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #efe9de;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.price-table ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.price-table li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 2px 6px;
+}
+
+.price-table li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.price-name {
+  flex: 1;
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.price-table b {
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.price-others {
+  min-height: 52px;
+}
+
+.price-others .town-row-pic {
+  background: none;
+}
+
+.price-pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.price-pick-list .town-row:disabled {
+  opacity: 0.5;
+}
+
+.price-pick-list .town-row[aria-current='true'] {
+  border-color: var(--cream-teal);
 }
