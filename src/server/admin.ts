@@ -1,4 +1,4 @@
-// 운영자 함수 (작업목록-0.2.0 8·12번): 시즌 열기, 세계 더 열기, 세계 상태 보기, 기록 표, 멈춘 세계 풀기, 예행연습 지우기.
+// 운영자 함수 (작업목록-0.2.0 8·12번): 시즌 열기, 세계 더 열기, 세계 상태 보기, 기록 표, 멈춘 세계 풀기, 예행연습 지우기, 장날 예약 기록.
 // 비밀 값(ADMIN_SECRET)을 아는 사람만 부른다.
 // 쓰는 법은 supabase/README.md "시즌 열기".
 import type { Db } from './db';
@@ -51,6 +51,19 @@ export async function adminRequest(db: Db, body: unknown): Promise<{ status: num
       if (s.kind !== 'rehearsal') return { status: 400, body: { ok: false, error: 'notRehearsal' } };
       await db.query('delete from public.seasons where id = $1', [req.seasonId]);
       return { status: 200, body: { ok: true } };
+    }
+    case 'cron': {
+      // 5분마다 장날을 부르는 예약(pg_cron)이 돌았는지와, 장날 함수가 몇 번으로 답했는지 (200 통과, 403 비밀 값이 다름)
+      try {
+        const runs = await db.query(
+          `select d.start_time, d.status, d.return_message from cron.job_run_details d join cron.job j on j.jobid = d.jobid
+            where j.jobname = 'btr-tick' order by d.start_time desc limit 10`,
+        );
+        const http = await db.query('select created, status_code, error_msg, left(content, 200) as content from net._http_response order by created desc limit 10');
+        return { status: 200, body: { ok: true, runs, http } };
+      } catch (e) {
+        return { status: 200, body: { ok: false, error: 'noCron', detail: e instanceof Error ? e.message : String(e) } };
+      }
     }
     case 'unhalt': {
       // 맞는 번들을 다시 올린 뒤 멈춘 세계를 푼다 (handoff 0.2.0 3번)
