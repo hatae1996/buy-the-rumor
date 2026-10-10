@@ -17,7 +17,7 @@ const MAX_DIST = 8;
 /** 육지 칸 가운데에서 이만큼까지는 육지로 본다 (칸 반지름 1, 기둥 0.97) */
 const LAND_RADIUS = 0.9;
 /** 포말 삼각형 조각 한 변 (칸 반지름 1 기준) */
-const FOAM_CELL = 0.22;
+const FOAM_CELL = 0.13;
 /** 수면 크기: 카메라가 어디를 보든 끝이 보이지 않게 */
 const PLANE_SIZE = 400;
 
