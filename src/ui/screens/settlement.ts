@@ -7,12 +7,16 @@ import type { Game } from '../game';
 import { openSheet } from '../sheet';
 import { openCertificate } from './certificate';
 
-/** 내가 오른 부문만, 순위 순으로 */
+/** 내가 오른 부문만, 순위 순으로. 시즌 전체 순위와 내 세계 순위 (0.1.3) */
 export function myPlaces(categories: readonly RankingCategoryView[]): string {
   const mine = categories.filter((c) => c.mine).sort((a, b) => a.mine!.rank - b.mine!.rank);
   if (!mine.length) return '<li class="muted">순위에 오른 부문이 없어요.</li>';
   return mine
-    .map((c) => `<li class="row"><span>${c.name}</span><b>${c.mine!.rank}위 <small class="muted">/ ${c.count} · 상위 ${Math.max(1, Math.round(c.mine!.topShare * 100))}%</small></b></li>`)
+    .map(
+      (c) => `<li class="row"><span>${c.name}</span><b>${c.mine!.rank}위 <small class="muted">/ ${c.count} · 상위 ${Math.max(1, Math.round(c.mine!.topShare * 100))}%${
+        c.world.mine ? `<br />내 세계 ${c.world.mine.rank}위 / ${c.world.count}` : ''
+      }</small></b></li>`,
+    )
     .join('');
 }
 
@@ -46,7 +50,7 @@ export function openSettlement(game: Game, onNextSeason: () => void): void {
           </section>`
         : ''
     }
-    <section class="card"><h3>내 순위</h3><ul class="list">${myPlaces(st.categories)}</ul></section>
+    <section class="card"><h3>내 순위</h3><p class="muted">시즌 전체(같은 시즌에 열린 모든 세계) 순위로 인장과 칭호를 받아요.</p><ul class="list">${myPlaces(st.categories)}</ul></section>
     <section class="card"><h3>시즌 리포트</h3>${reportHtml(game, st)}</section>
     <p class="muted">다음 시즌은 새 지도, 새 마을에서 시작해요. 상인 증서와 인장, 칭호, 연차만 남고 금화와 짐, 말, 일꾼, 창고, 아는 시세와 소문은 처음부터예요.</p>
     <div class="btn-row">

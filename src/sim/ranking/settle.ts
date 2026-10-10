@@ -2,6 +2,7 @@
 // 순자산과 부문 순위를 매기고, 랭킹 인장(부문마다 1위·상위 3명·상위 10% 중 가장 좋은 것 하나, 그 부문에 5명 이상일 때만),
 // 1위 칭호("3시즌 소금왕"), 완주 기념 인장과 상인 연차, 시즌 리포트를 남긴다.
 // 결산 뒤에는 그 시즌 명령을 받지 않는다 (서버는 다음 날 쉬고, 로컬은 결산 화면을 닫으면 새 세계로).
+// 0.1.3: 인장·칭호·상위 10%는 시즌 전체 순위(같은 시즌의 모든 세계)로 매긴다. 화면에는 내 세계 순위도 함께.
 import { ECONOMY } from '../constants';
 import { playerList } from '../economy/players';
 import type { EconomyState, PlayerId, PlayerState } from '../economy/state';
@@ -10,7 +11,7 @@ import { CATEGORIES, categoryName, memorialBadge, RANKING_PLACES, rankingBadge }
 import { awardBadge } from './record';
 import { bestSale } from './scores';
 import type { Standing } from './standings';
-import { rankAll, type RankTable } from './table';
+import { rankAll, type RankTable, type ScoreRow } from './table';
 import type { CategoryId } from './types';
 import { netWorth } from './worth';
 
@@ -34,7 +35,10 @@ export interface SeasonSettlement {
   season: number;
   /** 결산한 날 (시즌 마지막 장날) */
   day: number;
+  /** 시즌 전체 순위 (인장과 칭호는 이것으로) */
   table: RankTable;
+  /** 내 세계 순위 */
+  worldTable: RankTable;
   reports: Record<PlayerId, SeasonReport>;
   /** 이번 결산에서 새로 찍힌 인장과 칭호 */
   awarded: Record<PlayerId, { badges: string[]; titles: string[] }>;
@@ -48,13 +52,16 @@ export function placeOf(s: Standing): (typeof RANKING_PLACES)[number]['id'] | nu
   return null;
 }
 
-/** 시즌 결산. 같은 시즌은 한 번만 (두 번 부르면 처음 결과를 그대로 돌려준다) */
-export function settleSeason(state: EconomyState): SeasonSettlement | null {
+/**
+ * 시즌 결산. 같은 시즌은 한 번만 (두 번 부르면 처음 결과를 그대로 돌려준다).
+ * others: 같은 시즌 다른 세계의 점수 줄 (서버가 모아 넘긴다, 로컬은 없음)
+ */
+export function settleSeason(state: EconomyState, others: readonly ScoreRow[] = []): SeasonSettlement | null {
   const season = state.season;
   if (!season) return null;
   if (state.settlement?.season === season.number) return state.settlement;
-  const table = rankAll(state);
-  const out: SeasonSettlement = { season: season.number, day: state.day, table, reports: {}, awarded: {} };
+  const { world, season: table } = rankAll(state, others);
+  const out: SeasonSettlement = { season: season.number, day: state.day, table, worldTable: world, reports: {}, awarded: {} };
   for (const p of playerList(state)) {
     if (p.record?.season !== season.number) continue;
     const got = { badges: [] as string[], titles: [] as string[] };

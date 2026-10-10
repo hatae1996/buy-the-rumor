@@ -20,6 +20,7 @@ import { createCertificate } from '../ranking/certificate';
 import { ensureRecord } from '../ranking/record';
 import { emptyAccount } from '../bank/bank';
 import { defaultNotifySettings } from '../notify/kinds';
+import { localWorld, type WorldRef } from './worldRef';
 
 /** 세계에 앉을 플레이어 */
 export interface PlayerSpec {
@@ -46,6 +47,8 @@ export interface CreateOptions {
    * 없으면 시드로 랜덤 (실제 게임). 정해도 시드의 다른 난수는 그대로라, 계절 말고는 같은 세계다
    */
   startSeason?: Season;
+  /** 시즌 id와 세계 id (0.1.3). 없으면 로컬 세계 (localWorld) */
+  world?: WorldRef;
 }
 
 export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = {}): EconomyState {
@@ -59,6 +62,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   const state: EconomyState = {
     version: 1,
     seed,
+    world: opt.world ?? localWorld(seed),
     day: 1,
     startSeason: opt.startSeason === undefined ? drawnSeason : seasonBeforeWarmup(opt.startSeason, opt.warmupDays ?? 0),
     rng: 0,
@@ -185,7 +189,7 @@ function newPlayer(id: PlayerId, seq: number, town: number): PlayerState {
  * (기획서 "시즌을 넘어 남는 것": 상인 증서와 인장, 칭호, 연차, 알림 설정). 금화, 짐, 말, 일꾼, 창고, 아는 시세와 소문은 처음부터.
  * 견습은 다시 하지 않는다
  */
-export function nextSeasonEconomy(prev: EconomyState, map: WorldMap, seed: number, opt: Pick<CreateOptions, 'warmupDays' | 'startSeason'> = {}): EconomyState {
+export function nextSeasonEconomy(prev: EconomyState, map: WorldMap, seed: number, opt: Pick<CreateOptions, 'warmupDays' | 'startSeason' | 'world'> = {}): EconomyState {
   const keep = playerList(prev);
   const state = createEconomy(map, seed, { ...opt, players: keep.map((p) => ({ id: p.id })), seasonNumber: (prev.season?.number ?? 0) + 1 });
   for (const p of playerList(state)) {

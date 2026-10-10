@@ -24,7 +24,7 @@ import { buildingAlerts, buildingDef, hasBuilding, townBuildings, type BuildingI
 import { hireBoard, porterBuyRoom, porters, restWage, wageToday, type HireOffer, type HireRole } from '../hire';
 import type { CaravanPlan } from '../caravan';
 import type { NotifySettings } from '../notify';
-import { badgeDef, CATEGORIES, categoryName, certificateView, CRESTS, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport } from '../ranking';
+import { badgeDef, CATEGORIES, categoryName, certificateView, CRESTS, questProgress, questTier, themeDef, type CategoryId, type CertificateView, type RankTable, type SeasonReport, type Standing } from '../ranking';
 import { regionTag } from '../worldgen';
 import { JOB_NAME } from './jobs';
 import { SCENES, sceneDef, type SceneId, type UnlockId } from '../apprentice';
@@ -83,12 +83,14 @@ export interface PendingOrder {
 export interface RankingCategoryView {
   id: CategoryId;
   name: string;
-  /** 1~3위 (같은 점수는 같은 순위) */
-  top: { id: PlayerId; name: string; rank: number }[];
-  /** 내 순위. 이 부문에 아직 기록이 없으면 null */
+  /** 시즌 전체 1~3위 (같은 점수는 같은 순위). mine: 내 세계 상단이면 true (다른 세계 상단은 증서를 열 수 없다) */
+  top: { id: PlayerId; name: string; rank: number; mine: boolean }[];
+  /** 시즌 전체에서 내 순위. 이 부문에 아직 기록이 없으면 null */
   mine: { rank: number; topShare: number; score: number } | null;
-  /** 이 부문에 오른 상단 수 */
+  /** 시즌 전체에서 이 부문에 오른 상단 수 */
   count: number;
+  /** 내 세계 순위 (0.1.3). 로컬은 세계가 하나라 시즌 전체와 같다 */
+  world: { mine: { rank: number; topShare: number } | null; count: number };
 }
 
 export interface RankingView {
@@ -671,19 +673,23 @@ function buyRoomView(p: PlayerState, room: Record<GoodId, number>): Record<GoodI
   ) as Record<GoodId, number>;
 }
 
-/** 부문마다 1~3위와 내 순위 (남의 점수는 담지 않는다) */
-function rankingView(state: EconomyState, p: PlayerState, table: RankTable): RankingCategoryView[] {
-  const nameOf = (id: PlayerId) => state.players[id]?.certificate.name ?? id;
+/** 부문마다 시즌 전체 1~3위와 내 순위, 내 세계 순위 (남의 점수는 담지 않는다) */
+function rankingView(state: EconomyState, p: PlayerState, season: RankTable, world: RankTable): RankingCategoryView[] {
+  const here = (r: Standing) => r.worldId === undefined || r.worldId === state.world.worldId;
+  const nameOf = (r: Standing) => (here(r) ? state.players[r.id]?.certificate.name : undefined) ?? r.name ?? r.id;
   return CATEGORIES.map((id) => {
-    const rows = table[id] ?? [];
-    const mine = rows.find((r) => r.id === p.id);
+    const rows = season[id] ?? [];
+    const mine = rows.find((r) => r.id === p.id && here(r));
+    const wrows = world[id] ?? [];
+    const wmine = wrows.find((r) => r.id === p.id);
     return {
       id,
       name: categoryName(id),
       // 1~3위 (같은 점수가 많으면 앞의 세 상단만)
-      top: rows.filter((r) => r.rank <= 3).slice(0, 3).map((r) => ({ id: r.id, name: nameOf(r.id), rank: r.rank })),
+      top: rows.filter((r) => r.rank <= 3).slice(0, 3).map((r) => ({ id: r.id, name: nameOf(r), rank: r.rank, mine: here(r) })),
       mine: mine ? { rank: mine.rank, topShare: mine.topShare, score: mine.score } : null,
       count: rows.length,
+      world: { mine: wmine ? { rank: wmine.rank, topShare: wmine.topShare } : null, count: wrows.length },
     };
   });
 }
@@ -861,11 +867,11 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
     })),
     hireBoard: hireBoard(state, p, map),
     reservations: p.reservations.map((r) => ({ ...r })),
-    ranking: { day: state.rankings?.day ?? null, categories: rankingView(state, p, state.rankings?.table ?? {}) },
+    ranking: { day: state.rankings?.day ?? null, categories: rankingView(state, p, state.rankings?.season ?? {}, state.rankings?.table ?? {}) },
     settlement: state.settlement
       ? {
           season: state.settlement.season,
-          categories: rankingView(state, p, state.settlement.table),
+          categories: rankingView(state, p, state.settlement.table, state.settlement.worldTable),
           report: state.settlement.reports[p.id] ?? null,
           badges: (state.settlement.awarded[p.id]?.badges ?? []).map((id) => badgeDef(id)?.name ?? id),
           titles: state.settlement.awarded[p.id]?.titles ?? [],

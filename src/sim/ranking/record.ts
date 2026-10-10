@@ -25,7 +25,8 @@ export function ensurePlayerRecord(state: EconomyState, p: PlayerState): void {
   if (!season) return;
   if (p.record?.season === season.number) return;
   const worth = netWorth(state, p);
-  p.record = { season: season.number, joinedDay: state.day, startWorth: worth, minWorth: worth, trades: [], heardOmens: [], moments: [] };
+  const { seasonId, worldId } = state.world;
+  p.record = { season: season.number, seasonId, worldId, joinedDay: state.day, startWorth: worth, minWorth: worth, trades: [], heardOmens: [], moments: [] };
 }
 
 export function noteTrade(p: PlayerState, t: TradeRecord): void {

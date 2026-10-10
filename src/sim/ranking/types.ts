@@ -42,6 +42,9 @@ export interface TradeRecord {
 /** 시즌 기록: 시즌이 바뀌면 새로 센다 */
 export interface SeasonRecord {
   season: number;
+  /** 어느 시즌, 어느 세계의 기록인가 (0.1.3: 랭킹은 같은 시즌의 모든 세계를 합친다) */
+  seasonId: string;
+  worldId: string;
   /** 이 시즌에 들어온 날과 그때 순자산 (수완가 부문의 시작 자금) */
   joinedDay: number;
   startWorth: number;

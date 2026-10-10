@@ -2,6 +2,7 @@ export * from './goods';
 export * from './jobs';
 export * from './state';
 export { createEconomy, nextSeasonEconomy, type CreateOptions, type PlayerSpec } from './create';
+export { localWorld, LOCAL_WORLD_ID, seasonSeed, worldOf, type WorldRef } from './worldRef';
 export { getPlayer, isPlayerOwner, LOCAL_PLAYER, ownedBy, playerList, playerOrder, playerSeed } from './players';
 export { advanceDay, advanceDays, type DayReport, type PlayerDayReport } from './day';
 export { applyCommand, type Command, type CommandError, type CommandResult } from './commands';

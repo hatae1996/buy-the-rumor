@@ -1,10 +1,10 @@
 // 랭킹과 시즌 결산 (0.1.0 작업 5): 장날마다 순위, 마지막 장날 뒤 결산 한 번, 넘어 남는 것만 다음 시즌으로.
 import { describe, expect, it } from 'vitest';
-import { applyCommand, advanceDay, createEconomy, nextSeasonEconomy, playerView, type EconomyState } from '../economy';
+import { applyCommand, advanceDay, createEconomy, nextSeasonEconomy, playerView, seasonSeed, type EconomyState } from '../economy';
 import { generateWorld } from '../worldgen';
 import { loadGoods } from '../cart';
 import { settleSeason } from './settle';
-import { newsName } from './table';
+import { newsName, scoreRows, updateRankings, type ScoreRow } from './table';
 import { tradeRecord } from './record';
 
 const SEED = 4242;
@@ -133,5 +133,75 @@ describe('신문의 큰 거래 이름', () => {
     expect(newsName(s, s.players.b2!)).toBe('b2 상단');
     expect(newsName(s, s.players.b4!)).toBe('어느 상단');
     expect(newsName(s, s.players.me!)).toBe('어느 상단');
+  });
+});
+
+describe('세계는 작게, 랭킹은 크게 (0.1.3)', () => {
+  /** 다른 세계(같은 시즌)의 점수 줄: 소금을 20개 판 상단과 생선을 판 넷 */
+  const others = (s: EconomyState): ScoreRow[] => [
+    { seasonId: s.world.seasonId, worldId: 'w2', playerId: 'x1', name: '먼 세계 상단', category: 'goodsKing:salt', score: 20 },
+    ...['x2', 'x3', 'x4', 'x5'].map((id, i): ScoreRow => ({ seasonId: s.world.seasonId, worldId: 'w2', playerId: id, name: id, category: 'goodsKing:fish', score: [2, 1, 1, 1][i]! })),
+    // 다른 시즌 줄은 섞지 않는다
+    { seasonId: 'other-season', worldId: 'w3', playerId: 'y1', name: '지난 시즌 상단', category: 'goodsKing:salt', score: 999 },
+  ];
+
+  it('점수 줄에 시즌 id와 세계 id가 붙는다. 로컬은 세계 하나라 두 순위가 같다', () => {
+    const s = world();
+    expect(s.world).toEqual({ seasonId: `local-${SEED}`, worldId: 'local' });
+    expect(s.players.me!.record).toMatchObject({ seasonId: s.world.seasonId, worldId: 'local' });
+    const rows = scoreRows(s);
+    expect(rows.every((r) => r.seasonId === s.world.seasonId && r.worldId === 'local')).toBe(true);
+    expect(rows.find((r) => r.playerId === 'me' && r.category === 'goodsKing:salt')).toMatchObject({ score: 10, name: '나의 상단' });
+    advanceDay(s, map);
+    expect(s.rankings!.season).toEqual(s.rankings!.table);
+  });
+
+  it('다른 세계의 점수 줄을 합치면 시즌 전체 순위가 되고, 내 세계 순위는 그대로', () => {
+    const s = world();
+    advanceDay(s, map);
+    updateRankings(s, others(s));
+    const v = playerView(s, map, 'me');
+    const salt = v.ranking.categories.find((c) => c.id === 'goodsKing:salt')!;
+    expect(salt.top[0]).toMatchObject({ name: '먼 세계 상단', rank: 1, mine: false });
+    expect(salt.mine).toMatchObject({ rank: 2 });
+    expect(salt.count).toBe(6);
+    expect(salt.world).toEqual({ mine: { rank: 1, topShare: 1 / 5 }, count: 5 });
+    // 신문 큰손 기사는 내 세계 순위로
+    expect(newsName(s, s.players.b1!)).toBe('붉은 여우 상단');
+  });
+
+  it('인장과 칭호는 시즌 전체 순위로: 다른 세계에 더 판 상단이 있으면 소금왕이 아니다, 5명 문턱도 시즌 전체', () => {
+    const s = world();
+    s.season!.length = 1;
+    [3, 2, 1, 1].forEach((n, i) => s.players[IDS[i]!]!.record!.trades.push(tradeRecord(1, 'sell', 0, 'fish', n, 5)));
+    const st = settleSeason(s, others(s))!;
+    expect(st.table['goodsKing:salt']![0]!.id).toBe('x1');
+    expect(st.worldTable['goodsKing:salt']![0]!.id).toBe('me');
+    const me = s.players.me!.certificate;
+    expect(me.titles).not.toContain('1시즌 소금왕');
+    expect(me.badges.map((b) => b.badge)).toContain('rank-goodsKing:salt-top3');
+    // 생선은 내 세계에 넷뿐이지만 시즌 전체로는 여덟이라 인장을 받는다
+    expect(st.table['goodsKing:fish']).toHaveLength(8);
+    expect(me.badges.map((b) => b.badge)).toContain('rank-goodsKing:fish-first');
+  });
+});
+
+describe('같은 시즌의 세계는 같은 시드 (0.1.3)', () => {
+  it('들어간 사람만 다르면 지도, 사건 일정, 헛징조, 말 입고 일정이 같다', () => {
+    const big = generateWorld(SEED, { towns: 8 });
+    const a = createEconomy(big, SEED, { warmupDays: 20, players: ['p1', 'p2', 'p3'].map((id) => ({ id })) });
+    const b = createEconomy(big, SEED, { warmupDays: 20, players: Array.from({ length: 12 }, (_, i) => ({ id: `q${i}` })) });
+    expect(generateWorld(SEED, { towns: 8 })).toEqual(big);
+    const plan = (s: EconomyState) => s.season!.schedule.map((e) => ({ event: e.event, town: e.town, day: e.day, good: e.good ?? null }));
+    expect(plan(b)).toEqual(plan(a));
+    expect(b.season!.fakeOmens).toEqual(a.season!.fakeOmens);
+    const arrivals = (s: EconomyState) => s.horses.arrivals.map((h) => ({ day: h.day, town: h.town, kind: h.kind }));
+    expect(arrivals(b)).toEqual(arrivals(a));
+  });
+
+  it('시즌 id로 시드를 정한다 (서버가 같은 시즌의 세계를 열 때)', () => {
+    expect(seasonSeed('2026-10-12')).toBe(seasonSeed('2026-10-12'));
+    expect(seasonSeed('2026-10-12')).not.toBe(seasonSeed('2026-10-26'));
+    expect(seasonSeed('x')).toBeLessThan(1_000_000_007);
   });
 });

@@ -23,6 +23,7 @@ import type { ResourceKind, TownTier } from '../worldgen';
 import type { GoodId } from './goods';
 import type { Inventory, Lot } from './inventory';
 import type { JobId } from './jobs';
+import type { WorldRef } from './worldRef';
 
 export interface ResourceNode {
   kind: ResourceKind;
@@ -334,6 +335,8 @@ export interface NewsItem {
 export interface EconomyState {
   version: 1;
   seed: number;
+  /** 이 세계가 어느 시즌의 몇 번째 세계인가 (0.1.3, 랭킹은 시즌의 모든 세계를 합친다). 로컬은 세계 하나 */
+  world: WorldRef;
   /** 오늘 (1부터). 플레이어 신청은 오늘 장날에 정산된다 */
   day: number;
   startSeason: Season;
