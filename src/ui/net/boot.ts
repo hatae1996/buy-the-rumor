@@ -1,7 +1,7 @@
 // 서버 게임으로 연다 (작업목록-0.2.0 11번): 로그인 → 초대 코드 → 게임 시작 화면(처음 한 번) → 견습 또는 공유 세계.
 // 서버 주소와 공개 키가 있을 때만 main.ts가 이 파일을 늦게 불러온다(로컬 빌드에 supabase-js가 들어가지 않게).
 import type { Certificate } from '../../sim/ranking/types';
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
+import { LOGIN_GOOGLE, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 import { setFeedbackSender } from '../feedback';
 import { ERROR_TEXT, type ServerError } from '../format';
 import { openFounding } from '../screens/founding';
@@ -22,7 +22,7 @@ const text = (e: string) => ERROR_TEXT[e as ServerError] ?? e;
 
 export async function bootServer(root: HTMLElement): Promise<void> {
   const s = await auth.session();
-  if (!s) return showLogin(root, { google: auth.signInWithGoogle, email: auth.signInWithEmail });
+  if (!s) return showLogin(root, { google: LOGIN_GOOGLE ? auth.signInWithGoogle : null, email: auth.signInWithEmail });
   const uid = s.user.id;
   const api = httpApi(SUPABASE_URL, SUPABASE_ANON_KEY, auth.token);
 

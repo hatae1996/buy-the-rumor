@@ -9,5 +9,11 @@ export const SURVEY_URL = '';
 export const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 
+/**
+ * 구글 로그인 단추를 보일까 (VITE_LOGIN_GOOGLE=on). Supabase의 Google 공급자와 Google Cloud OAuth 클라이언트를
+ * 설정한 뒤에 켠다. 꺼져 있으면 이메일 링크만 (supabase/README.md "로그인 설정")
+ */
+export const LOGIN_GOOGLE: boolean = import.meta.env.VITE_LOGIN_GOOGLE === 'on';
+
 /** 서버 게임을 쓰는가 (주소와 공개 키가 있을 때) */
 export const SERVER_MODE = SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== '';

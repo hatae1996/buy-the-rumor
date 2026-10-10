@@ -58,7 +58,7 @@
 
 - **Authentication → URL Configuration**: Site URL에 게임 주소(GitHub Pages 등), Redirect URLs에 게임 주소와 개발 서버(`http://localhost:5173`, 아이폰에서 여는 `http://<컴퓨터 IP>:5173`).
 - **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어, 예행연습(2~3명)은 그대로, 비공개 테스트(20~30명) 전에는 SMTP(메일 발송 서비스)를 잇는 것이 좋다.
-- **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 리디렉션 URI에 `https://<프로젝트 ref>.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Providers → Google에 넣는다.
+- **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 JavaScript 원본에 `https://hatae1996.github.io`, 승인된 리디렉션 URI에 `https://znirrdzxsjxksfjibnnv.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Sign In / Providers → Google에 넣고 켠다. 그다음 `.env.production`의 `VITE_LOGIN_GOOGLE=on`으로 바꿔 다시 배포하면 로그인 화면에 구글 단추가 나온다(꺼져 있는 동안은 이메일 링크만). 동의 화면을 "테스트"로 두면 테스트 사용자로 등록한 구글 계정만 로그인된다.
 
 ## 게임(폰) 빌드에 서버 잇기
 

@@ -20,7 +20,8 @@ function frame(root: HTMLElement, title: string, hint: string, body: string): HT
 }
 
 export interface LoginActions {
-  google: () => Promise<string | null>;
+  /** 없으면 구글 단추를 보이지 않는다 (설정 전) */
+  google: (() => Promise<string | null>) | null;
   email: (email: string) => Promise<string | null>;
 }
 
@@ -30,8 +31,8 @@ export function showLogin(root: HTMLElement, act: LoginActions): void {
     root,
     'Buy the Rumor',
     '"소문에 사서 뉴스에 팔게. 먼저 길드 명부에 이름을 올리세."',
-    `<button type="button" class="founding-btn" data-google>구글 계정으로 시작</button>
-     <label class="founding-name"><span>또는 이메일로 로그인 링크 받기</span>
+    `${act.google ? '<button type="button" class="founding-btn" data-google>구글 계정으로 시작</button>' : ''}
+     <label class="founding-name"><span>${act.google ? '또는 ' : ''}이메일로 로그인 링크 받기</span>
        <input type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" data-email /></label>
      <button type="button" class="founding-btn ghost" data-send>링크 보내기</button>
      <p class="founding-error" data-error hidden></p>
@@ -43,7 +44,8 @@ export function showLogin(root: HTMLElement, act: LoginActions): void {
     err.textContent = m ?? '';
     err.hidden = !m;
   };
-  el.querySelector('[data-google]')!.addEventListener('click', async () => show(await act.google()));
+  const google = act.google;
+  if (google) el.querySelector('[data-google]')!.addEventListener('click', async () => show(await google()));
   el.querySelector('[data-send]')!.addEventListener('click', async () => {
     const email = el.querySelector<HTMLInputElement>('[data-email]')!.value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) return show('이메일 주소를 확인해 주세요.');
