@@ -5,6 +5,7 @@
 - assets-src/ui/ledger-ui-sheet.png: 장부 탭 (편지 묶음, 마을 집 둘)
 - assets-src/ui/ledger-money-sheet.png: 장부 수입·지출 (돈주머니, 상자, 금화 더미, 자루)
 - assets-src/ui/ledger-icons-sheet.png: 장부 시세 기록 (시계, 안내 i)
+- assets-src/ui/news-ui-sheet.png, guild-ui-sheet.png: 소식 탭 신문·활동·길드 (보고 그림, 우승컵, 핀, 시즌 방패, 의뢰 그림)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
@@ -196,6 +197,23 @@ def ledger_icons_sheet() -> None:
     sheet_pieces('ledger-icons-sheet.png', [('icon_clock.png', 96), ('icon_info.png', 96)])
 
 
+def news_ui_sheet() -> None:
+    """소식 탭 그림판 (0.1.6 목업 docs/reference/news-*-mockup-0.1.6.png): 채집 바구니, 봉인 편지, 우승컵, (방패·늑대·얼음 구멍은 길드 그림판 것을 쓴다), 위치 핀"""
+    sheet_pieces('news-ui-sheet.png', [
+        ('report_gather.png', 192), ('report_letter.png', 192), ('rank_trophy.png', 192),
+        (None, 0), (None, 0), (None, 0),
+        ('icon_pin.png', 64),
+    ])
+
+
+def guild_ui_sheet() -> None:
+    """길드 의뢰 그림판: 혹한의 시즌 방패, 겨울 식량 통, 늑대, 얼음 낚시 구멍, 통나무 (의뢰 번호로 이름을 붙인다)"""
+    sheet_pieces('guild-ui-sheet.png', [
+        ('theme_frost.png', 192), ('quest_winterFood.png', 160), ('quest_wolfRoad.png', 160),
+        ('quest_iceFisher.png', 160), ('quest_towerFire.png', 160),
+    ])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -223,5 +241,7 @@ if __name__ == '__main__':
     ledger_ui_sheet()
     ledger_money_sheet()
     ledger_icons_sheet()
+    news_ui_sheet()
+    guild_ui_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

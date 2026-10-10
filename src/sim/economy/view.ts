@@ -282,7 +282,12 @@ export interface PlayerView {
   /** 하루 유지비: 일당, 정보원, 말 먹이(지금 마을 값으로 어림), 창고 보관료 */
   upkeep: { total: number; parts: { what: string; perDay: number }[] };
   /** 길드: 이번 시즌 테마와 의뢰 진행 (테마는 보류 중이라 참고용) */
-  guild: { theme: string | null; quests: { name: string; scope: 'personal' | 'communal'; text: string; value: number; tiers: readonly number[]; tier: string | null }[] };
+  /** 길드 의뢰: 테마(번호와 이름)와 의뢰들. goods는 납품 의뢰의 물품 (그림용, 0.1.6) */
+  guild: {
+    themeId: string | null;
+    theme: string | null;
+    quests: { id: string; name: string; scope: 'personal' | 'communal'; text: string; value: number; tiers: readonly number[]; tier: string | null; goods: GoodId[] }[];
+  };
   /** 상인 증서 (순자산은 없다) */
   certificate: CertificateView;
   /** 내가 얻은 칭호 (대표 칭호로 고를 수 있다) */
@@ -480,10 +485,12 @@ export function upkeepView(state: EconomyState, p: PlayerState): PlayerView['upk
 function guildView(state: EconomyState, p: PlayerState): PlayerView['guild'] {
   const theme = themeDef(state.season?.theme ?? '');
   return {
+    themeId: theme?.id ?? null,
     theme: theme?.name ?? null,
     quests: (theme?.quests ?? []).map((q) => {
       const value = questProgress(state, p, q);
-      return { name: q.name, scope: q.scope, text: q.text, value, tiers: q.tiers, tier: questTier(q, value) };
+      const goods = q.measure.kind === 'sold' ? [...q.measure.goods] : [];
+      return { id: q.id, name: q.name, scope: q.scope, text: q.text, value, tiers: q.tiers, tier: questTier(q, value), goods };
     }),
   };
 }

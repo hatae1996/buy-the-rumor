@@ -468,30 +468,6 @@
   height: auto;
 }
 
-/* 신문함 (0.1.2): 산 신문 한 줄씩, 안 읽은 신문에 점 */
-.paper-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-  min-height: var(--tap);
-  padding: 6px 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-}
-
-.paper-row .unread {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: var(--coral);
-}
-
 /* 신문팔이의 지난 신문 (0.1.3): 날짜와 사기 단추 한 줄 */
 .paper-back {
   display: flex;
@@ -3250,4 +3226,556 @@
   min-height: 32px;
   align-items: center;
   font-size: 13px;
+}
+
+/* 소식 신문 (0.1.6 목업 docs/reference/news-paper-mockup-0.1.6.png) */
+.paper-card,
+.guild-card {
+  padding: 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.paper-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 6px;
+}
+
+.paper-card-head h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 19px;
+}
+
+.paper-card-head > span {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.paper-where {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.paper-where img {
+  width: 14px;
+}
+
+.paper-buy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.paper-buy > img {
+  flex: none;
+  width: 34%;
+  max-width: 120px;
+}
+
+.paper-buy h4 {
+  margin: 4px 0 2px;
+  font-family: var(--f-display);
+  font-size: 19px;
+}
+
+.paper-buy h4 small {
+  font-size: 11px;
+  color: var(--cream-ink-soft);
+}
+
+.paper-buy small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.paper-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-display);
+  font-size: 18px;
+}
+
+.paper-price img {
+  width: 24px;
+}
+
+.paper-chip {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: #e7e2da;
+  color: var(--cream-ink-soft);
+  font-family: var(--f-display);
+  font-size: 12px;
+}
+
+.paper-chip.unread {
+  background: var(--coral);
+  color: #fff;
+}
+
+.paper-go {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.paper-buy-note {
+  margin: 4px;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.paper-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.paper-filters button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+}
+
+.paper-filters button[aria-pressed='true'] {
+  border-color: var(--cream-teal-soft);
+  background: var(--cream-teal-soft);
+}
+
+.paper-filters button[aria-pressed='true'] .rumor-count {
+  background: var(--cream-teal);
+}
+
+.paper-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paper-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.paper-list li > img {
+  flex: none;
+  width: 64px;
+}
+
+.paper-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.paper-row-text b {
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.paper-row-text small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.paper-read {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* 소식 활동 (0.1.6 목업 docs/reference/news-activity-mockup-0.1.6.png) */
+.act-views {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.act-views button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--cream-ink);
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.act-views button[aria-pressed='true'] {
+  background: var(--cream-teal-soft);
+}
+
+.act-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.act-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 6px 4px;
+}
+
+.act-row + .act-row {
+  border-top: 1px solid var(--town-line);
+}
+
+.act-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 48px;
+}
+
+.act-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.act-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.act-text b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: normal;
+  line-height: 1.25;
+}
+
+.act-text small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.act-text .act-where {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.act-where img {
+  width: 11px;
+}
+
+.act-amount {
+  flex: none;
+  text-align: right;
+}
+
+.act-amount b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.act-amount b.plus {
+  color: var(--cream-teal);
+}
+
+.act-amount b.minus {
+  color: var(--coral);
+}
+
+.act-amount small {
+  color: var(--cream-ink-soft);
+  font-size: 11px;
+}
+
+.rank-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+  box-shadow: 0 2px 6px rgba(80, 60, 30, 0.08);
+}
+
+.rank-card > img {
+  flex: none;
+  width: 72px;
+}
+
+.rank-card > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-card small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.rank-big {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-display);
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.rank-chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+  font-size: 12px;
+}
+
+.rank-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding: 8px 4px;
+}
+
+.rank-list li + li {
+  border-top: 1px solid var(--town-line);
+}
+
+.rank-name b {
+  display: block;
+  font-family: var(--f-display);
+  font-weight: normal;
+  font-size: 15px;
+}
+
+.rank-name small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.rank-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+/* 소식 길드 (0.1.6 목업 docs/reference/news-guild-mockup-0.1.6.png) */
+.guild-theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #f1ebdf;
+}
+
+.guild-emblem {
+  width: 64px;
+}
+
+.guild-theme h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 24px;
+}
+
+.guild-theme small {
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.guild-card .acct-day {
+  margin-top: 10px;
+}
+
+.quest-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 8px 8px;
+  border: 1px solid var(--town-line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.quest-card.communal {
+  border-color: #bfe0dc;
+  background: #e9f5f3;
+}
+
+.quest-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+}
+
+.quest-pic img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.quest-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.quest-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.quest-head b {
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.quest-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--cream-teal-soft);
+  color: var(--cream-teal);
+  font-family: var(--f-display);
+  font-size: 11px;
+}
+
+.quest-card.communal .quest-chip {
+  background: var(--cream-teal);
+  color: #fff;
+}
+
+.quest-value {
+  margin-left: auto;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.quest-body > small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.quest-bar {
+  position: relative;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #e7e0d2;
+  overflow: hidden;
+}
+
+.quest-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--cream-teal);
+}
+
+/* 동·은·금 문턱 눈금과 값 */
+.quest-ticks {
+  position: relative;
+  height: 18px;
+}
+
+.quest-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--cream-ink-soft);
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.quest-tick:last-child {
+  transform: translateX(-100%);
+  text-align: right;
+}
+
+.quest-tick i {
+  display: block;
+  width: 1px;
+  height: 4px;
+  margin: 0 auto 1px;
+  background: #a9a196;
+}
+
+.quest-tick:last-child i {
+  margin-right: 0;
+}
+
+.quest-tick.done {
+  color: var(--cream-teal);
 }

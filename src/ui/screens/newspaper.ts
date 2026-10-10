@@ -75,20 +75,3 @@ export function openPaper(game: Game, day: number): void {
       </article>`
     : `<p class="error">${ERROR_TEXT[r.error]}</p>`;
 }
-
-/** 소식 탭의 신문함: 산 신문을 날짜순으로, 안 읽은 신문에 표시 */
-export function paperBoxHtml(v: PlayerView): string {
-  const np = v.newspaper;
-  const rows = np.papers
-    .slice(0, 20)
-    .map(
-      (p) => `<li><button type="button" class="paper-row" data-paper="${p.day}">
-        ${p.read ? '' : '<span class="unread" aria-label="안 읽음"></span>'}
-        <span><b>${p.day}일째</b> <small class="muted">${agoText(v.day, p.day)}</small><br />${p.headline}</span>
-      </button></li>`,
-    )
-    .join('');
-  return rows
-    ? `<ul class="list paper-box">${rows}</ul>`
-    : `<p class="muted">아직 산 신문이 없어요. 마을의 신문팔이에게서 그날 신문(한 부 ${money(np.fee)})과 지난 신문(${money(np.backFee)})을 살 수 있어요${np.free ? ', 견습 동안 무료' : ''}.</p>`;
-}
