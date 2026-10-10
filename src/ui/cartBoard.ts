@@ -61,7 +61,24 @@ function boardsOf(v: PlayerView, townName: (id: number) => string): BoardModel[]
   return out;
 }
 
-export function mountCartBoard(host: HTMLElement, game: Game): { render(): void } {
+/** 짐칸 화면이 판 말고 함께 보여 주는 것 */
+export interface CartBoardOptions {
+  /** 다른 짐칸(짐꾼 수레, 두 번째 행렬, 다른 마을 창고) 수. 0이면 단추를 감춘다 */
+  others: number;
+  openOthers(): void;
+}
+
+/** 칸 크기 범위 (px). 화면에 다 들어가게 남은 자리에 맞추되 누르기 좋은 크기 아래로는 줄이지 않는다 */
+const MIN_CELL = 30;
+const MAX_CELL = 64;
+/** 판 틀 안쪽 여백 (px, 위아래·좌우 합) */
+const FRAME_PAD = 20;
+
+// 화면 크기가 바뀌면 열려 있는 판을 다시 그린다 (판은 남은 높이에 맞춰 칸 크기를 정한다)
+let redraw: (() => void) | null = null;
+if (typeof window !== 'undefined') window.addEventListener('resize', () => redraw?.());
+
+export function mountCartBoard(host: HTMLElement, game: Game, opts: CartBoardOptions = { others: 0, openOthers: () => {} }): { render(): void } {
   let drag: {
     from: BoardId;
     piece: CartPieceView;
@@ -77,9 +94,8 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
     const v = game.view();
     const boards = boardsOf(v, (id) => game.map.towns[id]!.name);
     const cart = v.cart;
-    // 두 판이 같은 칸 크기를 쓰도록 가장 넓은 판에 맞춘다
-    const widest = Math.max(...boards.map((b) => Math.max(...b.rows.map((r) => r.length))));
-    const cell = Math.max(34, Math.min(56, Math.floor(((host.clientWidth || 320) - 24) / widest)));
+    // 칸 크기는 화면을 그린 뒤 판 자리를 재서 정한다 (아래)
+    let cell = 40;
     // 짐수레·마차는 말이 모자라면 움직이지 못한다 (끄는 무게 0)
     const noHorse = v.horses.length < cart.horsesNeeded;
     const over = !noHorse && cart.weight > cart.maxWeight;
@@ -132,35 +148,49 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
     const cartBoard = boards.find((b) => b.id === 'cart')!;
     const weightPct = noHorse ? 100 : Math.min(100, (cart.weight / Math.max(1, cart.maxWeight)) * 100);
 
+    // 알림 줄: 안내 문구 자리에 하나만 (오류 > 경고 > 사용법)
+    const notice = message
+      ? `<p class="error">${message}</p>`
+      : noHorse
+        ? `<p class="warn">${cart.name}는 말이 ${cart.horsesNeeded}필 있어야 움직여요. 목장 마을 마구간에서 말을 사세요.</p>`
+        : over
+          ? '<p class="warn">너무 무거워 떠날 수 없어요. 팔거나 버려서 무게를 줄이세요.</p>'
+          : cart.broken.length
+            ? `<p class="warn">망가진 칸 ${cart.broken.length}개. 수레방에서 ${money(cart.repairCost)}에 고칠 수 있어요.</p>`
+            : '<p class="cart-hint">끌어서 이동 · 한 번 더 눌러 돌리기 · 같은 짐에 놓아 합치기</p>';
+
     host.innerHTML = `
-      ${
-        store
-          ? `<section class="hold-board store">
-              <header class="hold-head"><h3>${store.title}</h3><span class="muted">끌어서 수레로 옮겨요</span></header>
-              <div class="hold-frame store">${grid(store)}</div>
-            </section>`
-          : ''
-      }
-      <section class="hold-board">
-        <header class="hold-title">
-          <span class="hold-sprig" aria-hidden="true">${SPRIG}</span>
-          <div><h2>짐칸</h2><p>${cartBoard.title}</p></div>
-          <span class="hold-sprig flip" aria-hidden="true">${SPRIG}</span>
-        </header>
-        <div class="weight-card ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
-          <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 <b>${cart.weight}</b> / ${cart.maxWeight}`}</span>
-          <div class="weight-bar"><i style="width:${weightPct}%"></i></div>
-        </div>
-        <p class="hold-food muted">식량 ${v.food.have}${v.food.perDay ? ` · 길에서 하루 ${v.food.perDay}씩 먹어요` : ''}</p>
-        ${noHorse ? `<p class="warn">${cart.name}는 말이 ${cart.horsesNeeded}필 있어야 움직여요. 목장 마을 마구간에서 말을 사세요.</p>` : ''}
-        ${over ? '<p class="warn">너무 무거워 떠날 수 없어요. 팔거나 버려서 무게를 줄이세요.</p>' : ''}
-        ${cart.broken.length ? `<p class="warn">망가진 칸 ${cart.broken.length}개. 수레방에서 ${money(cart.repairCost)}에 고칠 수 있어요.</p>` : ''}
-        <div class="hold-frame">${grid(cartBoard)}</div>
-      </section>
-      ${sel && selBoard ? infoPanel(v, selBoard.id, sel) : ''}
-      ${message ? `<p class="error">${message}</p>` : ''}
-      <p class="cart-hint">끌어서 옮기기 · 고른 짐을 한 번 더 누르면 돌리기 · 같은 물건 위에 놓으면 합치기</p>
-      <button type="button" class="pack-btn" data-pack>빈칸 정리<small>짐을 위·왼쪽으로 모아 붙여요</small></button>`;
+      <header class="hold-title">
+        <span class="hold-sprig" aria-hidden="true">${SPRIG}</span>
+        <div><h2>짐칸</h2><p>${cartBoard.title} · 식량 ${v.food.have}</p></div>
+        <span class="hold-sprig flip" aria-hidden="true">${SPRIG}</span>
+        ${opts.others ? `<button type="button" class="hold-others" data-others>다른 짐칸 ${opts.others}</button>` : ''}
+      </header>
+      <div class="weight-card ${over || noHorse ? 'over' : ''}" role="img" aria-label="무게 ${cart.weight} / ${cart.maxWeight}">
+        <span>${noHorse ? `말 ${cart.horsesNeeded}필이 끌어야 해요` : `무게 <b>${cart.weight}</b> / ${cart.maxWeight}`}</span>
+        <div class="weight-bar"><i style="width:${weightPct}%"></i></div>
+      </div>
+      <div class="hold-boards">
+        ${store ? `<div class="hold-frame store" data-frame="warehouse"><span class="hold-frame-label">${store.title} · 끌어서 수레로</span></div>` : ''}
+        <div class="hold-frame" data-frame="cart"></div>
+      </div>
+      ${sel && selBoard ? infoPanel(v, selBoard.id, sel) : '<div class="hold-info empty"><p>짐을 누르면 이름과 무게, 산 값이 여기 보여요.</p></div>'}
+      ${notice}
+      <button type="button" class="pack-btn" data-pack title="짐을 위·왼쪽으로 모아 붙여요">빈칸 정리</button>`;
+
+    // 판 자리(남은 높이를 판들이 나눠 가진다)를 재서 칸 크기를 정하고, 두 판이 같은 칸 크기를 쓴다
+    const frames = boards.map((b) => ({ b, el: host.querySelector<HTMLElement>(`[data-frame="${b.id}"]`)! }));
+    const fit = frames.map(({ b, el }) => {
+      const cols = Math.max(...b.rows.map((r) => r.length));
+      const w = el.clientWidth - FRAME_PAD;
+      const h = el.clientHeight - FRAME_PAD - (b.id === 'warehouse' ? 18 : 0);
+      return w > 0 && h > 0 ? Math.floor(Math.min(w / cols, h / b.rows.length)) : 40;
+    });
+    cell = Math.max(MIN_CELL, Math.min(MAX_CELL, ...fit));
+    for (const { b, el } of frames) el.insertAdjacentHTML('beforeend', grid(b));
+    redraw = () => {
+      if (host.isConnected && host.offsetParent !== null) render();
+    };
 
     const grids = new Map(boards.map((b) => [b.id, host.querySelector<HTMLElement>(`[data-grid="${b.id}"]`)!] as const));
     const model = (id: BoardId) => boards.find((b) => b.id === id)!;
@@ -173,6 +203,7 @@ export function mountCartBoard(host: HTMLElement, game: Game): { render(): void 
     };
 
     host.querySelector('[data-pack]')!.addEventListener('click', () => send({ type: 'packCart' }));
+    host.querySelector('[data-others]')?.addEventListener('click', () => opts.openOthers());
     host.querySelector('[data-discard]')?.addEventListener('click', () => {
       if (!sel || selected?.board !== 'cart') return;
       if (!confirm(`${eulReul(`${goodName(sel.good)} ${sel.qty}개`)} 버릴까요? 돌이킬 수 없어요.`)) return;
@@ -278,9 +309,9 @@ function infoPanel(v: PlayerView, board: BoardId, p: CartPieceView): string {
   const rate = ECONOMY.spoilRate[v.season];
   const cells = p.cells.length;
   const weight = unitWeight(p.good) * Math.max(1, p.qty);
-  const rows: string[] = [`${cells}칸 · 무게 ${weight}`];
-  if (p.uses) rows.push(`남은 횟수 ${p.uses.left} / ${p.uses.max}`);
-  else if (p.uses === null && p.qty > 0) rows.push(`${p.qty} / ${p.stack}개`);
+  // 첫 줄에 칸·무게·개수를 모은다 (정보판 높이를 늘 같게)
+  const count = p.uses ? `남은 ${p.uses.left}/${p.uses.max}회` : p.uses === null && p.qty > 0 ? `${p.qty}/${p.stack}개` : '';
+  const rows: string[] = [[`${cells}칸`, `무게 ${weight}`, count].filter(Boolean).join(' · ')];
   if (p.uses?.left === 0) rows.push('<span class="warn">망가졌어요. 잡화점에서 도구 하나로 고쳐요</span>');
   if (p.cost !== null) rows.push(p.cost === 0 ? '직접 얻은 것' : `산 값 개당 ${money(p.cost)}`);
   const life = itemShelfLife(p.good);

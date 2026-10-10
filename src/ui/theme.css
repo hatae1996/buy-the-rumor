@@ -16,6 +16,15 @@
   --mustard: #e6b43c;
   --wax: #b8402f;
 
+  /* 밝은 크림 틀 (0.1.6 짐칸 목업): 위쪽 줄, 아래 탭, 짐칸 화면 */
+  --cream: #f7f3ea;
+  --cream-bg: #f4efe6;
+  --cream-line: #e2d9c8;
+  --cream-ink: #2b2622;
+  --cream-ink-soft: #6a5f55;
+  --cream-teal: #2f8f8a;
+  --cream-teal-soft: #d9ecea;
+
   --f-display: 'Jua', 'Apple SD Gothic Neo', sans-serif;
   --f-body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 
