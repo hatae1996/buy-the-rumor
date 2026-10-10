@@ -1,8 +1,9 @@
-// 잡화점 쪽지: 원정 장비(활, 횃불, 덫, 그물)를 사고, 닳은 장비를 도구로 고친다.
+// 장비 쪽지 (잡화점의 "장비"): 원정 장비(활, 횃불, 덫, 그물)를 사고, 닳은 장비를 도구로 고친다. 0.1.6: 크림색 쪽지.
 import type { GearKind } from '../../sim/expedition';
 import { eulReul } from '../../sim/josa';
 import { ERROR_TEXT, money } from '../format';
 import type { Game } from '../game';
+import { itemArt } from '../itemArt';
 import { openSheet } from '../sheet';
 
 /** 장비가 하는 일 (기획서 "내 카드") */
@@ -14,7 +15,7 @@ const GEAR_USE: Record<GearKind, string> = {
 };
 
 export function openGearSheet(game: Game): void {
-  const sheet = openSheet('잡화점');
+  const sheet = openSheet('장비 구입·수리');
   let error = '';
   let done = '';
 
@@ -23,25 +24,33 @@ export function openGearSheet(game: Game): void {
     const rows = v.gear
       .map((g) => {
         const state = g.uses === null ? '없음' : g.uses === 0 ? '망가짐' : `${g.uses}/${g.maxUses}번 남음`;
+        const tone = g.uses === null ? '' : g.uses === 0 ? 'coral' : 'teal';
+        const art = itemArt(g.kind);
         const button =
           g.uses === null || g.uses === 0
-            ? `<button type="button" class="secondary-btn" data-buy="${g.kind}" ${v.location.kind !== 'town' || v.gold < g.price ? 'disabled' : ''}>사기<small>${money(g.price)}</small></button>`
+            ? `<button type="button" class="sk-btn" data-buy="${g.kind}" ${v.location.kind !== 'town' || v.gold < g.price ? 'disabled' : ''}>사기<small>${money(g.price)} G</small></button>`
             : '';
         const repair =
           g.uses !== null && g.uses < g.maxUses
-            ? `<button type="button" class="secondary-btn" data-repair="${g.kind}" ${v.tools < 1 ? 'disabled' : ''}>고치기<small>도구 1개</small></button>`
+            ? `<button type="button" class="sk-btn" data-repair="${g.kind}" ${v.tools < 1 ? 'disabled' : ''}>고치기<small>도구 1개</small></button>`
             : '';
-        return `<li class="row">
-          <span><b>${g.name}</b> <span class="muted">${state}</span><br /><small class="muted">${GEAR_USE[g.kind]}</small></span>
-          <span class="btn-row">${repair}${button}</span>
+        return `<li class="sk-row">
+          <div class="sk-row-main">
+            <span class="sk-pic">${art ? `<img src="${art}" alt="" />` : ''}</span>
+            <span class="sk-text"><b>${g.name} <span class="sk-chip ${tone}">${state}</span></b><small>${GEAR_USE[g.kind]}</small></span>
+            ${repair || button ? `<span class="sk-btns">${repair}${button}</span>` : ''}
+          </div>
         </li>`;
       })
       .join('');
-    sheet.body.innerHTML = `
-      <p class="muted">장비는 원정 카드에 새 선택지를 열어 줘요. 쓰다 보면 닳고, 수레에 실은 도구 하나로 고쳐요. (수레의 도구 ${v.tools}개${v.tools ? `, 지금 도구 ${v.toolUsesLeft}번 더` : ''})</p>
-      <ul class="list">${rows}</ul>
-      ${done ? `<p>${done}</p>` : ''}
-      ${error ? `<p class="error">${error}</p>` : ''}`;
+    const toolsArt = itemArt('tools');
+    sheet.body.innerHTML = `<div class="sk">
+      <p class="sk-strip">${toolsArt ? `<img src="${toolsArt}" alt="" />` : ''}<span><b>수레의 도구 ${v.tools}개${v.tools ? ` · 지금 도구 ${v.toolUsesLeft}번 더` : ''}</b><small>장비는 쓰다 보면 닳고, 수레에 실은 도구 하나로 고쳐요.</small></span></p>
+      <ul class="sk-list">${rows}</ul>
+      <p class="sk-note">장비는 원정 카드에 새 선택지를 열어 줘요.</p>
+      ${done ? `<p class="sk-done">${done}</p>` : ''}
+      ${error ? `<p class="error">${error}</p>` : ''}
+    </div>`;
     const act = (attr: string, run: (kind: string) => ReturnType<Game['dispatch']>, ok: (name: string) => string) =>
       sheet.body.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((b) =>
         b.addEventListener('click', () => {

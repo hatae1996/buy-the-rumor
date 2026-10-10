@@ -152,46 +152,7 @@
 }
 
 /* ───── 마을 카드 (0.1.6 목업 docs/reference/map-town-card-mockup-0.1.6.png): 크림색 쪽지 ───── */
-.sheet.cream {
-  --town-card: #fbf8f2;
-  --town-line: var(--cream-line);
-  border-radius: 24px 24px 0 0;
-  background: var(--cream-bg);
-  color: var(--cream-ink);
-  box-shadow: 0 -6px 20px rgba(20, 40, 50, 0.25);
-}
-
-/* 위 손잡이 */
-.sheet.cream::before {
-  content: '';
-  display: block;
-  width: 44px;
-  height: 5px;
-  margin: 4px auto 2px;
-  border-radius: 3px;
-  background: #cfc6b8;
-}
-
-.sheet.cream .sheet-head {
-  z-index: 1;
-  background: var(--cream-bg);
-}
-
-.sheet.cream .sheet-close {
-  min-width: 44px;
-  min-height: 44px;
-  color: var(--cream-ink);
-  font-size: 24px;
-}
-
-.sheet.cream .sheet-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 26px;
-}
-
-.sheet.cream .sheet-head .paper-chip {
+.sheet-head .paper-chip {
   font-size: 13px;
 }
 

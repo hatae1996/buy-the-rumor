@@ -8,6 +8,7 @@ import sproutImg from '../../../assets/ui/icon_sprout.png';
 import fishIcon from '../../../assets/ui/icon_fish.png';
 import wheatIcon from '../../../assets/ui/icon_wheat.png';
 import coinImg from '../../../assets/ui/coin.png';
+import trophyImg from '../../../assets/ui/rank_trophy.png';
 import { GOOD_NAME, type GoodId } from '../../sim/economy/goods';
 import { SEASON_NAME } from '../../sim/season';
 import type { ResourceKind, Terrain } from '../../sim/worldgen';
@@ -88,10 +89,13 @@ export interface TownScreenActions {
 /** 시즌이 끝났으면 결산 카드 (다음 시즌을 시작할 때까지 날이 가지 않는다) */
 function settlementCard(v: PlayerView): string {
   if (!v.settlement) return '';
-  return `<section class="card pinned">
-      <header class="card-head"><h2>${v.settlement.season}시즌이 끝났어요</h2></header>
-      <p>마지막 장날 뒤 순위를 매겼어요. 결산을 보고 다음 시즌을 시작하세요.</p>
-      <div class="btn-row"><button type="button" class="primary-btn" data-settlement>결산 보기</button></div>
+  return `<section class="town-pin settle">
+      <img class="town-pin-pic" src="${trophyImg}" alt="" />
+      <div class="town-pin-text">
+        <h2>${v.settlement.season}시즌이 끝났어요</h2>
+        <p>마지막 장날 뒤 순위를 매겼어요. 결산을 보고 다음 시즌을 시작하세요.</p>
+      </div>
+      <button type="button" class="cv-btn coral" data-settlement>결산 보기</button>
     </section>`;
 }
 
@@ -99,10 +103,13 @@ function settlementCard(v: PlayerView): string {
 function apprenticeCard(v: PlayerView, elder: Look | null): string {
   const ap = v.apprentice;
   if (!ap) return '';
-  return `<section class="card pinned apprentice">
-      <header class="card-head"><h2>견습 · ${ap.title}</h2><span class="badge">${ap.step} / ${ap.steps}</span></header>
-      <div class="npc-line">${portraitHtml(elder, 56, '노상인')}<p>${ap.hint}</p></div>
-      <div class="btn-row"><button type="button" class="secondary-btn" data-apprentice-day>하루 보내기<small>견습 마을에서만 바로 다음 날로</small></button></div>
+  return `<section class="town-pin apprentice">
+      <span class="town-pin-face">${portraitHtml(elder, 64, '노상인')}</span>
+      <div class="town-pin-text">
+        <h2>견습 · ${ap.title}<span class="town-pin-step">${ap.step} / ${ap.steps}</span></h2>
+        <p class="town-pin-say">${ap.hint}</p>
+      </div>
+      <button type="button" class="cv-btn outline" data-apprentice-day>하루 보내기<small>견습 마을에서만 바로 다음 날로</small></button>
     </section>`;
 }
 

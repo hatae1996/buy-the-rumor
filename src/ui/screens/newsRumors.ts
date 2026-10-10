@@ -36,7 +36,7 @@ function lists(v: PlayerView): Record<RumorGroup, NoteView[]> {
   };
 }
 
-function card(n: NoteView, v: PlayerView, townName: (id: number) => string, fresh: boolean): string {
+export function rumorCard(n: NoteView, v: PlayerView, townName: (id: number) => string, fresh: boolean): string {
   const art = n.good ? itemArt(n.good) : null;
   const title = [n.about !== null ? townName(n.about) : '', n.good ? goodName(n.good) : ''].filter(Boolean).join(' · ') || '소문';
   const foot = fresh
@@ -111,7 +111,7 @@ export function rumorsHtml(game: Game, v: PlayerView): string {
             : ''
         }
       </div>
-      ${shown.length ? `<ul>${shown.map((n) => card(n, v, townName, group === 'new')).join('')}</ul>` : `<p class="rumor-empty">${empty}</p>`}
+      ${shown.length ? `<ul>${shown.map((n) => rumorCard(n, v, townName, group === 'new')).join('')}</ul>` : `<p class="rumor-empty">${empty}</p>`}
     </section>
     ${group === 'done' ? tellerStamps(all.done) : ''}
     <p class="ledger-note plain"><img class="ledger-note-i" src="${infoImg}" alt="" />${

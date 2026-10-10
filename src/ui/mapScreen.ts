@@ -194,7 +194,7 @@ export function mountMapScreen(container: HTMLElement, game: Game, now: () => nu
     });
     selected = to;
     render();
-    sheet.el.classList.add('cream', 'map-card');
+    sheet.el.classList.add('map-card');
     sheet.el.querySelector('.sheet-head h2')!.insertAdjacentHTML(
       'beforeend',
       ` <span class="paper-chip${here === to ? ' now' : ''}">${here === to ? '지금 여기' : visited ? '방문함' : '미방문'}</span>`,

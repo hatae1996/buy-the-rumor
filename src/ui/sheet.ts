@@ -1,4 +1,4 @@
-// 아래에서 올라오는 종이 쪽지. 판매 신청, 이동 확인, 자리를 비운 사이 요약에 쓴다.
+// 아래에서 올라오는 크림색 쪽지 (0.1.6: 지도 마을 카드의 틀을 모든 쪽지에). 위 손잡이, 제목, 닫기.
 
 export interface Sheet {
   el: HTMLElement;
@@ -18,10 +18,10 @@ export function openSheet(title: string, onClose?: () => void): Sheet {
   el.setAttribute('aria-modal', 'true');
   el.setAttribute('aria-label', title);
   el.innerHTML = `
-    <header class="sheet-head">
+    <header class="sheet-head"><div>
       <h2>${title}</h2>
       <button type="button" class="sheet-close" aria-label="닫기">✕</button>
-    </header>
+    </div></header>
     <div class="sheet-body"></div>`;
   backdrop.appendChild(el);
   document.body.appendChild(backdrop);
