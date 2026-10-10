@@ -1175,15 +1175,6 @@
   white-space: nowrap;
 }
 
-/* ───── 최근 들은 이야기, 수첩 칸 (0.1.2) ───── */
-.note.heard .btn-row {
-  margin-top: 6px;
-}
-
-.note.dismissed .note-text {
-  opacity: 0.55;
-}
-
 /* ───── NPC 초상 (0.1.4): 파츠 조합, 그림이 없으면 단색 자리표시 ───── */
 .row:has(> .portrait) {
   align-items: center;
@@ -4323,4 +4314,309 @@
 
 .order-submit .rumor-note:disabled {
   opacity: 0.5;
+}
+
+/* 여관 (0.1.6 목업 docs/reference/inn-rumors-mockup-0.1.6.png, inn-hire-mockup-0.1.6.png) */
+.inn-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inn-hero img {
+  flex: none;
+  width: 34%;
+  max-width: 130px;
+}
+
+.inn-hero p {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--town-line);
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.inn-tabs button[aria-pressed='true'] {
+  background: var(--cream-teal);
+  color: #fff;
+}
+
+.inn-tellers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.inn-tellers li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inn-tellers b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.inn-tellers small {
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.inn-listen {
+  width: 100%;
+  min-height: 48px;
+}
+
+.inn-done {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #ebe7df;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+  text-align: center;
+}
+
+.inn-heard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inn-teller {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.inn-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.inn-buy {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.inn-buy img {
+  width: 56px;
+}
+
+.inn-buy b,
+.inn-wide b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.inn-buy small,
+.inn-wide small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.inn-buy .rumor-note {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.inn-buy .rumor-note:disabled,
+.inn-wide .rumor-note:disabled,
+.hire-act .rumor-note:disabled {
+  opacity: 0.45;
+}
+
+.inn-fee {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.inn-fee img {
+  width: 18px;
+}
+
+.inn-wide {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.inn-wide img {
+  width: 72px;
+}
+
+.inn-wide .rumor-note {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+.inn-host {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inn-host p {
+  margin: 0;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.inn-link .town-row-pic {
+  background: none;
+}
+
+.inn-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  font-family: var(--f-display);
+  font-size: 19px;
+  font-weight: normal;
+  text-align: center;
+}
+
+.inn-section::before,
+.inn-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--town-line);
+}
+
+.inn-strip {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #bfe0dc;
+  border-radius: 12px;
+  background: var(--cream-teal-soft);
+  font-family: var(--f-display);
+  font-size: 14px;
+  text-align: center;
+}
+
+.inn-sub {
+  margin-top: -4px;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+
+.hire-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hire-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 6px;
+  border: 1px solid var(--town-line);
+  border-radius: 14px;
+  background: var(--town-card);
+}
+
+.hire-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  min-height: 72px;
+}
+
+.hire-pic img {
+  max-width: 80px;
+}
+
+.hire-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hire-body b {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: normal;
+}
+
+.hire-body small {
+  display: block;
+  color: var(--cream-ink-soft);
+  font-size: 12px;
+}
+
+.hire-body p {
+  margin: 4px 0 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--town-line);
+  font-size: 12px;
+}
+
+.hire-need {
+  margin-top: 2px;
+}
+
+.hire-act {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 104px;
+  text-align: center;
+}
+
+.hire-act .inn-fee {
+  justify-content: center;
+}
+
+.hire-act .rumor-note,
+.hire-act .order-btn {
+  min-height: 40px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.hire-act small {
+  color: var(--cream-ink-soft);
+  font-size: 10px;
 }

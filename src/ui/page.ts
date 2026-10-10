@@ -49,6 +49,11 @@ export function openPage(opts: { back: string; title: string; icon?: string }): 
   return page;
 }
 
+/** 열린 페이지를 모두 닫는다 (다른 탭으로 넘어갈 때) */
+export function closeAllPages(): void {
+  for (const page of [...stack].reverse()) page.close();
+}
+
 document.addEventListener('keydown', (e) => {
   // 쪽지가 떠 있으면 쪽지가 먼저 (쪽지는 따로 닫는다)
   if (e.key === 'Escape' && stack.length && !document.querySelector('.sheet-backdrop')) stack[stack.length - 1]!.close();

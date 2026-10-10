@@ -71,6 +71,6 @@ export function peopleHtml(game: Game, v: PlayerView): string {
 }
 
 export function bindPeople(el: HTMLElement, game: Game): void {
-  el.querySelectorAll('[data-people-inn]').forEach((b) => b.addEventListener('click', () => openInn(game)));
+  el.querySelectorAll('[data-people-inn]').forEach((b) => b.addEventListener('click', () => openInn(game, 'hire')));
   el.querySelectorAll('[data-people-stable]').forEach((b) => b.addEventListener('click', () => openStableSheet(game)));
 }

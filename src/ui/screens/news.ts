@@ -11,7 +11,7 @@ import { bindPaper, paperHtml } from './newsBox';
 import { guildTabHtml } from './newsGuild';
 import { bindRumors, rumorsHtml } from './newsRumors';
 
-type NewsTab = 'rumors' | 'paper' | 'reports' | 'guild';
+export type NewsTab = 'rumors' | 'paper' | 'reports' | 'guild';
 const TABS: { id: NewsTab; label: string }[] = [
   { id: 'rumors', label: '소문' },
   { id: 'paper', label: '신문' },
@@ -20,6 +20,11 @@ const TABS: { id: NewsTab; label: string }[] = [
 ];
 /** 고른 작은 탭 (다시 그려도 남긴다) */
 let tab: NewsTab = 'rumors';
+
+/** 다른 화면에서 소식 탭의 작은 탭을 골라 둔다 (여관 "기록한 소문 보기") */
+export function showNewsTab(id: NewsTab): void {
+  tab = id;
+}
 
 export function renderNews(el: HTMLElement, game: Game, v: PlayerView): void {
   const bodies: Record<NewsTab, () => string> = {

@@ -19,6 +19,11 @@ const GROUPS: { id: RumorGroup; label: string; title: string }[] = [
 
 /** 고른 칸과 물품 (다시 그려도 남긴다) */
 let group: RumorGroup = 'new';
+
+/** 다른 화면에서 소문 칸을 골라 둔다 (여관 "기록한 소문 보기"는 기록 중) */
+export function showRumorGroup(id: RumorGroup): void {
+  group = id;
+}
 let goodFilter: GoodId | null = null;
 
 /** 수첩(여관에서 듣고 적은 것)과 칸별 목록 */

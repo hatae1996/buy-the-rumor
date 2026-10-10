@@ -1,6 +1,8 @@
 // 앱 틀 (기획서 "화면 구성", 0.1.2): 위쪽 줄(내 문장, 날짜·계절, 장날까지, 소지금, 피로), 가운데 화면, 아래 탭 5개.
 // 탭마다 질문 하나: 마을 = 여기서 무엇을, 지도 = 어디로, 짐칸 = 무엇을 실었나, 장부 = 돈과 약속, 소식 = 들어오는 것.
 // 아이콘은 0.1.6 로우폴리 그림판에서 잘랐다 (scripts/ui/cut_sheets.py)
+import { TAB_EVENT } from './nav';
+import { closeAllPages } from './page';
 import coin from '../../assets/ui/coin.png';
 import hourglass from '../../assets/ui/icon_hourglass.png';
 import bread from '../../assets/ui/icon_bread.png';
@@ -114,6 +116,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     else void map?.then((m) => m.render());
   };
 
+  const v0unlocked = (id: TabId) => (game.view().unlocks as readonly string[]).includes(id);
   const select = (id: TabId) => {
     current = id;
     buttons.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
@@ -128,6 +131,12 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
   };
 
   buttons.forEach((b) => b.addEventListener('click', () => select(b.dataset.tab as TabId)));
+  // 페이지 안에서 다른 탭으로 (여관 → 소식 등): 열린 페이지를 닫고 그 탭을 연다
+  window.addEventListener(TAB_EVENT, (e) => {
+    const id = (e as CustomEvent<TabId>).detail;
+    closeAllPages();
+    if (id === 'town' || v0unlocked(id)) select(id);
+  });
   $('[data-crest]').addEventListener('click', () => openCertificate(game));
   game.subscribe(render);
   select('town');
