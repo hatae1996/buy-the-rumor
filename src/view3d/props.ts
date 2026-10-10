@@ -6,7 +6,7 @@ import { HEX_DIRS, type Tile, type WorldMap } from '../sim/worldgen';
 import type { InstanceBatcher, Placement } from './batcher';
 import { tileCenter, tileHash } from './layout';
 import type { MaterialKit } from './materials';
-import { PROP, SNOW, TREE_COLOR } from './palette';
+import { BLOSSOM, BUSH_COLOR, FLOWER, PROP, ROCK_COLOR, SNOW, TREE_COLOR } from './palette';
 
 export class PropGeometries {
   /** 높이 1, 반지름 1인 오각뿔 (나무, 바위산). 원점은 가운데 */
@@ -15,6 +15,8 @@ export class PropGeometries {
   readonly blob = new THREE.IcosahedronGeometry(1, 0);
   /** 바위 */
   readonly rock = new THREE.DodecahedronGeometry(1, 0);
+  /** 높이 1인 나무줄기 (봄 벚꽃나무) */
+  readonly trunk = new THREE.CylinderGeometry(0.6, 1, 1, 5);
   /** 볏단: 낮은 사각뿔 */
   readonly sheaf = new THREE.ConeGeometry(0.075, 0.2, 4);
   readonly ore = new THREE.OctahedronGeometry(0.18);
@@ -100,9 +102,12 @@ export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries,
 
     if (opt.terrainProps) {
       if (t.terrain === 'forest') addForest(b, geo, kit, opt.season, at, rnd, t.resource !== null);
-      else if (t.terrain === 'mountain') addMountain(b, geo, kit, winter, at, rnd);
+      else if (t.terrain === 'mountain') addMountain(b, geo, kit, opt.season, at, rnd);
       else if (t.terrain === 'hills') addHills(b, geo, kit, opt.season, at, rnd);
-      else if ((t.terrain === 'plain' || t.terrain === 'coast') && !t.resource && !t.road) addScatter(b, geo, kit, winter, at, rnd);
+      else if ((t.terrain === 'plain' || t.terrain === 'coast') && !t.resource && !t.road) {
+        if (opt.season === 0 && t.terrain === 'plain') addFlowers(b, geo, kit, at, rnd);
+        else addScatter(b, geo, kit, opt.season, at, rnd);
+      }
     }
 
     addResource(t, b, geo, kit, outline, winter, at);
@@ -124,6 +129,15 @@ function addForest(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, se
     const r = 0.11 + rnd(k + 20) * 0.05;
     const dx = x + (rnd(k + 40) - 0.5) * 0.12;
     const dz = z + (rnd(k + 60) - 0.5) * 0.12;
+    // 봄엔 열에 넷쯤이 동그란 벚꽃나무
+    if (season === 0 && rnd(k + 100) < 0.4) {
+      const crown = 0.2 + rnd(k + 110) * 0.08;
+      const stem = 0.22 + rnd(k + 120) * 0.12;
+      b.add(geo.trunk, kit.solid(PROP.trunk), at(dx, dz, stem / 2, [0.035, stem, 0.035]));
+      const pink = BLOSSOM[Math.floor(rnd(k + 130) * BLOSSOM.length)]!;
+      b.add(geo.blob, kit.solid(pink), at(dx, dz, stem + crown * 0.55, [crown, crown * 0.85, crown], rnd(k + 90) * Math.PI));
+      return;
+    }
     const color = palette[Math.floor(rnd(k + 80) * palette.length)]!;
     b.add(geo.spike, kit.solid(color), at(dx, dz, h / 2, [r, h, r], rnd(k + 90) * Math.PI));
     // 겨울엔 꼭대기에 눈
@@ -135,13 +149,14 @@ function addForest(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, se
 }
 
 /** 바위산: 큰 봉우리 하나와 작은 봉우리 한두 개, 꼭대기에 눈 */
-function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, winter: boolean, at: At, rnd: Rnd): void {
+function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
+  const winter = season === 3;
   const peaks: [number, number, number, number][] = [[0, 0, 0.5, 1.2 + rnd(0) * 0.3]];
   peaks.push([0.42, 0.25, 0.3, 0.65 + rnd(1) * 0.2]);
   if (rnd(2) < 0.6) peaks.push([-0.4, 0.3, 0.28, 0.55 + rnd(3) * 0.2]);
   peaks.forEach(([dx, dz, r, h], k) => {
     const rot = rnd(k + 5) * Math.PI;
-    b.add(geo.spike, kit.solid(k === 0 ? PROP.rock : PROP.rockDark), at(dx, dz, h / 2, [r, h, r], rot));
+    b.add(geo.spike, kit.solid(ROCK_COLOR[season][k === 0 ? 0 : 1]), at(dx, dz, h / 2, [r, h, r], rot));
     // 눈 모자: 같은 뿔의 윗부분을 조금 크게 덮는다
     const capK = winter ? 0.6 : k === 0 ? 0.36 : 0;
     if (capK > 0) {
@@ -153,7 +168,7 @@ function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, 
 
 /** 언덕: 낮은 둔덕 두세 개 */
 function addHills(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
-  const color = season === 3 ? SNOW : season === 2 ? 0x9a8a45 : PROP.bush;
+  const color = BUSH_COLOR[season];
   const mounds: [number, number, number][] = [
     [-0.25, 0.1, 0.34],
     [0.3, -0.15, 0.27],
@@ -163,10 +178,10 @@ function addHills(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, sea
 }
 
 /** 들판·해안: 몇 칸에만 덤불이나 바위 한두 개 (빈 칸이 더 많게) */
-function addScatter(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, winter: boolean, at: At, rnd: Rnd): void {
+function addScatter(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
   const roll = rnd(0);
   if (roll < 0.22) {
-    const color = kit.solid(winter ? SNOW : PROP.bush);
+    const color = kit.solid(BUSH_COLOR[season]);
     const n = 1 + Math.floor(rnd(1) * 3);
     for (let k = 0; k < n; k++) {
       const r = 0.08 + rnd(k + 2) * 0.05;
@@ -175,6 +190,19 @@ function addScatter(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, w
   } else if (roll < 0.36) {
     const r = 0.07 + rnd(2) * 0.06;
     b.add(geo.rock, kit.solid(PROP.rock), at(-0.25 + rnd(3) * 0.5, -0.25 + rnd(4) * 0.5, r * 0.4, [r, r * 0.75, r], rnd(5) * Math.PI));
+  }
+}
+
+/** 봄 들판: 절반쯤의 칸에 작은 꽃 무리 (분홍, 하양, 연보라, 노랑) */
+function addFlowers(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, at: At, rnd: Rnd): void {
+  if (rnd(0) > 0.55) return;
+  const n = 4 + Math.floor(rnd(1) * 6);
+  const cx = -0.25 + rnd(2) * 0.5;
+  const cz = -0.25 + rnd(3) * 0.5;
+  for (let k = 0; k < n; k++) {
+    const r = 0.035 + rnd(k + 4) * 0.025;
+    const color = FLOWER[Math.floor(rnd(k + 20) * FLOWER.length)]!;
+    b.add(geo.blob, kit.solid(color), at(cx + (rnd(k + 40) - 0.5) * 0.45, cz + (rnd(k + 60) - 0.5) * 0.45, r * 0.4, [r, r * 0.6, r], rnd(k + 80)));
   }
 }
 
