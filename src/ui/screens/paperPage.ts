@@ -11,6 +11,7 @@ import roadWinter from '../../../assets/ui/road_winter.png';
 import wagonImg from '../../../assets/ui/travel_horse_wagon.png';
 import type { GoodId, NewsItem } from '../../sim/economy';
 import { SEASON_NAME } from '../../sim/season';
+import { paperName, PRE_SEASON_PAPER_DAY } from '../../sim/news';
 import { agoText, ERROR_TEXT, goodName } from '../format';
 import type { Game } from '../game';
 import { itemArt } from '../itemArt';
@@ -67,12 +68,12 @@ export function openPaper(game: Game, day: number): void {
   page.className = 'paper-page';
   page.setAttribute('role', 'dialog');
   page.setAttribute('aria-modal', 'true');
-  page.setAttribute('aria-label', `${day}일째 장터 신문`);
+  page.setAttribute('aria-label', paperName(day, '장터 '));
   page.style.backgroundImage = `url('${paperBg}')`;
   page.innerHTML = `
     <header class="paper-bar">
       <button type="button" class="paper-back" data-close>‹ 돌아가기</button>
-      <span>${day}일째 신문</span>
+      <span>${paperName(day)}</span>
     </header>
     ${
       r.ok
@@ -80,7 +81,7 @@ export function openPaper(game: Game, day: number): void {
             <div class="paper-mast">
               <div class="paper-emblem"><span class="paper-rule"></span><img src="${sprigL}" alt="" />${WHEEL}<img src="${sprigR}" alt="" /><span class="paper-rule"></span></div>
               <h1>장터 신문</h1>
-              <div class="paper-dateline"><span>제${day}호</span><span>${SEASON_NAME[season]} ${day}일째 발행</span><span>${agoText(v.day, day)} 소식</span></div>
+              <div class="paper-dateline"><span>제${day}호</span><span>${day === PRE_SEASON_PAPER_DAY ? '시즌 전날' : `${SEASON_NAME[season]} ${day}일째`} 발행</span><span>${agoText(v.day, day)} 소식</span></div>
             </div>
             <section class="paper-lead">
               <span class="paper-kicker">오늘의 장터</span>

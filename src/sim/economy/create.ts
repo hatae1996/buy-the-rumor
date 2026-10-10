@@ -21,6 +21,7 @@ import { ensureRecord } from '../ranking/record';
 import { emptyAccount } from '../bank/bank';
 import { defaultNotifySettings } from '../notify/kinds';
 import { localWorld, type WorldRef } from './worldRef';
+import { dailyPaperLines, PRE_SEASON_PAPER_DAY } from '../news/daily';
 
 /** 세계에 앉을 플레이어 */
 export interface PlayerSpec {
@@ -212,7 +213,8 @@ function warmUp(state: EconomyState, map: WorldMap, days: number): void {
   state.startSeason = seasonOfDay(state.day, state.startSeason);
   // 시작 계절 안에서 며칠째인지도 맞추려면 날짜 오프셋이 필요하다. 지금은 계절 첫날부터 다시 센다
   state.day = 1;
-  state.news = [];
+  // 1일째 신문: 미리 돌린 마지막 날(0일)의 장 시세와 날씨만 (0.1.7 답 119). 미리 돌린 날의 큰 소식은 버린다
+  state.news = dailyPaperLines(state, map, state.startSeason, PRE_SEASON_PAPER_DAY);
   for (const p of playerList(state)) {
     p.ledger = [];
     p.memory = {};

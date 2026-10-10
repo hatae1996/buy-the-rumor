@@ -17,6 +17,7 @@ import { openLivePage } from '../livePage';
 import { goToTab } from '../nav';
 import { showNewsTab } from './news';
 import { openPaper } from './paperPage';
+import { paperName } from '../../sim/news';
 
 export { openPaper };
 
@@ -51,7 +52,7 @@ export function openNewsboy(game: Game): void {
               <img src="${paperImg}" alt="" />
               <div>
                 <span class="paper-chip ${sale.bought ? 'read' : 'now'}">${sale.bought ? '구입함' : '판매 중'}</span>
-                <h4>${sale.day}일째 장날 신문</h4>
+                <h4>${paperName(sale.day, '장날 ')}</h4>
                 <small>${agoText(v.day, sale.day)} 발행</small>
                 <span class="stand-price"><span>가격</span><img src="${coinImg}" alt="" />${price(np.fee)}</span>
                 <small>${sale.bought ? '내 신문 보관함에서 다시 읽을 수 있어요.' : '구입한 뒤 내용을 읽을 수 있어요.'}</small>
@@ -67,7 +68,7 @@ export function openNewsboy(game: Game): void {
       .map(
         (b) => `<li>
           <img src="${paperImg}" alt="" />
-          <span class="paper-row-text"><b>${b.day}일째 장날 신문</b><small>${agoText(v.day, b.day)} 발행</small></span>
+          <span class="paper-row-text"><b>${paperName(b.day, '장날 ')}</b><small>${agoText(v.day, b.day)} 발행</small></span>
           ${
             b.bought
               ? `<button type="button" class="paper-read" data-read="${b.day}">읽기 ›</button>`

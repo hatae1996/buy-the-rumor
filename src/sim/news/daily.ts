@@ -24,14 +24,14 @@ const EVENT_WEATHER: Partial<Record<string, string>> = {
   storm: '바다에 거센 바람이 붑니다. 뱃길이 험합니다.',
 };
 
-/** 오늘 날씨 한 줄 */
-export function weatherLine(state: EconomyState, season: Season): string {
+/** 오늘(또는 그날) 날씨 한 줄 */
+export function weatherLine(state: EconomyState, season: Season, day = state.day): string {
   for (const e of state.events) {
-    if (e.start > state.day || state.day > e.end) continue;
+    if (e.start > day || day > e.end) continue;
     const line = EVENT_WEATHER[e.event];
     if (line) return line;
   }
-  return createRng(mixSeed(state.seed, 0x3ea7, state.day)).pick(WEATHER[season]);
+  return createRng(mixSeed(state.seed, 0x3ea7, day)).pick(WEATHER[season]);
 }
 
 /** 도시마다 시세 한 줄: 그날 장에서 많이 거래된 물품 몇 개와 맞춰진 값 (실린 값도 함께, 0.1.6) */
@@ -54,13 +54,22 @@ export function cityPriceLines(state: EconomyState, map: WorldMap): Pick<NewsIte
   return out;
 }
 
-/** 장날 뒤에: 오늘 신문의 날씨와 도시 시세 줄 (큰 소식 다음에 싣는다) */
-export function dailyPaperLines(state: EconomyState, map: WorldMap, season: Season): NewsItem[] {
+/** 장날 뒤에: 오늘 신문의 날씨와 도시 시세 줄 (큰 소식 다음에 싣는다). day를 주면 그 날짜의 신문으로 찍는다 */
+export function dailyPaperLines(state: EconomyState, map: WorldMap, season: Season, day = state.day): NewsItem[] {
   return [
-    { day: state.day, text: weatherLine(state, season), section: 'weather' },
-    ...cityPriceLines(state, map).map((line): NewsItem => ({ day: state.day, section: 'prices', ...line })),
+    { day, text: weatherLine(state, season, day), section: 'weather' },
+    ...cityPriceLines(state, map).map((line): NewsItem => ({ day, section: 'prices', ...line })),
   ];
 }
+
+/**
+ * 1일째에 파는 신문 (0.1.7 답 119 나): 시즌을 열기 전에 미리 돌린 마지막 날(0일)의 장 시세로 찍어 둔다.
+ * 사람도 봇도 1일째에 도시 값을 본다. 큰 소식은 싣지 않는다(큰 소식 일정은 시즌과 함께 시작한다)
+ */
+export const PRE_SEASON_PAPER_DAY = 0;
+
+/** 신문 이름: 0일 신문은 "시즌 전날 신문", 나머지는 "N일째 신문" (kind: "장날 " 같은 꾸밈말) */
+export const paperName = (day: number, kind = ''): string => (day === PRE_SEASON_PAPER_DAY ? '시즌 전날 신문' : `${day}일째 ${kind}신문`);
 
 /** 신문 한 부의 머리기사: 큰 소식이 있으면 첫 큰 소식, 없으면 날씨 */
 export function paperHeadline(items: readonly NewsItem[], day: number): string {

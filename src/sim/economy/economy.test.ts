@@ -152,7 +152,8 @@ describe('미리 돌린 세계', () => {
     const cold = createEconomy(map, 20261008);
     const warm = createEconomy(map, 20261008, { warmupDays: 20 });
     expect(warm.day).toBe(1);
-    expect(warm.news).toEqual([]);
+    // 미리 돌린 날의 소식은 버리고, 1일째에 팔 0일 신문(날씨, 도시 시세)만 남는다 (0.1.7 답 119)
+    expect(warm.news.every((n) => n.day === 0 && n.section !== undefined)).toBe(true);
     const supply = (s: EconomyState) => s.towns.reduce((a, t) => a + GOODS.reduce((b, g) => b + t.lastMarket[g].supply, 0), 0);
     expect(supply(cold)).toBe(0);
     expect(supply(warm)).toBeGreaterThan(0);

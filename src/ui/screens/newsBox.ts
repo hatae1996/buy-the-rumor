@@ -8,6 +8,7 @@ import type { PlayerView } from '../../sim/economy';
 import { money } from '../format';
 import type { Game } from '../game';
 import { openNewsboy, openPaper } from './newspaper';
+import { paperName } from '../../sim/news';
 
 let unreadOnly = false;
 let newestFirst = true;
@@ -25,7 +26,7 @@ export function paperHtml(game: Game, v: PlayerView): string {
           <img src="${paperImg}" alt="" />
           <div>
             <span class="paper-chip ${sale.bought ? 'read' : ''}">${sale.bought ? '구입함' : '미구입'}</span>
-            <h4>${sale.day}일째 신문${np.late ? ' <small>(하루 늦게 오는 마을)</small>' : ''}</h4>
+            <h4>${paperName(sale.day)}${np.late ? ' <small>(하루 늦게 오는 마을)</small>' : ''}</h4>
             <span class="paper-price"><img src="${coinImg}" alt="" />${price}</span>
             <small>${sale.bought ? '내 신문에서 읽을 수 있어요.' : '구입한 뒤 내용을 읽을 수 있어요.'}</small>
           </div>
@@ -41,7 +42,7 @@ export function paperHtml(game: Game, v: PlayerView): string {
         (p) => `<li>
           <img src="${paperImg}" alt="" />
           <span class="paper-row-text">
-            <b>${p.day}일째 신문</b>
+            <b>${paperName(p.day)}</b>
             <small>${p.headline}</small>
             <span class="paper-chip ${p.read ? 'read' : 'unread'}">${p.read ? '읽음' : '안 읽음'}</span>
           </span>

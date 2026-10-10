@@ -89,12 +89,52 @@ describe('신문은 마을에서 산다', () => {
     expect(playerView(s, map, 'me').news).toHaveLength(3);
   });
 
-  it('첫 장날 전(1일째)에는 팔 신문이 없다', () => {
+  it('미리 돌리지 않은 세계는 1일째에 팔 신문이 없다', () => {
     const s = withNews();
     s.news = [];
     s.day = 1;
     expect(playerView(s, map, 'me').newspaper.onSale).toBeNull();
     expect(applyCommand(s, map, 'me', { type: 'buyNewspaper' })).toEqual({ ok: false, error: 'noPaper' });
+  });
+});
+
+describe('1일째 신문 (0.1.7 답 119)', () => {
+  it('미리 돌린 마지막 날(0일)의 도시 시세와 날씨로 찍는다. 큰 소식은 없다', () => {
+    const s = createEconomy(map, SEED, { warmupDays: 5 });
+    expect(s.day).toBe(1);
+    const items = s.news.filter((n) => n.day === 0);
+    expect(items).toEqual(s.news);
+    expect(items.filter((n) => n.section === 'weather')).toHaveLength(1);
+    expect(items.filter((n) => !n.section)).toEqual([]);
+    const lines = items.filter((n) => n.section === 'prices');
+    expect(lines).toHaveLength(cities.length);
+    for (const line of lines) {
+      for (const [good, price] of Object.entries(line.prices!)) expect(price).toBe(s.towns[line.town!]!.lastMarket[good as GoodId].price);
+    }
+  });
+
+  it('1일째에는 도시에서 먼 마을도 0일 신문을 판다. 늦게 오는 신문은 2일째부터', () => {
+    expect(far).not.toBeNull();
+    if (far === null) return;
+    for (const town of [near, far]) {
+      const s = createEconomy(map, SEED, { warmupDays: 5, apprentice: false });
+      s.players.me!.town = town;
+      expect(playerView(s, map, 'me').newspaper.onSale, `마을 ${town}`).toEqual({ day: 0, bought: false });
+      expect(applyCommand(s, map, 'me', { type: 'buyNewspaper' }).ok).toBe(true);
+      expect(playerView(s, map, 'me').news.filter((n) => n.section === 'prices')).toHaveLength(cities.length);
+      advanceDay(s, map);
+      expect(playerView(s, map, 'me').newspaper.onSale!.day).toBe(town === far ? 0 : 1);
+    }
+  });
+
+  it('도시 시세 줄에는 그날 거래된 도시 물품을 6개까지 싣는다 (0.1.7 답 120 다)', () => {
+    expect(ECONOMY.newspaper.cityPriceGoods).toBe(6);
+    const s = createEconomy(map, SEED, { warmupDays: 20 });
+    for (const line of s.news.filter((n) => n.section === 'prices')) {
+      const market = s.towns[line.town!]!.lastMarket;
+      const traded = (Object.keys(market) as GoodId[]).filter((g) => market[g].price !== null && market[g].volume > 0).length;
+      expect(Object.keys(line.prices!)).toHaveLength(Math.min(6, traded));
+    }
   });
 });
 

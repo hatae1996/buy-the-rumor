@@ -184,6 +184,9 @@ function chooseStep(view: PlayerView, map: WorldMap, profile: BotProfile, mind: 
       return c;
     }
   }
+  // 가져갈 마을에 닿았는데 계획한 물건이 짐에도 판매 신청에도 없으면 그 길은 끝났다 (0.1.7 봇 고침:
+  // 다른 짐이 남아 있으면 계획이 지워지지 않아, 그 짐을 팔지도 옮기지도 않고 시즌 끝까지 머물렀다)
+  if (mind.plan && mind.plan.to === here && !mind.plan.goods.some((g) => selling.has(g) || sellableQty(view, g) > 0)) mind.plan = null;
   for (const good of GOODS) {
     const qty = sellableQty(view, good) - (good === 'grain' ? feedKeep(view) : 0);
     if (qty <= 0 || selling.has(good)) continue;
