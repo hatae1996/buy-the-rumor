@@ -460,13 +460,6 @@
   font-size: 26px;
 }
 
-.newspaper .seal {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 44px;
-  height: auto;
-}
 
 /* 신문팔이의 지난 신문 (0.1.3): 날짜와 사기 단추 한 줄 */
 .paper-back {
@@ -477,23 +470,8 @@
   min-height: var(--tap);
 }
 
-.paper-issue h4 {
-  margin: 12px 0 4px;
-  font-size: 0.95em;
-}
 
-/* 신문 한 부 */
-.paper-issue {
-  position: relative;
-  padding: 4px 2px;
-}
 
-.paper-issue h3 {
-  margin: 8px 0;
-  font-family: var(--f-display);
-  font-size: 20px;
-  line-height: 1.3;
-}
 
 /* ───── 자리를 비운 사이 ───── */
 .away-head {
@@ -3778,4 +3756,223 @@
 
 .quest-tick.done {
   color: var(--cream-teal);
+}
+
+/* 신문 한 부 (0.1.6 목업 docs/reference/newspaper-mockup-0.1.6.png): 화면 전체를 덮는 종이 지면, 명조 글씨 */
+.paper-page {
+  --paper-ink: #2a2622;
+  --paper-soft: #6b645b;
+  --paper-line: #3a352f;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: #f1eee6;
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  color: var(--paper-ink);
+  font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Batang', serif;
+  padding: 0 calc(var(--safe-right) + 18px) calc(var(--safe-bottom) + 20px) calc(var(--safe-left) + 18px);
+}
+
+.paper-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 calc(-18px - var(--safe-right)) 0 calc(-18px - var(--safe-left));
+  padding: calc(var(--safe-top) + 4px) calc(var(--safe-right) + 14px) 4px calc(var(--safe-left) + 8px);
+  border-bottom: 1px solid rgba(58, 53, 47, 0.25);
+  background: rgba(241, 238, 230, 0.94);
+  font-size: 14px;
+}
+
+.paper-back {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--paper-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.paper-sheet {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.paper-mast {
+  padding-top: 14px;
+  text-align: center;
+}
+
+.paper-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #6f5e4b;
+}
+
+.paper-emblem img {
+  width: 22px;
+}
+
+.paper-rule {
+  width: 44px;
+  height: 1px;
+  margin: 0 6px;
+  background: var(--paper-line);
+}
+
+.paper-wheel {
+  width: 38px;
+  height: 38px;
+}
+
+.paper-mast h1 {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(44px, 15vw, 64px);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+
+.paper-dateline {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px;
+  border-top: 1px solid var(--paper-line);
+  border-bottom: 3px double var(--paper-line);
+  font-size: 12px;
+}
+
+.paper-lead {
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.paper-kicker {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.paper-lead h2 {
+  margin: 4px 0 8px;
+  font-weight: 800;
+  font-size: clamp(24px, 8vw, 32px);
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+.paper-lead p,
+.paper-section p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+.paper-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.paper-section h3 {
+  margin: 0;
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.paper-section small {
+  display: block;
+  color: var(--paper-soft);
+  font-size: 12px;
+}
+
+.paper-table {
+  width: 100%;
+  margin: 8px 0 6px;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.paper-table th {
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--paper-line);
+  font-weight: 400;
+  font-size: 12px;
+  text-align: left;
+}
+
+.paper-table th:last-child,
+.paper-price-cell {
+  text-align: right;
+}
+
+.paper-table td {
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(58, 53, 47, 0.18);
+  vertical-align: middle;
+}
+
+/* 물품 그림은 먹으로 찍은 것처럼 */
+.paper-good img {
+  width: 34px;
+  height: 24px;
+  margin-right: 6px;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: grayscale(1) sepia(0.25) contrast(1.15);
+  opacity: 0.85;
+}
+
+.paper-price-cell {
+  font-weight: 800;
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.paper-quiet {
+  color: var(--paper-soft);
+}
+
+/* 날씨와 길 삽화: 계절 길 그림과 수레를 판화처럼 */
+.paper-sketch {
+  position: relative;
+  width: 78%;
+  margin: 8px 0 0 auto;
+  aspect-ratio: 1024 / 454;
+  filter: grayscale(1) sepia(0.2) contrast(1.05) brightness(1.05);
+  opacity: 0.7;
+  mix-blend-mode: multiply;
+}
+
+.paper-sketch img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+}
+
+.paper-sketch .paper-sketch-wagon {
+  inset: auto;
+  left: 24%;
+  top: 29%;
+  width: 46%;
+}
+
+.paper-foot {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 2px 0;
+  font-size: 13px;
+}
+
+.paper-error {
+  margin-top: 24px;
 }

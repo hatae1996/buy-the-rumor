@@ -26,6 +26,7 @@ import { hireFaces, townFaces, type Look, type TownFaces } from '../sim/looks';
 import { mixSeed } from '../sim/rng';
 import { createCart, refitBoards } from '../sim/cart';
 import type { NotifyEvent } from '../sim/notify';
+import { seasonOfDay, type Season } from '../sim/season';
 
 /** 게임 속 하루 = 실제 2시간 30분 */
 export const DAY_MS = 2.5 * 60 * 60 * 1000;
@@ -117,6 +118,11 @@ export class Game {
   /** 지금 마을에서 보이는 NPC 얼굴 (0.1.4). 봇이 쓰는 view()와 따로 둔다 */
   faces(): TownFaces | null {
     return townFaces(this.state, this.map, this.playerId);
+  }
+
+  /** 그날의 계절 (신문 발행일) */
+  seasonOf(day: number): Season {
+    return seasonOfDay(day, this.state.startSeason);
   }
 
   /** 데려온 일꾼 얼굴 (길 위에서도) */

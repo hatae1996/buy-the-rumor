@@ -1,11 +1,12 @@
 // 신문 (0.1.2 "신문은 마을에서 산다", 0.1.3 매일 신문): 마을 탭의 신문팔이에게서 그날 신문과 지난 신문을 사고,
-// 소식 탭 신문함에서 한 부씩 읽는다. 한 부는 큰 소식, 도시 시세, 날씨 구역으로 나뉜다.
-import sealSmall from '../../../assets/ui/seal_small.png';
+// 소식 탭 신문함에서 한 부씩 읽는다 (지면은 paperPage.ts). 한 부는 큰 소식, 도시 시세, 날씨 구역으로 나뉜다.
 import type { PlayerView } from '../../sim/economy';
-import { agoText, ERROR_TEXT, money } from '../format';
+import { agoText, money } from '../format';
 import type { Game } from '../game';
 import { openLiveSheet } from '../liveSheet';
-import { openSheet } from '../sheet';
+import { openPaper } from './paperPage';
+
+export { openPaper };
 
 /** 신문 날짜: "9일째 장날" (몇 날 전인지 함께) */
 export function paperDate(v: PlayerView, day: number): string {
@@ -52,26 +53,4 @@ export function openNewsboy(game: Game): void {
     );
     body.querySelectorAll<HTMLButtonElement>('[data-read]').forEach((b) => b.addEventListener('click', () => openPaper(game, Number(b.dataset.read))));
   });
-}
-
-/** 산 신문 한 부를 처음부터 끝까지 (읽음으로 적는다) */
-export function openPaper(game: Game, day: number): void {
-  const r = game.dispatch({ type: 'readPaper', day });
-  const v = game.view();
-  const items = v.news.filter((n) => n.day === day);
-  const big = items.filter((n) => !n.section).map((n) => n.text);
-  const prices = items.filter((n) => n.section === 'prices').map((n) => n.text);
-  const weather = items.filter((n) => n.section === 'weather').map((n) => n.text);
-  const sheet = openSheet(`${day}일째 장날 신문`);
-  sheet.body.innerHTML = r.ok
-    ? `<article class="newspaper paper-issue">
-        <img class="seal" src="${sealSmall}" alt="" />
-        <h2>장터 신문</h2>
-        <p class="muted">${day}일째 장날까지의 소식 · ${agoText(v.day, day)}</p>
-        ${big.length ? `<h3>${big[0]}</h3>` : '<p class="muted">큰 소식 없는 조용한 장날이었어요.</p>'}
-        ${big.length > 1 ? `<ul class="list news-list">${big.slice(1).map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}
-        ${prices.length ? `<h4>도시 시세</h4><ul class="list news-list">${prices.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}
-        ${weather.length ? `<h4>날씨</h4><p>${weather.join(' ')}</p>` : ''}
-      </article>`
-    : `<p class="error">${ERROR_TEXT[r.error]}</p>`;
 }
