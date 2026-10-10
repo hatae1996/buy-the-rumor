@@ -6,3 +6,6 @@ Thumbs.db
 
 # 기획 인수인계 꾸러미 (적용한 뒤 내용은 docs/ 등에 들어간다)
 *.zip
+
+# 아바타 키트의 ChatGPT 원본 (약 19MB, 기획자 컴퓨터에만 둔다)
+assets-src/portrait/avatar-kit/sources/

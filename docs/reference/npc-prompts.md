@@ -1,167 +1,122 @@
-# NPC 초상 파츠 그림 프롬프트
+# NPC 초상 파츠 프롬프트 (아바타 키트 방식)
 
-기획자가 그림 생성에 쓰는 프롬프트다(기획 0.1.5). 프롬프트마다 혼자 완성된 문장이다. 옷과 머리는 회색조로 만들고 색은 게임이 곱한다. 만든 그림은 1254×1254에서 위치를 맞춰 원본으로 보관하고, 게임에는 512로 줄여 `assets/portrait/<레이어>/<파츠 id>.png`에 넣는다.
+기획 0.1.6. 키트는 `assets-src/portrait/avatar-kit/`, 만드는 법은 키트의 README.md "새 파츠 추가하는 법"을 따른다.
 
-"파츠 id" 칸은 Claude Code가 `src/sim/looks/catalog.ts`에 맞춰 채웠다(0.1.5). 그림 파일 이름은 `<파츠 id>.png`다. 예: 머리 6-뒤 → `assets/portrait/backHair/long.png`, 상의 1 → `assets/portrait/top/sweater.png`.
+1. ChatGPT **새 메시지**에 `base_key.png`(마젠타 피부)를 첨부한다. 매번 원본을 새로 첨부하고 이전 결과에 이어서 편집하지 않는다.
+2. 아래 프롬프트 하나를 그대로 붙인다(프롬프트마다 혼자 완성된 문장이다).
+3. 받은 그림을 `sources/<파일 이름>.png`로 저장하고 추출한다: 상의는 `python tools/extract_key.py sources/top_10.png parts/top_10 top`, 머리·수염은 끝을 `hair`로. 그다음 색 영역 지도: `python -c "from regions import make_regions; make_regions('parts/top_10.png','parts/top_10_reg.png',k=5,merge_de=10)"`.
+4. 밝은 파츠(크림, 흰색, 귀리색)는 프롬프트 끝에 이미 `Use a solid dark navy background.`가 붙어 있다.
+5. `face-drift`가 30을 넘으면 다시 뽑는다. 어두운 피부톤에 얹어 목선을 확대해 본다.
 
-- **(새)**: 0.1.5에서 목록에 더한 id (`bun`, `braid`는 예전에 뒷머리 id였고 이제 앞머리 id다). 표에 없는 이전 자리표시 머리(`fringe`, `parted`, `swept`, 뒷머리 `braid`·`bun`·`nape`)는 프롬프트에 없어서 뺐다.
-- **머리는 머리 모양 한 벌로 뽑는다.** 머리 6과 7은 앞 장과 뒤 장이 같은 id(`long`, `ponytail`)로 짝을 이루고, 머리 1~5는 앞 장만 있다(뒷머리 비움). 앞·뒷머리를 따로 뽑으면 꽁지머리 앞 장에 생머리 뒤 장이 붙을 수 있어서다(`HAIR_STYLES`).
-- 쪽진 올림머리(`bun`)와 땋은 머리(`braid`)는 프롬프트대로 앞 장(`frontHair`) 한 장에 다 그린다. 올림머리 뭉치가 정수리 위로, 땋은 머리가 어깨 앞으로 오므로 얼굴 위 레이어로 충분하다.
-- 표에 없는 레이어(얼굴·목 `round`·`oval`·`square`, 눈썹 `soft`·`thick`·`arched`, 수염 `stubble`·`mustache`·`full`, 주근깨 `freckles`, 주름 `lines`, 모자 `hood`·`kerchief`·`feltHat`·`cap`, 상의 `tunic`·`pinafore`)는 아직 프롬프트가 없다. 그림이 없는 파츠는 게임이 단색 자리표시로 그린다.
-- 1254 원본은 `assets-src/portrait/<레이어>/<파츠 id>.png`에 둔다(게임 빌드에 들어가지 않는다, 답 113).
+수염은 머리처럼 `hair` 방식으로 뽑고, 게임에서는 상의 위·머리 아래에 겹친다. 색은 머리색을 따른다.
 
-| 프롬프트 | 레이어 | 파츠 id |
+## 이미 있는 파츠 (키트)
+
+| 파일 | 내용 | 쓰는 직업(초안) |
 | --- | --- | --- |
-| 머리 1. 짧은 곱슬머리 | `frontHair` | `curly` (새) |
-| 머리 2. 짧게 깎은 머리 | `frontHair` | `cropped` |
-| 머리 3. 정수리가 빠진 노인 머리 | `frontHair` | `balding` (새) |
-| 머리 4. 쪽진 올림머리 | `frontHair` | `bun` (새) |
-| 머리 5. 한쪽 어깨로 넘긴 땋은 머리 | `frontHair` | `braid` (새) |
-| 머리 6-앞. 어깨까지 오는 생머리, 앞머리 장 | `frontHair` | `long` (새) |
-| 머리 6-뒤. 어깨까지 오는 생머리, 뒷머리 장 | `backHair` | `long` |
-| 머리 7-앞. 목 뒤로 묶은 꽁지머리, 앞머리 장 | `frontHair` | `ponytail` (새) |
-| 머리 7-뒤. 목 뒤로 묶은 꽁지머리, 뒷머리 장 | `backHair` | `ponytail` (새) |
-| 상의 1. 어부: 두꺼운 털실 스웨터 (새 파츠) | `top` | `sweater` (새) |
-| 상의 2. 광부: 마 셔츠 위 가죽 조끼 | `top` | `leatherVest` |
-| 상의 3. 여관 주인: 앞치마 두른 셔츠 | `top` | `apron` |
-| 상의 4. 도시 상인: 털깃 겉옷 (새 파츠) | `top` | `furCoat` (새) |
-| 상의 5. 농부: 튜닉과 멜빵 (새 파츠) | `top` | `braces` (새) |
-| 상의 6. 숄을 두른 블라우스 | `top` | `shawl` |
-| 상의 7. 사냥꾼: 두건을 내린 망토 | `top` | `cloak` |
-| 상의 8. 대장장이: 가죽 앞치마 (새 파츠) | `top` | `leatherApron` (새) |
+| hair_01 | 짧은 부스스한 머리 | 누구나 |
+| hair_02 | 어깨 길이 생머리 | 누구나 |
+| hair_03 | 옆머리만 남은 대머리 | 노인, 노상인 |
+| top_03 | 끈 튜닉 + 크림 셔츠 | 농부, 일꾼, 소문꾼 |
+| top_04 | 끈 조끼 원피스 + 크림 블라우스 | 여관 주인, 마을 사람(여), 소문꾼 |
+| top_05 | 갈색 니트 | 어부(top_13이 오기 전까지) |
+| top_06 | 자주색 더블릿, 놋쇠 단추 | 도시 상인, 노상인 |
+| top_07 | 농민 리넨 튜닉, 밧줄 매듭 | 농부, 나무꾼, 염장꾼 |
+| top_08 | 모피 깃 상인 겉옷 | 도시 상인, 장 상인 |
+| top_09 | 가죽 조끼 + 셔츠 | 사냥꾼, 광부 |
+| age_01_mul | 주름(노인) | 노인 |
 
-## 머리 1. 짧은 곱슬머리
+## 새로 뽑을 파츠
 
-레이어: `frontHair`
+| 파일 | 종류 | 내용 | 쓰는 직업(초안) |
+| --- | --- | --- | --- |
+| top_10 | 상의 | 여관 주인: 앞치마 두른 셔츠 | 여관 주인 |
+| top_11 | 상의 | 대장장이: 가죽 앞치마 | 대장장이 |
+| top_12 | 상의 | 숄을 두른 블라우스 | 소문꾼, 마을 사람(여) |
+| top_13 | 상의 | 어부: 굵은 털실 스웨터 | 어부 |
+| hair_04 | 머리 | 짧게 깎은 머리 | 일꾼, 광부 |
+| hair_05 | 머리 | 쪽진 올림머리 | 여관 주인, 마을 사람(여) |
+| hair_06 | 머리 | 어깨 앞으로 넘긴 땋은 머리 | 마을 사람(여), 농부 |
+| hair_07 | 머리 | 목 뒤로 묶은 꽁지머리 | 사냥꾼, 상인 |
+| beard_01 | 수염 | 짧은 턱수염 | 어부, 대장장이, 광부 |
+| beard_02 | 수염 | 콧수염 | 도시 상인, 노상인 |
 
-```
-A single game avatar part: short curly hair only, no face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The hair sits in the upper half of a square canvas, framing an invisible oval face, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
-```
+## top_10: 여관 주인: 앞치마 두른 셔츠
 
-## 머리 2. 짧게 깎은 머리
-
-레이어: `frontHair`
-
-```
-A single game avatar part: very short cropped hair only, close to the scalp, slightly uneven like cut with shears. No face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The hair sits in the upper half of a square canvas, framing an invisible oval face, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 머리 3. 정수리가 빠진 노인 머리
-
-레이어: `frontHair`
+종류: 상의 · 쓰는 직업(초안): 여관 주인
 
 ```
-A single game avatar part: an old man's balding hair only, bare crown with a thin ring of hair around the sides and back of the head above the ears. No face, no scalp skin, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The hair sits in the upper half of a square canvas, with the face and scalp area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only a loose cream linen shirt with a gathered drawstring neckline, and a plain undyed cloth apron tied high over the chest with thin straps over the shoulders. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry. Use a solid dark navy background.
 ```
 
-## 머리 4. 쪽진 올림머리
+## top_11: 대장장이: 가죽 앞치마
 
-레이어: `frontHair`
-
-```
-A single game avatar part: hair pulled back tightly into a round bun on top of the head, with a center parting and a few loose strands near the temples. No face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. The hair sits in the upper half of a square canvas, framing an invisible oval face, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 머리 5. 한쪽 어깨로 넘긴 땋은 머리
-
-레이어: `frontHair`
+종류: 상의 · 쓰는 직업(초안): 대장장이
 
 ```
-A single game avatar part: hair with a side parting, gathered into one thick braid that falls forward over the left shoulder down to the chest. No face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. The hair fills the upper half of a square canvas and the braid reaches down into the lower third, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only a short-sleeved coarse gray-brown shirt with a round neckline, and over it a heavy dark brown leather blacksmith's apron with a leather strap around the neck and a few scorch marks. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
 
-## 머리 6-앞. 어깨까지 오는 생머리, 앞머리 장
+## top_12: 숄을 두른 블라우스
 
-레이어: `frontHair`
-
-```
-A single game avatar part: the FRONT layer of shoulder-length straight hair only, meaning the top of the head, the side parting and the side locks that hang in front of the ears down to the jaw. No back hair, no face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. The hair sits in the upper half of a square canvas, framing an invisible oval face, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 머리 6-뒤. 어깨까지 오는 생머리, 뒷머리 장
-
-레이어: `backHair`
+종류: 상의 · 쓰는 직업(초안): 소문꾼, 마을 사람(여)
 
 ```
-A single game avatar part: the BACK layer of shoulder-length straight hair only, meaning the mass of hair that would be seen behind the head and neck, falling to the shoulders. No top of head, no front locks, no face, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. Placed on a square canvas so it spans from the upper half down to shoulder level, with a large empty area in the middle where the head and neck would cover it. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only a simple long-sleeved muted blue blouse with a wide square neckline, and a knitted oatmeal-colored wool shawl draped over both shoulders and crossed loosely at the chest. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry. Use a solid dark navy background.
 ```
 
-## 머리 7-앞. 목 뒤로 묶은 꽁지머리, 앞머리 장
+## top_13: 어부: 굵은 털실 스웨터
 
-레이어: `frontHair`
-
-```
-A single game avatar part: the FRONT layer of hair pulled back into a low ponytail, meaning only the top of the head and the hair swept back over the ears; the ponytail itself is not visible. No face, no head, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The hair sits in the upper half of a square canvas, framing an invisible oval face, with the face area left completely empty. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 머리 7-뒤. 목 뒤로 묶은 꽁지머리, 뒷머리 장
-
-레이어: `backHair`
+종류: 상의 · 쓰는 직업(초안): 어부
 
 ```
-A single game avatar part: the BACK layer of a low ponytail only, meaning the tied tail of hair that peeks out behind the neck on both sides and falls toward the upper back. No top of head, no face, no ears, no body. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. Placed on a square canvas around neck height, just below the center, with an empty gap in the middle where the neck would cover it. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only a thick cable-knitted wool fisherman's sweater in muted indigo blue with a rolled crew collar. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
 
-## 상의 1. 어부: 두꺼운 털실 스웨터 (새 파츠)
+## hair_04: 짧게 깎은 머리
 
-레이어: `top`
-
-```
-A single game avatar part: a thick hand-knitted wool fisherman's sweater with a rolled crew collar, seen as a bust from the chest up, in a medieval village setting. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 상의 2. 광부: 마 셔츠 위 가죽 조끼
-
-레이어: `top`
+종류: 머리 · 쓰는 직업(초안): 일꾼, 광부
 
 ```
-A single game avatar part: a rough linen shirt with a simple open collar under a sturdy laced leather vest, worn by a medieval miner, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only very short dark brown cropped hair close to the scalp, slightly uneven as if cut with shears. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
 
-## 상의 3. 여관 주인: 앞치마 두른 셔츠
+## hair_05: 쪽진 올림머리
 
-레이어: `top`
-
-```
-A single game avatar part: a loose linen shirt with a drawstring neckline and a plain cloth apron tied high over the chest, worn by a medieval innkeeper, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 상의 4. 도시 상인: 털깃 겉옷 (새 파츠)
-
-레이어: `top`
+종류: 머리 · 쓰는 직업(초안): 여관 주인, 마을 사람(여)
 
 ```
-A single game avatar part: a well-made wool merchant's coat with a wide fur-trimmed collar, wooden toggle fastenings and a leather purse strap across the chest, worn by a wealthy medieval city trader, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only dark brown hair with a center parting, pulled back tightly into a round bun on top of the head, with a few loose strands near the temples. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
 
-## 상의 5. 농부: 튜닉과 멜빵 (새 파츠)
+## hair_06: 어깨 앞으로 넘긴 땋은 머리
 
-레이어: `top`
-
-```
-A single game avatar part: a loose undyed farmer's tunic with a slit neckline and simple cloth suspenders over the shoulders, worn by a medieval peasant, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 상의 6. 숄을 두른 블라우스
-
-레이어: `top`
+종류: 머리 · 쓰는 직업(초안): 마을 사람(여), 농부
 
 ```
-A single game avatar part: a simple long-sleeved blouse with a wide square neckline, with a knitted wool shawl draped over both shoulders and crossed at the chest, worn by a medieval village woman, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only dark brown hair with a side parting, gathered into one thick braid that falls forward over the left shoulder down to the chest. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
 
-## 상의 7. 사냥꾼: 두건을 내린 망토
+## hair_07: 목 뒤로 묶은 꽁지머리
 
-레이어: `top`
-
-```
-A single game avatar part: a hooded traveling cloak with the hood pulled down and resting in folds behind the shoulders, fastened at the chest with a round wooden clasp over a plain tunic, worn by a medieval hunter, seen as a bust from the chest up. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
-```
-
-## 상의 8. 대장장이: 가죽 앞치마 (새 파츠)
-
-레이어: `top`
+종류: 머리 · 쓰는 직업(초안): 사냥꾼, 상인
 
 ```
-A single game avatar part: a heavy leather blacksmith's apron with a neck strap, worn over a short-sleeved coarse shirt with a round neckline, seen as a bust from the chest up in a medieval setting. Clothing only: no neck, no skin, no head, no arms below the shoulders; the inside of the collar is left empty. Low-poly faceted 3D style with soft matte shading, like a stylized mobile game character. Front view, symmetrical. The garment fills the bottom third of a square canvas, with the shoulders reaching near the left and right edges. Rendered in light neutral gray tones only, no color. Transparent background.
+Using this exact image, add only dark brown hair swept back over the ears and tied into a low ponytail at the nape of the neck, with the ponytail barely visible behind the neck. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
+```
+
+## beard_01: 짧은 턱수염
+
+종류: 수염 · 쓰는 직업(초안): 어부, 대장장이, 광부
+
+```
+Using this exact image, add only a short full dark brown beard along the jaw and chin, connected to a short mustache, no hair on the head. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
+```
+
+## beard_02: 콧수염
+
+종류: 수염 · 쓰는 직업(초안): 도시 상인, 노상인
+
+```
+Using this exact image, add only a neat dark brown mustache with slightly curled ends and no beard, no hair on the head. Keep the magenta skin exactly as it is. Do not change anything else: same face, same head shape, same position and size, same lighting, same background color. Keep the same low-poly faceted style with muted earthy colors. No hood, no hat, no cape, no jewelry.
 ```
