@@ -16,7 +16,7 @@
 비밀 값은 커밋하지 않는 파일에 만들어 두었다. 채팅이나 저장소에 붙이지 않는다.
 - `supabase/.env.secrets.local`: `TICK_SECRET`(장날), `ADMIN_SECRET`(운영자 함수, 관찰 화면에 넣는 값)
 - `supabase/vault-setup.sql.local`: 장날을 부를 주소와 `TICK_SECRET`을 Vault에 넣는 SQL
-- `.env.production.local`: 게임 빌드의 서버 주소와 공개 키
+- `.env.production`(이것은 커밋함): 게임 빌드의 서버 주소와 공개 키 (원래 공개되는 값)
 
 1. 터미널에서 로그인(브라우저가 열린다)하고 이 폴더를 프로젝트에 잇는다(데이터베이스 비밀번호를 묻는다).
 
@@ -62,14 +62,7 @@
 
 ## 게임(폰) 빌드에 서버 잇기
 
-`.env.production.local`(커밋하지 않음)에 넣고 `npm run build` 하면 서버 게임으로 열린다. 없으면 로컬 게임.
-
-```
-VITE_SUPABASE_URL=https://<프로젝트 ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<공개(anon/publishable) 키>
-```
-
-GitHub Pages로 올릴 때는 저장소 Settings → Secrets에 같은 이름으로 넣고 배포 워크플로가 빌드 환경 값으로 넘기게 한다(지금 워크플로는 넘기지 않는다: 계정을 만든 뒤 고친다).
+`.env.production`(커밋함)에 서버 주소와 공개(publishable) 키가 있어 `npm run build`와 GitHub Pages 빌드가 서버 게임으로 열린다. 주소에 `?local`을 붙이면 로컬 게임. 개발 서버(`npm run dev`)는 이 파일을 읽지 않아 로컬 게임이다(서버 모드로 보려면 실행 설정 `dev-server-demo`와 `.env.serverdemo.local`).
 
 ## 시즌 열기 (운영자)
 
