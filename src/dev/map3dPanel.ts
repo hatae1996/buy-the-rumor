@@ -1,11 +1,10 @@
-// 3D 지도 실험: 계절과 그림체(땅 그림, 외곽선, 소품)를 바꿔 본다.
+// 3D 지도 실험: 계절과 그림체(외곽선, 소품)를 바꿔 본다.
 import type { Season } from '../sim/season';
 import type { WorldMap } from '../sim/worldgen';
 import { DemoMapController } from './demoMapController';
 import type { MapStyle } from '../view3d';
 
 const TOGGLES: { key: keyof MapStyle; label: string }[] = [
-  { key: 'painted', label: '땅 그림' },
   { key: 'outline', label: '외곽선' },
   { key: 'terrainProps', label: '나무·산 소품' },
 ];

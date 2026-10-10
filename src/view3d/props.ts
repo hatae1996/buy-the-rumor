@@ -1,29 +1,32 @@
-// 칸 위 소품: 나무, 산, 언덕, 자원지 표시, 마을 집, 길. 지오메트리는 한 번 만들어 같이 쓴다.
+// 칸 위 소품 (로우폴리): 바늘잎나무 무리, 바위산, 언덕 둔덕, 들판 덤불과 바위, 자원지 표시, 마을 집, 길.
+// 지오메트리는 한 번 만들어 같이 쓴다. 자리와 크기는 칸 좌표로 정해 늘 같은 모습이다.
 import * as THREE from 'three';
 import type { Season } from '../sim/season';
 import { HEX_DIRS, type Tile, type WorldMap } from '../sim/worldgen';
 import type { InstanceBatcher, Placement } from './batcher';
-import { tileCenter } from './layout';
+import { tileCenter, tileHash } from './layout';
 import type { MaterialKit } from './materials';
 import { PROP, SNOW, TREE_COLOR } from './palette';
 
 export class PropGeometries {
-  readonly tree = new THREE.ConeGeometry(0.26, 0.75, 6);
-  readonly trunk = new THREE.CylinderGeometry(0.05, 0.06, 0.14, 5);
-  readonly mountain = new THREE.ConeGeometry(0.7, 1.3, 5);
-  readonly mountainCap = new THREE.ConeGeometry(0.29, 0.54, 5);
-  readonly hill = new THREE.SphereGeometry(0.42, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2);
-  readonly wheat = new THREE.BoxGeometry(0.75, 0.12, 0.13);
+  /** 높이 1, 반지름 1인 오각뿔 (나무, 바위산). 원점은 가운데 */
+  readonly spike = new THREE.ConeGeometry(1, 1, 5);
+  /** 덤불, 둔덕 */
+  readonly blob = new THREE.IcosahedronGeometry(1, 0);
+  /** 바위 */
+  readonly rock = new THREE.DodecahedronGeometry(1, 0);
+  /** 볏단: 낮은 사각뿔 */
+  readonly sheaf = new THREE.ConeGeometry(0.075, 0.2, 4);
   readonly ore = new THREE.OctahedronGeometry(0.18);
   readonly salt = new THREE.ConeGeometry(0.16, 0.22, 6);
   readonly boat = new THREE.BoxGeometry(0.42, 0.1, 0.18);
   readonly wall = new THREE.BoxGeometry(0.42, 0.32, 0.42);
   readonly roof = new THREE.ConeGeometry(0.38, 0.32, 4);
-  readonly tower = new THREE.CylinderGeometry(0.17, 0.2, 0.9, 8);
-  readonly towerRoof = new THREE.ConeGeometry(0.26, 0.36, 8);
+  readonly tower = new THREE.CylinderGeometry(0.17, 0.2, 0.9, 6);
+  readonly towerRoof = new THREE.ConeGeometry(0.26, 0.36, 6);
   /** 길 한 토막: x축으로 길이 1 */
   readonly roadSpoke = new THREE.BoxGeometry(1, 0.04, 0.2);
-  readonly roadHub = new THREE.CylinderGeometry(0.1, 0.1, 0.04, 8);
+  readonly roadHub = new THREE.CylinderGeometry(0.1, 0.1, 0.04, 6);
 
   dispose(): void {
     Object.values(this).forEach((g) => (g as THREE.BufferGeometry).dispose());
@@ -44,64 +47,62 @@ const CITY_HOUSES = [
   [0, 0.52, 0.7],
 ] as const;
 
+/** 숲 칸의 나무 자리 (x, z). 칸마다 이 중 몇 개를 고르고 조금씩 흔든다 */
+const TREE_SPOTS = [
+  [0, 0],
+  [-0.38, 0.12],
+  [0.36, 0.18],
+  [-0.12, -0.4],
+  [0.22, -0.34],
+  [-0.2, 0.42],
+  [0.14, 0.44],
+  [0.5, -0.08],
+  [-0.48, -0.2],
+] as const;
+
 export interface PropOptions {
   season: Season;
-  /** 나무, 산, 언덕. 땅 그림에 이미 그려져 있으면 끈다 */
+  /** 나무, 산, 언덕, 덤불 */
   terrainProps: boolean;
   outline: boolean;
 }
 
-export function addProps(
-  map: WorldMap,
-  b: InstanceBatcher,
-  geo: PropGeometries,
-  kit: MaterialKit,
-  opt: PropOptions,
-): void {
+export function addProps(map: WorldMap, b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, opt: PropOptions): void {
   const townAt = new Map(map.towns.map((t) => [t.tile, t]));
   const outline = opt.outline ? kit.outline : null;
   const winter = opt.season === 3;
 
   map.tiles.forEach((t, i) => {
     const c = tileCenter(t);
-    // 칸마다 조금씩 돌려 똑같아 보이지 않게 한다 (시드 없이 좌표로 정하므로 늘 같은 모습)
-    const turn = ((t.q * 7 + t.r * 13) % 6) * (Math.PI / 3);
+    // 칸마다 조금씩 돌려 똑같아 보이지 않게 한다
+    const turn = Math.floor(tileHash(t.q, t.r, 1) * 6) * (Math.PI / 3);
     const at: At = (dx, dz, dy, scale = 1, rotY = 0) => {
       const cos = Math.cos(turn);
       const sin = Math.sin(turn);
       return { x: c.x + dx * cos - dz * sin, y: c.y + dy, z: c.z + dx * sin + dz * cos, scale, rotY: rotY + turn };
     };
+    const rnd = (k: number) => tileHash(t.q, t.r, k + 10);
 
     const town = townAt.get(i);
     if (town) {
       const houses = town.tier === 'city' ? CITY_HOUSES : TOWN_HOUSES;
       for (const [dx, dz, s] of houses) {
-        b.addOutlined(geo.wall, kit.toon(PROP.wall), outline, at(dx, dz, 0.16 * s, s));
-        b.addOutlined(geo.roof, kit.toon(PROP.roof), outline, at(dx, dz, 0.48 * s, s, Math.PI / 4));
+        b.addOutlined(geo.wall, kit.solid(PROP.wall), outline, at(dx, dz, 0.16 * s, s));
+        b.addOutlined(geo.roof, kit.solid(PROP.roof), outline, at(dx, dz, 0.48 * s, s, Math.PI / 4));
       }
       // 도시는 가운데에 높은 탑이 있어 멀리서도 알아본다
       if (town.tier === 'city') {
-        b.addOutlined(geo.tower, kit.toon(PROP.wall), outline, at(0, 0, 0.45));
-        b.addOutlined(geo.towerRoof, kit.toon(PROP.cityRoof), outline, at(0, 0, 1.08));
+        b.addOutlined(geo.tower, kit.solid(PROP.wall), outline, at(0, 0, 0.45));
+        b.addOutlined(geo.towerRoof, kit.solid(PROP.cityRoof), outline, at(0, 0, 1.08));
       }
       return;
     }
 
     if (opt.terrainProps) {
-      if (t.terrain === 'forest') {
-        const leaf = kit.toon(winter ? SNOW : TREE_COLOR[opt.season]);
-        for (const [dx, dz, s] of [[-0.35, 0.2, 1], [0.3, 0.3, 0.85], [0, -0.35, 0.95]] as const) {
-          b.addOutlined(geo.tree, leaf, outline, at(dx, dz, 0.42 * s, s));
-          b.add(geo.trunk, kit.toon(PROP.trunk), at(dx, dz, 0.07));
-        }
-      } else if (t.terrain === 'mountain') {
-        b.addOutlined(geo.mountain, kit.toon(PROP.mountain), outline, at(0, 0, 0.65));
-        b.add(geo.mountainCap, kit.toon(0xffffff), at(0, 0, 1.03));
-      } else if (t.terrain === 'hills') {
-        const col = kit.toon(winter ? SNOW : PROP.hills);
-        b.addOutlined(geo.hill, col, outline, at(-0.25, 0.1, 0));
-        b.addOutlined(geo.hill, col, outline, at(0.3, -0.15, 0, 0.8));
-      }
+      if (t.terrain === 'forest') addForest(b, geo, kit, opt.season, at, rnd, t.resource !== null);
+      else if (t.terrain === 'mountain') addMountain(b, geo, kit, winter, at, rnd);
+      else if (t.terrain === 'hills') addHills(b, geo, kit, opt.season, at, rnd);
+      else if ((t.terrain === 'plain' || t.terrain === 'coast') && !t.resource && !t.road) addScatter(b, geo, kit, winter, at, rnd);
     }
 
     addResource(t, b, geo, kit, outline, winter, at);
@@ -110,7 +111,72 @@ export function addProps(
   addRoads(map, b, geo, kit);
 }
 
-type At = (dx: number, dz: number, dy: number, scale?: number, rotY?: number) => Placement;
+type At = (dx: number, dz: number, dy: number, scale?: number | readonly [number, number, number], rotY?: number) => Placement;
+type Rnd = (k: number) => number;
+
+/** 바늘잎나무 무리: 가늘고 뾰족한 뿔 4~7그루, 키가 제각각. 자원지 표시가 있으면 한쪽을 비운다 */
+function addForest(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd, leaveRoom: boolean): void {
+  const palette = TREE_COLOR[season];
+  const count = 4 + Math.floor(rnd(0) * 4);
+  const spots = TREE_SPOTS.filter(([x, z]) => !leaveRoom || x < 0.3 || z < 0.25).slice(0, count);
+  spots.forEach(([x, z], k) => {
+    const h = 0.55 + rnd(k + 1) * 0.5;
+    const r = 0.11 + rnd(k + 20) * 0.05;
+    const dx = x + (rnd(k + 40) - 0.5) * 0.12;
+    const dz = z + (rnd(k + 60) - 0.5) * 0.12;
+    const color = palette[Math.floor(rnd(k + 80) * palette.length)]!;
+    b.add(geo.spike, kit.solid(color), at(dx, dz, h / 2, [r, h, r], rnd(k + 90) * Math.PI));
+    // 겨울엔 꼭대기에 눈
+    if (season === 3) {
+      const ch = h * 0.34;
+      b.add(geo.spike, kit.solid(SNOW), at(dx, dz, h - ch / 2 + 0.005, [r * 0.36 * 1.08, ch, r * 0.36 * 1.08], rnd(k + 90) * Math.PI));
+    }
+  });
+}
+
+/** 바위산: 큰 봉우리 하나와 작은 봉우리 한두 개, 꼭대기에 눈 */
+function addMountain(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, winter: boolean, at: At, rnd: Rnd): void {
+  const peaks: [number, number, number, number][] = [[0, 0, 0.5, 1.2 + rnd(0) * 0.3]];
+  peaks.push([0.42, 0.25, 0.3, 0.65 + rnd(1) * 0.2]);
+  if (rnd(2) < 0.6) peaks.push([-0.4, 0.3, 0.28, 0.55 + rnd(3) * 0.2]);
+  peaks.forEach(([dx, dz, r, h], k) => {
+    const rot = rnd(k + 5) * Math.PI;
+    b.add(geo.spike, kit.solid(k === 0 ? PROP.rock : PROP.rockDark), at(dx, dz, h / 2, [r, h, r], rot));
+    // 눈 모자: 같은 뿔의 윗부분을 조금 크게 덮는다
+    const capK = winter ? 0.6 : k === 0 ? 0.36 : 0;
+    if (capK > 0) {
+      const ch = h * capK;
+      b.add(geo.spike, kit.solid(SNOW), at(dx, dz, h - ch / 2 + 0.01, [r * capK * 1.06, ch, r * capK * 1.06], rot));
+    }
+  });
+}
+
+/** 언덕: 낮은 둔덕 두세 개 */
+function addHills(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, season: Season, at: At, rnd: Rnd): void {
+  const color = season === 3 ? SNOW : season === 2 ? 0x9a8a45 : PROP.bush;
+  const mounds: [number, number, number][] = [
+    [-0.25, 0.1, 0.34],
+    [0.3, -0.15, 0.27],
+  ];
+  if (rnd(0) < 0.5) mounds.push([0.15, 0.42, 0.2]);
+  mounds.forEach(([dx, dz, r], k) => b.add(geo.blob, kit.solid(color), at(dx, dz, 0, [r, r * 0.55, r], rnd(k + 3) * Math.PI)));
+}
+
+/** 들판·해안: 몇 칸에만 덤불이나 바위 한두 개 (빈 칸이 더 많게) */
+function addScatter(b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit, winter: boolean, at: At, rnd: Rnd): void {
+  const roll = rnd(0);
+  if (roll < 0.22) {
+    const color = kit.solid(winter ? SNOW : PROP.bush);
+    const n = 1 + Math.floor(rnd(1) * 3);
+    for (let k = 0; k < n; k++) {
+      const r = 0.08 + rnd(k + 2) * 0.05;
+      b.add(geo.blob, color, at(-0.3 + rnd(k + 5) * 0.6, -0.3 + rnd(k + 8) * 0.6, r * 0.5, [r, r * 0.8, r], rnd(k + 11)));
+    }
+  } else if (roll < 0.36) {
+    const r = 0.07 + rnd(2) * 0.06;
+    b.add(geo.rock, kit.solid(PROP.rock), at(-0.25 + rnd(3) * 0.5, -0.25 + rnd(4) * 0.5, r * 0.4, [r, r * 0.75, r], rnd(5) * Math.PI));
+  }
+}
 
 function addResource(
   t: Tile,
@@ -123,18 +189,22 @@ function addResource(
 ): void {
   switch (t.resource) {
     case 'field':
-      // 겨울엔 거둬들여 비어 있다
-      if (!winter) for (let k = -1; k <= 1; k++) b.add(geo.wheat, kit.toon(PROP.wheat), at(0, k * 0.26, 0.06));
+      // 볏단을 세 줄로 세운다. 겨울엔 거둬들여 비어 있다
+      if (!winter) {
+        for (let row = -1; row <= 1; row++) {
+          for (let col = -1; col <= 1; col++) b.add(geo.sheaf, kit.solid(PROP.wheat), at(col * 0.24 + row * 0.12, row * 0.22, 0.1, 1, Math.PI / 4));
+        }
+      }
       break;
     case 'ore':
-      b.addOutlined(geo.ore, kit.toon(PROP.ore), outline, at(0.45, 0.4, 0.2));
+      b.addOutlined(geo.ore, kit.solid(PROP.ore), outline, at(0.45, 0.4, 0.2));
       break;
     case 'salt':
-      b.addOutlined(geo.salt, kit.toon(PROP.salt), outline, at(0.2, 0.15, 0.11), 0.1);
-      b.addOutlined(geo.salt, kit.toon(PROP.salt), outline, at(-0.15, 0.3, 0.11), 0.1);
+      b.addOutlined(geo.salt, kit.solid(PROP.salt), outline, at(0.2, 0.15, 0.11), 0.1);
+      b.addOutlined(geo.salt, kit.solid(PROP.salt), outline, at(-0.15, 0.3, 0.11), 0.1);
       break;
     case 'fish':
-      b.addOutlined(geo.boat, kit.toon(PROP.boat), outline, at(0.25, 0.3, 0.05));
+      b.addOutlined(geo.boat, kit.solid(PROP.boat), outline, at(0.25, 0.3, 0.05));
       break;
     default:
       break;
@@ -144,7 +214,7 @@ function addResource(
 /** 길: 칸 가운데에서 이웃한 길 칸 쪽으로 칸 가장자리까지 토막을 놓는다 */
 function addRoads(map: WorldMap, b: InstanceBatcher, geo: PropGeometries, kit: MaterialKit): void {
   const index = new Map(map.tiles.map((t, i) => [`${t.q},${t.r}`, i]));
-  const mat = kit.toon(PROP.road);
+  const mat = kit.solid(PROP.road);
   for (const t of map.tiles) {
     if (!t.road) continue;
     const c = tileCenter(t);

@@ -13,19 +13,16 @@ import { BACKGROUND, MARKER_RING } from './palette';
 import { addMarker, createPawn, PAWN_SLOTS, PawnGeometries, PawnMover, ringMaterial } from './pawn';
 import { addProps, PropGeometries } from './props';
 import { Snowfall } from './snow';
-import { loadTileArt, type TileArtSet } from './tileArt';
-import { buildTiles, PrismGeometries, type TileBoard } from './tiles';
+import { buildTiles, createPrism, type TileBoard } from './tiles';
 
 export interface MapStyle {
-  /** 기둥 윗면에 땅 그림을 깐다 */
-  painted: boolean;
-  /** 툰 외곽선 */
+  /** 외곽선 (로우폴리로 바꾼 뒤로는 개발용) */
   outline: boolean;
   /** 나무, 산, 언덕 소품 */
   terrainProps: boolean;
 }
 
-export const DEFAULT_STYLE: MapStyle = { painted: false, outline: true, terrainProps: true };
+export const DEFAULT_STYLE: MapStyle = { outline: false, terrainProps: true };
 
 export interface PawnSpec {
   /** 같은 말을 알아보는 이름 (예: 'me', 'trader-3') */
@@ -56,18 +53,18 @@ export class MapView {
   private readonly scene = new THREE.Scene();
   private readonly cam: MapCamera;
   private readonly kit = new MaterialKit();
-  private readonly prisms = new PrismGeometries();
+  private readonly prism = createPrism();
   private readonly propGeo = new PropGeometries();
   private readonly pawnGeo = new PawnGeometries();
   private readonly labels: TownLabels;
   private readonly snow = new Snowfall();
   private readonly raycaster = new THREE.Raycaster();
+  private readonly sun = new THREE.DirectionalLight(0xfff3dc, 2.2);
   private readonly resizeObserver: ResizeObserver;
 
   private map: WorldMap | null = null;
   private season: Season = 2;
   private style: MapStyle = { ...DEFAULT_STYLE };
-  private art: TileArtSet | null = null;
   private board: { group: THREE.Group; tiles: TileBoard } | null = null;
   private pawns = new Map<string, { obj: THREE.Group; color: number; marker: boolean }>();
   private readonly ringMats = { ring: ringMaterial(MARKER_RING, 0.95), pulse: ringMaterial(MARKER_RING, 0.8) };
@@ -101,11 +98,17 @@ export class MapView {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(BACKGROUND);
+    // 로우폴리 디오라마: 해가 비스듬히 비추고 기둥과 나무가 그림자를 드리운다 (그림자 지도는 1024, 사파리 메모리)
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x5a4632, 1.4));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.4);
-    sun.position.set(-8, 14, -6);
-    this.scene.add(sun);
+    this.scene.add(new THREE.HemisphereLight(0xfff6e6, 0x4a3b2c, 1.5));
+    this.sun.position.set(-8, 14, -6);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.bias = -0.0008;
+    this.sun.shadow.normalBias = 0.02;
+    this.scene.add(this.sun, this.sun.target);
 
     this.cam = new MapCamera(canvas);
     this.labels = new TownLabels(layer, (id) => this.events.onTownTap?.(id));
@@ -126,6 +129,7 @@ export class MapView {
     this.map = map;
     this.cam.setMapRadius(map.radius);
     this.snow.fit(map.radius);
+    this.fitShadow(map.radius);
     this.mover = null;
     this.rebuild();
     this.labels.set(
@@ -142,10 +146,8 @@ export class MapView {
     this.rebuild();
   }
 
-  /** 땅 그림은 처음 켤 때 불러온다 */
   async setStyle(style: Partial<MapStyle>): Promise<void> {
     this.style = { ...this.style, ...style };
-    if (this.style.painted && !this.art) this.art = await loadTileArt();
     this.rebuild();
   }
 
@@ -240,7 +242,7 @@ export class MapView {
     this.labels.dispose();
     this.snow.dispose();
     this.cam.dispose();
-    this.prisms.dispose();
+    this.prism.dispose();
     this.propGeo.dispose();
     this.pawnGeo.dispose();
     this.ringMats.ring.dispose();
@@ -255,11 +257,7 @@ export class MapView {
     if (!map) return;
     this.clearBoard();
     const group = new THREE.Group();
-    const tiles = buildTiles(map, this.prisms, this.kit, {
-      season: this.season,
-      art: this.style.painted ? this.art : null,
-      outline: this.style.outline,
-    });
+    const tiles = buildTiles(map, this.prism, this.kit, { season: this.season, outline: this.style.outline });
     group.add(...tiles.meshes);
     const batcher = new InstanceBatcher();
     addProps(map, batcher, this.propGeo, this.kit, {
@@ -267,7 +265,11 @@ export class MapView {
       terrainProps: this.style.terrainProps,
       outline: this.style.outline,
     });
-    group.add(...batcher.build());
+    for (const m of batcher.build()) {
+      m.castShadow = true;
+      m.receiveShadow = true;
+      group.add(m);
+    }
     this.scene.add(group);
     this.board = { group, tiles };
 
@@ -280,6 +282,21 @@ export class MapView {
     this.setPawns(this.pawnSpecs);
   }
 
+  /** 그림자를 그리는 범위를 판 크기에 맞춘다 */
+  private fitShadow(radius: number): void {
+    const r = (radius + 2) * Math.sqrt(3);
+    const cam = this.sun.shadow.camera;
+    cam.left = -r;
+    cam.right = r;
+    cam.top = r;
+    cam.bottom = -r;
+    cam.near = 1;
+    cam.far = 60;
+    cam.updateProjectionMatrix();
+    this.sun.position.set(-0.45 * 30, 0.75 * 30, -0.35 * 30);
+    this.sun.target.position.set(0, 0, 0);
+  }
+
   private clearBoard(): void {
     if (!this.board) return;
     this.scene.remove(this.board.group);
@@ -287,7 +304,6 @@ export class MapView {
     this.board.group.traverse((o) => {
       if (o instanceof THREE.InstancedMesh) o.dispose();
     });
-    this.board.tiles.dispose();
     this.board = null;
   }
 

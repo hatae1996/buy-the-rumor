@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import type { MaterialKit } from './materials';
 
 export class PawnGeometries {
-  readonly base = new THREE.CylinderGeometry(0.2, 0.26, 0.12, 12);
-  readonly body = new THREE.CylinderGeometry(0.1, 0.19, 0.42, 12);
-  readonly head = new THREE.SphereGeometry(0.15, 12, 10);
+  readonly base = new THREE.CylinderGeometry(0.2, 0.26, 0.12, 8);
+  readonly body = new THREE.CylinderGeometry(0.1, 0.19, 0.42, 8);
+  readonly head = new THREE.IcosahedronGeometry(0.15, 1);
   /** 내 말 표시: 발밑 고리, 머리 위 깃대와 깃발 */
   readonly ring = new THREE.RingGeometry(0.32, 0.44, 32).rotateX(-Math.PI / 2);
   readonly pole = new THREE.CylinderGeometry(0.018, 0.018, 0.5, 6);
@@ -45,9 +45,9 @@ export function addMarker(
   pulse.name = 'pulse';
   pulse.position.y = 0.02;
   pulse.renderOrder = 10;
-  const pole = new THREE.Mesh(geo.pole, kit.toon(0x6b4423));
+  const pole = new THREE.Mesh(geo.pole, kit.solid(0x6b4423));
   pole.position.y = 1.0;
-  const flag = new THREE.Mesh(geo.flag, kit.toon(flagColor));
+  const flag = new THREE.Mesh(geo.flag, kit.solid(flagColor));
   flag.position.set(0.14, 1.17, 0);
   pawn.add(ring, pulse, pole, flag);
   if (outline) {
@@ -66,8 +66,9 @@ export function createPawn(geo: PawnGeometries, kit: MaterialKit, color: number,
     [geo.head, 0.66],
   ];
   for (const [part, y] of parts) {
-    const m = new THREE.Mesh(part, kit.toon(color));
+    const m = new THREE.Mesh(part, kit.solid(color));
     m.position.y = y;
+    m.castShadow = true;
     g.add(m);
     if (outline) {
       const o = new THREE.Mesh(part, kit.outline);
