@@ -66,7 +66,8 @@ export function timeShiftStep(view: PlayerView, reserve: number, g: GrowthMind, 
     const prices = view.market?.town === w.town ? view.market.price : view.day - (view.memory[w.town]?.day ?? -Infinity) <= 10 ? view.memory[w.town]!.prices : null;
     for (const good of GOODS) {
       const s = seasonsOf(good);
-      const n = countIn(view, w.town, good);
+      // 장에 낼 수 있는 것만 (내일이면 상할 묶음은 빼고)
+      const n = w.sellable[good];
       if (!s || n === 0 || view.orders.some((o) => o.from === 'store' && o.town === w.town && o.good === good)) continue;
       const cost = g.shiftCost[good] ?? basePrice(good) * BUY_BELOW;
       const price = prices?.[good] ?? 0;

@@ -6,7 +6,6 @@
 // - 장비: 장비가 없어 못 고른 선택지를 두 번 넘게 보면
 // 사고 나서도 하루 유지비 며칠 치와 비상금은 남긴다. 써 보니 손해면 내보내고, 돈이 모자라면 말을 판다.
 // 셈과 상관없이 "살 수 있게 된 날"도 따로 적는다 (기획 숫자 맞추기용).
-import { isGood } from '../cart';
 import { ECONOMY, GROWTH, HORSES } from '../constants';
 import type { Command, GoodId, PlayerView } from '../economy';
 import { basePrice, GOODS } from '../economy';
@@ -281,10 +280,9 @@ function sellStored(view: PlayerView, timeShift: boolean): Command | null {
     const prices = here ? view.market?.price : view.day - (view.memory[w.town]?.day ?? -Infinity) <= RECENT_DAYS ? view.memory[w.town]!.prices : null;
     if (!prices) continue;
     const onSale = new Set(view.orders.filter((o) => o.from === 'store' && o.town === w.town).map((o) => o.good));
-    const qty: Partial<Record<GoodId, number>> = {};
-    for (const p of w.pieces) if (isGood(p.good)) qty[p.good] = (qty[p.good] ?? 0) + p.qty;
     for (const good of GOODS) {
-      const n = qty[good] ?? 0;
+      // 내일이면 상할 묶음은 장에 낼 수 없다
+      const n = w.sellable[good];
       if (n === 0 || onSale.has(good)) continue;
       // 채집꾼이 없는 창고는 비우려고 내놓는다 (값을 따지지 않는다). 철을 넘기려고 둔 짐은 시간차 장사가 판다
       const clearing = !view.hires.some((h) => h.role === 'gatherer' && h.town === w.town);

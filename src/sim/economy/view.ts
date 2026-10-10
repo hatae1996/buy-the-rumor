@@ -32,7 +32,7 @@ import { CART, ECONOMY, GROWTH, HORSES, RUMORS } from '../constants';
 import { CYCLE_DAYS, seasonOfDay, type Season } from '../season';
 import { hasExpeditions, innOf } from './player';
 import { GOODS, type GoodId } from './goods';
-import { totalCount, type Lot } from './inventory';
+import { sellableCount, totalCount, type Lot } from './inventory';
 import { euro, iGa } from '../josa';
 import { cardById, chanceOf, choiceFatigue, GEAR_KINDS, gearUses, guideFee, needsMet, type GearKind } from '../expedition';
 import { bigOrdersToday, blockedTiles, eventDef, tollAt, type ScheduledEventId } from '../events';
@@ -167,6 +167,8 @@ export interface WarehouseView {
   cells: number;
   /** 물품마다 더 넣을 수 있는 양 (창고는 수레보다 높이 쌓는다) */
   room: Record<GoodId, number>;
+  /** 물품마다 장에 낼 수 있는 양 (내일이면 상할 묶음은 빼고) */
+  sellable: Record<GoodId, number>;
 }
 
 export interface PlayerView {
@@ -841,6 +843,7 @@ export function playerView(state: EconomyState, map: WorldMap, playerId: PlayerI
       usedCells: usedCells(w.board),
       cells: WAREHOUSE_CELLS,
       room: Object.fromEntries(GOODS.map((g) => [g, roomFor(w.board, g)])) as Record<GoodId, number>,
+      sellable: Object.fromEntries(GOODS.map((g) => [g, sellableCount(cartLots(w.board), g, ECONOMY.spoilRate[seasonOfDay(state.day, state.startSeason)])])) as Record<GoodId, number>,
     })),
     hires: p.hires.map((h) => ({
       id: h.id,
