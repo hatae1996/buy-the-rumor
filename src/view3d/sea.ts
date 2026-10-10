@@ -18,14 +18,12 @@ const MAX_DIST = 8;
 const LAND_RADIUS = 0.9;
 /** 포말 삼각형 조각 한 변 (칸 반지름 1 기준) */
 const FOAM_CELL = 0.13;
-/** 수심 띠 삼각형 조각 한 변 */
-const BAND_CELL = 0.32;
 /** 물결 판의 격자 한 칸 (작을수록 면이 잘다) */
 const WAVE_CELL = 0.55;
 /** 물결 높이 */
 const WAVE_AMP = 0.05;
 /** 해 반짝임 세기 */
-const GLINT = 0.22;
+const GLINT = 0.11;
 /** 바깥 판 크기: 카메라가 어디를 보든 끝이 보이지 않게 */
 const PLANE_SIZE = 400;
 
@@ -39,7 +37,7 @@ export class SeaSurface {
     const md = MAX_DIST.toFixed(1);
     this.material = new THREE.ShaderMaterial({
       vertexShader: seaVertexShader(md),
-      fragmentShader: seaFragmentShader(md, BAND_CELL.toFixed(2), FOAM_CELL.toFixed(2)),
+      fragmentShader: seaFragmentShader(md, FOAM_CELL.toFixed(2)),
       uniforms: {
         uDist: { value: null },
         uExtent: { value: 1 },
