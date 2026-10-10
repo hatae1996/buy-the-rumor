@@ -18,6 +18,7 @@ import type { Db } from './db';
 import { mapFor } from './maps';
 import { bannedWordIn, nameKey } from './names';
 import { kstHour } from './schedule';
+import { seasonOpensAt } from './season';
 import { seasonRows } from './settle';
 
 /** 폰이 보낸 명령 하나의 글자 수 상한 (수레 짐 다시 놓기가 가장 길다) */
@@ -42,6 +43,8 @@ export interface Screen extends ScreenData {
   place: 'world' | 'apprentice';
   seasonId: string;
   worldId: string;
+  /** 시즌을 연 때 (ms). 장날은 여기부터 2시간 30분마다: 폰이 장날까지 남은 시간을 센다 */
+  opensAt: number;
   /** 세계가 멈췄으면 그 이유 (화면은 보이되 명령은 받지 않는다) */
   halted: string | null;
 }
@@ -76,11 +79,11 @@ async function withSeasonRanking(db: Db, m: Membership, blob: WorldBlob): Promis
 }
 
 function screenOf(m: Membership, blob: WorldBlob, uid: string, halted: string | null): Screen {
-  return { place: 'world', seasonId: m.season_id, worldId: m.world_id, halted, ...screenData(blob, mapFor(m.season_id), uid) };
+  return { place: 'world', seasonId: m.season_id, worldId: m.world_id, opensAt: seasonOpensAt(m.season_id), halted, ...screenData(blob, mapFor(m.season_id), uid) };
 }
 
 function apprenticeScreen(seasonId: string, blob: WorldBlob, uid: string): Screen {
-  return { place: 'apprentice', seasonId, worldId: blob.state.world.worldId, halted: null, ...screenData(blob, mapFor(seasonId), uid) };
+  return { place: 'apprentice', seasonId, worldId: blob.state.world.worldId, opensAt: seasonOpensAt(seasonId), halted: null, ...screenData(blob, mapFor(seasonId), uid) };
 }
 
 export interface Away {

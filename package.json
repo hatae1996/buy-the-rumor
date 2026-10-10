@@ -16,6 +16,7 @@
     "test:deno": "npm run build:server && vitest run --config vitest.deno.config.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.117.2",
     "three": "^0.186.1"
   },
   "devDependencies": {

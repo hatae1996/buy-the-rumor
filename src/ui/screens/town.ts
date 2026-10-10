@@ -114,7 +114,8 @@ function apprenticeCard(v: PlayerView, elder: Look | null): string {
 }
 
 export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: TownScreenActions): void {
-  const test = v.settlement ? '' : TEST_BTN;
+  // 서버 게임에는 시험용 장날 열기가 없다 (장날은 서버가 연다)
+  const test = v.settlement || game.server ? '' : TEST_BTN;
   el.innerHTML =
     v.location.kind === 'road'
       ? `${settlementCard(v)}${travelHtml(game, v, act.now, test)}`

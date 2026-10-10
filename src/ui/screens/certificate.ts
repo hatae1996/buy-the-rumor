@@ -4,6 +4,7 @@
 // 0.1.7: 가운데에 내 얼굴(아바타 키트)과 문장(부품), 아래에 상인 번호. 얼굴과 문장은 언제든, 상단 이름은 시즌 사이에만 바꾼다.
 // 내 증서는 대표 칭호, 앞면에 달 인장(4개까지)을 고르고, 이미지로 저장한다 (공유는 나중).
 // 상단 이름은 로컬에서는 글자 수만 본다. 금칙어와 같은 시즌 중복은 서버 버전에서 (0.1.7 답 129).
+import { canSendFeedback, openFeedbackSheet } from '../feedback';
 import cardImg from '../../../assets/ui/certificate_card.jpg';
 import type { CertificateView } from '../../sim/ranking';
 import { drawEmblem, emblemSvg } from '../emblem';
@@ -82,6 +83,7 @@ export function openCertificate(game: Game, id?: string): void {
       <div class="cert-parts">
         <button type="button" class="shop-link" data-edit-face>얼굴 바꾸기 <span>›</span></button>
         <button type="button" class="shop-link" data-edit-emblem>문장 바꾸기 <span>›</span></button>
+        ${canSendFeedback() ? '<button type="button" class="shop-link" data-feedback>의견 보내기 <span>›</span></button>' : ''}
       </div>
       <section class="shop-card cert-edit">
         <h3>상단 이름</h3>
@@ -109,6 +111,7 @@ export function openCertificate(game: Game, id?: string): void {
     );
     body.querySelector('[data-edit-face]')!.addEventListener('click', () => openPartsPage(game, 'face'));
     body.querySelector('[data-edit-emblem]')!.addEventListener('click', () => openPartsPage(game, 'emblem'));
+    body.querySelector('[data-feedback]')?.addEventListener('click', () => openFeedbackSheet());
     body.querySelector<HTMLSelectElement>('[data-title]')?.addEventListener('change', (e) =>
       page.send({ type: 'setTitle', title: (e.target as HTMLSelectElement).value || null }),
     );

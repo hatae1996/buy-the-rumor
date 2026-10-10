@@ -87,6 +87,17 @@
 - **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어, 예행연습(2~3명)은 그대로, 비공개 테스트(20~30명) 전에는 SMTP(메일 발송 서비스)를 잇는 것이 좋다.
 - **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 리디렉션 URI에 `https://<프로젝트 ref>.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Providers → Google에 넣는다.
 
+## 게임(폰) 빌드에 서버 잇기
+
+`.env.production.local`(커밋하지 않음)에 넣고 `npm run build` 하면 서버 게임으로 열린다. 없으면 로컬 게임.
+
+```
+VITE_SUPABASE_URL=https://<프로젝트 ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<공개(anon/publishable) 키>
+```
+
+GitHub Pages로 올릴 때는 저장소 Settings → Secrets에 같은 이름으로 넣고 배포 워크플로가 빌드 환경 값으로 넘기게 한다(지금 워크플로는 넘기지 않는다: 계정을 만든 뒤 고친다).
+
 ## 시즌 열기 (운영자)
 
 시즌 id는 여는 날(한국 시간)이고 격주 월요일 아침 9시에 열린다(예행연습은 아무 날). 세계는 비어 있는 채로 미리 열고, 사람은 견습을 마치면 들어간다. 시즌이 열리기 며칠 전에 열어 두면 그 사이 견습을 마친 사람이 1일째 세계에 미리 들어간다.

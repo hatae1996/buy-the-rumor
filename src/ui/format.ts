@@ -59,7 +59,44 @@ export function agoText(today: number, day: number): string {
   return `${d}일 전`;
 }
 
-export const ERROR_TEXT: Record<CommandError, string> = {
+/** 서버 게임에서만 오는 실패 (0.2.0): 명령 실패와 같은 자리에 글로 보인다 */
+export type ServerError =
+  | 'offline'
+  | 'noWorld'
+  | 'worldHalted'
+  | 'bannedName'
+  | 'nameTaken'
+  | 'worldsFull'
+  | 'seasonClosed'
+  | 'notApprentice'
+  | 'noSeason'
+  | 'notFounded'
+  | 'alreadyInWorld'
+  | 'badRequest'
+  | 'noAccount'
+  | 'badCode'
+  | 'codeUsedUp'
+  | 'alreadyFounded'
+  | 'noLogin';
+
+export const ERROR_TEXT: Record<CommandError | ServerError, string> = {
+  offline: '서버에 닿지 못했어요. 다시 연결하는 중이에요.',
+  noWorld: '아직 들어간 세계가 없어요.',
+  worldHalted: '세계를 잠시 멈췄어요. 운영자가 살펴보는 중이에요.',
+  bannedName: '쓸 수 없는 말이 들어 있어요. 다른 이름으로 지어 주세요.',
+  nameTaken: '이미 있는 상단 이름이에요. 다른 이름으로 지어 주세요.',
+  worldsFull: '이번 시즌 세계가 모두 찼어요. 다음 시즌을 기다려 주세요.',
+  seasonClosed: '이번 시즌에 들어올 수 있는 날이 지났어요. 다음 시즌을 기다려 주세요.',
+  notApprentice: '견습 중이 아니에요.',
+  noSeason: '아직 열린 시즌이 없어요. 시즌이 열리면 다시 와 주세요.',
+  notFounded: '먼저 상단을 세워 주세요.',
+  alreadyInWorld: '이미 세계에 들어가 있어요.',
+  badRequest: '요청이 이상해요. 화면을 새로 열어 주세요.',
+  noAccount: '초대 코드를 넣어 주세요.',
+  badCode: '없는 초대 코드예요. 다시 확인해 주세요.',
+  codeUsedUp: '다 쓴 초대 코드예요. 운영자에게 새 코드를 받아 주세요.',
+  alreadyFounded: '이미 상단을 세웠어요.',
+  noLogin: '로그인이 풀렸어요. 다시 로그인해 주세요.',
   traveling: '길 위에서는 장에 신청할 수 없어요.',
   badGood: '없는 물건이에요.',
   badQty: '개수를 확인해 주세요.',

@@ -123,12 +123,16 @@ export function openSettlement(game: Game, onNextSeason: () => void): void {
       <p class="cv-muted">새 지도와 새 마을에서 다시 출발해요. 상단 이름은 지금, 다음 시즌을 시작하기 전에 상인 증서에서 바꿀 수 있어요.</p>
       <div class="settle-btns">
         <button type="button" class="settle-cert" data-cert>${ICON.cert}상인 증서</button>
-        <button type="button" class="cv-btn coral" data-next>${ICON.play}다음 시즌 시작</button>
+        ${
+          game.server
+            ? '<p class="cv-muted">다음 시즌은 격주 월요일 아침 9시에 열려요. 열리면 이 화면에서 바로 이어져요.</p>'
+            : `<button type="button" class="cv-btn coral" data-next>${ICON.play}다음 시즌 시작</button>`
+        }
       </div>
     </section>`;
   page.body.querySelector('[data-close]')!.addEventListener('click', () => page.close());
   page.body.querySelector('[data-cert]')!.addEventListener('click', () => openCertificate(game));
-  page.body.querySelector('[data-next]')!.addEventListener('click', () => {
+  page.body.querySelector('[data-next]')?.addEventListener('click', () => {
     page.close();
     onNextSeason();
   });

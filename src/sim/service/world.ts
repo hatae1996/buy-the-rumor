@@ -21,7 +21,8 @@ import {
   type PlayerSpec,
   type PlayerView,
 } from '../economy';
-import { townFaces, type TownFaces } from '../looks';
+import { hireFaces, townFaces, type Look, type TownFaces } from '../looks';
+import type { Season } from '../season';
 import { scoreRows, seasonFinished, settleSeason, type ScoreRow, type SeasonSettlement } from '../ranking';
 import { generateWorld, type WorldMap } from '../worldgen';
 import { digestAfter, markBefore, type PlayerDigest } from './away';
@@ -150,8 +151,17 @@ export function commandWorld(blob: WorldBlob, map: WorldMap, pid: PlayerId, cmd:
 export interface ScreenData {
   view: PlayerView;
   faces: TownFaces | null;
+  /** 데려온 일꾼 얼굴 (길 위에서도) */
+  hireFaces: Record<number, Look>;
+  /** 세계의 시작 계절 (신문 발행일의 계절을 셀 때) */
+  startSeason: Season;
 }
 
 export function screenData(blob: WorldBlob, map: WorldMap, pid: PlayerId): ScreenData {
-  return { view: playerView(blob.state, map, pid), faces: townFaces(blob.state, map, pid) };
+  return {
+    view: playerView(blob.state, map, pid),
+    faces: townFaces(blob.state, map, pid),
+    hireFaces: hireFaces(blob.state, pid),
+    startSeason: blob.state.startSeason,
+  };
 }
