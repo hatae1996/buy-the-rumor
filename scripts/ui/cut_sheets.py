@@ -179,7 +179,7 @@ def travel_ui_sheet() -> None:
 
 
 def travel_scene() -> None:
-    """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다). 그 위를 가는 마차는 부품으로 따로 (cut_wagon_parts.py)"""
+    """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
     roads = {}
     for season in ('spring', 'summer', 'autumn', 'winter'):
@@ -192,6 +192,10 @@ def travel_scene() -> None:
     box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
     for season, rgba in roads.items():
         save(rgba, box, f'road_{season}.png', 1024, pad=0)
+    src = np.asarray(Image.open(os.path.join(folder, 'wagon.png')).convert('RGB')).astype(float)
+    alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    ys, xs = np.where(alpha > 0.5)
+    save(np.dstack([despill_magenta(src, alpha), alpha * 255]), (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1), 'travel_horse_wagon.png', 640)
 
 
 if __name__ == '__main__':
