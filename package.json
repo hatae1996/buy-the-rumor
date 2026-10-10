@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "portraits": "python scripts/portrait/build.py",
-    "parts": "python scripts/parts/build.py"
+    "parts": "python scripts/parts/build.py",
+    "build:server": "vite build --config vite.server.config.ts",
+    "test:deno": "npm run build:server && vitest run --config vitest.deno.config.ts"
   },
   "dependencies": {
     "three": "^0.186.1"

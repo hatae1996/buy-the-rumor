@@ -42,7 +42,7 @@ create table public.worlds (
   id text not null,
   humans integer not null default 0 check (humans >= 0),
   bots integer not null default 0 check (bots >= 0),
-  -- EconomyState. 맵은 시드로 다시 만들어 저장하지 않는다
+  -- WorldBlob (src/sim/service/world.ts): 시뮬 버전, EconomyState, 봇 머릿속. 맵은 시드로 다시 만들어 저장하지 않는다
   state json not null,
   -- state.day를 그대로 적어 둔다(상태를 읽지 않고 고르려고)
   day integer not null,

@@ -36,6 +36,8 @@ export interface PlayerSpec {
   emblem?: Emblem;
   /** 얼굴 (0.1.7 시작 화면에서 고른 것). 없으면 시드로 추천한 얼굴 */
   face?: Look;
+  /** 상인 번호 (0.2.0). 없으면 들어온 차례(로컬: 나 1번, 봇 2~12번). 서버는 계정의 번호, 서버 봇은 null (답 132) */
+  merchantNo?: number | null;
 }
 
 export interface CreateOptions {
@@ -75,7 +77,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
     towns: map.towns.map((t) => createTown(map, t.id)),
     workers: [],
     traders: [],
-    players: Object.fromEntries(specs.map((sp, seq) => [sp.id, newPlayer(sp.id, seq, startTown(seq), seed)])),
+    players: Object.fromEntries(specs.map((sp, seq) => [sp.id, newPlayer(sp.id, seq, startTown(seq), seed, sp.merchantNo === undefined ? seq + 1 : sp.merchantNo)])),
     orders: [],
     draws: [],
     news: [],
@@ -144,7 +146,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
 }
 
 /** 새 플레이어: 골드와 등짐 하나 (기획서 "시작 조건"). 상인 번호는 들어온 차례 (로컬은 플레이어 1번, 봇은 그 뒤) */
-function newPlayer(id: PlayerId, seq: number, town: number, seed: number): PlayerState {
+function newPlayer(id: PlayerId, seq: number, town: number, seed: number, merchantNo: number | null): PlayerState {
   return {
     id,
     seq,
@@ -179,7 +181,7 @@ function newPlayer(id: PlayerId, seq: number, town: number, seed: number): Playe
     newspapers: [],
     papersRead: [],
     record: null,
-    certificate: createCertificate(mixSeed(seed, 0xce47, seq), seq + 1),
+    certificate: createCertificate(mixSeed(seed, 0xce47, seq), merchantNo),
     warehouses: [],
     hires: [],
     caravan: null,

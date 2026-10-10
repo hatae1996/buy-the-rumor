@@ -36,9 +36,11 @@ src/
   view3d/     Three.js 지도: 육각 타일, 소품, 말 이동, 계절 표현
   ui/         2D 화면: 자리를 비운 사이, 마을, 판매 신청, 장부, 신문
   dev/        개발용 관찰 화면 (모든 수치, 봇 돌리기)
+  server/     서버 쪽 일 (표 읽고 쓰기, 잠금, 시각). 시뮬과 함께 Deno 번들로 묶인다 (npm run build:server)
 assets/       AI로 만든 그림 (ui/, map/)
 prototypes/   claude.ai에서 만든 HTML 프로토타입. 참고용이며 그대로 쓰지 않고 src로 옮겨 정리한다.
 docs/         기획서, 버전별 인수인계, 질문 목록
+supabase/     표(migrations)와 Edge Function 껍데기(functions)
 ```
 
 ## 아이폰 테스트 규칙

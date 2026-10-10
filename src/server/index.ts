@@ -1,0 +1,4 @@
+// 서버 번들의 입구 (0.2.0). Edge Function은 이 모듈만 부른다 (`npm run build:server`).
+// src/server는 서버 쪽 일(표 읽고 쓰기, 잠금, 시각)을 맡고, 게임 규칙은 모두 src/sim에 있다.
+export * from '../sim/service';
+export { parityRun, type ParityResult } from './parity';
