@@ -1,0 +1,6 @@
+# npm run portraits (scripts/portrait/build.py)에 필요한 파이썬 꾸러미
+numpy
+pillow
+scipy
+scikit-image
+scikit-learn

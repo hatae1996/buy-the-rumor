@@ -7,6 +7,7 @@
 3. 받은 그림을 `sources/<파일 이름>.png`로 저장하고 추출한다: 상의는 `python tools/extract_key.py sources/top_10.png parts/top_10 top`, 머리·수염은 끝을 `hair`로. 그다음 색 영역 지도: `python -c "from regions import make_regions; make_regions('parts/top_10.png','parts/top_10_reg.png',k=5,merge_de=10)"`.
 4. 밝은 파츠(크림, 흰색, 귀리색)는 프롬프트 끝에 이미 `Use a solid dark navy background.`가 붙어 있다.
 5. `face-drift`가 30을 넘으면 다시 뽑는다. 어두운 피부톤에 얹어 목선을 확대해 본다.
+6. 저장소 맨 위에서 `npm run portraits`를 돌려 게임용 512 그림을 다시 만들고 함께 커밋한다(`assets-src/portrait/README.md`). 아래 표의 파일 이름이면 그 직업 NPC가 바로 쓴다. 상의는 색 영역 번호 중 어느 것이 직업 색인지 `src/sim/looks/catalog.ts`의 `PARTS`에 맞춰 둔다.
 
 수염은 머리처럼 `hair` 방식으로 뽑고, 게임에서는 상의 위·머리 아래에 겹친다. 색은 머리색을 따른다.
 
