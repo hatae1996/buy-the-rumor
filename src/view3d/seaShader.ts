@@ -73,11 +73,13 @@ void main() {
 
   // 물색: 해안 거리에 넓고 느린 무늬를 곱해 얕은 물 폭을 곳마다 다르게 (해안에서는 0이라 얕은 물이 늘 닿는다)
   float dist = coastDist(xz);
-  // 폭은 대부분 좁게(×1~2.2), 경계는 잔무늬로 조금 흔든다. 먼 바다로 가는 경계에는 무늬를 걸지 않는다 (구름처럼 보이지 않게)
+  // 폭은 대부분 좁게(×1~2.2), 경계는 잔무늬로 조금 흔든다. 먼 바다 경계는 아래에서 따로
   float widthVar = 1.0 + 1.2 * noise(xz * 0.33 + vec2(4.7, 1.3));
   float wd = dist * widthVar + (noise(xz * 1.1) - 0.5) * 0.25 * smoothstep(0.0, 0.4, dist);
   vec3 col = mix(uShallow, uMid, smoothstep(0.05, 1.0, wd));
-  col = mix(col, uDeep, smoothstep(2.0, 6.5, dist));
+  // 먼 바다 경계: 섬 크기만 한 아주 넓은 무늬를 곱해 곳에 따라 가까웠다 멀었다 한다 (잔무늬는 구름처럼 보여 쓰지 않는다)
+  float deepVar = 0.55 + 1.0 * noise(xz * 0.09 + vec2(2.3, 7.9));
+  col = mix(col, uDeep, smoothstep(1.6, 6.0, dist * deepVar));
 
   // 면마다 법선: 화면 미분으로 삼각형 면의 기울기를 얻는다 (면 하나가 한 색)
   vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
