@@ -65,7 +65,7 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   if (new Set(specs.map((s) => s.id)).size !== specs.length) throw new Error('플레이어 id가 겹친다');
   // 시작 마을은 모든 마을에 고르게 랜덤 (기획서 "시작 조건"). 첫 플레이어는 세계의 난수로, 나머지는 따로 둔 난수로
   const firstTown = rng.int(0, map.towns.length - 1);
-  const startTown = (seq: number) => (seq === 0 ? firstTown : createRng(mixSeed(seed, 0x57a7, seq)).int(0, map.towns.length - 1));
+  const startTown = (seq: number) => (seq === 0 ? firstTown : seededStartTown(seed, seq, map.towns.length));
   const state: EconomyState = {
     version: 1,
     seed,
@@ -143,6 +143,11 @@ export function createEconomy(map: WorldMap, seed: number, opt: CreateOptions = 
   // 이번 시즌 기록을 연다 (수완가 부문의 시작 자금)
   ensureRecord(state);
   return state;
+}
+
+/** 들어온 차례(seq)로 정하는 시작 마을: 모든 마을에 고르게 랜덤 (기획서 "시작 조건"). 시즌 중간에 들어오는 봇도 이것으로 */
+export function seededStartTown(seed: number, seq: number, towns: number): number {
+  return createRng(mixSeed(seed, 0x57a7, seq)).int(0, towns - 1);
 }
 
 /** 새 플레이어: 골드와 등짐 하나 (기획서 "시작 조건"). 상인 번호는 들어온 차례 (로컬은 플레이어 1번, 봇은 그 뒤) */

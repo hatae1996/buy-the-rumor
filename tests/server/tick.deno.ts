@@ -14,9 +14,7 @@ let h: Harness;
 beforeAll(async () => {
   h = await startFunction('tick', {
     dbPort: 54329,
-    // tick은 Deno.serve 기본 포트
-    fnPort: 8000,
-    serve: false,
+    fnPort: 8003,
     env: { TICK_SECRET: SECRET },
     seed: async (db) => {
       await addAccount(db, HUMAN);

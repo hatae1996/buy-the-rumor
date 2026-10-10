@@ -4,7 +4,8 @@
 //   명령(5번)도 같은 행을 잠그므로, 장날이 도는 동안 온 명령은 장날이 끝난 뒤 다음 날 신청으로 들어간다.
 // - 시뮬 버전이 다르면 상태를 건드리지 않고 세계를 멈추고 운영 로그에 남긴다 (handoff 0.2.0 3번).
 // - 한 세계가 실패해도 다른 세계는 돈다.
-import { SimVersionMismatch, tickWorld, type WorldBlob } from '../sim/service';
+// - 첫 장날 직전에 사람이 12명이 안 되는 세계를 봇으로 12명까지 채운다 (답 112·115, 8번).
+import { fillBots, SimVersionMismatch, tickWorld, type WorldBlob } from '../sim/service';
 import type { WorldMap } from '../sim/worldgen';
 import { ts, type Db } from './db';
 import { mapFor } from './maps';
@@ -88,6 +89,8 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
     const scoreRows: unknown[] = [];
     const reports: unknown[] = [];
     try {
+      // 첫 장날 직전: 봇 채우기 (말 입고 일정은 첫 장날 아침의 인원으로 짠다)
+      if (blob.state.day === 1 && due > 0) fillBots(blob, map);
       for (let i = 0; i < due; i++) {
         const r = tickWorld(blob, map, members.map((m) => m.account_id));
         if (!r) break;
@@ -108,9 +111,9 @@ async function tickOne(db: Db, w: DueWorld, map: WorldMap, now: number, maxDays:
     const settled = blob.state.settlement !== null;
     await tx.query(
       `update public.worlds
-          set state = $3::text::json, day = $4, rev = rev + 1, last_tick_at = $5::timestamptz, settled = $6
+          set state = $3::text::json, day = $4, rev = rev + 1, last_tick_at = $5::timestamptz, settled = $6, bots = $7
         where season_id = $1 and id = $2`,
-      [w.season_id, w.id, JSON.stringify(blob), blob.state.day, ts(now), settled],
+      [w.season_id, w.id, JSON.stringify(blob), blob.state.day, ts(now), settled, blob.crew.length],
     );
     if (scoreRows.length) {
       await tx.query('insert into public.score_rows select * from json_populate_recordset(null::public.score_rows, $1::text::json)', [JSON.stringify(scoreRows)]);

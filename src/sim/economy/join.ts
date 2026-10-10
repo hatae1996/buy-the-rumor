@@ -6,7 +6,7 @@ import type { UnlockId } from '../apprentice/types';
 import type { NotifySettings } from '../notify/types';
 import { ensurePlayerRecord } from '../ranking/record';
 import { cleanCompanyName, setEmblem, setFace } from '../ranking/certificate';
-import { newPlayer, type PlayerSpec } from './create';
+import { newPlayer, seededStartTown, type PlayerSpec } from './create';
 import { playerList } from './players';
 import type { EconomyState, PlayerState } from './state';
 
@@ -22,12 +22,13 @@ export interface JoinKit {
 }
 
 /**
- * 오늘의 세계에 한 사람을 앉힌다. town: 처음 서 있을 마을 (견습을 마친 사람은 견습 마을).
+ * 오늘의 세계에 한 사람을 앉힌다. town: 처음 서 있을 마을 (견습을 마친 사람은 견습 마을, 없으면 들어온 차례로 랜덤).
  * 시즌 기록은 들어온 날부터 연다 (수완가 부문의 시작 자금은 들고 온 것의 값)
  */
-export function joinPlayer(state: EconomyState, spec: PlayerSpec, town: number, kit?: JoinKit): PlayerState {
+export function joinPlayer(state: EconomyState, spec: PlayerSpec, town: number | null, kit?: JoinKit): PlayerState {
   if (state.players[spec.id]) throw new Error(`이미 있는 플레이어: ${spec.id}`);
   const seq = Math.max(-1, ...playerList(state).map((p) => p.seq)) + 1;
+  town ??= seededStartTown(state.seed, seq, state.towns.length);
   const p = newPlayer(spec.id, seq, town, state.seed, spec.merchantNo === undefined ? seq + 1 : spec.merchantNo);
   p.homeTown = town;
   p.visited = [town];

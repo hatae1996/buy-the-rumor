@@ -135,8 +135,17 @@ describe('견습에서 졸업해 공유 세계로', () => {
     expect(reports).toEqual([{ day: 1 }]);
   });
 
-  it('세계가 모두 찼으면 졸업 장면에서 기다린다', async () => {
+  it('첫 장날 전에 세계가 모두 찼으면 새 세계를 연다', async () => {
     await addWorld('w1', 4, 11);
+    await gameRequest(db, A, { action: 'startApprentice' });
+    const destination = await walk(A);
+    const r = await commandFor(db, A, { type: 'travel', to: destination } as Command);
+    expect(r).toMatchObject({ ok: true, screen: { place: 'world', worldId: 'w2' } });
+  });
+
+  it('첫 장날 뒤에 세계가 모두 찼으면 졸업 장면에서 기다린다', async () => {
+    await addWorld('w1', 4, 11);
+    await db.query(`update public.worlds set day = 2`);
     await gameRequest(db, A, { action: 'startApprentice' });
     const destination = await walk(A);
     const r = await commandFor(db, A, { type: 'travel', to: destination } as Command);

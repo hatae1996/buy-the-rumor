@@ -9,6 +9,8 @@ import {
   applyCommand,
   createEconomy,
   getPlayer,
+  joinPlayer,
+  playerList,
   playerView,
   seasonSeed,
   type Command,
@@ -67,6 +69,28 @@ export function openWorld(map: WorldMap, opt: OpenWorldOptions): WorldBlob {
   });
   for (const s of specs) getPlayer(state, s.id).cart = createCart('handcart');
   return { simVersion: SIM_VERSION, state, crew: createCrew(state, specs.map((s) => s.id)) };
+}
+
+/** 봇으로 채우는 인원 (답 112, 벌이 목표 기준): 사람과 봇을 합쳐 이만큼 */
+export const BOT_FILL_TO = 12;
+
+/**
+ * 1일 장날 직전에 (답 115): 사람이 12명이 안 되는 세계만 봇 상단으로 12명까지 채운다. 봇은 시즌 중에 빠지지 않고
+ * 다시 채우지도 않는다(이미 봇이 있으면 그대로). 봇 이름은 이 세계 사람의 이름과 겹치지 않게. 채운 봇 수를 돌려준다
+ */
+export function fillBots(blob: WorldBlob, map: WorldMap, target = BOT_FILL_TO): number {
+  assertSimVersion(blob);
+  if (blob.crew.length) return 0;
+  const players = playerList(blob.state);
+  const n = Math.max(0, target - players.length);
+  if (!n) return 0;
+  const specs = botSpecs(map.seed, n, players.map((p) => p.certificate.name));
+  for (const s of specs) {
+    // 봇은 견습을 마친 자리에서 시작한다: 졸업 선물 손수레, 상인 번호 없음 (답 132)
+    joinPlayer(blob.state, { ...s, apprentice: false, merchantNo: null }, null).cart = createCart('handcart');
+  }
+  blob.crew.push(...createCrew(blob.state, specs.map((s) => s.id)));
+  return specs.length;
 }
 
 export class SimVersionMismatch extends Error {

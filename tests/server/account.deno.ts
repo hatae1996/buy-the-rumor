@@ -12,7 +12,6 @@ beforeAll(async () => {
   h = await startFunction('account', {
     dbPort: 54330,
     fnPort: 8001,
-    serve: true,
     seed: async (db) => {
       await db.query('insert into auth.users (id) values ($1)', [USER]);
       await db.query(`insert into public.invite_codes (code, uses_left) values ('ABCD2345', 5)`);

@@ -5,7 +5,9 @@ export { APPRENTICE_WORLD_ID, enterWorld, graduationKit, isGraduation, openAppre
 export { awaySummary, digestAfter, markBefore, type AwaySummary, type DigestMark, type PlayerDigest } from './away';
 export {
   assertSimVersion,
+  BOT_FILL_TO,
   commandWorld,
+  fillBots,
   openWorld,
   screenData,
   seasonMap,

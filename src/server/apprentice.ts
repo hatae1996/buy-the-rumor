@@ -1,6 +1,6 @@
 // 견습 세계 (작업목록-0.2.0 7번, 답 111): 계정마다 시즌마다 혼자 쓰는 작은 세계(apprentice_worlds).
 // 공유 세계와 달리 장날 tick이 돌리지 않고, "하루 보내기"로만 날이 간다. 졸업 장면에서 길을 떠나면
-// 그날의 공유 세계에 들인다(8번이 어느 세계에 넣을지 정한다. 지금은 사람이 가장 적고 자리가 남은 세계).
+// 그날의 공유 세계에 들인다(어느 세계에 넣을지는 season.ts의 pickWorld, 8번).
 import { getPlayer, type Command, type CommandResult } from '../sim/economy';
 import type { Certificate } from '../sim/ranking/types';
 import {
@@ -18,9 +18,7 @@ import {
 } from '../sim/service';
 import type { Db } from './db';
 import { mapFor } from './maps';
-
-/** 세계 하나에 사람과 봇을 합쳐 (worlds 표의 check와 같다) */
-export const WORLD_CAP = 15;
+import { pickWorld } from './season';
 
 export type ApprenticeError =
   /** 열린 시즌이 없다 */
@@ -31,8 +29,10 @@ export type ApprenticeError =
   | 'alreadyInWorld'
   /** 견습 중이 아니다 */
   | 'notApprentice'
-  /** 들어갈 세계가 모두 찼다 ("다음 시즌을 기다려 주세요", 8번) */
+  /** 시즌 중간에 들어갈 세계가 모두 찼다 ("다음 시즌을 기다려 주세요", 답 115) */
   | 'worldsFull'
+  /** 들어올 수 있는 마지막 날이 지났다 ("다음 시즌을 기다려 주세요") */
+  | 'seasonClosed'
   | 'worldHalted';
 
 /** 지금 하고 있는 견습 (열린 시즌, 아직 졸업 전) */
@@ -136,12 +136,12 @@ async function graduate(
   apprentice: WorldBlob,
   travel: Extract<Command, { type: 'travel' }>,
 ): Promise<ApprenticeCommandResult> {
-  const [w] = await tx.query<{ id: string; state: string }>(
-    `select id, state::text as state from public.worlds
-      where season_id = $1 and not settled and halted is null and humans + bots < $2
-      order by humans, id limit 1 for update`,
-    [seasonId, WORLD_CAP],
-  );
+  const pick = await pickWorld(tx, seasonId);
+  if (!pick.ok) return { kind: 'error', error: pick.error, blob: apprentice };
+  const [w] = await tx.query<{ id: string; state: string }>('select id, state::text as state from public.worlds where season_id = $1 and id = $2', [
+    seasonId,
+    pick.worldId,
+  ]);
   if (!w) return { kind: 'error', error: 'worldsFull', blob: apprentice };
   const shared = JSON.parse(w.state) as WorldBlob;
   const c = getPlayer(apprentice.state, uid).certificate;

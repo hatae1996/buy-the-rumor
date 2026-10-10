@@ -5,7 +5,8 @@
   - `health`: 시뮬 버전과 짧은 판의 상태 해시 (배포한 번들이 소스와 같은 규칙으로 도는지)
   - `tick`: 밀린 장날 돌리기 (pg_cron이 부른다)
   - `account`: 내 계정, 초대 코드 넣기, 상단 이름 검사, 상단 세우기, 얼굴·문장 바꾸기 (로그인한 사람만)
-  - `game`: 화면 데이터와 명령 (로그인한 사람만)
+  - `game`: 화면 데이터와 명령, 견습 시작·하루 보내기 (로그인한 사람만)
+  - `admin`: 시즌 열기, 세계 더 열기 (운영자, 비밀 값)
 - 시험: `npm test`(PGlite), `npm run test:deno`(번들을 만들어 Deno에서: 상태 해시가 소스와 같은지, tick 함수가 postgres.js로 실제 장날을 도는지, account 함수가 로그인 토큰을 확인하고 계정을 만드는지, game 함수가 명령을 저장하는지).
 
 ## 처음 한 번 (운영자)
@@ -37,6 +38,12 @@
    npx supabase secrets set TICK_SECRET=<비밀 값>
    ```
 
+   운영자 함수용 비밀 값도 따로 하나(tick과 다른 값).
+
+   ```bash
+   npx supabase secrets set ADMIN_SECRET=<운영자 비밀 값>
+   ```
+
    대시보드 SQL 편집기에서:
 
    ```sql
@@ -59,6 +66,10 @@
    ```
 
    ```bash
+   npx supabase functions deploy admin --no-verify-jwt
+   ```
+
+   ```bash
    npx supabase functions deploy account
    ```
 
@@ -75,6 +86,19 @@
 - **Authentication → URL Configuration**: Site URL에 게임 주소(GitHub Pages 등), Redirect URLs에 게임 주소와 개발 서버(`http://localhost:5173`, 아이폰에서 여는 `http://<컴퓨터 IP>:5173`).
 - **이메일 링크**: Authentication → Providers → Email을 켠다. 기본 메일은 시간당 보낼 수 있는 수가 적어, 예행연습(2~3명)은 그대로, 비공개 테스트(20~30명) 전에는 SMTP(메일 발송 서비스)를 잇는 것이 좋다.
 - **구글**: Google Cloud Console에서 OAuth 클라이언트 ID(웹 애플리케이션)를 만들고, 승인된 리디렉션 URI에 `https://<프로젝트 ref>.supabase.co/auth/v1/callback`. 받은 클라이언트 ID와 비밀번호를 Authentication → Providers → Google에 넣는다.
+
+## 시즌 열기 (운영자)
+
+시즌 id는 여는 날(한국 시간)이고 격주 월요일 아침 9시에 열린다(예행연습은 아무 날). 세계는 비어 있는 채로 미리 열고, 사람은 견습을 마치면 들어간다. 시즌이 열리기 며칠 전에 열어 두면 그 사이 견습을 마친 사람이 1일째 세계에 미리 들어간다.
+
+```bash
+curl -X POST https://<프로젝트 ref>.supabase.co/functions/v1/admin -H "Authorization: Bearer <운영자 비밀 값>" -H "Content-Type: application/json" -d "{\"action\":\"openSeason\",\"id\":\"2026-10-26\",\"kind\":\"closed_test\",\"worlds\":2}"
+```
+
+- `kind`: `rehearsal`(예행연습), `closed_test`(비공개 테스트), `live`(정식).
+- 들어갈 세계: 첫 장날 전에는 사람이 가장 적은 세계, 모두 15명(봇 포함)이면 새 세계를 저절로 연다. 첫 장날 뒤에는 자리가 남은 세계에만, 모두 찼거나 실제 10일째가 지나면 "다음 시즌을 기다려 주세요".
+- 첫 장날 직전에 사람이 12명이 안 되는 세계는 봇("떠돌이")으로 12명까지 채운다. 봇은 시즌 중에 빠지지 않는다.
+- 세계를 손으로 하나 더 열려면 `{"action":"addWorld","seasonId":"2026-10-26"}`.
 
 ## 초대 코드와 금칙어 (운영자, SQL 편집기)
 

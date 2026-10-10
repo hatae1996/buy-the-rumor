@@ -38,13 +38,10 @@ function userClaims(sub: string, extra: Record<string, unknown> = {}) {
   return { sub, role: 'authenticated', aud: 'authenticated', iss: `${SUPABASE_URL}/auth/v1`, iat: now, exp: now + 3600, ...extra };
 }
 
-/**
- * 함수 하나를 띄운다. seed는 함수가 뜨기 전에 표를 채운다.
- * entry가 `export default { fetch }`면 deno serve, `Deno.serve(...)`면 deno run으로 띄운다
- */
+/** 함수 하나를 deno serve로 띄운다(함수는 모두 `export default { fetch }`). seed는 함수가 뜨기 전에 표를 채운다 */
 export async function startFunction(
   name: string,
-  opt: { dbPort: number; fnPort: number; serve: boolean; env?: Record<string, string>; seed?: (db: Db) => Promise<void> },
+  opt: { dbPort: number; fnPort: number; env?: Record<string, string>; seed?: (db: Db) => Promise<void> },
 ): Promise<Harness> {
   const { pg, db } = await createTestDb();
   await opt.seed?.(db);
@@ -52,9 +49,7 @@ export async function startFunction(
   const jwk = await webcrypto.subtle.exportKey('jwk', keys.publicKey);
   const server = new PGLiteSocketServer({ db: pg, port: opt.dbPort, host: '127.0.0.1' });
   await server.start();
-  const args = opt.serve
-    ? ['serve', '--config', 'deno.json', '--port', String(opt.fnPort), '--allow-net', '--allow-env', '--allow-read', `${name}/index.ts`]
-    : ['run', '--config', 'deno.json', '--allow-net', '--allow-env', '--allow-read', `${name}/index.ts`];
+  const args = ['serve', '--config', 'deno.json', '--port', String(opt.fnPort), '--allow-net', '--allow-env', '--allow-read', `${name}/index.ts`];
   const fn: ChildProcess = spawn('deno', args, {
     cwd: FUNCTIONS,
     env: {

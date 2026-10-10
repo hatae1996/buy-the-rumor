@@ -3,9 +3,11 @@
 import { tickDue } from '../_shared/server.js';
 import { db } from '../_shared/pg.ts';
 
-Deno.serve(async (req) => {
-  const secret = Deno.env.get('TICK_SECRET');
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) return new Response('forbidden', { status: 403 });
-  const summary = await tickDue(db(), { now: Date.now() });
-  return Response.json(summary);
-});
+export default {
+  async fetch(req: Request): Promise<Response> {
+    const secret = Deno.env.get('TICK_SECRET');
+    if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) return new Response('forbidden', { status: 403 });
+    const summary = await tickDue(db(), { now: Date.now() });
+    return Response.json(summary);
+  },
+};

@@ -15,7 +15,6 @@ beforeAll(async () => {
   h = await startFunction('game', {
     dbPort: 54331,
     fnPort: 8002,
-    serve: true,
     seed: async (db) => {
       await db.query(`insert into public.invite_codes (code, uses_left) values ('CODE2345', 10)`);
       for (const id of [A, B]) {

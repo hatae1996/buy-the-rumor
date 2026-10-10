@@ -2,4 +2,6 @@
 // 같은 값이 로컬에서 나오는지 맞춰 보면 배포한 번들이 소스와 같은 규칙으로 도는지 안다 (작업목록-0.2.0 2번).
 import { parityRun, SIM_VERSION } from '../_shared/server.js';
 
-Deno.serve(() => Response.json({ simVersion: SIM_VERSION, parity: parityRun(3) }));
+export default {
+  fetch: (): Response => Response.json({ simVersion: SIM_VERSION, parity: parityRun(3) }),
+};
