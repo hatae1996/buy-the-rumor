@@ -252,6 +252,11 @@ def city_ui_sheet() -> None:
     ])
 
 
+def caravan_ui_sheet() -> None:
+    """두 번째 행렬 그림판 (0.1.6 목업 docs/reference/caravan-mockup-0.1.6.png): 말 머리, 지시서 두루마리, 무게 추"""
+    sheet_pieces('caravan-ui-sheet.png', [('icon_horse_head.png', 128), ('plan_scroll.png', 192), ('icon_weight.png', 128)])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -285,5 +290,6 @@ if __name__ == '__main__':
     newsboy_ui_sheet()
     shops_ui_sheet()
     city_ui_sheet()
+    caravan_ui_sheet()
     travel_scene()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

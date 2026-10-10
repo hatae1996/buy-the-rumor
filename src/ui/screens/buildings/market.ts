@@ -112,7 +112,7 @@ export function openMarket(game: Game): void {
       b.addEventListener('click', () => openOrderSheet(game, b.dataset.good as GoodId)),
     );
     page.body.querySelectorAll<HTMLButtonElement>('[data-send-caravan]').forEach((b) =>
-      b.addEventListener('click', () => openCaravanSheet(game, { town, good: b.dataset.sendCaravan as GoodId, minPrice: Number(b.dataset.price) })),
+      b.addEventListener('click', () => openCaravanSheet(game, { town, good: b.dataset.sendCaravan as GoodId, minPrice: Number(b.dataset.price) }, '시장')),
     );
     page.body.querySelectorAll<HTMLButtonElement>('[data-cancel]').forEach((b) =>
       b.addEventListener('click', () => {
