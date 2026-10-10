@@ -1,0 +1,7 @@
+/* NPC 초상 (0.1.4): 둥근 액자. 그림이 없으면 단색 자리표시 */
+.portrait {
+  flex: none;
+  border-radius: 50%;
+  background: var(--paper-dim);
+  box-shadow: 0 0 0 2px rgba(58, 43, 34, 0.55);
+}

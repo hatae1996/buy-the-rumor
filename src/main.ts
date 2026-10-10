@@ -4,6 +4,7 @@ import './ui/shell.css';
 import './ui/screens.css';
 import { clearSave, Game } from './ui/game';
 import { mountShell } from './ui/shell';
+import { watchPortraits } from './ui/portrait/portrait';
 import { WORLD_TOWN_COUNTS } from './sim/worldgen';
 
 // 시험용: 주소에 ?new 를 붙이면 저장을 지우고 새 판으로 시작한다.
@@ -24,5 +25,6 @@ if (params.has('new')) {
     ...(towns !== null && WORLD_TOWN_COUNTS.includes(Number(towns)) ? { towns: Number(towns) } : {}),
   });
 } else game = Game.start(Date.now());
+watchPortraits();
 mountShell(document.getElementById('app')!, game, () => Date.now());
 document.documentElement.dataset.version = __APP_VERSION__;

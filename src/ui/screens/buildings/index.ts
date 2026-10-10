@@ -22,6 +22,7 @@ import { openMarket } from './market';
 import { openBank, openGuildHall, openOutside, openStore, openWorkshop } from './simple';
 import { openWarehouse } from './warehouse';
 import { openNewsboy } from '../newspaper';
+import { portraitHtml } from '../../portrait/portrait';
 
 const IMG: Record<BuildingId, string> = {
   market: marketImg,
@@ -86,12 +87,15 @@ export function buildingCards(game: Game, v: PlayerView): string {
   // 신문팔이는 첫 신문 장면부터 (소식 탭이 열릴 때, 0.1.2)
   const apprenticeShown = ['market', 'inn', 'store', 'outside', ...(v.unlocks.includes('news') ? ['newsboy'] : [])];
   const shown = v.apprentice ? v.buildings.filter((b) => apprenticeShown.includes(b.id)) : v.buildings;
+  // 시장 카드에 장 상인 얼굴 (0.1.4, 자리만)
+  const merchant = shown.some((b) => b.id === 'market') ? game.faces()?.merchant : null;
   return `<div class="building-grid">${shown
     .map(
       (b) => `<button type="button" class="building-card" data-building="${b.id}">
         <img src="${b.id === 'outside' ? outsideImg(game, v) : IMG[b.id]}" alt="" />
         <span class="building-name">${b.name}</span>
         <small>${status(b.id, v)}</small>
+        ${b.id === 'market' && merchant ? `<span class="building-face">${portraitHtml(merchant, 34, '장 상인')}</span>` : ''}
         ${b.alert ? `<span class="building-alert" title="${b.alert}">!</span>` : ''}
       </button>`,
     )

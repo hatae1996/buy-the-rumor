@@ -4,6 +4,7 @@ import { GROWTH } from '../../../sim/constants';
 import { money } from '../../format';
 import type { Game } from '../../game';
 import { openLiveSheet } from '../../liveSheet';
+import { portraitHtml } from '../../portrait/portrait';
 import { heardCard, wireHeard } from '../noteItem';
 import { buyDrink, openPigeonSheet } from '../rumorSheet';
 
@@ -17,13 +18,16 @@ export function openInn(game: Game): void {
     const here = v.location.town;
     const rumorsOpen = v.unlocks.includes('rumors');
     const gossip = v.gossip;
+    // NPC 얼굴 (0.1.4): 그림이 없으면 단색 자리표시
+    const faces = game.faces();
     // 오늘 이 마을에서 들은 것 (적기 / 흘려듣기를 고르는 중)
     const heardHere = v.recentHeard.filter((n) => n.town === here && n.day === v.day);
     const board = v.hireBoard
       .map((o) => {
         const asked = v.draws.find((d) => d.kind === 'hire' && d.role === o.role && d.town === here);
         return `<li class="row">
-          <span><b>${GROWTH.hire[o.role].name}</b> ${o.name} <small class="muted">(${o.jobName})</small><br /><small class="muted">${ROLE_TEXT[o.role]}</small></span>
+          ${portraitHtml(faces?.board[o.role], 44, o.name)}
+          <span class="grow"><b>${GROWTH.hire[o.role].name}</b> ${o.name} <small class="muted">(${o.jobName})</small><br /><small class="muted">${ROLE_TEXT[o.role]}</small></span>
           ${
             asked
               ? `<button type="button" class="secondary-btn" data-cancel="${asked.id}">신청 거두기<small>오늘 밤 추첨 · ${money(asked.reserved)} 맡김</small></button>`
@@ -47,6 +51,11 @@ export function openInn(game: Game): void {
       ${
         rumorsOpen
           ? `<h3>소문꾼</h3>
+             ${
+               faces?.gossips.length
+                 ? `<ul class="npc-row">${faces.gossips.map((g) => `<li>${portraitHtml(g.look, 52, g.name)}<small>${g.name}</small></li>`).join('')}</ul>`
+                 : ''
+             }
              <p class="muted">소문꾼에게 말을 걸면 이야기를 두세 개 들려줘요 (하루 한 번, 공짜). 들은 이야기는 수첩에 적거나 흘려들어요. 적은 것만 수첩에 남고, 맞았는지 도장이 찍혀요.</p>
              <div class="btn-row">
                <button type="button" class="primary-btn" data-listen ${gossip?.canListen && gossip.fresh > 0 ? '' : 'disabled'}>
@@ -63,6 +72,7 @@ export function openInn(game: Game): void {
           : ''
       }
       <h3>하룻밤 묵기</h3>
+      ${faces?.innkeeper ? `<div class="npc-line">${portraitHtml(faces.innkeeper, 52, '여관 주인')}<p class="muted">여관 주인이 방과 마구간을 내줘요.</p></div>` : ''}
       <div class="btn-row">
         <button type="button" class="secondary-btn" data-rest ${v.inn && !v.inn.rested && v.gold >= v.inn.fee && (v.fatigue > 0 || v.horses.some((h) => h.fatigue > 0)) ? '' : 'disabled'}>
           묵기<small>${v.inn?.rested ? '오늘은 묵었어요' : `${money(v.inn?.fee ?? 0)} · 피로 −${v.inn?.recovery ?? 0} · 말도 쉼`}</small>
@@ -82,7 +92,7 @@ export function openInn(game: Game): void {
              ${
                mine.length
                  ? `<h3>이 마을에서 데려온 사람</h3><ul class="list">${mine
-                     .map((h) => `<li class="row"><span>${h.roleName} ${h.name} · 일당 ${money(h.wage)}${h.restWage !== null ? ` (쉬는 날 ${money(h.restWage)})` : ''}</span><button type="button" class="link-btn" data-dismiss="${h.id}">내보내기</button></li>`)
+                     .map((h) => `<li class="row">${portraitHtml(faces?.hires[h.id], 44, h.name)}<span class="grow">${h.roleName} ${h.name} · 일당 ${money(h.wage)}${h.restWage !== null ? ` (쉬는 날 ${money(h.restWage)})` : ''}</span><button type="button" class="link-btn" data-dismiss="${h.id}">내보내기</button></li>`)
                      .join('')}</ul>`
                  : ''
              }`

@@ -1213,3 +1213,53 @@
   border-radius: 6px;
   font: inherit;
 }
+
+/* ───── NPC 초상 (0.1.4): 파츠 조합, 그림이 없으면 단색 자리표시 ───── */
+.row:has(> .portrait) {
+  align-items: center;
+}
+
+.row > .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.npc-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.npc-line p {
+  margin: 0;
+}
+
+.npc-row {
+  display: flex;
+  gap: 12px;
+  margin: 4px 0 8px;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.npc-row li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  text-align: center;
+}
+
+.npc-row small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.building-face {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  line-height: 0;
+}

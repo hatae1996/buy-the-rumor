@@ -374,3 +374,20 @@ body {
   font-size: 14px;
   padding: 2px 0;
 }
+
+/* NPC 얼굴 모음 (0.1.4) */
+.dev-note {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.dev-faces {
+  margin: 10px 0;
+}
+
+.dev-faces > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}

@@ -2,5 +2,7 @@
 import '../ui/theme.css';
 import './dev.css';
 import { mountWorldgenView } from './worldgen-view';
+import { watchPortraits } from '../ui/portrait/portrait';
 
+watchPortraits();
 mountWorldgenView(document.getElementById('app')!);

@@ -8,6 +8,8 @@ import { DAY_MS, type Game } from '../game';
 import { arrivalText } from '../format';
 import { buildingCards, openBuilding } from './buildings';
 import { openArrivalSheet } from './arrivalSheet';
+import { portraitHtml } from '../portrait/portrait';
+import type { Look } from '../../sim/looks';
 
 /** 남은 식량 (0.1.2): 남은 길에 먹을 만큼 있는지 */
 function foodLine(v: PlayerView, daysLeft: number): string {
@@ -37,12 +39,12 @@ function settlementCard(v: PlayerView): string {
 }
 
 /** 견습: 지금 장면과 노상인 한마디, 하루 보내기 (대사와 연출은 나중 버전) */
-function apprenticeCard(v: PlayerView): string {
+function apprenticeCard(v: PlayerView, elder: Look | null): string {
   const ap = v.apprentice;
   if (!ap) return '';
   return `<section class="card pinned apprentice">
       <header class="card-head"><h2>견습 · ${ap.title}</h2><span class="badge">${ap.step} / ${ap.steps}</span></header>
-      <p>${ap.hint}</p>
+      <div class="npc-line">${portraitHtml(elder, 56, '노상인')}<p>${ap.hint}</p></div>
       <div class="btn-row"><button type="button" class="secondary-btn" data-apprentice-day>하루 보내기<small>견습 마을에서만 바로 다음 날로</small></button></div>
     </section>`;
 }
@@ -87,7 +89,7 @@ export function renderTown(el: HTMLElement, game: Game, v: PlayerView, act: Town
 
   el.innerHTML = `
     ${settlementCard(v)}
-    ${apprenticeCard(v)}
+    ${apprenticeCard(v, v.apprentice ? (game.faces()?.elder ?? null) : null)}
     <div class="town-banner">
       <img src="${village}" alt="" />
       <div class="ribbon"><span>${place}</span></div>
