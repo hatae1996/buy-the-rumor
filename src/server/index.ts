@@ -7,3 +7,4 @@ export { DAY_MS, daysBehind, marketAt, marketsDue } from './schedule';
 export type { Db } from './db';
 export { accountRequest, cleanInviteCode, type AccountError, type AccountRequest, type Me } from './account';
 export { bannedWordIn, nameKey } from './names';
+export { commandFor, gameRequest, viewFor, type CommandReply, type GameError, type Screen } from './game';

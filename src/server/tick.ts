@@ -4,9 +4,10 @@
 //   명령(5번)도 같은 행을 잠그므로, 장날이 도는 동안 온 명령은 장날이 끝난 뒤 다음 날 신청으로 들어간다.
 // - 시뮬 버전이 다르면 상태를 건드리지 않고 세계를 멈추고 운영 로그에 남긴다 (handoff 0.2.0 3번).
 // - 한 세계가 실패해도 다른 세계는 돈다.
-import { SimVersionMismatch, seasonMap, tickWorld, type WorldBlob } from '../sim/service';
+import { SimVersionMismatch, tickWorld, type WorldBlob } from '../sim/service';
 import type { WorldMap } from '../sim/worldgen';
 import { ts, type Db } from './db';
+import { mapFor } from './maps';
 import { daysBehind } from './schedule';
 
 export interface TickOptions {
@@ -51,13 +52,11 @@ export async function tickDue(db: Db, opt: TickOptions): Promise<TickSummary> {
       order by w.season_id, w.id`,
     [ts(opt.now)],
   );
-  const maps = new Map<string, WorldMap>();
-  const mapOf = (seasonId: string) => maps.get(seasonId) ?? maps.set(seasonId, seasonMap(seasonId)).get(seasonId)!;
   const worlds: WorldTick[] = [];
   for (const w of candidates) {
     if (daysBehind(w.opens_ms, opt.now, w.day) === 0) continue;
     try {
-      worlds.push(await tickOne(db, w, mapOf(w.season_id), opt.now, maxDays));
+      worlds.push(await tickOne(db, w, mapFor(w.season_id), opt.now, maxDays));
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       await log(db, 'error', '장날을 돌리다 실패했다', { seasonId: w.season_id, worldId: w.id, error });

@@ -196,7 +196,9 @@ export type CommandError =
   | NoteError
   | 'seasonOver'
   | ArrangeError
-  | 'boardNotEmpty';
+  | 'boardNotEmpty'
+  /** 없는 명령 (서버가 폰에서 받은 것을 그대로 넘길 때) */
+  | 'badCommand';
 
 export type CommandResult = { ok: true; orderId?: number } | { ok: false; error: CommandError };
 
@@ -209,6 +211,7 @@ const AFTER_SEASON: ReadonlySet<Command['type']> = new Set(['setCompany', 'setEm
 
 export function applyCommand(state: EconomyState, map: WorldMap, playerId: PlayerId, cmd: Command): CommandResult {
   const p = getPlayer(state, playerId);
+  if (!cmd || typeof cmd !== 'object' || typeof cmd.type !== 'string') return fail('badCommand');
   // 결산한 시즌에는 장사하지 않는다 (서버는 쉬는 날, 로컬은 새 세계를 기다린다)
   if (state.settlement && !AFTER_SEASON.has(cmd.type)) return fail('seasonOver');
   const result = runCommand(state, p, map, cmd);
@@ -469,6 +472,9 @@ function runCommand(state: EconomyState, p: PlayerState, map: WorldMap, cmd: Com
       p.ledger.push({ day: state.day, kind: 'discard', good: piece.good, qty });
       return { ok: true };
     }
+    default:
+      // 타입으로는 닿지 않지만, 서버는 폰이 보낸 것을 그대로 넘긴다
+      return fail('badCommand');
   }
 }
 

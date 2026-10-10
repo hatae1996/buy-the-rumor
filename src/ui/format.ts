@@ -127,6 +127,7 @@ export const ERROR_TEXT: Record<CommandError, string> = {
   seasonOver: '이번 시즌은 끝났어요. 결산을 보고 다음 시즌을 시작하세요.',
   noHire: '그 일꾼은 이미 없어요.',
   boardNotEmpty: '짐꾼 수레의 짐을 먼저 옮기세요.',
+  badCommand: '지금은 할 수 없는 일이에요. 화면을 새로 열어 주세요.',
   noBoard: '그 짐칸이 없어요.',
   noCarter: '마부가 없어요. 여관 고용 게시판에서 마부를 고용하세요.',
   haveCaravan: '두 번째 행렬이 이미 있어요.',

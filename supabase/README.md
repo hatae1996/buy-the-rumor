@@ -5,7 +5,8 @@
   - `health`: 시뮬 버전과 짧은 판의 상태 해시 (배포한 번들이 소스와 같은 규칙으로 도는지)
   - `tick`: 밀린 장날 돌리기 (pg_cron이 부른다)
   - `account`: 내 계정, 초대 코드 넣기, 상단 이름 검사, 상단 세우기, 얼굴·문장 바꾸기 (로그인한 사람만)
-- 시험: `npm test`(PGlite), `npm run test:deno`(번들을 만들어 Deno에서: 상태 해시가 소스와 같은지, tick 함수가 postgres.js로 실제 장날을 도는지, account 함수가 로그인 토큰을 확인하고 계정을 만드는지).
+  - `game`: 화면 데이터와 명령 (로그인한 사람만)
+- 시험: `npm test`(PGlite), `npm run test:deno`(번들을 만들어 Deno에서: 상태 해시가 소스와 같은지, tick 함수가 postgres.js로 실제 장날을 도는지, account 함수가 로그인 토큰을 확인하고 계정을 만드는지, game 함수가 명령을 저장하는지).
 
 ## 처음 한 번 (운영자)
 
@@ -61,7 +62,11 @@
    npx supabase functions deploy account
    ```
 
-   `account`는 JWT 검사를 켠 채로 올린다(기본값). 함수 안에서 `@supabase/server`가 한 번 더 확인해 계정 id를 꺼낸다.
+   ```bash
+   npx supabase functions deploy game
+   ```
+
+   `account`와 `game`은 JWT 검사를 켠 채로 올린다(기본값). 함수 안에서 `@supabase/server`가 한 번 더 확인해 계정 id를 꺼낸다.
 
 6. `health`를 불러 로컬 값과 같은지 본다: `npm run test:deno`가 도는 소스의 `parityRun(3)`과 해시 셋이 같아야 한다.
 
