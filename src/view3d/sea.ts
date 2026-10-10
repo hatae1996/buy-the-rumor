@@ -1,6 +1,7 @@
 // 바다: 지도 아래에 깔린 큰 수면 하나. 섬(육지 기둥)이 물에서 솟아 보이게 육지 기둥 바닥보다 높고 해안보다 낮다.
 // 물색은 가까운 육지까지 거리로 섞는다 (해안 옆은 밝은 얕은 물, 멀어질수록 깊은 물). 거리는 지도를 놓을 때 한 번 재서 작은 질감에 담는다.
 // 물결은 높이 대신 밝기만 아주 느리게 흐르고, 해안 가까이에 군데군데 끊어진 포말이 나타났다 사라진다.
+// 포말은 로우폴리 느낌으로 작은 삼각형 조각 단위다: 조각마다 가운데 한 점에서만 재서 조각 전체가 켜지거나 꺼진다.
 // 불투명 수면 하나라 아이폰에서 가볍다 (반사·굴절 없음).
 import * as THREE from 'three';
 import type { Season } from '../sim/season';
@@ -15,6 +16,8 @@ const DIST_RES = 128;
 const MAX_DIST = 8;
 /** 육지 칸 가운데에서 이만큼까지는 육지로 본다 (칸 반지름 1, 기둥 0.97) */
 const LAND_RADIUS = 0.9;
+/** 포말 삼각형 조각 한 변 (칸 반지름 1 기준) */
+const FOAM_CELL = 0.22;
 /** 수면 크기: 카메라가 어디를 보든 끝이 보이지 않게 */
 const PLANE_SIZE = 400;
 
@@ -46,11 +49,15 @@ float noise(vec2 p) {
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+/** 해안까지 거리 (칸 반지름 1 기준) */
+float coastDist(vec2 xz) {
+  vec2 uv = xz / (2.0 * uExtent) + 0.5;
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return ${MAX_DIST.toFixed(1)};
+  return texture2D(uDist, uv).r * ${MAX_DIST.toFixed(1)};
+}
+
 void main() {
-  vec2 uv = vXZ / (2.0 * uExtent) + 0.5;
-  float d = 1.0;
-  if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) d = texture2D(uDist, uv).r;
-  float dist = d * ${MAX_DIST.toFixed(1)};
+  float dist = coastDist(vXZ);
 
   // 해안까지 거리로 얕은 물 → 바다 → 먼 바다
   vec3 col = mix(uShallow, uMid, smoothstep(0.0, 1.2, dist));
@@ -60,11 +67,20 @@ void main() {
   float n = noise(vXZ * 0.8 + vec2(uTime * 0.05, uTime * 0.03)) + noise(vXZ * 1.6 - vec2(uTime * 0.04, -uTime * 0.06));
   col *= 1.0 + (n - 1.0) * 0.05;
 
-  // 포말: 해안 옆 좁은 띠에서 군데군데 끊어지고 천천히 나타났다 사라진다
-  float band = 1.0 - smoothstep(0.08, 0.45, dist);
-  float f = noise(vXZ * 2.6 + vec2(uTime * 0.12, -uTime * 0.07)) * 0.65 + 0.35 * (0.5 + 0.5 * sin(uTime * 0.7 + vXZ.x * 1.3 + vXZ.y * 0.9));
-  float foam = band * smoothstep(0.5, 0.72, f) * uFoamAmount;
-  col = mix(col, uFoam, foam);
+  // 포말: 삼각형 격자(한 변 FOAM_CELL)로 나눠, 조각 가운데에서 해안 거리와 무늬를 잰다.
+  // 해안에 가까울수록 켜지기 쉽고, 무늬가 천천히 흘러 조각이 하나씩 나타났다 사라진다
+  vec2 s = vXZ / ${FOAM_CELL.toFixed(2)};
+  vec2 cell = floor(s + (s.x + s.y) * 0.3660254);
+  vec2 local = s - (cell - (cell.x + cell.y) * 0.2113249);
+  vec2 corner = local.x > local.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec2 mid = (cell * 3.0 + corner + vec2(1.0)) / 3.0;
+  vec2 center = (mid - (mid.x + mid.y) * 0.2113249) * ${FOAM_CELL.toFixed(2)};
+  float cd = coastDist(center);
+  float wave = noise(center * 1.3 + vec2(uTime * 0.1, -uTime * 0.06)) * 0.7 + 0.3 * (0.5 + 0.5 * sin(uTime * 0.6 + center.x * 1.1 + center.y * 0.8));
+  float on = step(cd, 0.42) * step(0.52 + cd * 0.6, wave);
+  // 조각마다 밝기를 조금 달리해 면이 보이게
+  float facet = 0.93 + 0.07 * hash(cell * 2.0 + corner);
+  col = mix(col, uFoam * facet, on * uFoamAmount);
 
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
