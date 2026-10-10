@@ -257,6 +257,14 @@
   font-size: 17px;
 }
 
+/* 링크로 된 단추 (앱 안 브라우저에서 바깥 브라우저로 열기) */
+a.founding-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .founding-btn.ghost {
   border: 1.5px solid var(--cream-line);
   background: #fffdf8;

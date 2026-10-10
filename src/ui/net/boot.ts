@@ -4,7 +4,9 @@ import type { Certificate } from '../../sim/ranking/types';
 import { LOGIN_GOOGLE, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 import { setFeedbackSender } from '../feedback';
 import { ERROR_TEXT, type ServerError } from '../format';
+import { inAppBrowser } from '../inApp';
 import { openFounding } from '../screens/founding';
+import { showOpenInBrowser } from '../screens/openInBrowser';
 import { noteEnterWorld, showInvite, showLogin, showWaiting } from '../screens/serverEntry';
 import { mountShell } from '../shell';
 import { setTracker, track } from '../track';
@@ -20,7 +22,32 @@ type Done = { ok: true } | { ok: false; error: string };
 
 const text = (e: string) => ERROR_TEXT[e as ServerError] ?? e;
 
+/** 앱 안 브라우저 안내에서 "여기서 계속하기"를 누른 탭 (이번 탭에서는 다시 묻지 않는다) */
+const STAY_KEY = 'buy-the-rumor/in-app-stay';
+
+function stayed(): boolean {
+  try {
+    return sessionStorage.getItem(STAY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export async function bootServer(root: HTMLElement): Promise<void> {
+  // 카톡 등 앱 안 브라우저면 먼저 사파리(기본 브라우저)로 열라고 안내한다
+  const app = inAppBrowser(navigator.userAgent);
+  if (app && !stayed()) {
+    await new Promise<void>((resolve) =>
+      showOpenInBrowser(root, app, () => {
+        try {
+          sessionStorage.setItem(STAY_KEY, '1');
+        } catch {
+          // 저장하지 못해도 이번에는 계속한다
+        }
+        resolve();
+      }),
+    );
+  }
   const s = await auth.session();
   if (!s) return showLogin(root, { google: LOGIN_GOOGLE ? auth.signInWithGoogle : null, email: auth.signInWithEmail });
   const uid = s.user.id;
