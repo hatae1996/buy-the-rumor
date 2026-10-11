@@ -102,27 +102,37 @@ async function loadSfx(c: AudioContext): Promise<void> {
   );
 }
 
-/** 첫 터치: 소리를 열고, 배경음을 틀고, 효과음을 불러 둔다 */
-function unlock(): void {
-  if (unlocked) return;
-  unlocked = true;
-  // 무음 스위치를 따르고 다른 앱의 소리와 섞인다 (사파리 16.4+)
-  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
-  if (session) session.type = 'ambient';
-  const AC = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (AC) {
-    ctx = new AC();
-    void ctx.resume();
-    void loadSfx(ctx);
+/**
+ * 사용자 동작(touchend·click·keydown)마다 부른다. 처음이면 소리를 열고 배경음을 틀고 효과음을 불러 둔다.
+ * 아이폰 사파리는 Web Audio를 touchend·click 안에서만 연다(pointerdown·touchstart로는 안 열린다).
+ * 그래서 열릴 때까지(또는 다른 앱에 다녀와 "interrupted"가 되면) 동작마다 다시 열고, 그 동작 안에서 소리 없는 한 칸을 낸다
+ */
+function onGesture(): void {
+  if (!unlocked) {
+    unlocked = true;
+    // 무음 스위치를 따르고 다른 앱의 소리와 섞인다 (사파리 16.4+)
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'ambient';
+    const AC = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AC) {
+      ctx = new AC();
+      void loadSfx(ctx);
+    }
+    syncBgm();
   }
-  syncBgm();
+  if (ctx && ctx.state !== 'running') {
+    void ctx.resume();
+    // 옛 아이폰은 동작 안에서 소리를 한 번 내야 완전히 열린다
+    const src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, 22050);
+    src.connect(ctx.destination);
+    src.start(0);
+  }
 }
 
-/** 앱을 열 때 한 번: 첫 터치를 기다리고, 버튼 터치음과 화면 전환 때 배경음 멈춤을 건다 */
+/** 앱을 열 때 한 번: 사용자 동작을 기다리고, 버튼 터치음과 화면 전환 때 배경음 멈춤을 건다 */
 export function initSound(): void {
-  const first = () => unlock();
-  document.addEventListener('pointerdown', first, { capture: true, once: true });
-  document.addEventListener('touchend', first, { capture: true, once: true });
+  for (const type of ['touchend', 'click', 'keydown'] as const) document.addEventListener(type, onGesture, { capture: true });
   // 누를 수 있는 것을 누르면 터치음 (같은 터치에서 다른 효과음이 났으면 그것만)
   document.addEventListener('click', (e) => {
     const t = (e.target as HTMLElement | null)?.closest('button, a, [role="tab"], select, input[type="checkbox"]');
