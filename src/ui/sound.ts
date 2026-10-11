@@ -1,19 +1,20 @@
 // 소리 (0.2.1): 배경음 한 곡과 효과음. 원본은 assets-src/audio/, 게임용은 npm run audio(scripts/audio/build.py)가 만든다.
 // - 배경음과 효과음 모두 <audio>로 튼다. 아이폰에서 Web Audio 효과음이 나지 않아(배경음 <audio>는 났다) 같은 방식으로 맞췄다.
 // - 아이폰은 <audio>의 음량을 무시하므로, 소리마다 크기는 파일에 미리 넣었다(build.py의 목표 크기). 게임은 음량 1로 튼다.
+// - 효과음은 앞 무음을 잘라 낸 WAV라 누르자마자 난다(MP3는 앞에 빈 틈이 붙고 풀어야 해서 늦다).
 // - 아이폰은 사용자 동작(touchend·click) 안에서 만지고 불러 둔 <audio>만 나중에 동작 밖에서 틀 수 있다: 첫 동작에서
 //   모든 효과음을 만들고 load()해 둔다(소리는 나지 않는다. 산 뒤처럼 동작 밖에서 나는 소리를 위해).
 // - 무음 스위치를 따른다(navigator.audioSession "ambient", 사파리 16.4+). 다른 앱으로 가면 배경음을 멈춘다.
 // - 켜고 끄기는 이 폰에만 남긴다(설정 > 소리). 게임 상태가 아니라 기기 설정이다.
 import bgmUrl from '../../assets/audio/bgm_merchant_square.mp3';
-import buyUrl from '../../assets/audio/sfx_buy.mp3';
-import cartUrl from '../../assets/audio/sfx_cart.mp3';
-import ledgerUrl from '../../assets/audio/sfx_ledger.mp3';
-import mapUrl from '../../assets/audio/sfx_map.mp3';
-import marketUrl from '../../assets/audio/sfx_market.mp3';
-import paperUrl from '../../assets/audio/sfx_paper.mp3';
-import tapUrl from '../../assets/audio/sfx_tap.mp3';
-import travelUrl from '../../assets/audio/sfx_travel.mp3';
+import buyUrl from '../../assets/audio/sfx_buy.wav';
+import cartUrl from '../../assets/audio/sfx_cart.wav';
+import ledgerUrl from '../../assets/audio/sfx_ledger.wav';
+import mapUrl from '../../assets/audio/sfx_map.wav';
+import marketUrl from '../../assets/audio/sfx_market.wav';
+import paperUrl from '../../assets/audio/sfx_paper.wav';
+import tapUrl from '../../assets/audio/sfx_tap.wav';
+import travelUrl from '../../assets/audio/sfx_travel.wav';
 
 export type Sfx = 'tap' | 'map' | 'cart' | 'ledger' | 'paper' | 'market' | 'buy' | 'travel';
 
