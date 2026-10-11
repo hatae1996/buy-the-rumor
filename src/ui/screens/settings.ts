@@ -13,7 +13,7 @@ import bellImg from '../../../assets/ui/set_bell.png';
 import helpImg from '../../../assets/ui/set_help.png';
 import moonImg from '../../../assets/ui/set_moon.png';
 import soundImg from '../../../assets/ui/set_sound.png';
-import { setSoundSettings, soundSettings } from '../sound';
+import { playSfx, setSoundSettings, soundSettings } from '../sound';
 import { showHomeTip } from './homeTip';
 
 /** 설정에 보이는 알림 이름과 설명 (목업 문구. 알림 묶음 글은 시뮬의 이름을 그대로 쓴다) */
@@ -71,6 +71,7 @@ export function openSettings(game: Game): void {
           <li><label><span><b>배경음</b><small>장터의 아침 음악</small></span><input type="checkbox" class="settings-switch" data-sound="bgm" ${sound.bgm ? 'checked' : ''} /></label></li>
           <li><label><span><b>효과음</b><small>누를 때, 살 때, 길을 떠날 때</small></span><input type="checkbox" class="settings-switch" data-sound="sfx" ${sound.sfx ? 'checked' : ''} /></label></li>
         </ul>
+        <button type="button" class="shop-link" data-sfx-test>효과음 들어 보기 <span>›</span></button>
         <p class="settings-note">무음 모드에서는 소리가 나지 않아요. 이 폰에만 저장돼요.</p>
       </section>
       <section class="shop-card settings-card">
@@ -99,6 +100,7 @@ export function openSettings(game: Game): void {
     body.querySelectorAll<HTMLInputElement>('[data-sound]').forEach((box) =>
       box.addEventListener('change', () => setSoundSettings({ [box.dataset.sound as 'bgm' | 'sfx']: box.checked })),
     );
+    body.querySelector('[data-sfx-test]')!.addEventListener('click', () => playSfx('buy'));
     body.querySelector('[data-home-tip]')!.addEventListener('click', () => showHomeTip());
     body.querySelector('[data-feedback]')?.addEventListener('click', () => openFeedbackSheet());
     body.querySelector('[data-sign-out]')?.addEventListener('click', async (e) => {

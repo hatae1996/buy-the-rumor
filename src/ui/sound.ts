@@ -1,6 +1,8 @@
 // 소리 (0.2.1): 배경음 한 곡과 효과음. 원본은 assets-src/audio/, 게임용은 npm run audio(scripts/audio/build.py)가 만든다.
-// - 아이폰 사파리는 첫 터치 뒤에만 소리를 낸다: 첫 터치에서 배경음을 틀고 효과음을 불러 둔다.
-// - 배경음은 <audio> 하나(메모리를 적게 쓴다), 효과음은 Web Audio(짧아서 겹쳐 울려도 바로 난다).
+// - 배경음과 효과음 모두 <audio>로 튼다. 아이폰에서 Web Audio 효과음이 나지 않아(배경음 <audio>는 났다) 같은 방식으로 맞췄다.
+// - 아이폰은 <audio>의 음량을 무시하므로, 소리마다 크기는 파일에 미리 넣었다(build.py의 목표 크기). 게임은 음량 1로 튼다.
+// - 아이폰은 사용자 동작(touchend·click) 안에서 만지고 불러 둔 <audio>만 나중에 동작 밖에서 틀 수 있다: 첫 동작에서
+//   모든 효과음을 만들고 load()해 둔다(소리는 나지 않는다. 산 뒤처럼 동작 밖에서 나는 소리를 위해).
 // - 무음 스위치를 따른다(navigator.audioSession "ambient", 사파리 16.4+). 다른 앱으로 가면 배경음을 멈춘다.
 // - 켜고 끄기는 이 폰에만 남긴다(설정 > 소리). 게임 상태가 아니라 기기 설정이다.
 import bgmUrl from '../../assets/audio/bgm_merchant_square.mp3';
@@ -15,20 +17,16 @@ import travelUrl from '../../assets/audio/sfx_travel.mp3';
 
 export type Sfx = 'tap' | 'map' | 'cart' | 'ledger' | 'paper' | 'market' | 'buy' | 'travel';
 
-/** 효과음 파일과 음량 (원본마다 크기가 달라서 평균 크기를 재어 맞췄다. 터치음은 작게, 시장은 기획대로 "작게 들리게") */
-const SFX: Record<Sfx, { url: string; gain: number }> = {
-  tap: { url: tapUrl, gain: 0.37 },
-  map: { url: mapUrl, gain: 1.38 },
-  cart: { url: cartUrl, gain: 0.87 },
-  ledger: { url: ledgerUrl, gain: 0.81 },
-  paper: { url: paperUrl, gain: 1.38 },
-  market: { url: marketUrl, gain: 0.15 },
-  buy: { url: buyUrl, gain: 1.16 },
-  travel: { url: travelUrl, gain: 1.8 },
+const SFX_URL: Record<Sfx, string> = {
+  tap: tapUrl,
+  map: mapUrl,
+  cart: cartUrl,
+  ledger: ledgerUrl,
+  paper: paperUrl,
+  market: marketUrl,
+  buy: buyUrl,
+  travel: travelUrl,
 };
-
-/** 배경음 음량 (효과음 뒤에 깔리게) */
-const BGM_VOLUME = 0.3;
 
 const KEY = 'buy-the-rumor/sound';
 
@@ -47,9 +45,8 @@ function load(): SoundSettings {
 }
 
 let settings = load();
-let ctx: AudioContext | null = null;
-const buffers = new Map<Sfx, AudioBuffer>();
 let bgm: HTMLAudioElement | null = null;
+const sfx = new Map<Sfx, HTMLAudioElement>();
 let unlocked = false;
 /** 이 시각까지는 공통 터치음을 내지 않는다 (같은 터치에서 다른 효과음이 났다) */
 let quietTapUntil = 0;
@@ -68,66 +65,35 @@ export function setSoundSettings(next: Partial<SoundSettings>): void {
   syncBgm();
 }
 
-/** 효과음을 낸다. 첫 터치 전이거나 꺼져 있으면 조용히 넘어간다 */
+/** 효과음을 낸다. 첫 동작 전이거나 꺼져 있으면 조용히 넘어간다. 같은 소리가 울리는 중이면 처음부터 다시 */
 export function playSfx(name: Sfx): void {
   if (name !== 'tap') quietTapUntil = performance.now() + 120;
-  if (!settings.sfx || !ctx || ctx.state !== 'running') return;
-  const buf = buffers.get(name);
-  if (!buf) return;
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  const gain = ctx.createGain();
-  gain.gain.value = SFX[name].gain;
-  src.connect(gain).connect(ctx.destination);
-  src.start();
+  const el = sfx.get(name);
+  if (!settings.sfx || !el) return;
+  el.currentTime = 0;
+  void el.play().catch(() => undefined);
 }
 
 function syncBgm(): void {
   if (!unlocked) return;
-  bgm ??= Object.assign(new Audio(bgmUrl), { loop: true, volume: BGM_VOLUME, preload: 'auto' });
+  bgm ??= Object.assign(new Audio(bgmUrl), { loop: true, preload: 'auto' });
   if (settings.bgm && !document.hidden) void bgm.play().catch(() => undefined);
   else bgm.pause();
 }
 
-async function loadSfx(c: AudioContext): Promise<void> {
-  await Promise.all(
-    (Object.keys(SFX) as Sfx[]).map(async (name) => {
-      try {
-        const data = await (await fetch(SFX[name].url)).arrayBuffer();
-        buffers.set(name, await c.decodeAudioData(data));
-      } catch {
-        // 못 불러온 소리는 빠진다
-      }
-    }),
-  );
-}
-
-/**
- * 사용자 동작(touchend·click·keydown)마다 부른다. 처음이면 소리를 열고 배경음을 틀고 효과음을 불러 둔다.
- * 아이폰 사파리는 Web Audio를 touchend·click 안에서만 연다(pointerdown·touchstart로는 안 열린다).
- * 그래서 열릴 때까지(또는 다른 앱에 다녀와 "interrupted"가 되면) 동작마다 다시 열고, 그 동작 안에서 소리 없는 한 칸을 낸다
- */
+/** 사용자 동작(touchend·click·keydown)마다 부른다. 처음이면 소리를 열고 배경음을 틀고, 효과음을 불러 둔다 */
 function onGesture(): void {
-  if (!unlocked) {
-    unlocked = true;
-    // 무음 스위치를 따르고 다른 앱의 소리와 섞인다 (사파리 16.4+)
-    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
-    if (session) session.type = 'ambient';
-    const AC = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (AC) {
-      ctx = new AC();
-      void loadSfx(ctx);
-    }
-    syncBgm();
+  if (unlocked) return;
+  unlocked = true;
+  // 무음 스위치를 따르고 다른 앱의 소리와 섞인다 (사파리 16.4+)
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session) session.type = 'ambient';
+  for (const name of Object.keys(SFX_URL) as Sfx[]) {
+    const el = Object.assign(new Audio(SFX_URL[name]), { preload: 'auto' });
+    el.load();
+    sfx.set(name, el);
   }
-  if (ctx && ctx.state !== 'running') {
-    void ctx.resume();
-    // 옛 아이폰은 동작 안에서 소리를 한 번 내야 완전히 열린다
-    const src = ctx.createBufferSource();
-    src.buffer = ctx.createBuffer(1, 1, 22050);
-    src.connect(ctx.destination);
-    src.start(0);
-  }
+  syncBgm();
 }
 
 /** 앱을 열 때 한 번: 사용자 동작을 기다리고, 버튼 터치음과 화면 전환 때 배경음 멈춤을 건다 */
@@ -143,10 +109,7 @@ export function initSound(): void {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) bgm?.pause();
-    else {
-      void ctx?.resume();
-      syncBgm();
-    }
+    else syncBgm();
   });
 }
 
