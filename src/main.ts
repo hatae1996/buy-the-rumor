@@ -18,6 +18,8 @@ const app = document.getElementById('app')!;
 watchPortraits();
 // 소리: 첫 터치에서 배경음을 틀고 효과음을 불러 둔다 (들어가는 화면부터)
 initSound();
+// 아이폰 사파리는 touchstart를 듣는 곳이 있어야 누르는 동안 :active(눌린 모양)를 그린다 (base.css)
+document.addEventListener('touchstart', () => undefined, { passive: true });
 const boot = (game: Game) => {
   mountShell(app, game, () => Date.now());
 };

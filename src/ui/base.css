@@ -25,6 +25,21 @@ body {
   touch-action: manipulation;
 }
 
+/* 두 번 눌러 확대를 기다리지 않게 (누르자마자 반응). touch-action은 스크롤되는 상자 안으로 이어지지 않아서 모든 요소에.
+   지도·끌어 옮기기처럼 따로 정한 곳(클래스 규칙)이 앞선다 */
+*,
+*::before,
+*::after {
+  touch-action: manipulation;
+}
+
+/* 누르는 동안 바로 눌린 모양 (아이폰은 main.ts의 touchstart 듣기가 있어야 :active를 그린다).
+   따로 눌린 모양을 정한 단추는 그것이 앞선다 */
+:where(button, a, [role='tab'], label):not(:disabled):not(.market-banner):active {
+  transform: scale(0.97);
+  filter: brightness(0.94);
+}
+
 body {
   overflow: hidden;
   user-select: none;
