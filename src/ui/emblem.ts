@@ -1,6 +1,6 @@
 // 상단 문장 그리기 (0.1.7 답 130): 방패 모양 안을 바탕 색과 나눔 무늬로 칠하고, 가운데에 상징을 얹는다.
-// 그림(assets/emblem/shield_*.png, sym_*.png, 회색조)이 있으면 방패는 그림 모양으로 자르고 명암을 곱하고,
-// 상징은 그림 모양에 색을 칠한 뒤 명암을 곱한다. 그림이 오기 전에는 방패를 도형으로, 상징을 이름 글자로 그린다.
+// 그림(assets/emblem/shield_*.png, sym_*.png: 실루엣, 0.2.1 scripts/ui/cut_emblem.py)이 있으면 방패는 그림 모양으로 자르고
+// 그 둘레에 테두리를 두르고, 상징은 그림 모양에 상징 색을 칠한다. 그림이 없으면 방패를 도형으로, 상징을 이름 글자로 그린다.
 import { EMBLEM_COLORS, SYMBOLS, type DivisionId, type Emblem, type ShieldId, type SymbolId } from '../sim/ranking';
 
 const FILES = import.meta.glob<string>('../../assets/emblem/*.png', { eager: true, query: '?url', import: 'default' });
@@ -60,7 +60,19 @@ let uid = 0;
 /** 이 크기 이하에서는 상징 글자를 그리지 않는다 (답 134) */
 export const SMALL_EMBLEM = 36;
 
-export function emblemSvg(e: Emblem, size = 64, label = '상단 문장'): string {
+/** 상징 하나만 (문장 고르기의 상징 견본). viewBox 0 0 100 100 */
+export function symbolSvg(symbol: SymbolId, color: string, size: number): string {
+  const art = ART.get(`sym_${symbol}`);
+  const id = `sy${++uid}`;
+  const body = art
+    ? `<mask id="${id}" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><image href="${art}" x="0" y="0" width="100" height="100"/></mask>
+       <rect width="100" height="100" fill="${color}" mask="url(#${id})"/>`
+    : `<text x="50" y="62" text-anchor="middle" font-family="Jua, sans-serif" font-size="34" fill="${color}">${SYMBOL_GLYPH[symbol]}</text>`;
+  return `<svg class="emblem-symbol" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${body}</svg>`;
+}
+
+/** opt.symbol이 false면 상징 없이 방패만 (방패 모양·나눔 무늬 견본) */
+export function emblemSvg(e: Emblem, size = 64, label = '상단 문장', opt: { symbol?: boolean } = {}): string {
   const id = `em${++uid}`;
   const a = EMBLEM_COLORS[e.field[0]].hex;
   const b = EMBLEM_COLORS[e.field[1]].hex;
@@ -69,30 +81,50 @@ export function emblemSvg(e: Emblem, size = 64, label = '상단 문장'): string
   const symArt = ART.get(`sym_${e.symbol}`);
   // 자르는 모양: 그림이 있으면 그림의 불투명한 곳, 없으면 도형
   const clip = shieldArt
-    ? `<mask id="${id}c" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="110"><image href="${shieldArt}" x="-5" y="0" width="110" height="110"/></mask>`
+    ? `<mask id="${id}c" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="110"><image href="${shieldArt}" x="-5" y="0" width="110" height="110"/></mask>
+       <filter id="${id}o" x="-10%" y="-10%" width="120%" height="120%"><feMorphology in="SourceAlpha" operator="dilate" radius="3" result="d"/><feFlood flood-color="#3d342c" flood-opacity="0.72"/><feComposite in2="d" operator="in"/></filter>`
     : `<clipPath id="${id}c"><path d="${SHIELD_PATH[e.shield]}"/></clipPath>`;
   const clipRef = shieldArt ? `mask="url(#${id}c)"` : `clip-path="url(#${id}c)"`;
+  // 그림 방패의 테두리는 방패 모양을 조금 부풀린 그림자로, 바탕 뒤에
+  const back = shieldArt ? `<image href="${shieldArt}" x="-5" y="0" width="110" height="110" filter="url(#${id}o)"/>` : '';
   const field = `<g ${clipRef}><rect width="100" height="110" fill="${a}"/>${divisionShapes(e.division, b)}</g>`;
-  const rim = shieldArt
-    ? `<image href="${shieldArt}" x="-5" y="0" width="110" height="110" style="mix-blend-mode:multiply"/>`
-    : `<path d="${SHIELD_PATH[e.shield]}" fill="none" stroke="rgba(43,38,34,0.55)" stroke-width="3"/>`;
+  const rim = shieldArt ? '' : `<path d="${SHIELD_PATH[e.shield]}" fill="none" stroke="rgba(43,38,34,0.55)" stroke-width="3"/>`;
   const glyph = SYMBOL_GLYPH[e.symbol];
-  // 작은 자리(36px 이하: 위 줄, 랭킹)에서는 상징 글자를 빼고 방패와 색만 (답 134. 상징 그림이 오면 다시 본다)
+  // 작은 자리(36px 이하: 위 줄, 랭킹)에서 상징 그림이 없으면 글자를 빼고 방패와 색만 (답 134)
   const small = !symArt && size <= SMALL_EMBLEM;
-  const symbol = small
-    ? ''
-    : symArt
-    ? `<mask id="${id}s" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="110"><image href="${symArt}" x="22" y="27" width="56" height="56"/></mask>
-       <rect width="100" height="110" fill="${sc}" mask="url(#${id}s)"/>
-       <image href="${symArt}" x="22" y="27" width="56" height="56" style="mix-blend-mode:multiply"/>`
-    : `<text x="50" y="${glyph.length > 1 ? 63 : 67}" text-anchor="middle" font-family="Jua, sans-serif" font-size="${glyph.length > 1 ? 24 : 34}" fill="${sc}" stroke="rgba(255,255,255,0.7)" stroke-width="3" paint-order="stroke">${glyph}</text>`;
-  return `<svg class="emblem" viewBox="0 0 100 110" width="${size}" height="${Math.round(size * 1.1)}" role="img" aria-label="${label}: ${SYMBOLS[e.symbol]}">
-    <defs>${clip}</defs>${field}${rim}${symbol}</svg>`;
+  const symbol =
+    opt.symbol === false || small
+      ? ''
+      : symArt
+      ? `<mask id="${id}s" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="110"><image href="${symArt}" x="20" y="25" width="60" height="60"/></mask>
+       <rect width="100" height="110" fill="${sc}" mask="url(#${id}s)"/>`
+      : `<text x="50" y="${glyph.length > 1 ? 63 : 67}" text-anchor="middle" font-family="Jua, sans-serif" font-size="${glyph.length > 1 ? 24 : 34}" fill="${sc}" stroke="rgba(255,255,255,0.7)" stroke-width="3" paint-order="stroke">${glyph}</text>`;
+  return `<svg class="emblem" viewBox="-4 -4 108 118" width="${size}" height="${Math.round(size * 1.1)}" role="img" aria-label="${label}: ${SYMBOLS[e.symbol]}">
+    <defs>${clip}</defs>${back}${field}${rim}${symbol}</svg>`;
+}
+
+/** 그림 주소를 데이터 주소로 (SVG를 그림으로 그릴 때는 바깥 그림을 불러오지 않는다) */
+const dataUrls = new Map<string, Promise<string>>();
+function dataUrl(url: string): Promise<string> {
+  let p = dataUrls.get(url);
+  if (!p) {
+    p = fetch(url)
+      .then((r) => r.blob())
+      .then((blob) => new Promise<string>((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.readAsDataURL(blob);
+      }))
+      .catch(() => url);
+    dataUrls.set(url, p);
+  }
+  return p;
 }
 
 /** 캔버스에 문장을 그린다 (증서 이미지 저장). x, y는 왼쪽 위, w는 너비 */
 export async function drawEmblem(g: CanvasRenderingContext2D, e: Emblem, x: number, y: number, w: number): Promise<void> {
-  const svg = emblemSvg(e, w).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+  let svg = emblemSvg(e, w).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+  for (const url of new Set([...svg.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!))) svg = svg.replaceAll(`href="${url}"`, `href="${await dataUrl(url)}"`);
   const img = new Image();
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   await img.decode().catch(() => undefined);

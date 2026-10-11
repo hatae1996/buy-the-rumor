@@ -6,6 +6,7 @@ import { closeAllPages } from './page';
 import coin from '../../assets/ui/coin.png';
 import hourglass from '../../assets/ui/icon_hourglass.png';
 import bread from '../../assets/ui/icon_bread.png';
+import gear from '../../assets/ui/icon_gear.png';
 import { emblemSvg } from './emblem';
 import tabCart from '../../assets/ui/tab_cart.png';
 import tabLedger from '../../assets/ui/tab_ledger.png';
@@ -21,10 +22,12 @@ import { renderCart } from './screens/cart';
 import { renderLedger } from './screens/ledger';
 import { renderNews } from './screens/news';
 import { openCertificate } from './screens/certificate';
+import { openSettings } from './screens/settings';
 import { renderTown } from './screens/town';
 import { openSettlement } from './screens/settlement';
 import { maybeShowHomeTip } from './screens/homeTip';
 import { track } from './track';
+import { commandSfx, playSfx, type Sfx } from './sound';
 
 export type TabId = 'town' | 'map' | 'cart' | 'ledger' | 'news';
 
@@ -39,6 +42,9 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 /** 장날이 지났는지 확인하는 간격 */
 const CLOCK_MS = 30_000;
 
+/** 탭을 누를 때 효과음 (마을은 공통 터치음) */
+const TAB_SFX: Partial<Record<TabId, Sfx>> = { map: 'map', cart: 'cart', ledger: 'ledger', news: 'paper' };
+
 export function mountShell(root: HTMLElement, game: Game, now: () => number): void {
   root.innerHTML = `
     <div class="shell">
@@ -48,6 +54,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
         <span class="status-market"><img src="${hourglass}" alt="" /><span data-market></span></span>
         <span class="status-fatigue" aria-label="피로"><img src="${bread}" alt="" /><span data-fatigue></span></span>
         <span class="status-gold"><img src="${coin}" alt="돈" /><b data-gold></b></span>
+        <button type="button" class="status-gear" data-settings aria-label="설정"><img src="${gear}" alt="" /></button>
       </header>
       <main class="shell-body">
         ${TABS.filter((t) => t.id !== 'map')
@@ -97,7 +104,8 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
       $('[data-crest]').innerHTML = emblemSvg(v.certificate.emblem, 36, '내 문장');
     }
     $('[data-gold]').textContent = money(v.gold);
-    $('[data-day]').textContent = dayText(v.day, v.season);
+    // 좁은 폰(390px 아래)에서는 "125일"만 (톱니바퀴 자리, 0.2.1). 계절은 마을 탭 위에 있다
+    $('[data-day]').innerHTML = `<span class="day-long">${dayText(v.day, v.season)}</span><span class="day-short">${v.day}일</span>`;
     // 견습 마을은 시간이 흐르지 않는다: "하루 보내기"로 넘긴다
     // 모래시계 옆은 장날까지 남은 시간 (견습과 결산은 글로)
     const market = $('[data-market]');
@@ -142,7 +150,23 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     render();
   };
 
-  buttons.forEach((b) => b.addEventListener('click', () => select(b.dataset.tab as TabId)));
+  buttons.forEach((b) =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.tab as TabId;
+      if (id !== current) {
+        const sfx = TAB_SFX[id];
+        if (sfx) playSfx(sfx);
+      }
+      select(id);
+    }),
+  );
+  // 명령이 받아들여지면 효과음 (산 것, 길 떠나기). 모든 화면이 game.dispatch를 거친다
+  const dispatch = game.dispatch.bind(game);
+  game.dispatch = async (cmd) => {
+    const r = await dispatch(cmd);
+    if (r.ok) commandSfx(cmd.type);
+    return r;
+  };
   // 페이지 안에서 다른 탭으로 (여관 → 소식 등): 열린 페이지를 닫고 그 탭을 연다
   window.addEventListener(TAB_EVENT, (e) => {
     const id = (e as CustomEvent<TabId>).detail;
@@ -150,6 +174,7 @@ export function mountShell(root: HTMLElement, game: Game, now: () => number): vo
     if (id === 'town' || v0unlocked(id)) select(id);
   });
   $('[data-crest]').addEventListener('click', () => openCertificate(game));
+  $('[data-settings]').addEventListener('click', () => openSettings(game));
   game.subscribe(render);
   // 견습을 마치고 처음 길을 떠나면 홈 화면에 추가 안내를 한 번 (0.2.0)
   let graduating = game.view().apprentice?.scene === 'graduation';

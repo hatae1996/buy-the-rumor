@@ -25,8 +25,19 @@ function chips(key: string, items: readonly { id: string; name: string }[], curr
     .join('')}</div>`;
 }
 
+/** 고르는 화면에 보이는 이름 (0.2.1 목업 문구) */
+const LABEL: Record<string, string> = {
+  '짧은 부스스한 머리': '짧은 헝클어진 머리',
+  '옆머리만 남은 대머리': '옆머리만 있는 머리',
+  '농민 리넨 튜닉': '리넨 튜닉',
+  '모피 깃 상인 겉옷': '모피 깃 겉옷',
+};
+
 /** 파츠 이름은 그림 설명이라 길다: 쉼표·더하기 앞까지만 */
-const shortName = (id: string) => PARTS[id]!.name.split(/[,+]/)[0]!.trim();
+const shortName = (id: string) => {
+  const n = PARTS[id]!.name.split(/[,+]/)[0]!.trim();
+  return LABEL[n] ?? n;
+};
 
 export interface FaceEditor {
   get(): Look;
@@ -41,13 +52,13 @@ export function mountFaceEditor(el: HTMLElement, initial: Look, onChange?: (look
     const tops = faceParts('top');
     const beards = faceParts('beard');
     el.innerHTML = `
-      <div class="pick-preview face">${portraitHtml(look, 120, '내 얼굴')}</div>
+      <div class="pick-preview face"><span class="ring-frame teal">${portraitHtml(look, 120, '내 얼굴')}</span></div>
       <section class="pick-group"><h4>피부</h4>${swatches(
         'skin',
         FACE_SKINS.map((id) => ({ id, name: SKINS[id], color: SKIN_SWATCH[id]! })),
         look.skin,
       )}</section>
-      <section class="pick-group"><h4>머리</h4>${chips(
+      <section class="pick-group"><h4>머리 모양</h4>${chips(
         'hair',
         hairs.map((id) => ({ id, name: shortName(id) })),
         look.hair,
@@ -70,7 +81,7 @@ export function mountFaceEditor(el: HTMLElement, initial: Look, onChange?: (look
       <section class="pick-group"><h4>수염</h4>${
         beards.length
           ? chips('beard', [{ id: '-', name: '없음' }, ...beards.map((id) => ({ id, name: shortName(id) }))], look.beard ?? '-')
-          : '<p class="pick-note">수염 그림이 들어오면 고를 수 있어요.</p>'
+          : '<div class="pick-row"><span class="pick-chip soon">준비 중</span></div><p class="pick-note">수염 선택은 추후 추가돼요.</p>'
       }</section>`;
   };
   const change = (next: Look) => {

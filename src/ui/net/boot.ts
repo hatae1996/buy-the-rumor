@@ -2,6 +2,7 @@
 // 서버 주소와 공개 키가 있을 때만 main.ts가 이 파일을 늦게 불러온다(로컬 빌드에 supabase-js가 들어가지 않게).
 import type { Certificate } from '../../sim/ranking/types';
 import { LOGIN_GOOGLE, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
+import { setSignOut } from '../account';
 import { setFeedbackSender } from '../feedback';
 import { ERROR_TEXT, type ServerError } from '../format';
 import { inAppBrowser } from '../inApp';
@@ -132,6 +133,10 @@ export async function bootServer(root: HTMLElement): Promise<void> {
   const where = () => ({ season_id: game.seasonId, world_id: game.place === 'world' ? game.worldId : null, game_day: game.view().day });
   setTracker((kind, data) => void auth.insertEvent({ kind, ...where(), data: data ?? null }));
   setFeedbackSender((body) => auth.insertFeedback({ body, screen: currentScreen(), ...where() }));
+  setSignOut(async () => {
+    await auth.signOut();
+    location.reload();
+  });
   if (game.inApprentice && game.view().apprentice?.scene === 'start') track('apprentice_start');
   track('session_start');
   setInterval(() => {

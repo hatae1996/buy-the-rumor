@@ -22,6 +22,12 @@ function dismissed(): boolean {
 /** 띄울 때가 되면 띄운다. 띄웠으면 true (기록 사건을 남길 때 쓴다) */
 export function maybeShowHomeTip(): boolean {
   if (standalone() || dismissed()) return false;
+  showHomeTip();
+  return true;
+}
+
+/** 설정에서 다시 볼 때는 "다시 보지 않기"와 상관없이 띄운다 (0.2.1) */
+export function showHomeTip(): void {
   const sheet = openSheet('홈 화면에 추가');
   sheet.body.innerHTML = `
     <p>홈 화면에 추가하면 주소창 없이 꽉 찬 화면으로 열려요.</p>
@@ -39,5 +45,4 @@ export function maybeShowHomeTip(): boolean {
     }
     sheet.close();
   });
-  return true;
 }

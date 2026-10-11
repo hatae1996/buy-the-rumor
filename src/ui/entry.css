@@ -1,0 +1,669 @@
+/* 들어가는 화면 (0.2.1 목업 docs/reference/entry-mockup-0.2.1.png): 앱 안 브라우저 안내, 로그인.
+   밝은 크림 바탕, 위에 상호(Buy the Rumor)와 잎, 가운데 그림, 아래 카드 */
+
+.entry-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: var(--cream-bg);
+  color: var(--cream-ink);
+  font-family: var(--f-body);
+  -webkit-overflow-scrolling: touch;
+}
+
+.entry-scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 20px) 16px calc(var(--safe-bottom) + 16px);
+  text-align: center;
+}
+
+/* 상호: 세리프 굵은 글자 양옆에 잎 */
+.entry-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.entry-brand img {
+  width: 26px;
+  height: auto;
+}
+
+.entry-brand img.flip {
+  transform: scaleX(-1);
+}
+
+.entry-wordmark {
+  margin: 0;
+  color: #1f3d45;
+  font-family: 'Fraunces', 'Nanum Myeongjo', serif;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  word-spacing: 0.08em;
+  line-height: 1;
+}
+
+.entry-brand.big img {
+  width: 44px;
+}
+
+.entry-brand.big .entry-wordmark {
+  letter-spacing: -0.01em;
+  word-spacing: 0;
+  font-size: 50px;
+  line-height: 0.98;
+}
+
+.entry-tagline {
+  margin: 10px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 15px;
+}
+
+/* 가운데 그림 */
+.entry-hero {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.entry-hero img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.entry-hero.compass {
+  margin: 10px 0 2px;
+}
+
+.entry-hero.compass img {
+  width: 128px;
+}
+
+.entry-hero.door {
+  margin: 14px -16px 0;
+  width: calc(100% + 32px);
+}
+
+.entry-hero.door img {
+  width: 100%;
+  max-width: 440px;
+}
+
+.entry-title {
+  margin: 10px 0 6px;
+  line-height: 1.25;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.entry-lead {
+  margin: 0;
+  color: var(--cream-ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.entry-lead.soft {
+  margin-top: 4px;
+  color: var(--cream-ink-soft);
+}
+
+/* 카드 */
+.entry-card {
+  width: 100%;
+  margin-top: 16px;
+  padding: 18px 16px;
+  border: 1px solid var(--cream-line);
+  border-radius: 18px;
+  background: #fbf8f2;
+  box-shadow: 0 6px 18px rgba(60, 45, 30, 0.08);
+  text-align: left;
+}
+
+.entry-card.overlap {
+  position: relative;
+  margin-top: -28px;
+  text-align: center;
+}
+
+.entry-card h2 {
+  margin: 0;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 23px;
+  font-weight: 400;
+}
+
+.entry-sub {
+  margin: 6px 0 14px;
+  color: #1f3d45;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.entry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.entry-field span {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.entry-field input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--cream-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font: inherit;
+  font-size: 17px;
+}
+
+/* 단추: 가로 가득, 44px 넘게 */
+.entry-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.entry-btn svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.entry-btn.teal {
+  background: var(--cream-teal);
+}
+
+.entry-btn.coral {
+  background: var(--coral);
+}
+
+.entry-btn.outline {
+  border: 1.5px solid #3a3530;
+  background: #fffdf8;
+  color: var(--cream-ink);
+}
+
+.entry-btn.ghost {
+  border: 1px solid var(--cream-line);
+  background: #fffdf8;
+  color: var(--cream-ink);
+}
+
+.entry-btn:disabled {
+  opacity: 0.6;
+}
+
+.entry-scroll > .entry-btn.outline {
+  margin-top: 16px;
+}
+
+.entry-note {
+  margin: 12px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.entry-error {
+  margin: 10px 0 0;
+  color: var(--wax);
+  font-size: 14px;
+}
+
+/* 앱 안 브라우저: 단추 아래 순서 */
+.entry-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 2px;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+.entry-divider::before,
+.entry-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--cream-line);
+}
+
+.entry-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.entry-steps li > span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cream-line);
+  border-radius: 50%;
+  background: #f1ebdf;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.entry-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f1ebdf;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+}
+
+.entry-tip svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--cream-teal);
+}
+
+/* 아래: 작은 글과 잎 구분선 */
+.entry-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+  color: var(--cream-ink-soft);
+  font-size: 12.5px;
+}
+
+.entry-foot p {
+  margin: 0;
+}
+
+.entry-leaf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entry-leaf::before,
+.entry-leaf::after {
+  content: '';
+  width: 44px;
+  border-top: 1px solid var(--cream-line);
+}
+
+.entry-leaf img {
+  width: 16px;
+  height: auto;
+}
+
+.entry-steps p {
+  margin: 0;
+}
+
+/* 메일 확인·길드 초대장 (0.2.1): 봉투 그림 */
+.entry-hero.letter {
+  margin: 8px 0 0;
+}
+
+.entry-hero.letter img {
+  width: 150px;
+}
+
+.entry-mail .entry-card,
+.entry-invite .entry-card {
+  margin-top: 12px;
+}
+
+.entry-mail .entry-callout {
+  margin-top: 12px;
+}
+
+.entry-field-title {
+  margin: 16px 0 6px;
+  color: #1f3d45;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.entry-field .entry-field-title {
+  margin: 0;
+  font-size: 17px;
+  font-family: var(--f-display);
+  font-weight: 400;
+}
+
+.entry-field small {
+  margin-bottom: 4px;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+}
+
+/* 작은 청록 테두리 단추 (메일 다시 받기) */
+.entry-chip {
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1.5px solid var(--cream-teal);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #1f6f6b;
+  font-family: var(--f-display);
+  font-size: 15px;
+}
+
+.entry-chip:disabled {
+  opacity: 0.6;
+}
+
+/* 인증번호 칸: 보이는 칸 여섯 위를 투명한 입력 칸 하나가 덮는다 */
+.otp {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.otp-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 16px;
+  opacity: 0;
+}
+
+.otp-box {
+  display: grid;
+  place-items: center;
+  height: 54px;
+  border: 1px solid var(--cream-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 24px;
+}
+
+/* 빈 칸은 짧은 줄 */
+.otp-box:empty::before {
+  content: '';
+  width: 14px;
+  border-top: 2px solid #c9bfb1;
+}
+
+.otp-box.now {
+  border: 2px solid var(--cream-teal);
+}
+
+.otp-box.now:empty::before {
+  border-top-color: #1f3d45;
+}
+
+.entry-error.ok {
+  color: var(--cream-teal);
+}
+
+.entry-note.center {
+  text-align: center;
+}
+
+.entry-mail .entry-note {
+  text-align: center;
+}
+
+/* 청록 알림 줄 (!) */
+.entry-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border: 1px solid #bfdeda;
+  border-radius: 12px;
+  background: var(--cream-teal-soft);
+  color: #1f6f6b;
+  font-size: 14px;
+  text-align: left;
+}
+
+.entry-callout span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--cream-teal);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 숨긴 것은 display를 정한 규칙보다 앞서게 */
+.entry-screen [hidden] {
+  display: none !important;
+}
+
+/* 대기 화면 (0.2.1 목업 docs/reference/waiting-mockup-0.2.1.png) */
+.entry-brand.stack {
+  gap: 10px;
+}
+
+.entry-brand.stack .entry-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 19px;
+  line-height: 0.95;
+}
+
+.entry-brand.stack .entry-wordmark small {
+  font-family: var(--f-body);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* 장식 줄: 가는 선 끝에 작은 마름모 */
+.entry-flourish {
+  position: relative;
+  width: 52px;
+  border-top: 1px solid #7aa6a2;
+}
+
+.entry-flourish::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  background: #7aa6a2;
+  transform: rotate(45deg);
+}
+
+.entry-flourish.flip::after {
+  right: auto;
+  left: -2px;
+}
+
+.entry-title.big {
+  margin: 12px 0 0;
+  font-size: 29px;
+}
+
+.entry-hero.stall {
+  position: relative;
+  margin: 8px 0 4px;
+}
+
+.entry-hero.stall .stall-img {
+  position: relative;
+  width: 80%;
+  max-width: 320px;
+}
+
+/* 노점 뒤 성벽 마을: 좌우 여백까지, 옅게 */
+.entry-hero.stall .wall {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  width: 100vw;
+  max-width: 560px;
+  opacity: 0.8;
+  transform: translateX(-50%);
+}
+
+/* 화면 아래 상자와 돌길: 내용 뒤, 맨 아래에 */
+.entry-waiting .entry-scroll {
+  position: relative;
+  padding-bottom: calc(var(--safe-bottom) + 72px);
+}
+
+.entry-waiting .entry-scroll > :not(.entry-ground) {
+  position: relative;
+  z-index: 1;
+}
+
+.entry-ground {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 100vw;
+  max-width: 560px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* 시작 시각 */
+.entry-when {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--cream-teal-soft);
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 17px;
+}
+
+.entry-when svg {
+  width: 24px;
+  height: 24px;
+  color: #1f6f6b;
+}
+
+.entry-waiting .hall-of-fame {
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 14px 16px 8px;
+  border-radius: 14px;
+  background: #fbf8f2;
+  text-align: left;
+}
+
+.entry-waiting .hall-of-fame h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: #1f3d45;
+}
+
+.entry-waiting .hall-of-fame h3 img {
+  width: 28px;
+  height: auto;
+}
+
+.entry-waiting .hall-of-fame h3 small {
+  margin-left: auto;
+}
+
+.entry-waiting .hall-of-fame li {
+  padding: 6px 0;
+}
+
+.entry-waiting .hall-of-fame b {
+  color: #1f3d45;
+}
+
+/* 증서 꾸미기 안내 위의 구분선 (가운데 별) */
+.entry-divider.plain {
+  width: 70%;
+  margin: 20px 0 0;
+  color: #c9a96a;
+}
+
+.entry-waiting .entry-note.center {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.entry-btn.outline.teal-line {
+  border-color: var(--cream-teal);
+  color: #1f3d45;
+}
+
+.entry-waiting .entry-btn {
+  margin-top: 12px;
+}
+
+.entry-waiting .entry-btn.coral {
+  margin-bottom: 8px;
+}
+
+.entry-waiting {
+  overflow-x: hidden;
+}

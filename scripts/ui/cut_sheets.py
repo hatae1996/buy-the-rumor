@@ -11,6 +11,12 @@
 - assets-src/ui/city-ui-sheet.png: 작업장·은행·길드 회관 건물, 내 작업장 팻말, 전쟁의 시즌 방패, 성벽 보수
 - assets-src/ui/news-ui-sheet.png, guild-ui-sheet.png: 소식 탭 신문·활동·길드 (보고 그림, 우승컵, 핀, 시즌 방패, 의뢰 그림)
 - assets-src/ui/travel-ui-sheet.png, assets-src/ui/travel/: 길 위 마을 탭 (집, 식량, 수레, 느낌표, 계절별 길, 말과 수레)
+- assets-src/ui/entry-letter-sheet.png: 메일 확인(열린 봉투와 확인 표시), 길드 초대장(봉인한 봉투). 0.2.1 docs/reference/entry-mail-invite-mockup-0.2.1.png
+- assets-src/ui/founding-ui-sheet.png: 상단 만들기 얼굴 테두리 둘(크림, 청록), 추천 주사위. 0.2.1 docs/reference/founding-*-mockup-0.2.1.png
+- assets-src/ui/waiting-wall-sheet.png, waiting-ground-sheet.png: 대기 화면의 노점 뒤 성벽 마을, 아래 상자와 돌길 (조각이 여럿인 한 그림이라 통째로)
+- assets-src/ui/waiting-ui-sheet.png: 대기 화면의 닫힌 노점. 0.2.1 docs/reference/waiting-mockup-0.2.1.png
+- assets-src/ui/settings-ui-sheet.png, settings-gear-sheet.png: 설정 (종, 달, 확성기, 홈 화면 책 / 위 줄 톱니바퀴). 0.2.1 docs/reference/settings-mockup-0.2.1.png
+- assets-src/ui/entry-ui-sheet.png: 들어가는 화면 (나침반: 앱 안 브라우저 안내, 길드 문: 로그인. 0.2.1 docs/reference/entry-mockup-0.2.1.png)
 - assets/source-sheets/sheet-A-icons-portraits.png: 검은 배경. 물품 그림 9개 (예전 것, goods_sheet()로만. 지금은 cut_goods.py)
 
 python scripts/ui/cut_sheets.py   (numpy, pillow, scipy)
@@ -262,6 +268,55 @@ def settlement_ui_sheet() -> None:
     sheet_pieces('settlement-ui-sheet.png', [('settle_seal.png', 256), ('icon_talk.png', 128), ('icon_signpost.png', 128)])
 
 
+def entry_ui_sheet() -> None:
+    """들어가는 화면 (0.2.1): 앱 안 브라우저 안내의 나침반, 로그인 화면의 길드 문"""
+    sheet_pieces('entry-ui-sheet.png', [('entry_compass.png', 384), ('entry_guild_door.png', 1024)])
+
+
+def entry_letter_sheet() -> None:
+    """메일 확인과 길드 초대장 (0.2.1)"""
+    sheet_pieces('entry-letter-sheet.png', [('entry_mail_check.png', 512), ('entry_invite_letter.png', 512)])
+
+
+def founding_ui_sheet() -> None:
+    """상단 만들기 (0.2.1): 얼굴 테두리(크림: 미리보기, 청록: 고르는 중), 추천 주사위"""
+    sheet_pieces('founding-ui-sheet.png', [('ring_cream.png', 384), ('ring_teal.png', 384), ('icon_dice.png', 96)])
+
+
+def whole_sheet(sheet: str, name: str, max_side: int) -> None:
+    """분홍 배경 그림판의 그림 전체를 한 장으로 (조각이 여럿인 배경 그림)"""
+    src = np.asarray(Image.open(os.path.join(ROOT, 'assets-src', 'ui', sheet)).convert('RGB')).astype(float)
+    alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    ys, xs = np.where(alpha > 0.5)
+    save(np.dstack([despill_magenta(src, alpha), alpha * 255]), (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1), name, max_side)
+
+
+def waiting_ui_sheet() -> None:
+    """대기 화면 (0.2.1): 닫힌 노점, 노점 뒤 성벽 마을, 아래 상자와 돌길"""
+    sheet_pieces('waiting-ui-sheet.png', [('waiting_stall.png', 768)])
+    whole_sheet('waiting-wall-sheet.png', 'waiting_wall.png', 1024)
+    whole_sheet('waiting-ground-sheet.png', 'waiting_ground.png', 1024)
+
+
+def grid_pieces(sheet: str, rows: int, cols: int, names) -> None:
+    """분홍 배경 그림판을 rows × cols 칸으로 나눠, 칸마다 그림 전체(조각이 여럿이어도)를 한 장으로. names는 줄마다 왼쪽부터 (이름, 가장 긴 변)"""
+    src = np.asarray(Image.open(os.path.join(ROOT, 'assets-src', 'ui', sheet)).convert('RGB')).astype(float)
+    alpha = key_alpha(src, np.array([255.0, 0.0, 255.0]), 90, 190)
+    rgba = np.dstack([despill_magenta(src, alpha), alpha * 255])
+    h, w = alpha.shape
+    for i, (name, side) in enumerate(names):
+        r, c = divmod(i, cols)
+        y0, y1, x0, x1 = r * h // rows, (r + 1) * h // rows, c * w // cols, (c + 1) * w // cols
+        ys, xs = np.where(alpha[y0:y1, x0:x1] > 0.5)
+        save(rgba, (x0 + xs.min(), y0 + ys.min(), x0 + xs.max() + 1, y0 + ys.max() + 1), name, side)
+
+
+def settings_ui_sheet() -> None:
+    """설정 (0.2.1): 카드 머리 그림 넷(2 × 2, 달의 별·확성기 소리는 조각이 따로), 위 줄 톱니바퀴(가운데 구멍은 투명)"""
+    grid_pieces('settings-ui-sheet.png', 2, 2, [('set_bell.png', 160), ('set_moon.png', 160), ('set_sound.png', 160), ('set_help.png', 160)])
+    sheet_pieces('settings-gear-sheet.png', [('icon_gear.png', 128)])
+
+
 def travel_scene() -> None:
     """길 위 장면: 계절별 길 바닥 4장(같은 자리로 자른다)과 그 위를 가는 말과 수레 (assets-src/ui/travel/)"""
     folder = os.path.join(ROOT, 'assets-src', 'ui', 'travel')
@@ -298,4 +353,9 @@ if __name__ == '__main__':
     caravan_ui_sheet()
     settlement_ui_sheet()
     travel_scene()
+    entry_ui_sheet()
+    entry_letter_sheet()
+    founding_ui_sheet()
+    waiting_ui_sheet()
+    settings_ui_sheet()
     # 물품 그림은 0.1.6부터 로우폴리 그림(scripts/ui/cut_goods.py)을 쓴다. 예전 그림판 물품이 필요하면 goods_sheet()

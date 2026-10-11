@@ -16,6 +16,7 @@ import { itemArt } from '../../itemArt';
 import { openPage } from '../../page';
 import { openOrderSheet } from '../orderSheet';
 import { openCaravanSheet } from '../caravanSheet';
+import { playSfx } from '../../sound';
 
 /** 장날까지 남은 시간 칩 (견습은 하루 보내기로 넘기니 없다). 페이지가 열린 동안 data-countdown을 고쳐 쓴다 */
 export function countdownHtml(game: Game, apprentice: boolean): string {
@@ -32,6 +33,8 @@ export function tickCountdown(el: HTMLElement, game: Game): () => void {
 }
 
 export function openMarket(game: Game): void {
+  // 시장 소리는 작게 (기획: "눌렀을 때 작게 들리기")
+  playSfx('market');
   const v0 = game.view();
   if (!v0.market || v0.location.kind !== 'town') return;
   const town = v0.location.town;

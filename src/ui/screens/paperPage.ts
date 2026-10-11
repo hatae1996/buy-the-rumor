@@ -15,6 +15,7 @@ import { paperName, PRE_SEASON_PAPER_DAY } from '../../sim/news';
 import { agoText, ERROR_TEXT, goodName } from '../format';
 import type { Game } from '../game';
 import { itemArt } from '../itemArt';
+import { playSfx } from '../sound';
 
 const ROAD = [roadSpring, roadSummer, roadAutumn, roadWinter] as const;
 
@@ -55,6 +56,7 @@ let open: { close: () => void } | null = null;
 
 /** 산 신문 한 부를 처음부터 끝까지 (읽음으로 적는다) */
 export async function openPaper(game: Game, day: number): Promise<void> {
+  playSfx('paper');
   open?.close();
   const r = await game.dispatch({ type: 'readPaper', day });
   const v = game.view();

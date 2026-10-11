@@ -158,3 +158,223 @@
   background: var(--cream-teal-soft);
   color: var(--cream-teal);
 }
+
+/* 설정 톱니바퀴 (0.2.1): 보이는 크기는 작게, 누르는 자리는 44px */
+.status-gear {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: -2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cream-ink-soft);
+}
+
+.status-gear::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
+/* 금화(22px)와 같은 크기 */
+.status-gear img {
+  width: 22px;
+  height: 22px;
+}
+
+/* 날짜: 좁은 폰에서는 "125일"만 */
+.day-short {
+  display: none;
+}
+
+@media (max-width: 389px) {
+  .day-long {
+    display: none;
+  }
+
+  .day-short {
+    display: inline;
+  }
+}
+
+/* 설정 페이지 (0.2.1 목업) */
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--cream-line);
+}
+
+.settings-head img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.settings-head h3 {
+  flex: 1;
+  margin: 0;
+  color: #1f3d45;
+  font-size: 21px;
+}
+
+.settings-card {
+  text-align: left;
+}
+
+.settings-lead {
+  margin: 10px 0 0 56px;
+  color: var(--cream-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.settings-lead small {
+  font-size: 13px;
+}
+
+.settings-sub {
+  margin: 16px 0 6px;
+  color: #1f3d45;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: normal;
+}
+
+.settings-note {
+  margin: 8px 0 0;
+  color: var(--cream-ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.settings-card {
+  margin-bottom: 12px;
+}
+
+.settings-card .shop-link + .shop-link {
+  margin-top: 8px;
+}
+
+.settings-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-list li + li,
+.settings-row {
+  border-top: 1px dashed var(--cream-line);
+}
+
+.settings-list label,
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 0;
+}
+
+.settings-list label > span,
+.settings-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-list small,
+.settings-row small {
+  color: var(--cream-ink-soft);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.settings-row select {
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid var(--cream-line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.settings-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-hours select {
+  flex: 1;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--cream-line);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: var(--cream-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.settings-row .settings-sub {
+  margin: 0;
+}
+
+.settings-card .settings-row:has(.settings-sub) {
+  margin-top: 14px;
+}
+
+.settings-hours i {
+  font-style: normal;
+}
+
+/* 켜고 끄는 스위치 */
+.settings-switch {
+  flex: none;
+  position: relative;
+  width: 50px;
+  height: 30px;
+  margin: 0;
+  border-radius: 15px;
+  background: #d9d1c3;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background 0.15s;
+}
+
+.settings-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.settings-switch:checked {
+  background: var(--cream-teal);
+}
+
+.settings-switch:checked::after {
+  transform: translateX(20px);
+}
+
+.settings-version {
+  margin: 16px 0 8px;
+  color: var(--cream-ink-soft);
+  font-size: 12.5px;
+  text-align: center;
+}

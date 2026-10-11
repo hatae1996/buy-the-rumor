@@ -1,27 +1,23 @@
 // 서버 게임의 들어가는 화면들 (작업목록-0.2.0 11번): 로그인(개인정보 한 줄), 초대 코드, 다음 시즌 기다리기, 세계에 들어가기.
+// 로그인·메일 확인·초대 코드·대기 화면은 0.2.1 목업 화면(entry.css).
 // 시작 화면(founding.ts)과 같은 크림 바탕 틀을 쓴다.
 import type { Look } from '../../sim/looks';
 import { categoryName, certificateView, type Certificate, type CategoryId, type Emblem } from '../../sim/ranking';
 import { ERROR_TEXT, type ServerError } from '../format';
 import { openPage } from '../page';
 import { openSheet } from '../sheet';
+import doorImg from '../../../assets/ui/entry_guild_door.png';
+import inviteImg from '../../../assets/ui/entry_invite_letter.png';
 import { certificateCard, openLookPage } from './certificate';
+import groundImg from '../../../assets/ui/waiting_ground.png';
+import stallImg from '../../../assets/ui/waiting_stall.png';
+import wallImg from '../../../assets/ui/waiting_wall.png';
+import trophyImg from '../../../assets/ui/rank_trophy.png';
+import { entryBrand, entryBrandStack, entryLeaf, ICON_HOURGLASS, ICON_MAIL, ICON_REFRESH } from './entryParts';
+import { showMailCheck } from './mailCheck';
 
-/** 로그인 화면에 한 줄 (handoff 0.2.0 9번) */
-export const PRIVACY_LINE = '테스트용 게임이며 이메일과 플레이 기록만 저장합니다.';
-
-function frame(root: HTMLElement, title: string, hint: string, body: string): HTMLElement {
-  const el = document.createElement('section');
-  el.className = 'founding entry';
-  el.innerHTML = `
-    <header class="founding-head">
-      <h1>${title}</h1>
-      <p class="founding-hint">${hint}</p>
-    </header>
-    <div class="founding-body"><div class="founding-card">${body}</div></div>`;
-  root.replaceChildren(el);
-  return el;
-}
+/** 로그인 화면에 한 줄 (handoff 0.2.0 9번, 0.2.1 목업 문구) */
+export const PRIVACY_LINE = '테스트 버전 · 이메일과 플레이 기록을 저장해요.';
 
 export interface LoginActions {
   /** 없으면 구글 단추를 보이지 않는다 (설정 전) */
@@ -33,25 +29,30 @@ export interface LoginActions {
   done: () => void;
 }
 
-/** 로그인: 구글 계정 또는 이메일 링크. 로그인하면 이 주소로 돌아와 다시 연다 */
+/**
+ * 로그인: 구글 계정 또는 이메일 링크. 로그인하면 이 주소로 돌아와 다시 연다.
+ * 0.2.1 목업(docs/reference/entry-mockup-0.2.1.png): 큰 상호, 길드 문 그림, 그 위에 걸친 카드
+ */
 export function showLogin(root: HTMLElement, act: LoginActions): void {
-  const el = frame(
-    root,
-    'Buy the Rumor',
-    '"소문에 사서 뉴스에 팔게. 먼저 길드 명부에 이름을 올리세."',
-    `${act.google ? '<button type="button" class="founding-btn" data-google>구글 계정으로 시작</button>' : ''}
-     <label class="founding-name"><span>${act.google ? '또는 ' : ''}이메일로 로그인</span>
-       <input type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" data-email /></label>
-     <button type="button" class="founding-btn ghost" data-send>로그인 메일 받기</button>
-     <div data-code-box hidden>
-       <label class="founding-name"><span>메일에 온 숫자</span>
-         <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" data-code /></label>
-       <button type="button" class="founding-btn" data-verify>로그인</button>
-       <p class="pick-note">메일을 다른 기기(컴퓨터 등)에서 봐도 숫자만 여기에 넣으면 돼요. 이 기기에서 메일의 링크를 눌러도 돼요.</p>
-     </div>
-     <p class="founding-error" data-error hidden></p>
-     <p class="pick-note">${PRIVACY_LINE}</p>`,
-  );
+  const el = document.createElement('section');
+  el.className = 'entry-screen entry-login';
+  el.innerHTML = `<div class="entry-scroll">
+      ${entryBrand(true)}
+      <p class="entry-tagline">소문을 사고, 기회를 잡으세요.</p>
+      <div class="entry-hero door"><img src="${doorImg}" alt="" /></div>
+      <div class="entry-card overlap">
+        <h2>상인의 여정을 시작하세요</h2>
+        <p class="entry-sub">이메일로 로그인</p>
+        ${act.google ? '<button type="button" class="entry-btn ghost" data-google>구글 계정으로 시작</button>' : ''}
+        <label class="entry-field"><span>이메일 주소</span>
+          <input type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" data-email /></label>
+        <button type="button" class="entry-btn coral" data-send>${ICON_MAIL}<span>로그인 메일 받기</span></button>
+        <p class="entry-error" data-error hidden></p>
+        <p class="entry-note">메일로 받은 링크를 누르면 로그인돼요.</p>
+      </div>
+      <footer class="entry-foot">${entryLeaf()}<p>${PRIVACY_LINE}</p></footer>
+    </div>`;
+  root.replaceChildren(el);
   const err = el.querySelector<HTMLElement>('[data-error]')!;
   const show = (m: string | null) => {
     err.textContent = m ?? '';
@@ -66,39 +67,33 @@ export function showLogin(root: HTMLElement, act: LoginActions): void {
     send.disabled = true;
     const m = await act.email(email);
     send.disabled = false;
-    show(m);
-    if (m === null) {
-      send.textContent = '메일 다시 받기';
-      el.querySelector<HTMLElement>('[data-code-box]')!.hidden = false;
-      el.querySelector<HTMLInputElement>('[data-code]')!.focus();
-    }
-  });
-  el.querySelector('[data-verify]')!.addEventListener('click', async (e) => {
-    const email = el.querySelector<HTMLInputElement>('[data-email]')!.value.trim();
-    const code = el.querySelector<HTMLInputElement>('[data-code]')!.value.replace(/\s/g, '');
-    if (!/^\d{6,8}$/.test(code)) return show('메일에 온 숫자를 넣어 주세요.');
-    const btn = e.currentTarget as HTMLButtonElement;
-    btn.disabled = true;
-    const m = await act.verify(email, code);
-    btn.disabled = false;
-    if (m) return show(m);
-    act.done();
+    // 보냈으면 메일 확인 화면에서 인증번호를 넣는다
+    if (m === null) showMailCheck(root, email, act, PRIVACY_LINE);
+    else show(m);
   });
 }
 
-/** 초대 코드 (handoff 0.2.0 1번). 받아들여지면 끝난다 */
+/** 초대 코드 (handoff 0.2.0 1번, 0.2.1 목업 "길드 초대장"). 받아들여지면 끝난다 */
 export function showInvite(root: HTMLElement, redeem: (code: string) => Promise<string | null>): Promise<void> {
   return new Promise((resolve) => {
-    const el = frame(
-      root,
-      '초대 코드',
-      '"지금 길드는 초대받은 상인만 받는다네. 받은 코드를 보여 주게."',
-      `<label class="founding-name"><span>초대 코드 <small>8글자</small></span>
-         <input type="text" autocapitalize="characters" autocomplete="off" maxlength="16" data-code /></label>
-       <p class="founding-error" data-error hidden></p>
-       <button type="button" class="founding-btn" data-ok>들어가기 ›</button>
-       <p class="pick-note">${PRIVACY_LINE}</p>`,
-    );
+    const el = document.createElement('section');
+    el.className = 'entry-screen entry-invite';
+    el.innerHTML = `<div class="entry-scroll">
+        ${entryBrand(false)}
+        <div class="entry-hero letter"><img src="${inviteImg}" alt="" /></div>
+        <h2 class="entry-title">길드 초대장</h2>
+        <p class="entry-lead soft">지금은 초대받은 상인만 입장할 수 있어요.</p>
+        <div class="entry-card">
+          <label class="entry-field"><span class="entry-field-title">초대 코드 입력</span>
+            <small>전달받은 8자리 코드를 입력해 주세요.</small>
+            <input type="text" autocapitalize="characters" autocomplete="off" maxlength="16" placeholder="초대 코드 8자리" data-code /></label>
+          <button type="button" class="entry-btn coral" data-ok>길드에 들어가기 ›</button>
+          <p class="entry-error" data-error hidden></p>
+          <p class="entry-note center">초대 코드는 이메일 인증번호와 달라요.</p>
+        </div>
+        <footer class="entry-foot">${entryLeaf()}<p>${PRIVACY_LINE}</p></footer>
+      </div>`;
+    root.replaceChildren(el);
     const err = el.querySelector<HTMLElement>('[data-error]')!;
     el.querySelector<HTMLButtonElement>('[data-ok]')!.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
@@ -134,27 +129,47 @@ const seasonText = (id: string) => {
   return m ? `${Number(m[1])}월 ${Number(m[2])}일 시즌` : id;
 };
 
+/** 기다리는 까닭마다 두 줄 (0.2.1 목업) */
+const WAIT_TEXT: Record<string, string> = {
+  seasonClosed: '이번 시즌 참가 기간이 끝났어요.',
+  worldsFull: '이번 시즌 세계가 모두 찼어요.',
+  noSeason: '지금은 열린 시즌이 없어요.',
+};
+
 /**
  * 다음 시즌 기다리기 (답 115, 질문 138): 시즌이 없거나, 세계가 다 찼거나, 들어올 날이 지났다.
- * 기다리는 동안 지난 시즌 명예의 전당과 내 상인 증서(얼굴·문장 바꾸기)를 본다 (0.2.1)
+ * 기다리는 동안 지난 시즌 명예의 전당과 내 상인 증서(얼굴·문장 바꾸기)를 본다 (0.2.1).
+ * 0.2.1 목업(docs/reference/waiting-mockup-0.2.1.png): 닫힌 노점, 시작 시각, 명예의 전당(없으면 증서 꾸미기 안내)
  */
 export function showWaiting(root: HTMLElement, reason: string, retry: () => void, extras?: WaitingExtras): void {
-  const text = ERROR_TEXT[reason as ServerError] ?? '지금은 들어갈 수 없어요.';
-  const el = frame(root, '다음 시즌을 기다려 주세요', '"장이 다시 서면 부르겠네. 그동안 증서나 매만져 두게."', `<p>${text}</p>
-     <p class="pick-note">시즌은 격주 월요일 아침 9시에 열려요.</p>
-     <section class="hall-of-fame" data-hall hidden></section>
-     ${extras?.certificate ? '<button type="button" class="founding-btn ghost" data-cert>내 상인 증서 ›</button>' : ''}
-     <button type="button" class="founding-btn" data-retry>다시 확인</button>`);
-  el.classList.add('entry-waiting');
+  const first = WAIT_TEXT[reason] ?? ERROR_TEXT[reason as ServerError] ?? '지금은 들어갈 수 없어요.';
+  const el = document.createElement('section');
+  el.className = 'entry-screen entry-waiting';
+  el.innerHTML = `<div class="entry-scroll">
+      ${entryBrandStack()}
+      <h2 class="entry-title big">다음 시즌을 준비하고 있어요</h2>
+      <div class="entry-hero stall"><img class="wall" src="${wallImg}" alt="" /><img class="stall-img" src="${stallImg}" alt="" /></div>
+      <p class="entry-lead">${first}<br />다음 시즌에 새로운 장사를 시작해 보세요.</p>
+      <p class="entry-when">${ICON_HOURGLASS}격주 월요일 오전 9시 시작</p>
+      <section class="hall-of-fame" data-hall hidden></section>
+      <p class="entry-divider plain" data-cert-hint ${extras?.certificate ? '' : 'hidden'}><span>✦</span></p>
+      <p class="entry-note center" data-cert-hint ${extras?.certificate ? '' : 'hidden'}>기다리는 동안 상인 증서를 꾸며 보세요.</p>
+      ${extras?.certificate ? '<button type="button" class="entry-btn outline teal-line" data-cert>내 상인 증서 ›</button>' : ''}
+      <button type="button" class="entry-btn coral" data-retry>${ICON_REFRESH}다시 확인</button>
+      <img class="entry-ground" src="${groundImg}" alt="" />
+    </div>`;
+  root.replaceChildren(el);
   el.querySelector('[data-retry]')!.addEventListener('click', retry);
   if (!extras) return;
   void extras.hall
     .then((h) => {
       if (!h?.entries.length) return;
       const box = el.querySelector<HTMLElement>('[data-hall]')!;
-      box.innerHTML = `<h3>지난 시즌 명예의 전당 <small>${seasonText(h.seasonId)}</small></h3>
+      box.innerHTML = `<h3><img src="${trophyImg}" alt="" />지난 시즌 명예의 전당 <small>${seasonText(h.seasonId)}</small></h3>
         <ul>${h.entries.map((e) => `<li><span>${categoryName(e.category as CategoryId)}</span><b>${e.name}</b></li>`).join('')}</ul>`;
       box.hidden = false;
+      // 명예의 전당이 있으면 증서 꾸미기 안내는 숨긴다 (목업)
+      el.querySelectorAll<HTMLElement>('[data-cert-hint]').forEach((x) => (x.hidden = true));
     })
     .catch(() => undefined);
   let cert = extras.certificate;

@@ -13,6 +13,8 @@
     "portraits": "python scripts/portrait/build.py",
     "parts": "python scripts/parts/build.py",
     "badges": "python scripts/badge/build.py",
+    "audio": "python scripts/audio/build.py",
+    "horses": "python scripts/horse/build.py",
     "build:server": "vite build --config vite.server.config.ts",
     "test:deno": "npm run build:server && vitest run --config vitest.deno.config.ts",
     "measure:server": "vitest run --config vitest.measure.config.ts"

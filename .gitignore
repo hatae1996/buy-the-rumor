@@ -16,3 +16,9 @@ supabase/functions/_shared/server.js
 supabase/.temp/
 supabase/.branches/
 .env
+
+# 배경음 원본 WAV(25MB)는 저장소에 넣지 않는다. 게임은 npm run audio가 만든 assets/audio/*.mp3를 쓴다
+assets-src/audio/bgm/*.wav
+
+# 파이썬 캐시
+__pycache__/

@@ -2,7 +2,10 @@
 // 시작 화면과 상인 증서에서 같이 쓴다. 고르는 동안은 화면에서만 바꾼다.
 import '../parts.css';
 import { DIVISION_IDS, DIVISIONS, EMBLEM_COLOR_IDS, EMBLEM_COLORS, SHIELD_IDS, SHIELDS, SYMBOL_IDS, SYMBOLS, type Emblem } from '../../sim/ranking';
-import { emblemSvg } from '../emblem';
+import { emblemSvg, symbolSvg } from '../emblem';
+
+/** 방패 모양 견본 이름 (0.2.1 목업: 짧게) */
+const SHIELD_LABEL: Record<string, string> = { heater: '전통', round: '원형', kite: '연 모양', banner: '깃발', oval: '타원' };
 
 function colorRow(key: string, current: string): string {
   return `<div class="pick-row swatch-row" role="radiogroup">${EMBLEM_COLOR_IDS.map(
@@ -11,13 +14,19 @@ function colorRow(key: string, current: string): string {
   ).join('')}</div>`;
 }
 
-/** 작은 문장 견본으로 고르는 줄 (지금 문장에서 그 항목만 바꾼 모양) */
+/**
+ * 견본으로 고르는 줄 (지금 문장에서 그 항목만 바꾼 모양). 방패 모양·나눔 무늬는 상징 없이 방패만,
+ * 상징은 상징만 지금 상징 색으로 (0.2.1 목업)
+ */
 function sampleRow<K extends 'shield' | 'division' | 'symbol'>(key: K, ids: readonly Emblem[K][], names: Record<string, string>, e: Emblem): string {
   return `<div class="pick-row sample-row" role="radiogroup">${ids
-    .map(
-      (id) =>
-        `<button type="button" class="pick-sample" role="radio" aria-checked="${id === e[key]}" data-${key}="${id}"><span aria-hidden="true">${emblemSvg({ ...e, [key]: id }, 40, names[id as string]!)}</span><small>${names[id as string]}</small></button>`,
-    )
+    .map((id) => {
+      const art =
+        key === 'symbol'
+          ? symbolSvg(id as Emblem['symbol'], EMBLEM_COLORS[e.symbolColor].hex, 38)
+          : emblemSvg({ ...e, [key]: id }, 38, names[id as string]!, { symbol: false });
+      return `<button type="button" class="pick-sample" role="radio" aria-checked="${id === e[key]}" aria-label="${names[id as string]}" data-${key}="${id}"><span aria-hidden="true">${art}</span><small>${names[id as string]}</small></button>`;
+    })
     .join('')}</div>`;
 }
 
@@ -31,7 +40,7 @@ export function mountEmblemEditor(el: HTMLElement, initial: Emblem, onChange?: (
   const draw = () => {
     el.innerHTML = `
       <div class="pick-preview emblem">${emblemSvg(e, 104, '내 문장')}</div>
-      <section class="pick-group"><h4>방패 모양</h4>${sampleRow('shield', SHIELD_IDS, SHIELDS, e)}</section>
+      <section class="pick-group"><h4>방패 모양</h4>${sampleRow('shield', SHIELD_IDS, { ...SHIELDS, ...SHIELD_LABEL }, e)}</section>
       <section class="pick-group"><h4>바탕 색</h4>${colorRow('field0', e.field[0])}</section>
       <section class="pick-group"><h4>나눔 무늬</h4>${sampleRow('division', DIVISION_IDS, DIVISIONS, e)}</section>
       ${e.division === 'none' ? '' : `<section class="pick-group"><h4>무늬 색</h4>${colorRow('field1', e.field[1])}</section>`}

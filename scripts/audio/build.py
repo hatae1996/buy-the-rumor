@@ -1,0 +1,62 @@
+"""소리 빌드 (0.2.1): assets-src/audio/의 원본을 게임용 MP3로 줄여 assets/audio/에 넣는다.
+
+    npm run audio        (= python scripts/audio/build.py, ffmpeg가 PATH에 있어야 한다)
+
+- 효과음(sfx/): 모노 44.1kHz 96kbps. 가장 큰 소리를 -3dB로 맞추고(크기는 화면 코드의 음량표로 다시 맞춘다),
+  긴 것(이름에 "짧게", "작게"가 붙은 이동·시장 소리, 짐칸)은 앞부분만 쓰고 끝을 서서히 줄인다.
+- 배경음(bgm/): 스테레오 44.1kHz 128kbps, 가장 큰 소리 -1dB. 원본 WAV(25MB)는 게임에 넣지 않는다.
+원본 파일 이름(기획자가 붙인 이름)과 게임 이름의 짝은 아래 표에 있다.
+"""
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC = os.path.join(ROOT, 'assets-src', 'audio')
+OUT = os.path.join(ROOT, 'assets', 'audio')
+
+# (원본, 게임 이름, 쓸 길이(초, None이면 전부), 끝 줄이기(초))
+SFX = [
+    ('터치음.mp3', 'sfx_tap', None, 0),
+    ('지도탭 눌렀을때.mp3', 'sfx_map', None, 0),
+    ('짐칸.mp3', 'sfx_cart', 2.6, 0.6),
+    ('장부확인.mp3', 'sfx_ledger', None, 0),
+    ('신문.mp3', 'sfx_paper', None, 0),
+    ('시장(눌렀을때 작게 들리기).mp3', 'sfx_market', 3.0, 1.0),
+    ('구매했을때.mp3', 'sfx_buy', None, 0),
+    ('말이동소리(이동중짧게).mp3', 'sfx_travel', 2.6, 0.8),
+]
+BGM = [('Merchant Square Morning.wav', 'bgm_merchant_square')]
+
+
+def peak_db(path: str) -> float:
+    """가장 큰 소리 (dBFS)"""
+    r = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', path, '-af', 'volumedetect', '-f', 'null', '-'], capture_output=True, encoding='utf-8', errors='replace')
+    m = re.search(r'max_volume: (-?[\d.]+) dB', r.stderr)
+    if not m:
+        sys.exit(f'{path}: 소리 크기를 못 쟀다')
+    return float(m.group(1))
+
+
+def encode(src: str, dst: str, filters: list[str], args: list[str]) -> None:
+    cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', src, '-af', ','.join(filters), *args, dst]
+    subprocess.run(cmd, check=True)
+    print(f'{os.path.basename(dst)}: {os.path.getsize(dst) // 1024}KB')
+
+
+def main() -> None:
+    os.makedirs(OUT, exist_ok=True)
+    for src, name, length, fade in SFX:
+        path = os.path.join(SRC, 'sfx', src)
+        filters = [f'volume={-3 - peak_db(path):.2f}dB']
+        if length:
+            filters = [f'atrim=0:{length}', f'afade=t=out:st={length - fade}:d={fade}', *filters]
+        encode(path, os.path.join(OUT, f'{name}.mp3'), filters, ['-ac', '1', '-ar', '44100', '-b:a', '96k'])
+    for src, name in BGM:
+        path = os.path.join(SRC, 'bgm', src)
+        encode(path, os.path.join(OUT, f'{name}.mp3'), [f'volume={-1 - peak_db(path):.2f}dB'], ['-ac', '2', '-ar', '44100', '-b:a', '128k'])
+
+
+if __name__ == '__main__':
+    main()

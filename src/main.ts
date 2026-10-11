@@ -8,6 +8,7 @@ import { watchPortraits } from './ui/portrait/portrait';
 import { openFounding } from './ui/screens/founding';
 import { WORLD_TOWN_COUNTS } from './sim/worldgen';
 import { SERVER_MODE } from './ui/config';
+import { initSound } from './ui/sound';
 
 // 시험용: 주소에 ?new 를 붙이면 저장을 지우고 새 판으로 시작한다.
 // &bots=0~20: 봇 상인 수, &skip: 견습 건너뛰기(모든 것이 열린 채로), &days=10: 시즌을 그 날 수로 줄이기(결산 시험),
@@ -15,6 +16,8 @@ import { SERVER_MODE } from './ui/config';
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;
 watchPortraits();
+// 소리: 첫 터치에서 배경음을 틀고 효과음을 불러 둔다 (들어가는 화면부터)
+initSound();
 const boot = (game: Game) => {
   mountShell(app, game, () => Date.now());
 };
